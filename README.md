@@ -1,0 +1,1 @@
+# Algolia CLI v2.0.0
