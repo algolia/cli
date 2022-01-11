@@ -87,6 +87,10 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		Used for informative purposes only. It has impact on the functionality of the API key.`,
 	))
 
+	cmd.RegisterFlagCompletionFunc("acl", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"search", "browse", "addObject", "deleteObject", "listIndexes", "deleteIndex", "settings", "editSettings", "analytics", "recommendation", "usage", "logs", "seeUnretrievableAttributes"}, cobra.ShellCompDirectiveDefault
+	})
+
 	return cmd
 }
 

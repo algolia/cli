@@ -1,4 +1,4 @@
-package load
+package importRecords
 
 import (
 	"bufio"
@@ -6,14 +6,15 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/spf13/cobra"
+
 	"github.com/algolia/algolia-cli/pkg/cmdutil"
 	"github.com/algolia/algolia-cli/pkg/config"
 	"github.com/algolia/algolia-cli/pkg/iostreams"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	"github.com/spf13/cobra"
 )
 
-type LoadOptions struct {
+type ImportOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
@@ -23,9 +24,9 @@ type LoadOptions struct {
 	Scanner *bufio.Scanner
 }
 
-// NewLoadCmd creates and returns a load command for indices
-func NewLoadCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &LoadOptions{
+// NewImportCmd creates and returns an import command for indice records
+func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
@@ -34,15 +35,26 @@ func NewLoadCmd(f *cmdutil.Factory) *cobra.Command {
 	var file string
 
 	cmd := &cobra.Command{
-		Use:   "load <index_1> -F <file_1>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Load data to the indice",
+		Use:  "import <index_1> -F <file_1>",
+		Args: cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			client, err := opts.SearchClient()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			indexNames, err := cmdutil.IndexNames(client)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return indexNames, cobra.ShellCompDirectiveNoFileComp
+		},
+		Short: "Import records to the indice",
 		Long: heredoc.Doc(`
-			Load the data into the provided indice.
+			Import the records into the provided indice.
 		`),
 		Example: heredoc.Doc(`
-			$ algolia load TEST_PRODUCTS_1 -F data.json
-			$ cat data.json | algolia load TEST_PRODUCTS_1 -F -
+			$ algolia indices import TEST_PRODUCTS_1 -F data.json
+			$ cat data.json | algolia indices import TEST_PRODUCTS_1 -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -53,16 +65,16 @@ func NewLoadCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			opts.Scanner = scanner
 
-			return runLoadCmd(opts)
+			return runImportCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read data to load from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
 
 	return cmd
 }
 
-func runLoadCmd(opts *LoadOptions) error {
+func runImportCmd(opts *ImportOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
@@ -78,7 +90,7 @@ func runLoadCmd(opts *LoadOptions) error {
 		totalCount = 0
 	)
 
-	opts.IO.StartProgressIndicatorWithLabel("Loading data")
+	opts.IO.StartProgressIndicatorWithLabel("Importing records")
 	for opts.Scanner.Scan() {
 		line := opts.Scanner.Text()
 		if line == "" {
@@ -100,7 +112,7 @@ func runLoadCmd(opts *LoadOptions) error {
 
 			batch = make([]interface{}, 0, batchSize)
 			totalCount += count
-			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Loaded %d objects", totalCount))
+			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d records", totalCount))
 			count = 0
 		}
 	}
@@ -120,7 +132,7 @@ func runLoadCmd(opts *LoadOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s record to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Indice)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s records to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Indice)
 	}
 
 	return nil

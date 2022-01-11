@@ -5,9 +5,9 @@ import (
 
 	"github.com/algolia/algolia-cli/pkg/cmd/indices/clear"
 	"github.com/algolia/algolia-cli/pkg/cmd/indices/delete"
-	"github.com/algolia/algolia-cli/pkg/cmd/indices/dump"
+	"github.com/algolia/algolia-cli/pkg/cmd/indices/export"
+	importRecords "github.com/algolia/algolia-cli/pkg/cmd/indices/import"
 	"github.com/algolia/algolia-cli/pkg/cmd/indices/list"
-	"github.com/algolia/algolia-cli/pkg/cmd/indices/load"
 	"github.com/algolia/algolia-cli/pkg/cmdutil"
 )
 
@@ -21,8 +21,8 @@ func NewIndicesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(list.NewListCmd(f))
 	cmd.AddCommand(delete.NewDeleteCmd(f))
 	cmd.AddCommand(clear.NewClearCmd(f))
-	cmd.AddCommand(dump.NewDumpCmd(f))
-	cmd.AddCommand(load.NewLoadCmd(f))
+	cmd.AddCommand(export.NewExportCmd(f))
+	cmd.AddCommand(importRecords.NewImportCmd(f))
 
 	return cmd
 }

@@ -7,7 +7,9 @@ import (
 	"github.com/algolia/algolia-cli/pkg/cmd/apikeys"
 	"github.com/algolia/algolia-cli/pkg/cmd/indices"
 	"github.com/algolia/algolia-cli/pkg/cmd/login"
+	"github.com/algolia/algolia-cli/pkg/cmd/rules"
 	"github.com/algolia/algolia-cli/pkg/cmd/settings"
+	"github.com/algolia/algolia-cli/pkg/cmd/synonyms"
 	"github.com/algolia/algolia-cli/pkg/cmdutil"
 	"github.com/algolia/algolia-cli/pkg/version"
 )
@@ -23,7 +25,6 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ algolia indices list
 			$ algolia apikeys create --acl search
-			$ algolia instantsearch my-app
 		`),
 	}
 
@@ -41,6 +42,8 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(indices.NewIndicesCmd(f))
 	cmd.AddCommand(apikeys.NewAPIKeysCmd(f))
 	cmd.AddCommand(settings.NewSettingsCmd(f))
+	cmd.AddCommand(rules.NewRulesCmd(f))
+	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
 
 	return cmd
 }

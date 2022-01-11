@@ -35,8 +35,19 @@ func NewClearCmd(f *cmdutil.Factory) *cobra.Command {
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:   "clear <index_1> <index_2> ...",
-		Args:  cobra.MinimumNArgs(1),
+		Use:  "clear <index_1> <index_2> ...",
+		Args: cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			client, err := opts.SearchClient()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			indexNames, err := cmdutil.IndexNames(client)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return indexNames, cobra.ShellCompDirectiveNoFileComp
+		},
 		Short: "Clear indices",
 		Long: heredoc.Doc(`
 			Clear the objects of an index without affecting its settings.
