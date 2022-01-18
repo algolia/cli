@@ -3,9 +3,9 @@ package settings
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmd/settings/get"
-	"github.com/algolia/algolia-cli/pkg/cmd/settings/set"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/cmd/settings/get"
+	"github.com/algolia/cli/pkg/cmd/settings/set"
+	"github.com/algolia/cli/pkg/cmdutil"
 )
 
 // NewSettingsCmd returns a new command for managing settings.

@@ -5,9 +5,9 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
 )
 
 func New(cfg *config.Config) *cmdutil.Factory {
@@ -40,8 +40,8 @@ func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
 	return io
 }
 
-func searchClient(f *cmdutil.Factory) func() (*search.Client, error) {
-	return func() (*search.Client, error) {
+func searchClient(f *cmdutil.Factory) func() (search.ClientInterface, error) {
+	return func() (search.ClientInterface, error) {
 		APIKey, err := f.Config.Profile.GetAdminAPIKey()
 		if err != nil {
 			return nil, err

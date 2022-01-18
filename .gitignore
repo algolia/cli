@@ -21,3 +21,6 @@
 *.swp
 
 vendor/
+
+# built binary
+algolia

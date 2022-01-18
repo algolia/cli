@@ -3,13 +3,14 @@ package delete
 import (
 	"fmt"
 
-	"github.com/AlecAivazis/survey/v2"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
-	"github.com/algolia/algolia-cli/pkg/prompt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
+
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/prompt"
 )
 
 // DeleteOptions represents the options for the create command
@@ -17,14 +18,14 @@ type DeleteOptions struct {
 	config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (search.ClientInterface, error)
 
 	APIKeys   []string
 	DoConfirm bool
 }
 
 // NewDeleteCmd returns a new instance of DeleteCmd
-func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
+func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
@@ -45,6 +46,10 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 					return cmdutil.FlagErrorf("--confirm required when passing a single argument")
 				}
 				opts.DoConfirm = true
+			}
+
+			if runF != nil {
+				return runF(opts)
 			}
 
 			return runDeleteCmd(opts)

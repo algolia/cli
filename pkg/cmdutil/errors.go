@@ -20,25 +20,25 @@ func FlagErrorWrap(err error) error { return &FlagError{err} }
 // Such errors cause the application to display the usage message.
 type FlagError struct {
 	// Note: not struct{error}: only *FlagError should satisfy error.
-	err error
+	Err error
 }
 
 func (fe *FlagError) Error() string {
-	return fe.err.Error()
+	return fe.Err.Error()
 }
 
 func (fe *FlagError) Unwrap() error {
-	return fe.err
+	return fe.Err
 }
 
-// SilentError is an error that triggers exit code 1 without any error messaging
-var SilentError = errors.New("SilentError")
+// ErrSilent is an error that triggers exit code 1 without any error messaging
+var ErrSilent = errors.New("Error: silent")
 
-// CancelError signals user-initiated cancellation
-var CancelError = errors.New("CancelError")
+// ErrCancel signals user-initiated cancellation
+var ErrCancel = errors.New("Error: cancelled")
 
 func IsUserCancellation(err error) bool {
-	return errors.Is(err, CancelError) || errors.Is(err, terminal.InterruptErr)
+	return errors.Is(err, ErrCancel) || errors.Is(err, terminal.InterruptErr)
 }
 
 func MutuallyExclusive(message string, conditions ...bool) error {

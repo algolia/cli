@@ -3,9 +3,9 @@ package rules
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmd/rules/export"
-	importRules "github.com/algolia/algolia-cli/pkg/cmd/rules/import"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/cmd/rules/export"
+	importRules "github.com/algolia/cli/pkg/cmd/rules/import"
+	"github.com/algolia/cli/pkg/cmdutil"
 )
 
 // NewRulesCmd returns a new command for rules.

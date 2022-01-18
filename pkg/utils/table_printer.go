@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/algolia/algolia-cli/pkg/iostreams"
-	"github.com/algolia/algolia-cli/pkg/text"
+	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/text"
 )
 
 type TablePrinter interface {

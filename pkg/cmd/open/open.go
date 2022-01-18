@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/open"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/open"
 )
 
 var nameURLmap = map[string]string{

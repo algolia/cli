@@ -2,8 +2,8 @@ package login
 
 import (
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
 )
 
 // InteractiveLogin function is used to interactively ask the user for his application id / admin api key.

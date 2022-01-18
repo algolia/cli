@@ -2,7 +2,7 @@ package cmdutil
 
 import "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
-func IndexNames(client *search.Client) ([]string, error) {
+func IndexNames(client search.ClientInterface) ([]string, error) {
 	res, err := client.ListIndices()
 	if err != nil {
 		return nil, err

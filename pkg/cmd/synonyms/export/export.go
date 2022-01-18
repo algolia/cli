@@ -9,16 +9,16 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
 )
 
 type ExportOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (search.ClientInterface, error)
 
 	Indice string
 }

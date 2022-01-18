@@ -4,14 +4,14 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmd/apikeys"
-	"github.com/algolia/algolia-cli/pkg/cmd/indices"
-	"github.com/algolia/algolia-cli/pkg/cmd/login"
-	"github.com/algolia/algolia-cli/pkg/cmd/rules"
-	"github.com/algolia/algolia-cli/pkg/cmd/settings"
-	"github.com/algolia/algolia-cli/pkg/cmd/synonyms"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/version"
+	"github.com/algolia/cli/pkg/cmd/apikeys"
+	"github.com/algolia/cli/pkg/cmd/indices"
+	"github.com/algolia/cli/pkg/cmd/login"
+	"github.com/algolia/cli/pkg/cmd/rules"
+	"github.com/algolia/cli/pkg/cmd/settings"
+	"github.com/algolia/cli/pkg/cmd/synonyms"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/version"
 )
 
 func NewRootCmd(f *cmdutil.Factory) *cobra.Command {

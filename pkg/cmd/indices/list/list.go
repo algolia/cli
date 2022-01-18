@@ -7,18 +7,18 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
-	"github.com/algolia/algolia-cli/pkg/utils"
-	"github.com/algolia/algolia-cli/pkg/validators"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/utils"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type ListOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (search.ClientInterface, error)
 }
 
 // NewListCmd creates and returns a list command for indices

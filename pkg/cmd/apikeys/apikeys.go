@@ -1,11 +1,12 @@
 package apikeys
 
 import (
-	"github.com/algolia/algolia-cli/pkg/cmd/apikeys/create"
-	"github.com/algolia/algolia-cli/pkg/cmd/apikeys/delete"
-	"github.com/algolia/algolia-cli/pkg/cmd/apikeys/list"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
+
+	"github.com/algolia/cli/pkg/cmd/apikeys/create"
+	"github.com/algolia/cli/pkg/cmd/apikeys/delete"
+	"github.com/algolia/cli/pkg/cmd/apikeys/list"
+	"github.com/algolia/cli/pkg/cmdutil"
 )
 
 // NewAPIKeysCmd returns a new command for API Keys.
@@ -16,8 +17,8 @@ func NewAPIKeysCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(list.NewListCmd(f))
-	cmd.AddCommand(create.NewCreateCmd(f))
-	cmd.AddCommand(delete.NewDeleteCmd(f))
+	cmd.AddCommand(create.NewCreateCmd(f, nil))
+	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 
 	return cmd
 }

@@ -3,11 +3,11 @@ package login
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
-	"github.com/algolia/algolia-cli/pkg/login"
-	"github.com/algolia/algolia-cli/pkg/validators"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/login"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type LoginOptions struct {

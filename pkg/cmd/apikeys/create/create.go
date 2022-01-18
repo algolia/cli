@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
-	"github.com/algolia/algolia-cli/pkg/iostreams"
-	"github.com/algolia/algolia-cli/pkg/validators"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
+
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 // CreateOptions represents the options for the create command
@@ -18,7 +19,7 @@ type CreateOptions struct {
 	config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (search.ClientInterface, error)
 
 	ACL         []string
 	Description string
@@ -28,7 +29,7 @@ type CreateOptions struct {
 }
 
 // NewCreateCmd returns a new instance of CreateCmd
-func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
+func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
@@ -44,6 +45,10 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia create -i foo,bar --acl search -r "http://foo.com" --u 1h -d "Search-only API Key for foo & bar"
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if runF != nil {
+				return runF(opts)
+			}
+
 			return runCreateCmd(opts)
 		},
 	}

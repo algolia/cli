@@ -3,12 +3,12 @@ package indices
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmd/indices/clear"
-	"github.com/algolia/algolia-cli/pkg/cmd/indices/delete"
-	"github.com/algolia/algolia-cli/pkg/cmd/indices/export"
-	importRecords "github.com/algolia/algolia-cli/pkg/cmd/indices/import"
-	"github.com/algolia/algolia-cli/pkg/cmd/indices/list"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/cmd/indices/clear"
+	"github.com/algolia/cli/pkg/cmd/indices/delete"
+	"github.com/algolia/cli/pkg/cmd/indices/export"
+	importRecords "github.com/algolia/cli/pkg/cmd/indices/import"
+	"github.com/algolia/cli/pkg/cmd/indices/list"
+	"github.com/algolia/cli/pkg/cmdutil"
 )
 
 // NewIndicesCmd returns a new command for indices.

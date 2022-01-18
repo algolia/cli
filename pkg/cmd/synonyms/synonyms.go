@@ -3,9 +3,9 @@ package synonyms
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmd/synonyms/export"
-	importSynonyms "github.com/algolia/algolia-cli/pkg/cmd/synonyms/import"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/cmd/synonyms/export"
+	importSynonyms "github.com/algolia/cli/pkg/cmd/synonyms/import"
+	"github.com/algolia/cli/pkg/cmdutil"
 )
 
 // NewSynonymsCmd returns a new command for synonyms.

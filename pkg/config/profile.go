@@ -5,8 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/algolia/algolia-cli/pkg/validators"
 	"github.com/spf13/viper"
+
+	"github.com/algolia/cli/pkg/validators"
 )
 
 // Profile handles all things related to managing the project specific configurations

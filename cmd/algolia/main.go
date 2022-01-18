@@ -10,14 +10,13 @@ import (
 
 	surveyCore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/errs"
 	"github.com/mgutz/ansi"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algolia-cli/pkg/cmd/factory"
-	"github.com/algolia/algolia-cli/pkg/cmd/root"
-	"github.com/algolia/algolia-cli/pkg/cmdutil"
-	"github.com/algolia/algolia-cli/pkg/config"
+	"github.com/algolia/cli/pkg/cmd/factory"
+	"github.com/algolia/cli/pkg/cmd/root"
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
 )
 
 type exitCode int
@@ -64,7 +63,7 @@ func mainRun() exitCode {
 	authError := errors.New("authError")
 
 	if cmd, err := rootCmd.ExecuteC(); err != nil {
-		if err == cmdutil.SilentError {
+		if err == cmdutil.ErrSilent {
 			return exitError
 		} else if cmdutil.IsUserCancellation(err) {
 			if errors.Is(err, terminal.InterruptErr) {
@@ -77,14 +76,6 @@ func mainRun() exitCode {
 		}
 
 		printError(stderr, err, cmd, hasDebug)
-
-		// Handle Algolia client specific errors
-		var algoliaErr errs.AlgoliaErr
-		if errors.As(err, &algoliaErr) && algoliaErr.Status == 401 {
-			fmt.Fprintln(stderr, "Try authenticating with: algolia login")
-		} else if msg := algoliaErr.Message; msg != "" {
-			fmt.Fprintln(stderr, msg)
-		}
 
 		return exitError
 	}
