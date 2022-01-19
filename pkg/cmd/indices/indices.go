@@ -19,8 +19,8 @@ func NewIndicesCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(list.NewListCmd(f))
-	cmd.AddCommand(delete.NewDeleteCmd(f))
-	cmd.AddCommand(clear.NewClearCmd(f))
+	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
+	cmd.AddCommand(clear.NewClearCmd(f, nil))
 	cmd.AddCommand(export.NewExportCmd(f))
 	cmd.AddCommand(importRecords.NewImportCmd(f))
 

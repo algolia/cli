@@ -2,7 +2,6 @@ package test
 
 import (
 	"bytes"
-	"regexp"
 )
 
 type CmdOut struct {
@@ -36,22 +35,4 @@ func (s OutputStub) Run() error {
 		return s.Error
 	}
 	return nil
-}
-
-type T interface {
-	Helper()
-	Errorf(string, ...interface{})
-}
-
-// Deprecated: prefer exact matches for command output
-func ExpectLines(t T, output string, lines ...string) {
-	t.Helper()
-	var r *regexp.Regexp
-	for _, l := range lines {
-		r = regexp.MustCompile(l)
-		if !r.MatchString(output) {
-			t.Errorf("output did not match regexp /%s/\n> output\n%s\n", r, output)
-			return
-		}
-	}
 }

@@ -2,20 +2,18 @@ package delete
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"testing"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	"github.com/golang/mock/gomock"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/httpmock"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/mock_search"
 	"github.com/algolia/cli/test"
 )
 
@@ -87,11 +85,21 @@ func TestNewDeleteCmd(t *testing.T) {
 	}
 }
 
-func runCommand(client search.ClientInterface, isTTY bool, cli string) (*test.CmdOut, error) {
+func runCommand(isTTY bool, cli string, keys []string) (*test.CmdOut, error) {
 	io, _, stdout, stderr := iostreams.Test()
 	io.SetStdoutTTY(isTTY)
 	io.SetStdinTTY(isTTY)
 	io.SetStderrTTY(isTTY)
+
+	r := httpmock.Registry{}
+	for _, key := range keys {
+		r.Register(httpmock.REST("GET", fmt.Sprintf("1/keys/%s", key)), httpmock.JSONResponse(search.Key{Value: "foo"}))
+		r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/keys/%s", key)), httpmock.JSONResponse(search.DeleteKeyRes{}))
+	}
+
+	client := search.NewClientWithConfig(search.Configuration{
+		Requester: &r,
+	})
 
 	factory := &cmdutil.Factory{
 		IOStreams: io,
@@ -119,59 +127,38 @@ func runCommand(client search.ClientInterface, isTTY bool, cli string) (*test.Cm
 	}, err
 }
 
-func TestDeleteAPIKeys(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	client := mock_search.NewMockClientInterface(mockCtrl)
-
-	client.EXPECT().GetAPIKey("test").Return(search.Key{}, nil).Times(1)
-	client.EXPECT().DeleteAPIKey("test").Return(search.DeleteKeyRes{}, nil).Times(1)
-
-	output, err := runCommand(client, false, "test --confirm")
-	if err != nil {
-		t.Fatal(err)
+func Test_runDeleteCmd(t *testing.T) {
+	tests := []struct {
+		name    string
+		cli     string
+		keys    []string
+		isTTY   bool
+		wantOut string
+	}{
+		{
+			name:    "single key",
+			cli:     "foo --confirm",
+			keys:    []string{"foo"},
+			isTTY:   false,
+			wantOut: "",
+		},
+		{
+			name:    "multiple keys",
+			cli:     "foo bar --confirm",
+			keys:    []string{"foo", "bar"},
+			isTTY:   true,
+			wantOut: "✓ API key(s) successfully deleted: [foo bar]\n",
+		},
 	}
 
-	assert.Equal(t, ``, output.String())
-	assert.Equal(t, ``, output.Stderr())
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := runCommand(tt.isTTY, tt.cli, tt.keys)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-func TestDeleteAPIKeys_multiple(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	client := mock_search.NewMockClientInterface(mockCtrl)
-
-	gomock.InOrder(
-		client.EXPECT().GetAPIKey("test").Return(search.Key{}, nil).Times(1),
-		client.EXPECT().GetAPIKey("test1").Return(search.Key{}, nil).Times(1),
-		client.EXPECT().DeleteAPIKey("test").Return(search.DeleteKeyRes{}, nil).Times(1),
-		client.EXPECT().DeleteAPIKey("test1").Return(search.DeleteKeyRes{}, nil).Times(1),
-	)
-
-	output, err := runCommand(client, false, "test test1 --confirm")
-	if err != nil {
-		t.Fatal(err)
+			assert.Equal(t, tt.wantOut, out.String())
+		})
 	}
-
-	assert.Equal(t, ``, output.String())
-	assert.Equal(t, ``, output.Stderr())
-}
-
-func TestDeleteAPIKeys_not_exists(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	client := mock_search.NewMockClientInterface(mockCtrl)
-
-	client.EXPECT().GetAPIKey("test").Return(search.Key{}, errors.New("")).Times(1)
-
-	output, err := runCommand(client, false, "test --confirm")
-	if err.Error() != fmt.Errorf("API key \"test\" does not exist").Error() {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, ``, output.String())
-	assert.Equal(t, ``, output.Stderr())
 }

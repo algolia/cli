@@ -73,6 +73,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	// Check that all the API keys exists
 	for _, apiKey := range opts.APIKeys {
 		_, err := client.GetAPIKey(apiKey)
+		fmt.Println(err)
 		if err != nil {
 			return fmt.Errorf("API key %q does not exist", apiKey)
 		}

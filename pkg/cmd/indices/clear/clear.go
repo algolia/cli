@@ -2,6 +2,7 @@ package clear
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
@@ -25,7 +26,7 @@ type ClearOptions struct {
 }
 
 // NewClearCmd creates and returns a clear command for indices
-func NewClearCmd(f *cmdutil.Factory) *cobra.Command {
+func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Command {
 	opts := &ClearOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -59,11 +60,6 @@ func NewClearCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indices = args
 
-			client, err := opts.SearchClient()
-			if err != nil {
-				return err
-			}
-
 			if !confirm {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("--confirm required when passing a single argument")
@@ -71,15 +67,8 @@ func NewClearCmd(f *cmdutil.Factory) *cobra.Command {
 				opts.DoConfirm = true
 			}
 
-			// Test that all the provided indices exist
-			for _, index := range opts.Indices {
-				ok, err := client.InitIndex(index).Exists()
-				if err != nil {
-					return err
-				}
-				if !ok {
-					return fmt.Errorf("index %s does not exist", index)
-				}
+			if runF != nil {
+				return runF(opts)
 			}
 
 			return runClearCmd(opts)
@@ -123,7 +112,7 @@ func runClearCmd(opts *ClearOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Cleared indices %v\n", cs.SuccessIcon(), cleared)
+		fmt.Fprintf(opts.IO.Out, "%s Cleared indices %s\n", cs.SuccessIcon(), strings.Join(cleared, ", "))
 	}
 
 	return nil

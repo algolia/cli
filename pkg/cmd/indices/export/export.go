@@ -57,20 +57,6 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			client, err := opts.SearchClient()
-			if err != nil {
-				return err
-			}
-
-			// Test that the provided indices exists
-			exists, err := client.InitIndex(opts.Indice).Exists()
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return fmt.Errorf("the index %s does not exist", opts.Indice)
-			}
-
 			return runExportCmd(opts)
 		},
 	}

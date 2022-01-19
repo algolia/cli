@@ -2,6 +2,7 @@ package delete
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
@@ -25,7 +26,7 @@ type DeleteOptions struct {
 }
 
 // NewDeleteCmd creates and returns a delete command for indices
-func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
+func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -60,11 +61,6 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indices = args
 
-			client, err := opts.SearchClient()
-			if err != nil {
-				return err
-			}
-
 			if !confirm {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("--confirm required when passing a single argument")
@@ -72,15 +68,8 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 				opts.DoConfirm = true
 			}
 
-			// Test that all the provided indices exist
-			for _, index := range opts.Indices {
-				ok, err := client.InitIndex(index).Exists()
-				if err != nil {
-					return err
-				}
-				if !ok {
-					return fmt.Errorf("index %s does not exist", index)
-				}
+			if runF != nil {
+				return runF(opts)
 			}
 
 			return runDeleteCmd(opts)
@@ -124,7 +113,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Deleted indices %v\n", cs.SuccessIcon(), deleted)
+		fmt.Fprintf(opts.IO.Out, "%s Deleted indices %s\n", cs.SuccessIcon(), strings.Join(deleted, ", "))
 	}
 
 	return nil
