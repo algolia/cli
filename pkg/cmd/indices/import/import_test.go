@@ -20,7 +20,10 @@ import (
 
 func runCommand(http *httpmock.Registry, in string, cli string) (*test.CmdOut, error) {
 	io, stdin, stdout, stderr := iostreams.Test()
-	stdin.WriteString(in)
+
+	if in != "" {
+		stdin.WriteString(in)
+	}
 
 	client := search.NewClientWithConfig(search.Configuration{
 		Requester: http,
@@ -77,7 +80,6 @@ func Test_runExportCmd(t *testing.T) {
 		{
 			name:    "from file",
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
-			stdin:   `{"objectID": "foo"}`,
 			wantOut: "",
 		},
 	}
