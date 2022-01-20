@@ -3,7 +3,6 @@ package get
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
@@ -39,19 +38,6 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			// Check that the index exists
-			client, err := opts.SearchClient()
-			if err != nil {
-				return err
-			}
-			exists, err := client.InitIndex(opts.Indice).Exists()
-			if err != nil {
-				return err
-			}
-			if !exists {
-				return fmt.Errorf("index %s does not exist", opts.Indice)
-			}
-
 			return runListCmd(opts)
 		},
 	}
@@ -79,6 +65,8 @@ func runListCmd(opts *GetOptions) error {
 
 	if opts.IO.ColorEnabled() {
 		jsoncolor.Write(opts.IO.Out, &buf, "  ")
+	} else {
+		opts.IO.Out.Write(buf.Bytes())
 	}
 	return nil
 }

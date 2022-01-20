@@ -25,6 +25,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ algolia indices list
 			$ algolia apikeys create --acl search
+			$ algolia rules export TEST_index > rules.json
+			$ algolia rules import TEST_index -F rules.json
+			$ algolia settings set TEST_index "attributesForFaceting": ["category"]
 		`),
 	}
 
