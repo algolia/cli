@@ -19,7 +19,7 @@ type ClearOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	Indices   []string
 	DoConfirm bool
@@ -36,20 +36,10 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:  "clear <index_1> <index_2> ...",
-		Args: cobra.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			client, err := opts.SearchClient()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			indexNames, err := cmdutil.IndexNames(client)
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			return indexNames, cobra.ShellCompDirectiveNoFileComp
-		},
-		Short: "Clear indices",
+		Use:               "clear <index_1> <index_2> ...",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		Short:             "Clear indices",
 		Long: heredoc.Doc(`
 			Clear the objects of an index without affecting its settings.
 		`),

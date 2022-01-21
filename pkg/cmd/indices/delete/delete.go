@@ -19,7 +19,7 @@ type DeleteOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	Indices   []string
 	DoConfirm bool
@@ -36,20 +36,10 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:  "delete <index_1> <index_2> ...",
-		Args: cobra.MinimumNArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			client, err := opts.SearchClient()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			indexNames, err := cmdutil.IndexNames(client)
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			return indexNames, cobra.ShellCompDirectiveNoFileComp
-		},
-		Short: "Delete indices",
+		Use:               "delete <index_1> <index_2> ...",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		Short:             "Delete indices",
 		Long: heredoc.Doc(`
 			Delete the given indices.
 			This command permanently removes one or multiple indices from your application, and removes their metadata and configured settings.

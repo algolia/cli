@@ -31,7 +31,7 @@ func runCommand(http *httpmock.Registry, in string, cli string) (*test.CmdOut, e
 
 	factory := &cmdutil.Factory{
 		IOStreams: io,
-		SearchClient: func() (search.ClientInterface, error) {
+		SearchClient: func() (*search.Client, error) {
 			return client, nil
 		},
 	}

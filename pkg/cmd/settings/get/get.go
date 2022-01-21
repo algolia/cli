@@ -18,7 +18,7 @@ type GetOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	Indice string
 }
@@ -31,10 +31,11 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
-		Use:   "get <indice>",
-		Args:  validators.ExactArgs(1),
-		Short: "Get settings",
-		Long:  `Settings for the specified index.`,
+		Use:               "get <indice>",
+		Args:              validators.ExactArgs(1),
+		Short:             "Get settings",
+		Long:              `Settings for the specified index.`,
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 

@@ -18,7 +18,7 @@ type ExportOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	Indice string
 }
@@ -32,20 +32,10 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:  "export <index_1>",
-		Args: cobra.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			client, err := opts.SearchClient()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			indexNames, err := cmdutil.IndexNames(client)
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			return indexNames, cobra.ShellCompDirectiveNoFileComp
-		},
-		Short: "Export the indice synonyms",
+		Use:               "export <index_1>",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		Short:             "Export the indice synonyms",
 		Long: heredoc.Doc(`
 			Export the given indice synonyms.
 			This command export the synonyms of the specified indice.

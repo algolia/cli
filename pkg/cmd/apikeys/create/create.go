@@ -19,7 +19,7 @@ type CreateOptions struct {
 	config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	ACL         []string
 	Description string

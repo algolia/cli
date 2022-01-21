@@ -20,7 +20,7 @@ type ListOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 }
 
 // NewListCmd creates and returns a list command for API Keys.

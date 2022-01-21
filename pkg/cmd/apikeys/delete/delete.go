@@ -18,7 +18,7 @@ type DeleteOptions struct {
 	config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	APIKeys   []string
 	DoConfirm bool

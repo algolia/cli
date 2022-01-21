@@ -17,7 +17,7 @@ type SetOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	Indice   string
 	Settings search.Settings
@@ -34,10 +34,11 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 	var settingsFile string
 
 	cmd := &cobra.Command{
-		Use:   "set",
-		Args:  validators.ExactArgs(1),
-		Short: "Set settings",
-		Long:  `Set the settings for the specified index.`,
+		Use:               "set",
+		Args:              validators.ExactArgs(1),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		Short:             "Set settings",
+		Long:              `Set the settings for the specified index.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 			b, err := cmdutil.ReadFile(settingsFile, opts.IO.In)

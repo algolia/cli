@@ -18,12 +18,12 @@ type ExportOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 
 	Indice string
 }
 
-// NewExportCmd creates and returns an export command for indice rules
+// NewExportCmd creates and returns an export command for indice's rules
 func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ExportOptions{
 		IO:           f.IOStreams,
@@ -32,27 +32,17 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:  "export <index_1>",
-		Args: cobra.ExactArgs(1),
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			client, err := opts.SearchClient()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			indexNames, err := cmdutil.IndexNames(client)
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			return indexNames, cobra.ShellCompDirectiveNoFileComp
-		},
-		Short: "Export the indice rules",
+		Use:               "export <index_1>",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		Short:             "Export the indice's rules",
 		Long: heredoc.Doc(`
-			Export the given indice rules.
+			Export the given indice's rules.
 			This command export the rules of the specified indice.
 		`),
 		Example: heredoc.Doc(`
-			$ algolia indices export TEST_PRODUCTS_1
-			$ algolia indices export TEST_PRODUCTS_1 > rules.json
+			$ algolia rules export TEST_PRODUCTS_1
+			$ algolia rules export TEST_PRODUCTS_1 > rules.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

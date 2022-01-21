@@ -40,8 +40,8 @@ func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
 	return io
 }
 
-func searchClient(f *cmdutil.Factory) func() (search.ClientInterface, error) {
-	return func() (search.ClientInterface, error) {
+func searchClient(f *cmdutil.Factory) func() (*search.Client, error) {
+	return func() (*search.Client, error) {
 		APIKey, err := f.Config.Profile.GetAdminAPIKey()
 		if err != nil {
 			return nil, err

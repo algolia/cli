@@ -24,7 +24,7 @@ func runCommand(http *httpmock.Registry, hits []map[string]interface{}, cli stri
 
 	factory := &cmdutil.Factory{
 		IOStreams: io,
-		SearchClient: func() (search.ClientInterface, error) {
+		SearchClient: func() (*search.Client, error) {
 			return client, nil
 		},
 	}

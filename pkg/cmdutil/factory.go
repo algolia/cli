@@ -10,5 +10,5 @@ import (
 type Factory struct {
 	IOStreams    *iostreams.IOStreams
 	Config       *config.Config
-	SearchClient func() (search.ClientInterface, error)
+	SearchClient func() (*search.Client, error)
 }

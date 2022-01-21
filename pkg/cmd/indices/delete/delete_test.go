@@ -107,7 +107,7 @@ func runCommand(http *httpmock.Registry, isTTY bool, cli string) (*test.CmdOut, 
 
 	factory := &cmdutil.Factory{
 		IOStreams: io,
-		SearchClient: func() (search.ClientInterface, error) {
+		SearchClient: func() (*search.Client, error) {
 			return client, nil
 		},
 	}
