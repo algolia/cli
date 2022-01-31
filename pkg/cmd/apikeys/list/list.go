@@ -21,6 +21,8 @@ type ListOptions struct {
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)
+
+	Exporter cmdutil.Exporter
 }
 
 // NewListCmd creates and returns a list command for API Keys.
@@ -39,6 +41,8 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
+	cmdutil.AddJSONFlags(cmd, &opts.Exporter)
+
 	return cmd
 }
 
@@ -54,6 +58,10 @@ func runListCmd(opts *ListOptions) error {
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
+	}
+
+	if opts.Exporter != nil {
+		return opts.Exporter.Write(opts.IO, res.Keys)
 	}
 
 	table := utils.NewTablePrinter(opts.IO)
