@@ -1,12 +1,14 @@
 package root
 
 import (
+	"fmt"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/apikeys"
+	"github.com/algolia/cli/pkg/cmd/application"
 	"github.com/algolia/cli/pkg/cmd/indices"
-	"github.com/algolia/cli/pkg/cmd/login"
 	"github.com/algolia/cli/pkg/cmd/rules"
 	"github.com/algolia/cli/pkg/cmd/settings"
 	"github.com/algolia/cli/pkg/cmd/synonyms"
@@ -36,12 +38,24 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.SetVersionTemplate(version.Template)
 
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile.ProfileName, "profile", "p", "default", "The profile name to read from for config")
+	cmd.PersistentFlags().StringVarP(&f.Config.App.Name, "application", "a", "default", "The application to use")
+	cmd.RegisterFlagCompletionFunc("application", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		profiles := f.Config.Applications()
+		completions := make([]string, 0, len(profiles))
+
+		// We want to show the profile name and the Application ID as the description.
+		// https://github.com/spf13/cobra/blob/master/shell_completions.md#descriptions-for-completions
+		for profileName, AppID := range profiles {
+			completions = append(completions, fmt.Sprintf("%s\t%s", profileName, AppID))
+		}
+		return completions, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
 	// Child commands
-	cmd.AddCommand(login.NewLoginCmd(f))
+	cmd.AddCommand(application.NewApplicationCmd(f))
+
 	cmd.AddCommand(indices.NewIndicesCmd(f))
 	cmd.AddCommand(apikeys.NewAPIKeysCmd(f))
 	cmd.AddCommand(settings.NewSettingsCmd(f))

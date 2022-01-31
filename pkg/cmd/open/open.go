@@ -88,7 +88,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationID, err := oc.cfg.Profile.GetApplicationID()
+	applicationID, err := oc.cfg.App.GetID()
 	if err != nil {
 		applicationID = ""
 	} else {

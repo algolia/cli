@@ -8,6 +8,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/indices/export"
 	importRecords "github.com/algolia/cli/pkg/cmd/indices/import"
 	"github.com/algolia/cli/pkg/cmd/indices/list"
+	"github.com/algolia/cli/pkg/cmd/settings"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -18,11 +19,16 @@ func NewIndicesCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Manage your Algolia indices",
 	}
 
+	cmd.PersistentFlags().StringP("index", "i", "", "")
+	cmd.MarkFlagRequired("index")
+
 	cmd.AddCommand(list.NewListCmd(f))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 	cmd.AddCommand(clear.NewClearCmd(f, nil))
 	cmd.AddCommand(export.NewExportCmd(f))
 	cmd.AddCommand(importRecords.NewImportCmd(f))
+
+	cmd.AddCommand(settings.NewSettingsCmd(f))
 
 	return cmd
 }

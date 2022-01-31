@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -13,19 +12,18 @@ import (
 
 // Config handles all overall configuration for the CLI
 type Config struct {
-	LogLevel     string
-	Profile      Profile
-	ProfilesFile string
+	App  Application
+	File string
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
 func (c *Config) InitConfig() {
-	if c.ProfilesFile != "" {
-		viper.SetConfigFile(c.ProfilesFile)
+	if c.File != "" {
+		viper.SetConfigFile(c.File)
 	} else {
 		configFolder := c.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 		configFile := filepath.Join(configFolder, "config.toml")
-		c.ProfilesFile = configFile
+		c.File = configFile
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(configFile)
 		viper.SetConfigPermissions(os.FileMode(0600))
@@ -47,7 +45,7 @@ func (c *Config) InitConfig() {
 	}
 }
 
-// GetConfigFolder retrieves the folder where the profiles file is stored
+// GetConfigFolder retrieves the folder where the configuration file is stored
 // It searches for the xdg environment path first and will secondarily
 // place it in the home directory
 func (c *Config) GetConfigFolder(xdgPath string) string {
@@ -65,38 +63,13 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 	return filepath.Join(configPath, "algolia")
 }
 
-func makePath(path string) error {
-	dir := filepath.Dir(path)
-
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			return err
-		}
+// GetApplications return the applications in the configuration file
+func (c *Config) Applications() map[string]string {
+	configs := viper.AllSettings()
+	profiles := make(map[string]string)
+	for profile := range configs {
+		profiles[profile] = viper.GetStringMapString(profile)["application_id"]
 	}
 
-	return nil
-}
-
-// PrintConfig outputs the contents of the configuration file.
-func (c *Config) PrintConfig() error {
-	if c.Profile.ProfileName == "default" {
-		configFile, err := ioutil.ReadFile(c.ProfilesFile)
-		if err != nil {
-			return err
-		}
-
-		fmt.Print(string(configFile))
-	} else {
-		configs := viper.GetStringMapString(c.Profile.ProfileName)
-
-		if len(configs) > 0 {
-			fmt.Printf("[%s]\n", c.Profile.ProfileName)
-			for field, value := range configs {
-				fmt.Printf("  %s=%s\n", field, value)
-			}
-		}
-	}
-
-	return nil
+	return profiles
 }
