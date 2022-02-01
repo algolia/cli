@@ -86,7 +86,6 @@ func runListCmd(opts *ListOptions) error {
 		return opts.Exporter.Write(opts.IO, synonyms)
 	}
 
-	// cs := opts.IO.ColorScheme()
 	table := utils.NewTablePrinter(opts.IO)
 	if table.IsTTY() {
 		table.AddField("ID", nil, nil)
