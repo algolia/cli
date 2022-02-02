@@ -52,7 +52,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when passing a single argument")
+					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
 				opts.DoConfirm = true
 			}

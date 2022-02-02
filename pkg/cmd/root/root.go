@@ -1,14 +1,13 @@
 package root
 
 import (
-	"fmt"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/apikey"
 	"github.com/algolia/cli/pkg/cmd/application"
-	"github.com/algolia/cli/pkg/cmd/indices"
+	"github.com/algolia/cli/pkg/cmd/index"
+	"github.com/algolia/cli/pkg/cmd/objects"
 	"github.com/algolia/cli/pkg/cmd/rule"
 	"github.com/algolia/cli/pkg/cmd/settings"
 	"github.com/algolia/cli/pkg/cmd/synonym"
@@ -25,11 +24,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Example: heredoc.Doc(`
-			$ algolia indices list
-			$ algolia apikeys create --acl search
-			$ algolia rules export TEST_index > rules.json
-			$ algolia rules import TEST_index -F rules.json
-			$ algolia settings set TEST_index "attributesForFaceting": ["category"]
+			$ algolia index list
+			$ algolia apikey create --acl search
+			$ algolia rule list TEST_index > rules.json
 		`),
 	}
 
@@ -39,24 +36,15 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.SetVersionTemplate(version.Template)
 
 	cmd.PersistentFlags().StringVarP(&f.Config.App.Name, "application", "a", "default", "The application to use")
-	cmd.RegisterFlagCompletionFunc("application", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		profiles := f.Config.Applications()
-		completions := make([]string, 0, len(profiles))
-
-		// We want to show the profile name and the Application ID as the description.
-		// https://github.com/spf13/cobra/blob/master/shell_completions.md#descriptions-for-completions
-		for profileName, AppID := range profiles {
-			completions = append(completions, fmt.Sprintf("%s\t%s", profileName, AppID))
-		}
-		return completions, cobra.ShellCompDirectiveNoFileComp
-	})
+	cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f.Config))
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
 	// Child commands
 	cmd.AddCommand(application.NewApplicationCmd(f))
 
-	cmd.AddCommand(indices.NewIndicesCmd(f))
+	cmd.AddCommand(index.NewIndexCmd(f))
+	cmd.AddCommand(objects.NewObjectsCmd(f))
 	cmd.AddCommand(apikey.NewAPIKeyCmd(f))
 	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(rule.NewRuleCmd(f))

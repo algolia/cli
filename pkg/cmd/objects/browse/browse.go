@@ -1,4 +1,4 @@
-package export
+package browse
 
 import (
 	"encoding/json"
@@ -23,8 +23,8 @@ type ExportOptions struct {
 	Indice string
 }
 
-// NewExportCmd creates and returns an export command for indice records
-func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
+// NewBrowseCmd creates and returns a browse command for indices objects
+func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -32,29 +32,29 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "export <index_1>",
+		Use:               "browse <index_1>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export the indice records",
+		Short:             "Browse the index records",
 		Long: heredoc.Doc(`
-			Export the given indice records.
-			This command export the records of the specified indice.
+			Browse the given index.
+			This command browse the objects of the specified index.
 		`),
 		Example: heredoc.Doc(`
-			$ algolia indices export TEST_PRODUCTS_1
-			$ algolia indices export TEST_PRODUCTS_1 > records.json
+			$ algolia objects browse TEST_PRODUCTS_1
+			$ algolia objects browse TEST_PRODUCTS_1 > objects.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			return runExportCmd(opts)
+			return runBrowseCmd(opts)
 		},
 	}
 
 	return cmd
 }
 
-func runExportCmd(opts *ExportOptions) error {
+func runBrowseCmd(opts *ExportOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err

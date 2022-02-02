@@ -66,10 +66,15 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 // GetApplications return the applications in the configuration file
 func (c *Config) Applications() map[string]string {
 	configs := viper.AllSettings()
-	profiles := make(map[string]string)
-	for profile := range configs {
-		profiles[profile] = viper.GetStringMapString(profile)["application_id"]
+	applications := make(map[string]string)
+	for app := range configs {
+		applications[app] = viper.GetStringMapString(app)["application_id"]
 	}
 
-	return profiles
+	return applications
+}
+
+// AppExists check if a given application exists
+func (c *Config) AppExists(appName string) bool {
+	return viper.GetStringMapString(appName) != nil
 }

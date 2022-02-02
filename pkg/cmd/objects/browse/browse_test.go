@@ -1,4 +1,4 @@
-package export
+package browse
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ func runCommand(http *httpmock.Registry, hits []map[string]interface{}, cli stri
 		},
 	}
 
-	cmd := NewExportCmd(factory)
+	cmd := NewBrowseCmd(factory)
 
 	argv, err := shlex.Split(cli)
 	if err != nil {
@@ -48,7 +48,7 @@ func runCommand(http *httpmock.Registry, hits []map[string]interface{}, cli stri
 	}, err
 }
 
-func Test_runExportCmd(t *testing.T) {
+func Test_runBrowseCmd(t *testing.T) {
 	tests := []struct {
 		name    string
 		cli     string
