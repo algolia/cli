@@ -34,16 +34,15 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "list <index_1>",
+		Use:               "list <index-name>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export the indice synonyms",
-		Long: heredoc.Doc(`
-			List the given indice synonyms.
-			This command list the synonyms of the specified indice.
-		`),
+		Short:             "List the given indice's synonyms",
 		Example: heredoc.Doc(`
+			# List thr synonyms of the 'TEST_PRODUCTS_1' index
 			$ algolia synonym list TEST_PRODUCTS_1
+
+			# List the rules of the 'TEST_PRODUCTS_1' and save them to the 'synonyms.json' file
 			$ algolia synonym list TEST_PRODUCTS_1 > synonyms.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

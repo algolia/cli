@@ -32,7 +32,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: true,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				APIKeys:   []string{"foo"},
+				APIKey:    "foo",
 			},
 		},
 		{
@@ -42,7 +42,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				APIKeys:   []string{"foo"},
+				APIKey:    "foo",
 			},
 		},
 	}
@@ -79,23 +79,21 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.APIKeys, opts.APIKeys)
+			assert.Equal(t, tt.wantsOpts.APIKey, opts.APIKey)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
 	}
 }
 
-func runCommand(isTTY bool, cli string, keys []string) (*test.CmdOut, error) {
+func runCommand(isTTY bool, cli string, key string) (*test.CmdOut, error) {
 	io, _, stdout, stderr := iostreams.Test()
 	io.SetStdoutTTY(isTTY)
 	io.SetStdinTTY(isTTY)
 	io.SetStderrTTY(isTTY)
 
 	r := httpmock.Registry{}
-	for _, key := range keys {
-		r.Register(httpmock.REST("GET", fmt.Sprintf("1/keys/%s", key)), httpmock.JSONResponse(search.Key{Value: "foo"}))
-		r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/keys/%s", key)), httpmock.JSONResponse(search.DeleteKeyRes{}))
-	}
+	r.Register(httpmock.REST("GET", fmt.Sprintf("1/keys/%s", key)), httpmock.JSONResponse(search.Key{Value: "foo"}))
+	r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/keys/%s", key)), httpmock.JSONResponse(search.DeleteKeyRes{}))
 
 	client := search.NewClientWithConfig(search.Configuration{
 		Requester: &r,
@@ -131,29 +129,22 @@ func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
 		name    string
 		cli     string
-		keys    []string
+		key     string
 		isTTY   bool
 		wantOut string
 	}{
 		{
-			name:    "single key",
+			name:    "one key",
 			cli:     "foo --confirm",
-			keys:    []string{"foo"},
+			key:     "foo",
 			isTTY:   false,
 			wantOut: "",
-		},
-		{
-			name:    "multiple keys",
-			cli:     "foo bar --confirm",
-			keys:    []string{"foo", "bar"},
-			isTTY:   true,
-			wantOut: "✓ API key(s) successfully deleted: [foo bar]\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := runCommand(tt.isTTY, tt.cli, tt.keys)
+			out, err := runCommand(tt.isTTY, tt.cli, tt.key)
 			if err != nil {
 				t.Fatal(err)
 			}

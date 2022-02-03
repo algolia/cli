@@ -32,6 +32,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command
 		Short: "List the configured application(s)",
 		Long:  `List the configured application(s).`,
 		Example: heredoc.Doc(`
+			# List the configured applications
 			$ algolia application list
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -46,9 +47,8 @@ func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command
 	return cmd
 }
 
-// runListCmd executes the add command
+// runListCmd executes the list command
 func runListCmd(opts *AddOptions) error {
-
 	table := utils.NewTablePrinter(opts.IO)
 	if table.IsTTY() {
 		table.AddField("NAME", nil, nil)
@@ -57,23 +57,19 @@ func runListCmd(opts *AddOptions) error {
 		table.EndRow()
 	}
 
-	for name, appID := range opts.config.Applications() {
-		opts.config.App.Name = name
-		key, err := opts.config.App.GetAdminAPIKey()
-		if err != nil {
-			return err
-		}
-
-		client := search.NewClient(appID, key)
+	opts.IO.StartProgressIndicatorWithLabel("Fetching configured applications")
+	for name, app := range opts.config.Applications {
+		client := search.NewClient(app.ID, app.AdminAPIKey)
 		res, err := client.ListIndices()
 		if err != nil {
 			return err
 		}
 
 		table.AddField(name, nil, nil)
-		table.AddField(appID, nil, nil)
+		table.AddField(app.ID, nil, nil)
 		table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
 		table.EndRow()
 	}
+	opts.IO.StopProgressIndicator()
 	return table.Render()
 }

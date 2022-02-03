@@ -2,9 +2,7 @@ package delete
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
@@ -21,7 +19,7 @@ type DeleteOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indices   []string
+	Index     string
 	DoConfirm bool
 }
 
@@ -36,24 +34,24 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "delete <index_1> <index_2> ...",
-		Args:              cobra.MinimumNArgs(1),
+		Use:               "delete <index-name>",
+		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete indices",
+		Short:             "Delete an index",
 		Long: heredoc.Doc(`
-			Delete the given indices.
+			Delete an index.
 			This command permanently removes one or multiple indices from your application, and removes their metadata and configured settings.
 		`),
 		Example: heredoc.Doc(`
+			# Delete the index named "TEST_PRODUCTS_1"
 			$ algolia indices delete TEST_PRODUCTS_1
-			$ algolia indices delete TEST_PRODUCTS_1 TEST_PRODUCTS_2
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indices = args
+			opts.Index = args[0]
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when passing a single argument")
+					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
 				opts.DoConfirm = true
 			}
@@ -77,15 +75,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	deleted := []string{}
-
 	if opts.DoConfirm {
 		var confirmed bool
-		p := &survey.Confirm{
-			Message: fmt.Sprintf("Delete the indices %v?", opts.Indices),
-			Default: false,
-		}
-		err = prompt.SurveyAskOne(p, &confirmed)
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete the index %q?", opts.Index), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -94,16 +86,13 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	for _, index := range opts.Indices {
-		if _, err := client.InitIndex(index).Delete(); err != nil {
-			return err
-		}
-		deleted = append(deleted, index)
+	if _, err := client.InitIndex(opts.Index).Delete(); err != nil {
+		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Deleted indices %s\n", cs.SuccessIcon(), strings.Join(deleted, ", "))
+		fmt.Fprintf(opts.IO.Out, "%s Deleted index %s\n", cs.SuccessIcon(), opts.Index)
 	}
 
 	return nil

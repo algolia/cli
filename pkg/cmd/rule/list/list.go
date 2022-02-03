@@ -34,16 +34,15 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "list <index_1>",
+		Use:               "list <index-name>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export the indice's rules",
-		Long: heredoc.Doc(`
-			Export the given indice's rules.
-			This command export the rules of the specified indice.
-		`),
+		Short:             "List the given indice's rules",
 		Example: heredoc.Doc(`
+			# List the rules of the 'TEST_PRODUCTS_1' index
 			$ algolia rule list TEST_PRODUCTS_1
+
+			# List the rules of the 'TEST_PRODUCTS_1' and save them to the 'rules.json' file
 			$ algolia rule list TEST_PRODUCTS_1 --json > rules.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

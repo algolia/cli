@@ -10,7 +10,7 @@ import (
 
 func ConfiguredApplicationsCompletionFunc(cfg *config.Config) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		applications := cfg.Applications()
+		applications := cfg.GetApplications()
 		completions := make([]string, 0, len(applications))
 
 		// We want to show the application name and the ID as the description.

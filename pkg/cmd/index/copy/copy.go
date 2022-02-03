@@ -42,7 +42,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "copy <source-index> <destination-index> [--scope <scope-1>...] [--wait]",
+		Use:               "copy <source-index-name> <destination-index-name>",
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Make a copy of an index",

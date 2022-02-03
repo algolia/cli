@@ -93,7 +93,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	))
 
 	cmd.RegisterFlagCompletionFunc("acl", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"search", "browse", "addObject", "deleteObject", "listIndexes", "deleteIndex", "settings", "editSettings", "analytics", "recommendation", "usage", "logs", "seeUnretrievableAttributes"}, cobra.ShellCompDirectiveDefault
+		return []string{"search", "browse", "addObject", "deleteObject", "listIndexes", "deleteIndex", "settings", "editSettings", "analytics", "recommendation", "usage", "logs", "seeUnretrievableAttributes"}, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 	})
 
 	return cmd
@@ -120,7 +120,7 @@ func runCreateCmd(opts *CreateOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s API key created %v\n", cs.SuccessIcon(), res.Key)
+		fmt.Fprintf(opts.IO.Out, "%s API key created: %s\n", cs.SuccessIcon(), res.Key)
 	}
 	return nil
 }

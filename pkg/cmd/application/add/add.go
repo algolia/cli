@@ -7,9 +7,11 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -20,9 +22,7 @@ type AddOptions struct {
 
 	Interactive bool
 
-	Name        string
-	ID          string
-	AdminAPIKey string
+	Application config.Application
 }
 
 // NewAddCmd returns a new instance of AddCmd
@@ -37,43 +37,50 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 		Short: "Add a new application",
 		Long:  `Add a new application configuration to the CLI.`,
 		Example: heredoc.Doc(`
-			$ algolia app add
-			$ algolia app add --name "my-app" --app-id "my-app-id" --admin-api-key "my-admin-api-key"
+			# Add a new application (interactive)
+			$ algolia application add
+
+			# Add a new application (non-interactive)
+			$ algolia application add --name "my-app" --app-id "my-app-id" --admin-api-key "my-admin-api-key"
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {
 				return runF(opts)
 			}
 
+			opts.Interactive = true
+
 			flags := cmd.Flags()
-			if flags.Changed("name") || flags.Changed("app-id") || flags.Changed("admin-api-key") {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("`--name`, `--app-id` and `--admin-api-key` required when not running interactively")
-				}
-				opts.Interactive = true
+			nameProvided := flags.Changed("name")
+			appIDProvided := flags.Changed("app-id")
+			adminAPIKeyProvided := flags.Changed("admin-api-key")
+
+			opts.Interactive = !(nameProvided && appIDProvided && adminAPIKeyProvided)
+
+			if opts.Interactive && !opts.IO.CanPrompt() {
+				return cmdutil.FlagErrorf("`--name`, `--app-id` and `--admin-api-key` required when not running interactively")
 			}
 
 			return runAddCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.config.App.Name, "name", "n", "default", heredoc.Doc(`Name of the application.`))
-	cmd.Flags().StringVar(&opts.config.App.ID, "app-id", "", heredoc.Doc(`ID of the application.`))
-	cmd.Flags().StringVar(&opts.config.App.AdminAPIKey, "admin-api-key", "", heredoc.Doc(`Admin API Key of the application.`))
+	cmd.Flags().StringVarP(&opts.Application.Name, "name", "n", "default", heredoc.Doc(`Name of the application.`))
+	cmd.Flags().StringVar(&opts.Application.ID, "app-id", "", heredoc.Doc(`ID of the application.`))
+	cmd.Flags().StringVar(&opts.Application.AdminAPIKey, "admin-api-key", "", heredoc.Doc(`Admin API Key of the application.`))
 
 	return cmd
 }
 
 // runAddCmd executes the add command
 func runAddCmd(opts *AddOptions) error {
-
 	if opts.Interactive {
 		questions := []*survey.Question{
 			{
 				Name: "Name",
 				Prompt: &survey.Input{
 					Message: "Name:",
-					Default: opts.config.App.Name,
+					Default: opts.Application.Name,
 				},
 				Validate: survey.Required,
 			},
@@ -81,7 +88,7 @@ func runAddCmd(opts *AddOptions) error {
 				Name: "ID",
 				Prompt: &survey.Input{
 					Message: "Application ID:",
-					Default: opts.config.App.ID,
+					Default: opts.Application.ID,
 				},
 				Validate: survey.Required,
 			},
@@ -89,27 +96,31 @@ func runAddCmd(opts *AddOptions) error {
 				Name: "adminAPIKey",
 				Prompt: &survey.Input{
 					Message: "Admin API Key:",
-					Default: opts.config.App.AdminAPIKey,
+					Default: opts.Application.AdminAPIKey,
 				},
 				Validate: survey.Required,
 			},
 		}
-		survey.Ask(questions, &opts.config.App)
+		err := prompt.SurveyAsk(questions, &opts.Application)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Check if the application credentials are valid
-	if err := opts.config.App.Validate(); err != nil {
-		return err
+	_, err := search.NewClient(opts.Application.ID, opts.Application.AdminAPIKey).ListAPIKeys()
+	if err != nil {
+		return fmt.Errorf("invalid application credentials: %s", err)
 	}
 
-	err := opts.config.App.AddApp()
+	err = opts.config.AddApplication(&opts.Application)
 	if err != nil {
 		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Application `%s (%s)` successfuly added\n", cs.SuccessIcon(), opts.config.App.Name, opts.config.App.ID)
+		fmt.Fprintf(opts.IO.Out, "%s Application '%s' (%s) successfuly added\n", cs.SuccessIcon(), opts.Application.Name, opts.Application.ID)
 	}
 
 	return nil

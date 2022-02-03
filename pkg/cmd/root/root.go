@@ -8,6 +8,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/application"
 	"github.com/algolia/cli/pkg/cmd/index"
 	"github.com/algolia/cli/pkg/cmd/objects"
+	"github.com/algolia/cli/pkg/cmd/open"
 	"github.com/algolia/cli/pkg/cmd/rule"
 	"github.com/algolia/cli/pkg/cmd/settings"
 	"github.com/algolia/cli/pkg/cmd/synonym"
@@ -35,14 +36,18 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.SetVersionTemplate(version.Template)
 
-	cmd.PersistentFlags().StringVarP(&f.Config.App.Name, "application", "a", "default", "The application to use")
+	cmd.PersistentFlags().StringVarP(&f.Config.ApplicationName, "application", "a", "default", "The application to use")
 	cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f.Config))
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
-	// Child commands
+	// CLI related commands
 	cmd.AddCommand(application.NewApplicationCmd(f))
 
+	// Convenience commands
+	cmd.AddCommand(open.NewOpenCmd(f))
+
+	// API related commands
 	cmd.AddCommand(index.NewIndexCmd(f))
 	cmd.AddCommand(objects.NewObjectsCmd(f))
 	cmd.AddCommand(apikey.NewAPIKeyCmd(f))

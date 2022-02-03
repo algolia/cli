@@ -139,7 +139,7 @@ func Test_runCreateCmd(t *testing.T) {
 			name:    "TTY",
 			cli:     "",
 			isTTY:   true,
-			wantOut: "✓ API key created foo\n",
+			wantOut: "✓ API key created: foo\n",
 		},
 	}
 

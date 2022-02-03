@@ -2,9 +2,7 @@ package clear
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
@@ -21,7 +19,7 @@ type ClearOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indices   []string
+	Index     string
 	DoConfirm bool
 }
 
@@ -36,19 +34,19 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "clear <index_1> <index_2> ...",
-		Args:              cobra.MinimumNArgs(1),
+		Use:               "clear <index-name>",
+		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Clear indices",
+		Short:             "Clear the specified index",
 		Long: heredoc.Doc(`
 			Clear the objects of an index without affecting its settings.
 		`),
 		Example: heredoc.Doc(`
-			$ algolia indices clear TEST_PRODUCTS_1
-			$ algolia indices clear TEST_PRODUCTS_1 TEST_PRODUCTS_2
+			# Clear the index named "TEST_PRODUCTS_1"
+			$ algolia index clear TEST_PRODUCTS_1
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indices = args
+			opts.Index = args[0]
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
@@ -71,20 +69,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 }
 
 func runClearCmd(opts *ClearOptions) error {
-	client, err := opts.SearchClient()
-	if err != nil {
-		return err
-	}
-
-	cleared := []string{}
-
 	if opts.DoConfirm {
 		var confirmed bool
-		p := &survey.Confirm{
-			Message: fmt.Sprintf("Clear the indices %v?", opts.Indices),
-			Default: false,
-		}
-		err = prompt.SurveyAskOne(p, &confirmed)
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to clear the index %q?", opts.Index), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -93,16 +80,18 @@ func runClearCmd(opts *ClearOptions) error {
 		}
 	}
 
-	for _, index := range opts.Indices {
-		if _, err := client.InitIndex(index).ClearObjects(); err != nil {
-			return err
-		}
-		cleared = append(cleared, index)
+	client, err := opts.SearchClient()
+	if err != nil {
+		return err
+	}
+
+	if _, err := client.InitIndex(opts.Index).ClearObjects(); err != nil {
+		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Cleared indices %s\n", cs.SuccessIcon(), strings.Join(cleared, ", "))
+		fmt.Fprintf(opts.IO.Out, "%s Cleared index %s\n", cs.SuccessIcon(), opts.Index)
 	}
 
 	return nil

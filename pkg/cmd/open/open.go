@@ -5,15 +5,18 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/open"
+	"github.com/algolia/cli/pkg/utils"
 )
 
 var nameURLmap = map[string]string{
 	"api":       "https://www.algolia.com/doc/api-reference/rest-api/",
-	"apiref":    "https://www.algolia.com/doc/api-reference/api-parameters/",
 	"dashboard": "https://www.algolia.com/apps%s/dashboard",
 	"codex":     "https://www.algolia.com/developers/code-exchange/",
 	"devhub":    "https://www.algolia.com/developers/",
@@ -54,48 +57,67 @@ func padName(name string, length int) string {
 	return b.String()
 }
 
-type openCmd struct {
-	cfg *config.Config
-	cmd *cobra.Command
+// OpenOptions represents the options for the open command
+type OpenOptions struct {
+	config *config.Config
+	IO     *iostreams.IOStreams
+
+	List     bool
+	Shortcut string
 }
 
-func newOpenCmd(config *config.Config) *openCmd {
-	oc := &openCmd{
-		cfg: config,
+func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := &OpenOptions{
+		IO:     f.IOStreams,
+		config: f.Config,
 	}
-	oc.cmd = &cobra.Command{
-		Use:       "open",
+	cmd := &cobra.Command{
+		Use:       "open [shortcut] [--list]",
 		ValidArgs: openNames(),
-		Short:     "Quickly open Algolia pages",
-		Long: `The open command provices shortcuts to quickly let you open pages to Algolia with
-in your browser. A full list of support shortcuts can be seen with 'algolia open --list'`,
-		Example: `algolia open --list
-  algolia open api
-  algolia open docs
-  algolia open dashboard/webhooks
-  algolia open dashboard/billing`,
-		RunE: oc.runOpenCmd,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if opts.List {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			return openNames(), cobra.ShellCompDirectiveNoFileComp
+		},
+		Short: "Quickly open Algolia pages",
+		Long:  `The open command provices shortcuts to quickly let you open pages to Algolia within your browser. 'algolia open --list' for a list of supported shortcuts.`,
+		Example: heredoc.Doc(`
+			# Display the list of supported shortcuts
+			algolia open --list
+
+			# Open the dashboard for the current application
+			algolia open dashboard
+
+			# Open the API reference
+  			algolia open api
+
+			# Open the documentation
+  			algolia open docs
+		`),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				opts.Shortcut = args[0]
+			}
+			return runOpenCmd(opts)
+		},
 	}
 
-	oc.cmd.Flags().Bool("list", false, "List all supported shortcuts")
+	cmd.Flags().BoolP("list", "l", false, "List all supported shortcuts")
 
-	return oc
+	return cmd
 }
 
-func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
-	list, err := cmd.Flags().GetBool("list")
-	if err != nil {
-		return err
-	}
-
-	applicationID, err := oc.cfg.App.GetID()
+func runOpenCmd(opts *OpenOptions) error {
+	var applicationID string
+	application, err := opts.config.GetCurrentApplication()
 	if err != nil {
 		applicationID = ""
 	} else {
-		applicationID = "/" + applicationID
+		applicationID = "/" + application.ID
 	}
 
-	if list || len(args) == 0 {
+	if opts.List || opts.Shortcut == "" {
 		fmt.Println("open quickly opens Algolia pages. To use, run 'algolia open <shortcut>'.")
 		fmt.Println("open supports the following shortcuts:")
 		fmt.Println()
@@ -103,26 +125,28 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 		shortcuts := openNames()
 		sort.Strings(shortcuts)
 
-		longest := getLongestShortcut(shortcuts)
-
-		fmt.Printf("%s%s\n", padName("shortcut", longest), "    url")
-		fmt.Printf("%s%s\n", padName("--------", longest), "    ---------")
+		table := utils.NewTablePrinter(opts.IO)
+		if table.IsTTY() {
+			table.AddField("SHORTCUT", nil, nil)
+			table.AddField("URL", nil, nil)
+			table.EndRow()
+		}
 
 		for _, shortcut := range shortcuts {
-
 			url := nameURLmap[shortcut]
 			if strings.Contains(url, "%s") {
 				url = fmt.Sprintf(url, applicationID)
 			}
 
-			paddedName := padName(shortcut, longest)
-			fmt.Printf("%s => %s\n", paddedName, url)
+			table.AddField(shortcut, nil, nil)
+			table.AddField(url, nil, nil)
+			table.EndRow()
 		}
 
-		return nil
+		return table.Render()
 	}
 
-	if url, ok := nameURLmap[args[0]]; ok {
+	if url, ok := nameURLmap[opts.Shortcut]; ok {
 		if strings.Contains(url, "%s") {
 			err = open.Browser(fmt.Sprintf(url, applicationID))
 		} else {
@@ -133,7 +157,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("unsupported open command, given: %s", args[0])
+		return fmt.Errorf("unsupported open command, given: %s", opts.Shortcut)
 	}
 
 	return nil

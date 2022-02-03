@@ -6,7 +6,6 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -20,7 +19,7 @@ type DeleteOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	APIKeys   []string
+	APIKey    string
 	DoConfirm bool
 }
 
@@ -35,15 +34,14 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:   "delete <api_key>, <api_key>...",
-		Short: "Delete API key(s)",
-		Long:  `Delete the given API key(s).`,
+		Use:   "delete <api-key>",
+		Short: "Delete API key",
 		Args:  cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.APIKeys = args
+			opts.APIKey = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when passing a single argument")
+					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
 				opts.DoConfirm = true
 			}
@@ -68,24 +66,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	cs := opts.IO.ColorScheme()
-
-	// Check that all the API keys exists
-	for _, apiKey := range opts.APIKeys {
-		_, err := client.GetAPIKey(apiKey)
-		fmt.Println(err)
-		if err != nil {
-			return fmt.Errorf("API key %q does not exist", apiKey)
-		}
+	_, err = client.GetAPIKey(opts.APIKey)
+	if err != nil {
+		return fmt.Errorf("API key %q does not exist", opts.APIKey)
 	}
 
 	if opts.DoConfirm {
 		var confirmed bool
-		p := &survey.Confirm{
-			Message: fmt.Sprintf("Delete the following API Key(s) %v?", opts.APIKeys),
-			Default: false,
-		}
-		err = prompt.SurveyAskOne(p, &confirmed)
+		err = prompt.Confirm(fmt.Sprintf("Delete the following API Key: %s?", opts.APIKey), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -94,16 +82,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	// Delete all the API keys
-	for _, apiKey := range opts.APIKeys {
-		_, err = client.DeleteAPIKey(apiKey)
-		if err != nil {
-			return err
-		}
+	_, err = client.DeleteAPIKey(opts.APIKey)
+	if err != nil {
+		return err
 	}
 
+	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s API key(s) successfully deleted: %v\n", cs.SuccessIcon(), opts.APIKeys)
+		fmt.Fprintf(opts.IO.Out, "%s API key successfully deleted: %s\n", cs.SuccessIcon(), opts.APIKey)
 	}
 	return nil
 }

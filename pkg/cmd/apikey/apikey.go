@@ -12,8 +12,9 @@ import (
 // NewAPIKeyCmd returns a new command for API Keys.
 func NewAPIKeyCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "apikey",
-		Short: "Manage your Algolia API keys",
+		Use:     "apikey",
+		Aliases: []string{"api-key", "api-keys", "apikeys"},
+		Short:   "Manage your Algolia API keys",
 	}
 
 	cmd.AddCommand(list.NewListCmd(f))

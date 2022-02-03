@@ -32,7 +32,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: true,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				Indices:   []string{"foo"},
+				Index:     "foo",
 			},
 		},
 		{
@@ -42,17 +42,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indices:   []string{"foo"},
-			},
-		},
-		{
-			name:     "mutiple indices",
-			cli:      "foo bar --confirm",
-			tty:      false,
-			wantsErr: false,
-			wantsOpts: DeleteOptions{
-				DoConfirm: false,
-				Indices:   []string{"foo", "bar"},
+				Index:     "foo",
 			},
 		},
 	}
@@ -89,7 +79,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Indices, opts.Indices)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
 	}
@@ -135,39 +125,30 @@ func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
 		name    string
 		cli     string
-		indices []string
+		index   string
 		isTTY   bool
 		wantOut string
 	}{
 		{
 			name:    "no TTY",
 			cli:     "foo --confirm",
-			indices: []string{"foo"},
+			index:   "foo",
 			isTTY:   false,
 			wantOut: "",
 		},
 		{
 			name:    "TTY",
 			cli:     "foo --confirm",
-			indices: []string{"foo"},
+			index:   "foo",
 			isTTY:   true,
-			wantOut: "✓ Deleted indices foo\n",
-		},
-		{
-			name:    "multiple indices",
-			cli:     "foo bar --confirm",
-			indices: []string{"foo", "bar"},
-			isTTY:   true,
-			wantOut: "✓ Deleted indices foo, bar\n",
+			wantOut: "✓ Deleted index foo\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			for _, index := range tt.indices {
-				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
-			}
+			r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", tt.index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
 			defer r.Verify(t)
 
 			out, err := runCommand(&r, tt.isTTY, tt.cli)
