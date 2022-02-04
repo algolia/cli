@@ -13,7 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-type SetOptions struct {
+type ImportOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
@@ -23,9 +23,9 @@ type SetOptions struct {
 	Settings search.Settings
 }
 
-// NewSetCmd creates and returns a set command for settings
-func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &SetOptions{
+// NewImportCmd creates and returns an import command for settings
+func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
@@ -37,8 +37,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "set",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Set settings",
-		Long:              `Set the settings for the specified index.`,
+		Short:             "Import the settings from a given file",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 			b, err := cmdutil.ReadFile(settingsFile, opts.IO.In)
@@ -49,16 +48,17 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runListCmd(opts)
+			return runImportCmd(opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&settingsFile, "settings-file", "F", "", "Read settings from `file` (use \"-\" to read from standard input)")
+	cmd.MarkFlagRequired("settings-file")
 
 	return cmd
 }
 
-func runListCmd(opts *SetOptions) error {
+func runImportCmd(opts *ImportOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func runListCmd(opts *SetOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Updated settings on %v\n", cs.SuccessIcon(), opts.Indice)
+		fmt.Fprintf(opts.IO.Out, "%s Imported settings on %v\n", cs.SuccessIcon(), opts.Indice)
 	}
 
 	return nil

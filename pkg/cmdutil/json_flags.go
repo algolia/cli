@@ -18,9 +18,9 @@ type JSONFlagError struct {
 	error
 }
 
-func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter) {
+func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, defaulValue bool) {
 	f := cmd.Flags()
-	f.Bool("json", false, "Output JSON")
+	f.Bool("json", defaulValue, "Output JSON")
 	f.StringP("jq", "q", "", "Filter JSON output using a jq `expression`")
 	f.StringP("template", "t", "", "Format JSON output using a Go template")
 
@@ -31,7 +31,7 @@ func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter) {
 				return err
 			}
 		}
-		if export, err := checkJSONFlags(c); err == nil {
+		if export, err := checkJSONFlags(c, defaulValue); err == nil {
 			if export == nil {
 				*exportTarget = nil
 			} else {
@@ -44,13 +44,13 @@ func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter) {
 	}
 }
 
-func checkJSONFlags(cmd *cobra.Command) (*exportFormat, error) {
+func checkJSONFlags(cmd *cobra.Command, defaulValue bool) (*exportFormat, error) {
 	f := cmd.Flags()
 	jsonFlag := f.Lookup("json")
 	jqFlag := f.Lookup("jq")
 	tplFlag := f.Lookup("template")
 
-	if jsonFlag.Changed {
+	if jsonFlag.Changed || defaulValue {
 		return &exportFormat{
 			filter:   jqFlag.Value.String(),
 			template: tplFlag.Value.String(),

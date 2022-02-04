@@ -31,25 +31,11 @@ func TestAddJSONFlags(t *testing.T) {
 			wantsError:  "cannot use `--jq` without specifying `--json`",
 		},
 		{
-			name:        "cannot use --template without --json",
-			args:        []string{"--template", "{{.number}}"},
-			wantsExport: nil,
-			wantsError:  "cannot use `--template` without specifying `--json`",
-		},
-		{
 			name: "with jq filter",
 			args: []string{"--json", "number", "-q.number"},
 			wantsExport: &exportFormat{
 				filter:   ".number",
 				template: "",
-			},
-		},
-		{
-			name: "with Go template",
-			args: []string{"--json", "number", "-t", "{{.number}}"},
-			wantsExport: &exportFormat{
-				filter:   "",
-				template: "{{.number}}",
 			},
 		},
 	}
@@ -58,7 +44,7 @@ func TestAddJSONFlags(t *testing.T) {
 			cmd := &cobra.Command{Run: func(*cobra.Command, []string) {}}
 			cmd.Flags().Bool("web", false, "")
 			var exporter Exporter
-			AddJSONFlags(cmd, &exporter)
+			AddJSONFlags(cmd, &exporter, false)
 			cmd.SetArgs(tt.args)
 			cmd.SetOut(ioutil.Discard)
 			cmd.SetErr(ioutil.Discard)
@@ -105,15 +91,6 @@ func Test_exportFormat_Write(t *testing.T) {
 				data: map[string]string{"name": "hubot"},
 			},
 			wantW:   "hubot\n",
-			wantErr: false,
-		},
-		{
-			name:     "with Go template",
-			exporter: exportFormat{template: "{{.name}}"},
-			args: args{
-				data: map[string]string{"name": "hubot"},
-			},
-			wantW:   "hubot",
 			wantErr: false,
 		},
 	}

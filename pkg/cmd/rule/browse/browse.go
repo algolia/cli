@@ -1,17 +1,16 @@
-package list
+package browse
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/MakeNowJust/heredoc"
+
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/utils"
 )
 
 type ExportOptions struct {
@@ -25,8 +24,8 @@ type ExportOptions struct {
 	Exporter cmdutil.Exporter
 }
 
-// NewListCmd creates and returns a list command for indice's rules
-func NewListCmd(f *cmdutil.Factory) *cobra.Command {
+// NewBrowseCmd creates and returns a browse command for indice's rules
+func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -34,10 +33,10 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "list <index-name>",
+		Use:               "browse <index-name>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "List the given indice's rules",
+		Short:             "List all the rules of an index",
 		Example: heredoc.Doc(`
 			# List the rules of the 'TEST_PRODUCTS_1' index
 			$ algolia rule list TEST_PRODUCTS_1
@@ -52,7 +51,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutil.AddJSONFlags(cmd, &opts.Exporter)
+	cmdutil.AddJSONFlags(cmd, &opts.Exporter, true)
 
 	return cmd
 }
@@ -81,36 +80,5 @@ func runListCmd(opts *ExportOptions) error {
 		rules = append(rules, iObject)
 	}
 
-	if opts.Exporter != nil {
-		return opts.Exporter.Write(opts.IO, rules)
-	}
-
-	cs := opts.IO.ColorScheme()
-	table := utils.NewTablePrinter(opts.IO)
-	if table.IsTTY() {
-		table.AddField("ID", nil, nil)
-		table.AddField("DESCRIPTION", nil, nil)
-		table.AddField("CONDITIONS", nil, nil)
-		table.AddField("CONSEQUENCE", nil, nil)
-		table.AddField("ENABLED", nil, nil)
-		table.AddField("VALIDITY", nil, nil)
-		table.EndRow()
-	}
-
-	for _, rule := range rules {
-		table.AddField(rule.ObjectID, nil, nil)
-		table.AddField(rule.Description, nil, nil)
-		table.AddField(fmt.Sprintf("%v", rule.Conditions), nil, nil)
-		table.AddField(fmt.Sprintf("%v", rule.Consequence), nil, nil)
-		table.AddField(func() string {
-			if rule.Enabled.Get() {
-				return cs.SuccessIcon()
-			} else {
-				return cs.FailureIcon()
-			}
-		}(), nil, nil)
-		table.AddField(fmt.Sprintf("%v", rule.Validity), nil, nil)
-		table.EndRow()
-	}
-	return table.Render()
+	return opts.Exporter.Write(opts.IO, rules)
 }

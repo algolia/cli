@@ -40,7 +40,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutil.AddJSONFlags(cmd, &opts.Exporter)
+	cmdutil.AddJSONFlags(cmd, &opts.Exporter, false)
 
 	return cmd
 }

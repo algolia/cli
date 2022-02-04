@@ -3,8 +3,8 @@ package rule
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/rule/browse"
 	importRules "github.com/algolia/cli/pkg/cmd/rule/import"
-	"github.com/algolia/cli/pkg/cmd/rule/list"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -16,7 +16,7 @@ func NewRuleCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(importRules.NewImportCmd(f))
-	cmd.AddCommand(list.NewListCmd(f))
+	cmd.AddCommand(browse.NewBrowseCmd(f))
 
 	return cmd
 }
