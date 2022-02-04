@@ -17,6 +17,8 @@ func NewApplicationCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your configured Algolia applications",
 	}
 
+	cmdutil.DisableAuthCheck(cmd)
+
 	cmd.AddCommand(add.NewAddCmd(f, nil))
 	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(remove.NewRemoveCmd(f, nil))

@@ -18,16 +18,16 @@ import (
 
 func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "algolia",
+		Use:   "algolia <command> <subcommand> [flags]",
 		Short: "Algolia CLI",
 		Long:  "The official command-line tool to interact with Algolia.",
 
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Example: heredoc.Doc(`
-			$ algolia index list
+			$ algolia objects browse
 			$ algolia apikey create --acl search
-			$ algolia rule list TEST_index > rules.json
+			$ algolia rule list
 		`),
 	}
 

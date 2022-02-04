@@ -105,16 +105,18 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().BoolP("list", "l", false, "List all supported shortcuts")
 
+	cmdutil.DisableAuthCheck(cmd)
+
 	return cmd
 }
 
 func runOpenCmd(opts *OpenOptions) error {
 	var applicationID string
-	application, err := opts.config.GetCurrentApplication()
-	if err != nil {
+	app, err := opts.config.GetCurrentApplication()
+	if err != nil || app == nil {
 		applicationID = ""
 	} else {
-		applicationID = "/" + application.ID
+		applicationID = "/" + app.ID
 	}
 
 	if opts.List || opts.Shortcut == "" {

@@ -2,6 +2,8 @@ package cmdutil
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/algolia/cli/pkg/config"
 )
 
 func DisableAuthCheck(cmd *cobra.Command) {
@@ -10,6 +12,17 @@ func DisableAuthCheck(cmd *cobra.Command) {
 	}
 
 	cmd.Annotations["skipAuthCheck"] = "true"
+}
+
+func CheckAuth(cfg config.Config) bool {
+	app, err := cfg.GetCurrentApplication()
+	if err != nil || app == nil {
+		return false
+	}
+	if app.ID != "" && app.AdminAPIKey != "" {
+		return true
+	}
+	return false
 }
 
 func IsAuthCheckEnabled(cmd *cobra.Command) bool {
