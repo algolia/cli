@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"reflect"
 
 	"github.com/spf13/cobra"
 
@@ -22,7 +21,6 @@ func AddJSONFlags(cmd *cobra.Command, exportTarget *Exporter, defaulValue bool) 
 	f := cmd.Flags()
 	f.Bool("json", defaulValue, "Output JSON")
 	f.StringP("jq", "q", "", "Filter JSON output using a jq `expression`")
-	f.StringP("template", "t", "", "Format JSON output using a Go template")
 
 	oldPreRun := cmd.PreRunE
 	cmd.PreRunE = func(c *cobra.Command, args []string) error {
@@ -48,17 +46,13 @@ func checkJSONFlags(cmd *cobra.Command, defaulValue bool) (*exportFormat, error)
 	f := cmd.Flags()
 	jsonFlag := f.Lookup("json")
 	jqFlag := f.Lookup("jq")
-	tplFlag := f.Lookup("template")
 
 	if jsonFlag.Changed || defaulValue {
 		return &exportFormat{
-			filter:   jqFlag.Value.String(),
-			template: tplFlag.Value.String(),
+			filter: jqFlag.Value.String(),
 		}, nil
 	} else if jqFlag.Changed {
 		return nil, errors.New("cannot use `--jq` without specifying `--json`")
-	} else if tplFlag.Changed {
-		return nil, errors.New("cannot use `--template` without specifying `--json`")
 	}
 	return nil, nil
 }
@@ -86,8 +80,6 @@ func (e *exportFormat) Write(ios *iostreams.IOStreams, data interface{}) error {
 	w := ios.Out
 	if e.filter != "" {
 		return export.FilterJSON(w, &buf, e.filter)
-	} else if e.template != "" {
-		return export.ExecuteTemplate(ios, &buf, e.template)
 	} else if ios.ColorEnabled() {
 		return jsoncolor.Write(w, &buf, "  ")
 	}
@@ -95,6 +87,3 @@ func (e *exportFormat) Write(ios *iostreams.IOStreams, data interface{}) error {
 	_, err := io.Copy(w, &buf)
 	return err
 }
-
-var sliceOfEmptyInterface []interface{}
-var emptyInterfaceType = reflect.TypeOf(sliceOfEmptyInterface).Elem()

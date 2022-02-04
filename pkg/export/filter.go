@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
+	"strconv"
 
 	"github.com/itchyny/gojq"
 )
@@ -58,4 +60,23 @@ func FilterJSON(w io.Writer, input io.Reader, queryStr string) error {
 	}
 
 	return nil
+}
+
+func jsonScalarToString(input interface{}) (string, error) {
+	switch tt := input.(type) {
+	case string:
+		return tt, nil
+	case float64:
+		if math.Trunc(tt) == tt {
+			return strconv.FormatFloat(tt, 'f', 0, 64), nil
+		} else {
+			return strconv.FormatFloat(tt, 'f', 2, 64), nil
+		}
+	case nil:
+		return "", nil
+	case bool:
+		return fmt.Sprintf("%v", tt), nil
+	default:
+		return "", fmt.Errorf("cannot convert type to string: %v", tt)
+	}
 }
