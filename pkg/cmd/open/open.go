@@ -72,7 +72,7 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 		config: f.Config,
 	}
 	cmd := &cobra.Command{
-		Use:       "open [shortcut] [--list]",
+		Use:       "open <shortcut>",
 		ValidArgs: openNames(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if opts.List {

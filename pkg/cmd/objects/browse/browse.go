@@ -20,10 +20,10 @@ type ExportOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indice string
+	Index string
 }
 
-// NewBrowseCmd creates and returns a browse command for indices objects
+// NewBrowseCmd creates and returns a browse command for index objects
 func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ExportOptions{
 		IO:           f.IOStreams,
@@ -32,20 +32,19 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "browse <index_1>",
+		Use:               "browse <index-1>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Browse the index records",
+		Short:             "Browse the index objects",
 		Long: heredoc.Doc(`
-			Browse the given index.
 			This command browse the objects of the specified index.
 		`),
 		Example: heredoc.Doc(`
+			# Browse the objects from the "TEST_PRODUCTS_1" index
 			$ algolia objects browse TEST_PRODUCTS_1
-			$ algolia objects browse TEST_PRODUCTS_1 > objects.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			return runBrowseCmd(opts)
 		},
@@ -60,7 +59,7 @@ func runBrowseCmd(opts *ExportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
+	indice := client.InitIndex(opts.Index)
 	res, err := indice.BrowseObjects()
 	if err != nil {
 		return err

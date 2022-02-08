@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -19,7 +20,7 @@ type ImportOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indice   string
+	Index    string
 	Settings search.Settings
 }
 
@@ -34,12 +35,16 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	var settingsFile string
 
 	cmd := &cobra.Command{
-		Use:               "set",
+		Use:               "import <index> -F <settings-file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import the settings from a given file",
+		Short:             "Import the index settings from the specified given file",
+		Example: heredoc.Doc(`
+			# Import the settings from "settings.json" to the "TEST_PRODUCTS_1" index
+			algolia settings import TEST_PRODUCTS_1 -F settings.json
+		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			b, err := cmdutil.ReadFile(settingsFile, opts.IO.In)
 			if err != nil {
 				return err
@@ -64,8 +69,8 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Setting settings for index ", opts.Indice))
-	_, err = client.InitIndex(opts.Indice).SetSettings(opts.Settings)
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Importing settings to index ", opts.Index))
+	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -73,7 +78,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Imported settings on %v\n", cs.SuccessIcon(), opts.Indice)
+		fmt.Fprintf(opts.IO.Out, "%s Imported settings on %v\n", cs.SuccessIcon(), opts.Index)
 	}
 
 	return nil

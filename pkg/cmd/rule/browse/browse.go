@@ -38,11 +38,11 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "List all the rules of an index",
 		Example: heredoc.Doc(`
-			# List the rules of the 'TEST_PRODUCTS_1' index
-			$ algolia rule list TEST_PRODUCTS_1
+			# List all the rules of the "TEST_PRODUCTS_1" index
+			$ algolia rule browse TEST_PRODUCTS_1
 
-			# List the rules of the 'TEST_PRODUCTS_1' and save them to the 'rules.json' file
-			$ algolia rule list TEST_PRODUCTS_1 --json > rules.json
+			# List all the rules of the "TEST_PRODUCTS_1" index and save them to a 'rules.ndjson' file
+			$ algolia rule browse TEST_PRODUCTS_1 --json > rules.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

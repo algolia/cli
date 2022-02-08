@@ -34,8 +34,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 	cmd := &cobra.Command{
 		Use:   "add",
 		Args:  validators.NoArgs,
-		Short: "Add a new application",
-		Long:  `Add a new application configuration to the CLI.`,
+		Short: "Add a new application configuration to the CLI",
 		Example: heredoc.Doc(`
 			# Add a new application (interactive)
 			$ algolia application add

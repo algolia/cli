@@ -38,13 +38,17 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "import <index_1> -F <file_1>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import rules for the indice",
+		Short:             "Import rules to the specified index",
 		Long: heredoc.Doc(`
-			Import the rules for the provided indice.
+			Import rules to the specified index.
+			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format).
 		`),
 		Example: heredoc.Doc(`
-			$ algolia import TEST_PRODUCTS_1 -F rules.json
-			$ cat rules.json | algolia rules import TEST_PRODUCTS_1 -F -
+			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index
+			$ algolia import TEST_PRODUCTS_1 -F rules.ndjson
+
+			# Import rules from the standard input to the "TEST_PRODUCTS_1" index
+			$ cat rules.ndjson | algolia rules import TEST_PRODUCTS_1 -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

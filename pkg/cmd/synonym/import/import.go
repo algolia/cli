@@ -20,7 +20,7 @@ type ImportOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indice  string
+	Index   string
 	Scanner *bufio.Scanner
 }
 
@@ -35,19 +35,23 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	var file string
 
 	cmd := &cobra.Command{
-		Use:               "import <index_1> -F <file_1>",
+		Use:               "import <index-1> -F <file-1>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import synonyms for the indice",
+		Short:             "Import synonyms to the indice",
 		Long: heredoc.Doc(`
-			Import the synonyms for the provided indice.
+			Import synonyms to the provided indice.
+			The file must contains one JSON synonym per line (newline delimited JSON objects - ndjson format).
 		`),
 		Example: heredoc.Doc(`
-			$ algolia import TEST_PRODUCTS_1 -F synonyms.json
-			$ cat rules.json | algolia synonyms import TEST_PRODUCTS_1 -F -
+			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index
+			$ algolia import TEST_PRODUCTS_1 -F synonyms.ndjson
+
+			# Import objects from the standard input to the "TEST_PRODUCTS_1" index
+			$ cat synonyms.ndjson | algolia synonyms import TEST_PRODUCTS_1 -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			scanner, err := cmdutil.ScanFile(file, opts.IO.In)
 			if err != nil {
@@ -70,7 +74,7 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
+	indice := client.InitIndex(opts.Index)
 
 	// Move the following code to another module?
 	var (
@@ -122,7 +126,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s synonyms to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Indice)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s synonyms to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index)
 	}
 
 	return nil

@@ -1,6 +1,8 @@
 package list
 
 import (
+	"fmt"
+
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -16,7 +18,7 @@ type ListOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indice string
+	Index string
 
 	Exporter cmdutil.Exporter
 }
@@ -34,7 +36,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "List the settings of the specified index.",
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			return runListCmd(opts)
 		},
@@ -51,8 +53,8 @@ func runListCmd(opts *ListOptions) error {
 		return err
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel("Fetching settings")
-	res, err := client.InitIndex(opts.Indice).GetSettings()
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Fetching settings for index ", opts.Index))
+	res, err := client.InitIndex(opts.Index).GetSettings()
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

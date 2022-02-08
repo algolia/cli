@@ -3,6 +3,7 @@ package list
 import (
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -34,7 +35,10 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "list",
 		Args:  validators.NoArgs,
 		Short: "List indices",
-		Long:  `A list of Algolia indices.`,
+		Example: heredoc.Doc(`
+			# List indices
+			algolia index list
+		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runListCmd(opts)
 		},

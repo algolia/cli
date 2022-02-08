@@ -41,7 +41,10 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Short: "Create a new API key",
 		Long:  `Create a new API key with the provided parameters.`,
 		Example: heredoc.Doc(`
+			# Create a new API key targetting the index "foo", with the "search" and "browse" ACL and a description
 			$ algolia create --indices foo --acl search,browse --description "Search & Browse API Key"
+
+			# Create a new API key targetting the indexes "foo" and "bar", with the "http://foo.com" refferer, with a validity of 1 hour and a description
 			$ algolia create -i foo,bar --acl search -r "http://foo.com" --u 1h -d "Search-only API Key for foo & bar"
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
