@@ -35,7 +35,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:               "remove <app-name>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.ConfiguredApplicationsCompletionFunc(f.Config),
+		ValidArgsFunction: cmdutil.ConfiguredApplicationsCompletionFunc(f),
 		Short:             "Remove the specified application",
 		Long:              `Remove the specified application from the configuration.`,
 		Example: heredoc.Doc(`

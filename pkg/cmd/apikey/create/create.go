@@ -6,6 +6,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -95,8 +96,43 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Used for informative purposes only. It has impact on the functionality of the API key.`,
 	))
 
-	cmd.RegisterFlagCompletionFunc("acl", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"search", "browse", "addObject", "deleteObject", "listIndexes", "deleteIndex", "settings", "editSettings", "analytics", "recommendation", "usage", "logs", "seeUnretrievableAttributes"}, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
+	_ = cmd.RegisterFlagCompletionFunc("indices", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		client, err := f.SearchClient()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		indicesRes, err := client.ListIndices()
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		allowedIndices := make([]string, 0, len(indicesRes.Items))
+		for _, index := range indicesRes.Items {
+			allowedIndices = append(allowedIndices, fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(index.Entries)))
+		}
+		return allowedIndices, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	_ = cmd.RegisterFlagCompletionFunc("acl", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		allowedACLs := map[string]string{
+			"search":                     "allowed to perform search operations",
+			"browse":                     "allowed to retrieve all index data with the browse endpoint",
+			"addObject":                  "allowed to add or update a records in the index",
+			"deleteObject":               "allowed to delete an existing record",
+			"listIndexes":                "allowed to get a list of all existing indices",
+			"deleteIndex":                "allowed to delete an index",
+			"settings":                   "allowed to read all index settings",
+			"editSettings":               "allowed to update all index settings",
+			"analytics":                  "allowed to retrieve data with the Analytics API",
+			"recommendation":             "allowed to interact with the Recommendation API",
+			"usage":                      "allowed to retrieve data with the Usage API",
+			"logs":                       "allowed to query the logs",
+			"seeUnretrievableAttributes": "allowed to retrieve unretrievableAttributes for all operations that return records",
+		}
+		allowedACLsSlice := make([]string, 0, len(allowedACLs))
+		for acl, description := range allowedACLs {
+			allowedACLsSlice = append(allowedACLsSlice, fmt.Sprintf("%s\t%s", acl, description))
+		}
+		return allowedACLsSlice, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	return cmd

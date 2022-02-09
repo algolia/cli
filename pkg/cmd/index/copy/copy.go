@@ -89,35 +89,16 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	_ = cmd.RegisterFlagCompletionFunc("scope", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		availableScopes := []string{"settings", "synonyms", "rules"}
-
-		var results []string
-		var prefix string
-
-		if idx := strings.LastIndexByte(toComplete, ','); idx >= 0 {
-			prefix = toComplete[:idx+1]
-			toComplete = toComplete[idx+1:]
+		allowedScopesMap := map[string]string{
+			"settings": "copy only the settings",
+			"synonyms": "copy only the synonyms",
+			"rules":    "copy only the rules",
 		}
-		toComplete = strings.ToLower(toComplete)
-
-		// Remove duplicates
-		scope := strings.Split(prefix, ",")
-		cobra.CompDebugln(prefix, true)
-		for _, s := range scope {
-			for i, f := range availableScopes {
-				if f == s {
-					availableScopes = append(availableScopes[:i], availableScopes[i+1:]...)
-				}
-			}
+		allowedScopes := make([]string, 0, len(allowedScopesMap))
+		for scope, description := range allowedScopesMap {
+			allowedScopes = append(allowedScopes, fmt.Sprintf("%s\t%s", scope, description))
 		}
-
-		// Build list of suggestions
-		for _, f := range availableScopes {
-			if strings.HasPrefix(f, toComplete) {
-				results = append(results, prefix+f)
-			}
-		}
-		return results, cobra.ShellCompDirectiveNoSpace
+		return allowedScopes, cobra.ShellCompDirectiveNoFileComp
 	})
 
 	return cmd
