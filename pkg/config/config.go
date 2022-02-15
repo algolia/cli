@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -14,7 +13,8 @@ import (
 // Config handles all overall configuration for the CLI
 type Config struct {
 	ApplicationName string
-	Applications    map[string]*Application
+
+	Application Application
 
 	File string
 }
@@ -39,10 +39,7 @@ func (c *Config) InitConfig() {
 		}
 	}
 
-	// If a profiles file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		viper.Unmarshal(&c.Applications)
-	}
+	viper.ReadInConfig()
 }
 
 // GetConfigFolder retrieves the folder where the configuration file is stored
@@ -63,67 +60,29 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 	return filepath.Join(configPath, "algolia")
 }
 
-// GetApplications return the applications in the configuration file
-func (c *Config) GetApplications() map[string]string {
+// ConfiguredApplications return the applications in the configuration file
+func (c *Config) ConfiguredApplications() []*Application {
 	configs := viper.AllSettings()
-	applications := make(map[string]string)
-	for app := range configs {
-		applications[app] = viper.GetStringMapString(app)["application_id"]
+	applications := make([]*Application, 0, len(configs))
+	for appName := range configs {
+		app := &Application{
+			Name: appName,
+		}
+		if err := viper.UnmarshalKey(appName, app); err != nil {
+			log.Fatalf("%s", err)
+		}
+		applications = append(applications, app)
 	}
 
 	return applications
 }
 
-// ApplicationNames returns the list of application names
+// ApplicationNames returns the list of name of the configured applications
 func (c *Config) ApplicationNames() []string {
-	names := make([]string, 0, len(c.Applications))
-	for name := range c.Applications {
-		names = append(names, name)
-	}
-	return names
-}
-
-// GetCurrentApplication returns the current application
-func (c *Config) GetCurrentApplication() (*Application, error) {
-	if c.ApplicationName == "" {
-		return nil, fmt.Errorf("no application name set")
-	}
-	return c.Applications[c.ApplicationName], nil
+	return viper.AllKeys()
 }
 
 // ApplicationExists check if a given application exists
 func (c *Config) AppExists(appName string) bool {
 	return viper.IsSet(appName)
-}
-
-// GetApplicationField returns the configuration field for the specific application
-func (c *Config) GetApplicationField(app *Application, field string) string {
-	return app.Name + "." + field
-}
-
-// AddApplication add an application to the configuration
-func (c *Config) AddApplication(app *Application) error {
-	runtimeViper := viper.GetViper()
-	runtimeViper.Set(c.GetApplicationField(app, "application_id"), app.ID)
-	runtimeViper.Set(c.GetApplicationField(app, "admin_api_key"), app.AdminAPIKey)
-
-	return c.write(viper.GetViper())
-}
-
-// writeApp writes the application parameters to the configuration file
-func (c *Config) write(runtimeViper *viper.Viper) error {
-	configFile := viper.ConfigFileUsed()
-	err := utils.MakePath(configFile)
-	if err != nil {
-		return err
-	}
-	runtimeViper.SetConfigFile(configFile)
-	runtimeViper.SetConfigType(filepath.Ext(configFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

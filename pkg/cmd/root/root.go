@@ -36,8 +36,11 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.SetVersionTemplate(version.Template)
 
-	cmd.PersistentFlags().StringVarP(&f.Config.ApplicationName, "application", "a", "default", "The application to use")
+	cmd.PersistentFlags().StringVarP(&f.Config.Application.Name, "application", "a", "default", "The application to use")
 	cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f))
+
+	cmd.PersistentFlags().StringVarP(&f.Config.Application.ID, "application-id", "", "", "The application ID")
+	cmd.PersistentFlags().StringVarP(&f.Config.Application.AdminAPIKey, "admin-api-key", "", "", "The admin API key")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 

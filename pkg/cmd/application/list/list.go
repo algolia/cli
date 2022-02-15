@@ -57,14 +57,14 @@ func runListCmd(opts *AddOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching configured applications")
-	for name, app := range opts.config.Applications {
+	for _, app := range opts.config.ConfiguredApplications() {
 		client := search.NewClient(app.ID, app.AdminAPIKey)
 		res, err := client.ListIndices()
 		if err != nil {
 			return err
 		}
 
-		table.AddField(name, nil, nil)
+		table.AddField(app.Name, nil, nil)
 		table.AddField(app.ID, nil, nil)
 		table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
 		table.EndRow()

@@ -112,7 +112,7 @@ func runAddCmd(opts *AddOptions) error {
 		return fmt.Errorf("invalid application credentials: %s", err)
 	}
 
-	err = opts.config.AddApplication(&opts.Application)
+	err = opts.Application.Add()
 	if err != nil {
 		return err
 	}

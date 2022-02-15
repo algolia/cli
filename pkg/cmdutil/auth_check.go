@@ -15,14 +15,12 @@ func DisableAuthCheck(cmd *cobra.Command) {
 }
 
 func CheckAuth(cfg config.Config) bool {
-	app, err := cfg.GetCurrentApplication()
-	if err != nil || app == nil {
+	_, err := cfg.Application.GetID()
+	if err != nil {
 		return false
 	}
-	if app.ID != "" && app.AdminAPIKey != "" {
-		return true
-	}
-	return false
+	_, err = cfg.Application.GetAdminAPIKey()
+	return err == nil
 }
 
 func IsAuthCheckEnabled(cmd *cobra.Command) bool {

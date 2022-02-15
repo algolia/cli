@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.2
+	github.com/BurntSushi/toml v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/algolia/algoliasearch-client-go/v3 v3.21.0
 	github.com/briandowns/spinner v1.13.0

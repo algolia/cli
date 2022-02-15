@@ -112,8 +112,8 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 
 func runOpenCmd(opts *OpenOptions) error {
 	var applicationID string
-	app, err := opts.config.GetCurrentApplication()
-	if err != nil || app == nil {
+	app := opts.config.Application
+	if app.ID == "" {
 		applicationID = ""
 	} else {
 		applicationID = "/" + app.ID
@@ -148,6 +148,7 @@ func runOpenCmd(opts *OpenOptions) error {
 		return table.Render()
 	}
 
+	var err error
 	if url, ok := nameURLmap[opts.Shortcut]; ok {
 		if strings.Contains(url, "%s") {
 			err = open.Browser(fmt.Sprintf(url, applicationID))

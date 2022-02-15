@@ -25,10 +25,15 @@ func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
 
 func searchClient(f *cmdutil.Factory) func() (*search.Client, error) {
 	return func() (*search.Client, error) {
-		app, err := f.Config.GetCurrentApplication()
+		appID, err := f.Config.Application.GetID()
 		if err != nil {
 			return nil, err
 		}
-		return search.NewClient(app.ID, app.AdminAPIKey), nil
+		APIKey, err := f.Config.Application.GetAdminAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		return search.NewClient(appID, APIKey), nil
 	}
 }

@@ -18,8 +18,6 @@ type RemoveOptions struct {
 	config *config.Config
 	IO     *iostreams.IOStreams
 
-	ApplicationName string
-
 	DoConfirm bool
 }
 
@@ -43,7 +41,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 			$ algolia application remove my-app
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.ApplicationName = args[0]
+			opts.config.Application.Name = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
@@ -55,7 +53,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 				return runF(opts)
 			}
 
-			return runListCmd(opts)
+			return runRemoveCmd(opts)
 		},
 	}
 
@@ -65,10 +63,10 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 }
 
 // runRemoveCmd executes the remove command
-func runListCmd(opts *RemoveOptions) error {
+func runRemoveCmd(opts *RemoveOptions) error {
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove the application %q?", opts.ApplicationName), &confirmed)
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove the application %q?", opts.config.Application.Name), &confirmed)
 		if err != nil {
 			return err
 		}
@@ -77,9 +75,14 @@ func runListCmd(opts *RemoveOptions) error {
 		}
 	}
 
+	err := opts.config.Application.Remove()
+	if err != nil {
+		return err
+	}
+
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Application successfully removed: %s\n", cs.SuccessIcon(), opts.ApplicationName)
+		fmt.Fprintf(opts.IO.Out, "%s Application successfully removed: %s\n", cs.SuccessIcon(), opts.config.Application.Name)
 	}
 
 	return nil
