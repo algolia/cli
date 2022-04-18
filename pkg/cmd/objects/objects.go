@@ -1,0 +1,22 @@
+package objects
+
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/algolia/cli/pkg/cmd/objects/browse"
+	importObjects "github.com/algolia/cli/pkg/cmd/objects/import"
+	"github.com/algolia/cli/pkg/cmdutil"
+)
+
+// NewObjectsCmd returns a new command for indices objects.
+func NewObjectsCmd(f *cmdutil.Factory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "objects",
+		Short: "Manage your indices objects",
+	}
+
+	cmd.AddCommand(browse.NewBrowseCmd(f))
+	cmd.AddCommand(importObjects.NewImportCmd(f))
+
+	return cmd
+}

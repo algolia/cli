@@ -1,0 +1,70 @@
+project_name: algolia
+
+release:
+  prerelease: auto
+  name_template: "Algolia CLI {{.Version}}"
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - <<: &build_defaults
+      binary: algolia
+      main: ./cmd/algolia/main.go
+      ldflags:
+        - -s -w -X github.com/algolia/cli/pkg/version.Version={{.Version}}
+    id: macos
+    goos: [darwin]
+    goarch: [amd64, arm64]
+
+  - <<: *build_defaults
+    id: linux
+    goos: [linux]
+    goarch: [386, arm, amd64, arm64]
+    env:
+      - CGO_ENABLED=0
+
+archives:
+  - id: nix
+    builds: [macos, linux]
+    <<: &archive_defaults
+      name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    wrap_in_directory: true
+    replacements:
+      darwin: macOS
+    format: tar.gz
+    files:
+      - LICENSE
+  - id: windows
+    builds: [windows]
+    <<: *archive_defaults
+    wrap_in_directory: false
+    format: zip
+    files:
+      - LICENSE
+
+nfpms:
+  - license: MIT
+    maintainer: Algolia
+    homepage: https://www.algolia.com/
+    bindir: /usr/bin
+    dependencies:
+      - git
+    description: Algolia CLI utility
+    formats:
+      - deb
+      - rpm
+
+brews:
+  - tap:
+      owner: algolia
+      name: homebrew-algolia-cli
+    commit_author:
+      name: algolia-ci
+      email: support@algolia.com
+    homepage: https://www.algolia.com
+    description: Algolia CLI utility
+    install: |
+      bin.install "algolia"
+    caveats: "❤ Thanks for installing the Algolia CLI!"
