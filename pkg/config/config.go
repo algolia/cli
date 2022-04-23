@@ -39,7 +39,7 @@ func (c *Config) InitConfig() {
 		}
 	}
 
-	viper.ReadInConfig()
+	_ = viper.ReadInConfig()
 }
 
 // GetConfigFolder retrieves the folder where the configuration file is stored
