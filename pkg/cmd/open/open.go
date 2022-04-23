@@ -32,31 +32,6 @@ func openNames() []string {
 	return keys
 }
 
-func getLongestShortcut(shortcuts []string) int {
-	longest := 0
-	for _, s := range shortcuts {
-		if len(s) > longest {
-			longest = len(s)
-		}
-	}
-
-	return longest
-}
-
-func padName(name string, length int) string {
-	difference := length - len(name)
-
-	var b strings.Builder
-
-	fmt.Fprint(&b, name)
-
-	for i := 0; i < difference; i++ {
-		fmt.Fprint(&b, " ")
-	}
-
-	return b.String()
-}
-
 // OpenOptions represents the options for the open command
 type OpenOptions struct {
 	config *config.Config

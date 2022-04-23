@@ -40,7 +40,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.SetVersionTemplate(version.Template)
 
 	cmd.PersistentFlags().StringVarP(&f.Config.Application.Name, "application", "a", "", "The application to use")
-	cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f))
+	_ = cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f))
 
 	cmd.PersistentFlags().StringVarP(&f.Config.Application.ID, "application-id", "", "", "The application ID")
 	cmd.PersistentFlags().StringVarP(&f.Config.Application.AdminAPIKey, "admin-api-key", "", "", "The admin API key")
