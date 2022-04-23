@@ -61,16 +61,17 @@ func mainRun() exitCode {
 
 	rootCmd := root.NewRootCmd(cmdFactory)
 
-	cs := cmdFactory.IOStreams.ColorScheme()
-
 	authError := errors.New("authError")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		// require that the user is authenticated before running most commands
-		if cmdutil.IsAuthCheckEnabled(cmd) && !cmdutil.CheckAuth(cfg) {
-			fmt.Fprintln(stderr, cs.Bold("Welcome to Algolia CLI!"))
-			fmt.Fprintln(stderr)
-			fmt.Fprintln(stderr, "To get started, please run `algolia application add`.")
-			return authError
+		if cmdutil.IsAuthCheckEnabled(cmd) {
+			if err := cmdutil.CheckAuth(cfg); err != nil {
+				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
+				fmt.Fprintln(stderr, "Please run `algolia application add` to configure your first application.")
+				return authError
+			} else {
+				return nil
+			}
 		}
 
 		return nil

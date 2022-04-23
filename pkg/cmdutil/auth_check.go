@@ -14,13 +14,20 @@ func DisableAuthCheck(cmd *cobra.Command) {
 	cmd.Annotations["skipAuthCheck"] = "true"
 }
 
-func CheckAuth(cfg config.Config) bool {
+func CheckAuth(cfg config.Config) error {
+	if cfg.Application.Name == "" {
+		cfg.Application.LoadDefault()
+	}
+
 	_, err := cfg.Application.GetID()
 	if err != nil {
-		return false
+		return err
 	}
 	_, err = cfg.Application.GetAdminAPIKey()
-	return err == nil
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func IsAuthCheckEnabled(cmd *cobra.Command) bool {

@@ -40,7 +40,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 			$ algolia application add
 
 			# Add a new application (non-interactive)
-			$ algolia application add --name "my-app" --app-id "my-app-id" --admin-api-key "my-admin-api-key"
+			$ algolia application add --name "my-app" --app-id "my-app-id" --admin-api-key "my-admin-api-key" --default
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {
@@ -67,6 +67,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 	cmd.Flags().StringVarP(&opts.Application.Name, "name", "n", "default", heredoc.Doc(`Name of the application.`))
 	cmd.Flags().StringVar(&opts.Application.ID, "app-id", "", heredoc.Doc(`ID of the application.`))
 	cmd.Flags().StringVar(&opts.Application.AdminAPIKey, "admin-api-key", "", heredoc.Doc(`Admin API Key of the application.`))
+	cmd.Flags().BoolVarP(&opts.Application.Default, "default", "d", false, heredoc.Doc(`Set the application as the default one.`))
 
 	return cmd
 }
@@ -79,7 +80,6 @@ func runAddCmd(opts *AddOptions) error {
 				Name: "Name",
 				Prompt: &survey.Input{
 					Message: "Name:",
-					Default: opts.Application.Name,
 				},
 				Validate: survey.Required,
 			},
@@ -98,6 +98,13 @@ func runAddCmd(opts *AddOptions) error {
 					Default: opts.Application.AdminAPIKey,
 				},
 				Validate: survey.Required,
+			},
+			{
+				Name: "default",
+				Prompt: &survey.Confirm{
+					Message: "Set as default application?",
+					Default: opts.Application.Default,
+				},
 			},
 		}
 		err := prompt.SurveyAsk(questions, &opts.Application)

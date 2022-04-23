@@ -6,6 +6,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/application/add"
 	"github.com/algolia/cli/pkg/cmd/application/list"
 	"github.com/algolia/cli/pkg/cmd/application/remove"
+	"github.com/algolia/cli/pkg/cmd/application/setdefault"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -22,6 +23,7 @@ func NewApplicationCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(add.NewAddCmd(f, nil))
 	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(remove.NewRemoveCmd(f, nil))
+	cmd.AddCommand(setdefault.NewSetDefaultCmd(f, nil))
 
 	return cmd
 }

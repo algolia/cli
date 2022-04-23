@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -17,10 +18,21 @@ type Application struct {
 
 	ID          string `mapstructure:"application_id"`
 	AdminAPIKey string `mapstructure:"admin_api_key"`
+
+	Default bool `mapstructure:"default"`
 }
 
 func (a *Application) GetFieldName(field string) string {
 	return a.Name + "." + field
+}
+
+func (a *Application) LoadDefault() {
+	configs := viper.AllSettings()
+	for appName := range configs {
+		if viper.GetBool(appName + ".default") {
+			a.Name = appName
+		}
+	}
 }
 
 func (a Application) GetID() (string, error) {
@@ -32,8 +44,15 @@ func (a Application) GetID() (string, error) {
 		return a.ID, nil
 	}
 
+	if a.Name == "" {
+		a.LoadDefault()
+	}
+
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(a.GetFieldName("application_id")), nil
+		appId := viper.GetString(a.GetFieldName("application_id"))
+		if appId != "" {
+			return appId, nil
+		}
 	}
 
 	return "", validators.ErrApplicationIDNotConfigured
@@ -48,8 +67,15 @@ func (a *Application) GetAdminAPIKey() (string, error) {
 		return a.AdminAPIKey, nil
 	}
 
+	if a.Name == "" {
+		a.LoadDefault()
+	}
+
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(a.GetFieldName("admin_api_key")), nil
+		adminAPIKey := viper.GetString(a.GetFieldName("admin_api_key"))
+		if adminAPIKey != "" {
+			return adminAPIKey, nil
+		}
 	}
 
 	return "", validators.ErrAdminAPIKeyNotConfigured
@@ -61,7 +87,38 @@ func (a *Application) Add() error {
 	runtimeViper.Set(a.GetFieldName("application_id"), a.ID)
 	runtimeViper.Set(a.GetFieldName("admin_api_key"), a.AdminAPIKey)
 
-	return a.write(viper.GetViper())
+	if a.Default {
+		err := a.SetDefault()
+		if err != nil {
+			return err
+		}
+	}
+
+	return a.write(runtimeViper)
+}
+
+// SetDefault set the default application
+func (a *Application) SetDefault() error {
+	runtimeViper := viper.GetViper()
+	configs := runtimeViper.AllSettings()
+
+	found := false
+
+	for appName := range configs {
+		runtimeViper := viper.GetViper()
+		runtimeViper.Set(appName+".default", false)
+
+		if appName == a.Name {
+			found = true
+			runtimeViper.Set(appName+".default", true)
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("application %s not found", a.Name)
+	}
+
+	return a.write(runtimeViper)
 }
 
 // Remove remove an application from the configuration
