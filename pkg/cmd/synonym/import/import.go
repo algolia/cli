@@ -79,7 +79,7 @@ func runImportCmd(opts *ImportOptions) error {
 	// Move the following code to another module?
 	var (
 		batchSize  = 1000
-		batch      = make([]search.Rule, 0, batchSize)
+		batch      = make([]search.Synonym, 0, batchSize)
 		count      = 0
 		totalCount = 0
 	)
@@ -91,20 +91,70 @@ func runImportCmd(opts *ImportOptions) error {
 			continue
 		}
 
-		var rule search.Rule
-		if err := json.Unmarshal([]byte(line), &rule); err != nil {
+		lineB := []byte(line)
+		var rawSynonym map[string]interface{}
+
+		// Unmarshal as map[string]interface{} to get the type of the synonym
+		if err := json.Unmarshal(lineB, &rawSynonym); err != nil {
 			return err
 		}
+		typeString := rawSynonym["type"].(string)
 
-		batch = append(batch, rule)
+		// This is really ugly, but algoliasearch package doesn't provide a way to
+		// unmarshal a synonym from a JSON string.
+		switch search.SynonymType(typeString) {
+		case search.RegularSynonymType:
+			var syn search.RegularSynonym
+			err = json.Unmarshal(lineB, &syn)
+			if err != nil {
+				return err
+			}
+			batch = append(batch, syn)
+
+		case search.OneWaySynonymType:
+			var syn search.OneWaySynonym
+			err = json.Unmarshal(lineB, &syn)
+			if err != nil {
+				return err
+			}
+			batch = append(batch, syn)
+
+		case search.AltCorrection1Type:
+			var syn search.AltCorrection1
+			err = json.Unmarshal(lineB, &syn)
+			if err != nil {
+				return err
+			}
+			batch = append(batch, syn)
+
+		case search.AltCorrection2Type:
+			var syn search.AltCorrection2
+			err = json.Unmarshal(lineB, &syn)
+			if err != nil {
+				return err
+			}
+			batch = append(batch, syn)
+
+		case search.PlaceholderType:
+			var syn search.Placeholder
+			err = json.Unmarshal(lineB, &syn)
+			if err != nil {
+				return err
+			}
+			batch = append(batch, syn)
+
+		default:
+			return fmt.Errorf("cannot unmarshal synonym: unknown type %s", typeString)
+		}
+
 		count++
 
 		if count == batchSize {
-			if _, err := indice.SaveRules(batch); err != nil {
+			if _, err := indice.SaveSynonyms(batch); err != nil {
 				return err
 			}
 
-			batch = make([]search.Rule, 0, batchSize)
+			batch = make([]search.Synonym, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d synonyms", totalCount))
 			count = 0
@@ -113,7 +163,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveRules(batch); err != nil {
+		if _, err := indice.SaveSynonyms(batch); err != nil {
 			return err
 		}
 	}
