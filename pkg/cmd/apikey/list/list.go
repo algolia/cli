@@ -26,7 +26,7 @@ type ListOptions struct {
 }
 
 // NewListCmd creates and returns a list command for API Keys.
-func NewListCmd(f *cmdutil.Factory) *cobra.Command {
+func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -38,6 +38,10 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Args:  validators.NoArgs,
 		Short: "List API keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if runF != nil {
+				return runF(opts)
+			}
+
 			return runListCmd(opts)
 		},
 	}
@@ -60,6 +64,8 @@ func runListCmd(opts *ListOptions) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Print(res)
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()

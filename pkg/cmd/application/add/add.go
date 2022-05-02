@@ -43,9 +43,6 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 			$ algolia application add --name "my-app" --app-id "my-app-id" --admin-api-key "my-admin-api-key" --default
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if runF != nil {
-				return runF(opts)
-			}
 
 			opts.Interactive = true
 
@@ -60,11 +57,15 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 				return cmdutil.FlagErrorf("`--name`, `--app-id` and `--admin-api-key` required when not running interactively")
 			}
 
+			if runF != nil {
+				return runF(opts)
+			}
+
 			return runAddCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Application.Name, "name", "n", "default", heredoc.Doc(`Name of the application.`))
+	cmd.Flags().StringVarP(&opts.Application.Name, "name", "n", "", heredoc.Doc(`Name of the application.`))
 	cmd.Flags().StringVar(&opts.Application.ID, "app-id", "", heredoc.Doc(`ID of the application.`))
 	cmd.Flags().StringVar(&opts.Application.AdminAPIKey, "admin-api-key", "", heredoc.Doc(`Admin API Key of the application.`))
 	cmd.Flags().BoolVarP(&opts.Application.Default, "default", "d", false, heredoc.Doc(`Set the application as the default one.`))

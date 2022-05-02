@@ -17,7 +17,7 @@ func NewAPIKeyCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your Algolia API keys",
 	}
 
-	cmd.AddCommand(list.NewListCmd(f))
+	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(create.NewCreateCmd(f, nil))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 
