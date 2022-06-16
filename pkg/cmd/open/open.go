@@ -59,16 +59,16 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 		Long:  `The open command provices shortcuts to quickly let you open pages to Algolia within your browser. 'algolia open --list' for a list of supported shortcuts.`,
 		Example: heredoc.Doc(`
 			# Display the list of supported shortcuts
-			algolia open --list
+			$ algolia open --list
 
 			# Open the dashboard for the current application
-			algolia open dashboard
-
+			$ algolia open dashboard
+			
 			# Open the API reference
-  			algolia open api
-
+			$ algolia open api
+			
 			# Open the documentation
-  			algolia open docs
+			$ algolia open docs
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
