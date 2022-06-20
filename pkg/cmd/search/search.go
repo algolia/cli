@@ -1,10 +1,8 @@
 package search
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	algoliaSearch "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -21,9 +19,9 @@ type SearchOptions struct {
 	SearchClient func() (*algoliaSearch.Client, error)
 
 	Indice string
+	Query  string
 
-	Query    string
-	Settings *algoliaSearch.Settings
+	SearchParams map[string]interface{}
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -50,22 +48,23 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			if cmd.Flags().Changed("settings") {
-				if searchSettings, err := cmd.Flags().GetString("settings"); err == nil {
-					var settings algoliaSearch.Settings
-					if err := json.Unmarshal([]byte(searchSettings), &settings); err != nil {
-						return fmt.Errorf("invalid settings: %v", err)
-					}
-					opts.Settings = &settings
-				}
+			query, err := cmd.Flags().GetString("query")
+			if err != nil {
+				return err
 			}
+			opts.Query = query
+
+			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParams...)
+			if err != nil {
+				return err
+			}
+			opts.SearchParams = searchParams
 
 			return runSearchCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Query, "query", "q", "", "Query")
-	cmd.Flags().StringP("settings", "s", "", "Settings")
+	cmdutil.AddSearchFlags(cmd)
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -86,8 +85,11 @@ func runSearchCmd(opts *SearchOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Searching")
-	res, err := indice.Search(opts.Query, opts.Settings)
+
+	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
+	res, err := indice.Search(opts.Query, opt.ExtraOptions(opts.SearchParams))
 	if err != nil {
+		opts.IO.StopProgressIndicator()
 		return err
 	}
 

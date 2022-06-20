@@ -8,37 +8,43 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
 func printOptions(w io.Writer, cmd *cobra.Command) error {
-	flags := cmd.NonInheritedFlags()
+	categoryFlagSet := cmdutil.NewCategoryFlagSet(cmd.NonInheritedFlags())
 
-	localFlags := pflag.NewFlagSet("", pflag.ContinueOnError)
-	localFlags.SetOutput(w)
-	printFlags := pflag.NewFlagSet("", pflag.ContinueOnError)
-	printFlags.SetOutput(w)
-
-	flags.VisitAll(func(f *pflag.Flag) {
-		if _, ok := f.Annotations["IsPrint"]; ok {
-			printFlags.AddFlag(f)
-		} else {
-			localFlags.AddFlag(f)
+	// Print the flags categories if any.
+	if len(categoryFlagSet.Categories) > 0 {
+		for _, categoryName := range categoryFlagSet.SortedCategoryNames() {
+			fmt.Fprintf(w, "### %s options\n\n", categoryName)
+			if err := printFlagsHTML(w, categoryFlagSet.Categories[categoryName]); err != nil {
+				return err
+			}
+			fmt.Fprint(w, "\n\n")
 		}
-	})
-
-	if localFlags.HasAvailableFlags() {
-		fmt.Fprint(w, "### Options\n\n")
-		if err := printFlagsHTML(w, localFlags); err != nil {
-			return err
+		if categoryFlagSet.Others.HasAvailableFlags() {
+			fmt.Fprint(w, "### Other options\n\n")
+			if err := printFlagsHTML(w, categoryFlagSet.Others); err != nil {
+				return err
+			}
+			fmt.Fprint(w, "\n\n")
 		}
-		fmt.Fprint(w, "\n\n")
+	} else {
+		if categoryFlagSet.Others.HasAvailableFlags() {
+			fmt.Fprint(w, "### Options\n\n")
+			if err := printFlagsHTML(w, categoryFlagSet.Others); err != nil {
+				return err
+			}
+			fmt.Fprint(w, "\n\n")
+		}
 	}
 
-	if printFlags.HasAvailableFlags() {
+	if categoryFlagSet.Print.HasAvailableFlags() {
 		fmt.Fprint(w, "### Output formatting options\n\n")
-		if err := printFlagsHTML(w, printFlags); err != nil {
+		if err := printFlagsHTML(w, categoryFlagSet.Print); err != nil {
 			return err
 		}
 		fmt.Fprint(w, "\n\n")

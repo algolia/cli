@@ -123,21 +123,22 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, args []string) {
 		helpEntries = append(helpEntries, helpEntry{cs.Bold("Commands"), strings.Join(commands, "\n")})
 	}
 
-	localFlags := pflag.NewFlagSet("", pflag.ContinueOnError)
-	printFlags := pflag.NewFlagSet("", pflag.ContinueOnError)
-	command.LocalFlags().VisitAll(func(f *pflag.Flag) {
-		if _, ok := f.Annotations["IsPrint"]; ok {
-			printFlags.AddFlag(f)
-		} else {
-			localFlags.AddFlag(f)
+	categoryFlagSet := cmdutil.NewCategoryFlagSet(command.LocalFlags())
+	if len(categoryFlagSet.Categories) > 0 {
+		for _, categoryName := range categoryFlagSet.SortedCategoryNames() {
+			groupName := fmt.Sprintf("%s Flags", categoryName)
+			helpEntries = append(helpEntries, helpEntry{groupName, dedent(categoryFlagSet.Categories[categoryName].FlagUsages())})
 		}
-	})
-
-	localFlagUsages := localFlags.FlagUsages()
-	if localFlagUsages != "" {
-		helpEntries = append(helpEntries, helpEntry{cs.Bold("Flags"), dedent(localFlagUsages)})
+		if categoryFlagSet.Others.FlagUsages() != "" {
+			helpEntries = append(helpEntries, helpEntry{cs.Bold("Other Flags"), dedent(categoryFlagSet.Others.FlagUsages())})
+		}
+	} else {
+		if categoryFlagSet.Others.FlagUsages() != "" {
+			helpEntries = append(helpEntries, helpEntry{cs.Bold("Flags"), dedent(categoryFlagSet.Others.FlagUsages())})
+		}
 	}
-	printFlagUsages := printFlags.FlagUsages()
+
+	printFlagUsages := categoryFlagSet.Print.FlagUsages()
 	if printFlagUsages != "" {
 		helpEntries = append(helpEntries, helpEntry{cs.Bold("Output Formatting Flags"), dedent(printFlagUsages)})
 	}

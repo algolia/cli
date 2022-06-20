@@ -87,6 +87,11 @@ func (a *Application) Add() error {
 	runtimeViper.Set(a.GetFieldName("application_id"), a.ID)
 	runtimeViper.Set(a.GetFieldName("admin_api_key"), a.AdminAPIKey)
 
+	err := a.write(runtimeViper)
+	if err != nil {
+		return err
+	}
+
 	if a.Default {
 		err := a.SetDefault()
 		if err != nil {
@@ -94,7 +99,7 @@ func (a *Application) Add() error {
 		}
 	}
 
-	return a.write(runtimeViper)
+	return nil
 }
 
 // SetDefault set the default application

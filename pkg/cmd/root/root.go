@@ -1,3 +1,5 @@
+//go:generate go run ../../gen/gen_flags.go
+
 package root
 
 import (
