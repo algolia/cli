@@ -65,8 +65,6 @@ func runListCmd(opts *ListOptions) error {
 		return err
 	}
 
-	fmt.Print(res)
-
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()
 		if err != nil {
