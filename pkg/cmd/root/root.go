@@ -38,6 +38,13 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.SetErr(f.IOStreams.ErrOut)
 
 	cmd.SetVersionTemplate(version.Template)
+	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
+		return rootUsageFunc(f.IOStreams.Out, cmd)
+	})
+	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		rootHelpFunc(f, cmd, args)
+	})
+	cmd.SetFlagErrorFunc(rootFlagErrorFunc)
 
 	cmd.PersistentFlags().StringVarP(&f.Config.Application.Name, "application", "a", "", "The application to use")
 	_ = cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f))

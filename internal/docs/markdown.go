@@ -14,10 +14,31 @@ import (
 
 func printOptions(w io.Writer, cmd *cobra.Command) error {
 	flags := cmd.NonInheritedFlags()
-	flags.SetOutput(w)
-	if flags.HasAvailableFlags() {
+
+	localFlags := pflag.NewFlagSet("", pflag.ContinueOnError)
+	localFlags.SetOutput(w)
+	printFlags := pflag.NewFlagSet("", pflag.ContinueOnError)
+	printFlags.SetOutput(w)
+
+	flags.VisitAll(func(f *pflag.Flag) {
+		if _, ok := f.Annotations["IsPrint"]; ok {
+			printFlags.AddFlag(f)
+		} else {
+			localFlags.AddFlag(f)
+		}
+	})
+
+	if localFlags.HasAvailableFlags() {
 		fmt.Fprint(w, "### Options\n\n")
-		if err := printFlagsHTML(w, flags); err != nil {
+		if err := printFlagsHTML(w, localFlags); err != nil {
+			return err
+		}
+		fmt.Fprint(w, "\n\n")
+	}
+
+	if printFlags.HasAvailableFlags() {
+		fmt.Fprint(w, "### Output formatting options\n\n")
+		if err := printFlagsHTML(w, printFlags); err != nil {
 			return err
 		}
 		fmt.Fprint(w, "\n\n")
