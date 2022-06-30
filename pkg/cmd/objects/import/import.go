@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
@@ -13,19 +14,18 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/sirupsen/logrus"
 )
 
 type ImportOptions struct {
-	Config *config.Config
-	IO     *iostreams.IOStreams
-
-	SearchClient func() (*search.Client, error)
-
-	Index string
-
+	Config                         *config.Config
+	IO                             *iostreams.IOStreams
+	SearchClient                   func() (*search.Client, error)
+	Index                          string
 	AutoGenerateObjectIDIfNotExist bool
-
-	Scanner *bufio.Scanner
+	Scanner                        *bufio.Scanner
+	Verbose                        bool
+	BatchSize                      int
 }
 
 // NewImportCmd creates and returns an import command for indice object
@@ -37,6 +37,8 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	var file string
+	var verbose bool
+	var batchSize int
 
 	cmd := &cobra.Command{
 		Use:               "import <index-1> -F <file-1>",
@@ -62,15 +64,17 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 			opts.Scanner = scanner
+			opts.Verbose = verbose
+			opts.BatchSize = batchSize
 
 			return runImportCmd(opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
-
 	cmd.Flags().BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Automatically generate object ID if not exist")
-
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Activate verbose logging")
+	cmd.Flags().IntVarP(&batchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 	return cmd
 }
 
@@ -84,15 +88,21 @@ func runImportCmd(opts *ImportOptions) error {
 
 	// Move the following code to another module?
 	var (
-		batchSize  = 1000
+		batchSize  = opts.BatchSize
 		batch      = make([]interface{}, 0, batchSize)
 		count      = 0
 		totalCount = 0
+		log        = logrus.New()
 	)
+
+	log.Formatter = new(logrus.TextFormatter)
+	log.Formatter.(*logrus.TextFormatter).DisableColors = true
+	log.Formatter.(*logrus.TextFormatter).DisableTimestamp = true
 
 	options := []interface{}{opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist)}
 
-	opts.IO.StartProgressIndicatorWithLabel("Importing records")
+	opts.IO.StartProgressIndicatorWithLabel("Importing records...")
+	elapsed := time.Now()
 	for opts.Scanner.Scan() {
 		line := opts.Scanner.Text()
 		if line == "" {
@@ -108,21 +118,28 @@ func runImportCmd(opts *ImportOptions) error {
 		count++
 
 		if count == batchSize {
+			start := time.Now()
 			if _, err := indice.SaveObjects(batch, options...); err != nil {
 				return err
 			}
-
+			if opts.Verbose {
+				log.Infof("Added [%d] records in %.3f seconds", count, time.Since(start).Seconds())
+			}
 			batch = make([]interface{}, 0, batchSize)
 			totalCount += count
-			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d objects", totalCount))
+			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d objects so far...", totalCount))
 			count = 0
 		}
 	}
 
 	if count > 0 {
 		totalCount += count
+		start := time.Now()
 		if _, err := indice.SaveObjects(batch, options...); err != nil {
 			return err
+		}
+		if opts.Verbose {
+			log.Infof("Added [%d] records in %.3f seconds", count, time.Since(start).Seconds())
 		}
 	}
 
@@ -134,7 +151,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s objects to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s objects to %s in %.3f seconds\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index, time.Since(elapsed).Seconds())
 	}
 
 	return nil
