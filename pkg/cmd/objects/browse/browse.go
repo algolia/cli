@@ -12,20 +12,21 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-type ExportOptions struct {
+type BrowseOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)
 
-	PrintFlags *cmdutil.PrintFlags
+	Indice       string
+	SearchParams map[string]interface{}
 
-	Index string
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewBrowseCmd creates and returns a browse command for index objects
 func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &ExportOptions{
+	opts := &BrowseOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
@@ -45,25 +46,32 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia objects browse TEST_PRODUCTS_1
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Index = args[0]
+			opts.Indice = args[0]
+
+			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParams...)
+			if err != nil {
+				return err
+			}
+			opts.SearchParams = searchParams
 
 			return runBrowseCmd(opts)
 		},
 	}
 
+	cmdutil.AddSearchFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
 
-func runBrowseCmd(opts *ExportOptions) error {
+func runBrowseCmd(opts *BrowseOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Index)
-	res, err := indice.BrowseObjects()
+	indice := client.InitIndex(opts.Indice)
+	res, err := indice.BrowseObjects(opts.SearchParams)
 	if err != nil {
 		return err
 	}
