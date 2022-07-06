@@ -22,8 +22,9 @@ type ImportOptions struct {
 	SearchClient                   func() (*search.Client, error)
 	Index                          string
 	AutoGenerateObjectIDIfNotExist bool
-	Scanner                        *bufio.Scanner
-	BatchSize                      int
+
+	Scanner   *bufio.Scanner
+	BatchSize int
 }
 
 // NewImportCmd creates and returns an import command for indice object
