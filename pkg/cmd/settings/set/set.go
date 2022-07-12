@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -20,7 +21,8 @@ type SetOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Settings search.Settings
+	Settings          search.Settings
+	ForwardToReplicas bool
 
 	Index string
 }
@@ -63,6 +65,8 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+
 	cmdutil.AddIndexSettingsFlags(cmd)
 
 	return cmd
@@ -75,7 +79,7 @@ func runSetCmd(opts *SetOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Fetching settings for index ", opts.Index))
-	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings)
+	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings, opt.ForwardToReplicas(opts.ForwardToReplicas))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
