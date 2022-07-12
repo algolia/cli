@@ -36,14 +36,14 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "search  <index-name>",
+		Use:               "search  <index>",
 		Short:             "Search the given index",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Example: heredoc.Doc(`
 			# Search for objects in your index
-			algolia search PRODUCTS --query "foo"
+			$ algolia search PRODUCTS --query "foo"
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

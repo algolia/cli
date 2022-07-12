@@ -35,7 +35,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	var file string
 
 	cmd := &cobra.Command{
-		Use:               "import <index_1> -F <file_1>",
+		Use:               "import <index> -F <file>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Import rules to the specified index",

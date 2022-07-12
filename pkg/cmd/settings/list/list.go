@@ -32,7 +32,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
-		Use:               "list <index-name>",
+		Use:               "list <index>",
 		Args:              validators.ExactArgs(1),
 		Short:             "List the settings of the specified index.",
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),

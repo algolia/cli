@@ -27,17 +27,17 @@ jobs:
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-      - name: Docs checkout
-        uses: actions/checkout@v3
-        with:
-          repository: algolia/cli-docs
-          path: docs
-          fetch-depth: 0
-          token: ${{secrets.GORELEASER_GITHUB_TOKEN}}
-      - name: Update docs
-        env:
-          GIT_COMMITTER_NAME: algolia-ci
-          GIT_AUTHOR_NAME: algolia-ci
-          GIT_COMMITTER_EMAIL: noreply@algolia.com
-          GIT_AUTHOR_EMAIL: noreply@algolia.com
-        run: make docs-bump
+      # - name: Docs checkout
+      #   uses: actions/checkout@v3
+      #   with:
+      #     repository: algolia/cli-docs
+      #     path: docs
+      #     fetch-depth: 0
+      #     token: ${{secrets.GORELEASER_GITHUB_TOKEN}}
+      # - name: Update docs
+      #   env:
+      #     GIT_COMMITTER_NAME: algolia-ci
+      #     GIT_AUTHOR_NAME: algolia-ci
+      #     GIT_COMMITTER_EMAIL: noreply@algolia.com
+      #     GIT_AUTHOR_EMAIL: noreply@algolia.com
+      #   run: make docs-bump
