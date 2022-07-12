@@ -48,7 +48,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParams...)
+			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutil.AddSearchFlags(cmd)
+	cmdutil.AddSearchParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd

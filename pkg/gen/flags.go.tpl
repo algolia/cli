@@ -6,13 +6,15 @@ import (
     "github.com/spf13/cobra"
     "github.com/MakeNowJust/heredoc"
 )
-
-var SearchParams = []string{ {{ range $resName, $resData := .SpecFlags }}
+{{ range $resName, $resData := .SpecFlags }}
+var {{ $resName | capitalize }} = []string{
     {{ range $flagName, $flag := $resData.Flags }}"{{ $flagName }}",
-    {{ end }}{{ end }}
+    {{ end }}
 }
+{{ end }}
 
-func AddSearchFlags(cmd *cobra.Command) { {{ range $resName, $resData := .SpecFlags }}{{ range $flagName, $flag := $resData.Flags }}{{ if eq $flag.Type "string" }}
+{{ range $resName, $resData := .SpecFlags }}
+func Add{{ $resName | capitalize }}Flags(cmd *cobra.Command) { {{ range $flagName, $flag := $resData.Flags }}{{ if eq $flag.Type "string" }}
         cmd.Flags().String("{{ $flagName }}", {{ if $flag.Def }}"{{ $flag.Def }}"{{ else }}""{{ end }}, heredoc.Doc(`{{ $flag.Usage }}`)){{ if $flag.Categories }}
         cmd.Flags().SetAnnotation("{{ $flagName }}", "Categories", []string{ {{ range $category := $flag.Categories }}"{{ $category }}", {{ end }} }){{ end }}{{ else if eq $flag.Type "boolean" }}
         cmd.Flags().Bool("{{ $flagName }}", {{ $flag.Def }}, heredoc.Doc(`{{ $flag.Usage }}`)){{ if $flag.Categories }}
@@ -27,6 +29,6 @@ func AddSearchFlags(cmd *cobra.Command) { {{ range $resName, $resData := .SpecFl
         cmd.Flags().SetAnnotation("{{ $flagName }}", "Categories", []string{ {{ range $category := $flag.Categories }}"{{ $category }}", {{ end }} }){{ end }}{{ else }}
         {{ $flagName }} := NewJSONVar([]string{ {{ range $val := $flag.OneOf }}"{{ $val }}",{{ end }} }...)
         cmd.Flags().Var({{ $flagName }}, "{{ $flagName }}", heredoc.Doc(`{{ $flag.Usage }}`)){{ if $flag.Categories }}
-        cmd.Flags().SetAnnotation("{{ $flagName }}", "Categories", []string{ {{ range $category := $flag.Categories }}"{{ $category }}", {{ end }} }){{ end }}{{ end }}{{ end }}{{ end }}
+        cmd.Flags().SetAnnotation("{{ $flagName }}", "Categories", []string{ {{ range $category := $flag.Categories }}"{{ $category }}", {{ end }} }){{ end }}{{ end }}{{ end }}
 }
-
+{{ end }}

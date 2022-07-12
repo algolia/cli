@@ -54,7 +54,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			opts.Query = query
 
-			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParams...)
+			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutil.AddSearchFlags(cmd)
+	cmdutil.AddSearchParamsObjectFlags(cmd)
 
 	opts.PrintFlags.AddFlags(cmd)
 

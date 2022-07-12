@@ -3,8 +3,9 @@ package settings
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/settings/get"
 	importSettings "github.com/algolia/cli/pkg/cmd/settings/import"
-	"github.com/algolia/cli/pkg/cmd/settings/list"
+	"github.com/algolia/cli/pkg/cmd/settings/set"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -15,7 +16,8 @@ func NewSettingsCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Manage your Algolia settings",
 	}
 
-	cmd.AddCommand(list.NewListCmd(f))
+	cmd.AddCommand(get.NewGetCmd(f))
+	cmd.AddCommand(set.NewSetCmd(f))
 	cmd.AddCommand(importSettings.NewImportCmd(f))
 
 	return cmd
