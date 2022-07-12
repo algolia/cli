@@ -34,7 +34,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "clear <index-name>",
+		Use:               "clear <index>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Clear the specified index",

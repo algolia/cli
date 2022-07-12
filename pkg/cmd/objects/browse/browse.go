@@ -34,7 +34,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "browse <index-1>",
+		Use:               "browse <index>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Browse the index objects",

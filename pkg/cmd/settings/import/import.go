@@ -35,13 +35,13 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	var settingsFile string
 
 	cmd := &cobra.Command{
-		Use:               "import <index> -F <settings-file>",
+		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import the index settings from the specified given file",
+		Short:             "Import the index settings from the given file",
 		Example: heredoc.Doc(`
 			# Import the settings from "settings.json" to the "TEST_PRODUCTS_1" index
-			algolia settings import TEST_PRODUCTS_1 -F settings.json
+			$ algolia settings import TEST_PRODUCTS_1 -F settings.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
