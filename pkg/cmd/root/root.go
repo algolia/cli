@@ -11,10 +11,10 @@ import (
 	"github.com/algolia/cli/pkg/cmd/index"
 	"github.com/algolia/cli/pkg/cmd/objects"
 	"github.com/algolia/cli/pkg/cmd/open"
-	"github.com/algolia/cli/pkg/cmd/rule"
+	"github.com/algolia/cli/pkg/cmd/rules"
 	"github.com/algolia/cli/pkg/cmd/search"
 	"github.com/algolia/cli/pkg/cmd/settings"
-	"github.com/algolia/cli/pkg/cmd/synonym"
+	"github.com/algolia/cli/pkg/cmd/synonyms"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/version"
 )
@@ -68,8 +68,8 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(objects.NewObjectsCmd(f))
 	cmd.AddCommand(apikey.NewAPIKeyCmd(f))
 	cmd.AddCommand(settings.NewSettingsCmd(f))
-	cmd.AddCommand(rule.NewRuleCmd(f))
-	cmd.AddCommand(synonym.NewSynonymCmd(f))
+	cmd.AddCommand(rules.NewRulesCmd(f))
+	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
 
 	return cmd
 }

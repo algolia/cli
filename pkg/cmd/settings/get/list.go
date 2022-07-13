@@ -1,4 +1,4 @@
-package list
+package get
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-type ListOptions struct {
+type GetOptions struct {
 	Config *config.Config
 	IO     *iostreams.IOStreams
 
@@ -23,18 +23,18 @@ type ListOptions struct {
 	PrintFlags *cmdutil.PrintFlags
 }
 
-// NewListCmd creates and returns a get command for settings
-func NewListCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &ListOptions{
+// NewGetCmd creates and returns a get command for settings
+func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := &GetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
-		Use:               "list <index-name>",
+		Use:               "get <index>",
 		Args:              validators.ExactArgs(1),
-		Short:             "List the settings of the specified index.",
+		Short:             "Get the settings of the specified index.",
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
@@ -48,7 +48,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runListCmd(opts *ListOptions) error {
+func runListCmd(opts *GetOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err

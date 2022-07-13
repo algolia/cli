@@ -34,7 +34,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "browse <index-1>",
+		Use:               "browse <index>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Browse the index objects",
@@ -48,7 +48,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParams...)
+			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmdutil.AddSearchFlags(cmd)
+	cmdutil.AddSearchParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd

@@ -42,7 +42,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "copy <source-index-name> <destination-index-name>",
+		Use:               "copy <source-index> <destination-index>",
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Make a copy of an index",
@@ -50,13 +50,13 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 			Make a copy of an index, including its records, settings, synonyms, and rules except for the "enableReRanking" setting.
 		`),
 		Example: heredoc.Doc(`
-			Copy the records, settings, synonyms and rules from the "TEST_PRODUCTS_1" index to the "TEST_PRODUCTS_2" index
+			# Copy the records, settings, synonyms and rules from the "TEST_PRODUCTS_1" index to the "TEST_PRODUCTS_2" index
 			$ algolia index copy TEST_PRODUCTS DEV_PRODUCTS
 
-			Copy only the synonyms of the "TEST_PRODUCTS_1" to the "TEST_PRODUCTS_2" index
+			# Copy only the synonyms of the "TEST_PRODUCTS_1" to the "TEST_PRODUCTS_2" index
 			$ algolia index copy TEST_PRODUCTS DEV_PRODUCTS --scope synonyms
 
-			Copy the synonyms and rules of the index "TEST_PRODUCTS_1" to the "TEST_PRODUCTS_2" index
+			# Copy the synonyms and rules of the index "TEST_PRODUCTS_1" to the "TEST_PRODUCTS_2" index
 			$ algolia index copy TEST_PRODUCTS DEV_PRODUCTS --scope synonyms,rules
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

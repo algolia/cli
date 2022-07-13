@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/pflag"
 
@@ -24,7 +23,7 @@ func main() {
 
 func run(args []string) error {
 	flags := pflag.NewFlagSet("", pflag.ContinueOnError)
-	dir := flags.StringP("doc-path", "", "", "Path directory where you want generate doc files")
+	dir := flags.StringP("app_data-path", "", "", "Path directory where you want generate documentation data files")
 	help := flags.BoolP("help", "h", false, "Help about any command")
 
 	if err := flags.Parse(args); err != nil {
@@ -37,7 +36,7 @@ func run(args []string) error {
 	}
 
 	if *dir == "" {
-		return fmt.Errorf("error: --doc-path not set")
+		return fmt.Errorf("error: --app_data-path not set")
 	}
 
 	ios, _, _, _ := iostreams.Test()
@@ -51,14 +50,10 @@ func run(args []string) error {
 		return err
 	}
 
-	if err := docs.GenMarkdownTree(rootCmd, *dir, linkHandler); err != nil {
+	if err := docs.GenYamlTree(rootCmd, *dir); err != nil {
 		return err
 	}
 
 	return nil
 
-}
-
-func linkHandler(name string) string {
-	return fmt.Sprintf("./%s", strings.TrimSuffix(name, ".md"))
 }

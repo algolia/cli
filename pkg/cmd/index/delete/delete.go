@@ -34,7 +34,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "delete <index-name>",
+		Use:               "delete <index>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Delete an index",
@@ -45,6 +45,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Example: heredoc.Doc(`
 			# Delete the index named "TEST_PRODUCTS_1"
 			$ algolia indices delete TEST_PRODUCTS_1
+
+			# Delete the index named "TEST_PRODUCTS_1", skipping the confirmation prompt
+			$ algolia indices delete TEST_PRODUCTS_1 -y
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
