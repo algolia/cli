@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
@@ -16,16 +17,14 @@ import (
 )
 
 type ImportOptions struct {
-	Config *config.Config
-	IO     *iostreams.IOStreams
-
-	SearchClient func() (*search.Client, error)
-
-	Index string
-
+	Config                         *config.Config
+	IO                             *iostreams.IOStreams
+	SearchClient                   func() (*search.Client, error)
+	Index                          string
 	AutoGenerateObjectIDIfNotExist bool
 
-	Scanner *bufio.Scanner
+	Scanner   *bufio.Scanner
+	BatchSize int
 }
 
 // NewImportCmd creates and returns an import command for indice object
@@ -62,15 +61,13 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 			opts.Scanner = scanner
-
 			return runImportCmd(opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
-
 	cmd.Flags().BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Automatically generate object ID if not exist")
-
+	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 	return cmd
 }
 
@@ -84,7 +81,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	// Move the following code to another module?
 	var (
-		batchSize  = 1000
+		batchSize  = opts.BatchSize
 		batch      = make([]interface{}, 0, batchSize)
 		count      = 0
 		totalCount = 0
@@ -93,6 +90,7 @@ func runImportCmd(opts *ImportOptions) error {
 	options := []interface{}{opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist)}
 
 	opts.IO.StartProgressIndicatorWithLabel("Importing records")
+	elapsed := time.Now()
 	for opts.Scanner.Scan() {
 		line := opts.Scanner.Text()
 		if line == "" {
@@ -111,10 +109,9 @@ func runImportCmd(opts *ImportOptions) error {
 			if _, err := indice.SaveObjects(batch, options...); err != nil {
 				return err
 			}
-
 			batch = make([]interface{}, 0, batchSize)
 			totalCount += count
-			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d objects", totalCount))
+			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d objects in %v", totalCount, time.Since(elapsed)))
 			count = 0
 		}
 	}
@@ -134,7 +131,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s objects to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s objects to %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index, time.Since(elapsed))
 	}
 
 	return nil
