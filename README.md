@@ -8,7 +8,7 @@
 
 ### MacOS
 
-`algolia` is available on on Homebrew and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
+`algolia` is available on Homebrew and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
 
 ```bash
 brew install algolia/algolia-cli/algolia
