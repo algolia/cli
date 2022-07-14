@@ -19,7 +19,6 @@ type SearchOptions struct {
 	SearchClient func() (*algoliaSearch.Client, error)
 
 	Indice string
-	Query  string
 
 	SearchParams map[string]interface{}
 
@@ -47,13 +46,6 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
-
-			query, err := cmd.Flags().GetString("query")
-			if err != nil {
-				return err
-			}
-			opts.Query = query
-
 			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
@@ -87,7 +79,13 @@ func runSearchCmd(opts *SearchOptions) error {
 	opts.IO.StartProgressIndicatorWithLabel("Searching")
 
 	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	res, err := indice.Search(opts.Query, opt.ExtraOptions(opts.SearchParams))
+	query, ok := opts.SearchParams["query"].(string)
+	if !ok {
+		query = ""
+	} else {
+		delete(opts.SearchParams, "query")
+	}
+	res, err := indice.Search(query, opt.ExtraOptions(opts.SearchParams))
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
