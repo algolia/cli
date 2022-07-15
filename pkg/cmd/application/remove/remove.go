@@ -64,6 +64,11 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 
 // runRemoveCmd executes the remove command
 func runRemoveCmd(opts *RemoveOptions) error {
+	_, err := opts.config.Application.GetID()
+	if err != nil {
+		return fmt.Errorf("unable to find application %s", opts.config.Application.Name)
+	}
+
 	if opts.DoConfirm {
 		var confirmed bool
 		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove the application %q?", opts.config.Application.Name), &confirmed)
@@ -75,7 +80,7 @@ func runRemoveCmd(opts *RemoveOptions) error {
 		}
 	}
 
-	err := opts.config.Application.Remove()
+	err = opts.config.Application.Remove()
 	if err != nil {
 		return err
 	}
