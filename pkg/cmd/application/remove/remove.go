@@ -66,7 +66,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 func runRemoveCmd(opts *RemoveOptions) error {
 	_, err := opts.config.Application.GetID()
 	if err != nil {
-		return fmt.Errorf("unable to find application %s", opts.config.Application.Name)
+		return fmt.Errorf("the specified app does not exist: %s", opts.config.Application.Name)
 	}
 
 	if opts.DoConfirm {
