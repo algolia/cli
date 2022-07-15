@@ -98,8 +98,6 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 func Execute() exitCode {
 	hasDebug := os.Getenv("DEBUG") != ""
 	hasTelemetry := os.Getenv("ALGOLIA_CLI_TELEMETRY") != "0"
-	fmt.Println("hasDebug:", hasDebug)
-	fmt.Println("hasTelemetry:", hasTelemetry)
 
 	// Set up the command factory.
 	cfg := config.Config{}
