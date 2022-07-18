@@ -136,8 +136,9 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 		AnonymousId: metadata.UserId,
 		UserId:      metadata.UserId,
 		Traits: map[string]interface{}{
-			"app":                     AppName,
 			"configured_applications": metadata.ConfiguredApplicationsNb,
+			"version":                 metadata.CLIVersion,
+			"os":                      metadata.OS,
 		},
 	})
 }
@@ -154,8 +155,6 @@ func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) erro
 			"invocation_id": metadata.InvocationID,
 			"app_id":        metadata.AppID,
 			"command":       metadata.CommandPath,
-			"version":       metadata.CLIVersion,
-			"os":            metadata.OS,
 		},
 	})
 }
