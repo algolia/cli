@@ -138,7 +138,7 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 		Traits: map[string]interface{}{
 			"configured_applications": metadata.ConfiguredApplicationsNb,
 			"version":                 metadata.CLIVersion,
-			"os":                      metadata.OS,
+			"operating_system":        metadata.OS,
 		},
 	})
 }
