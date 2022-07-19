@@ -198,7 +198,7 @@ func Execute() exitCode {
 }
 
 // createContext creates a context with telemetry.
-func createContext(cmd *cobra.Command, stderr io.Writer, hasTelemetry bool, hasDebug bool) (context.Context, error) {
+func createContext(cmd *cobra.Command, stderr io.Writer, hasDebug bool, hasTelemetry bool) (context.Context, error) {
 	ctx := context.Background()
 	telemetryMetadata := telemetry.NewEventMetadata()
 	updatedCtx := telemetry.WithEventMetadata(ctx, telemetryMetadata)
