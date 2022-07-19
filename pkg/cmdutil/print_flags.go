@@ -23,7 +23,7 @@ func IsNoCompatiblePrinterError(err error) bool {
 
 type PrintFlags struct {
 	JSONPrintFlags     *JSONPrintFlags
-	TemplatePrintFlags *GoTemplatePrintFlags
+	JSONPathPrintFlags *JSONPathPrintFlags
 
 	OutputFormat        *string
 	OutputFlagSpecified func() bool
@@ -50,7 +50,7 @@ func (e NoCompatiblePrinterError) Error() string {
 func (f *PrintFlags) AllowedFormats() []string {
 	ret := []string{}
 	ret = append(ret, f.JSONPrintFlags.AllowedFormats()...)
-	ret = append(ret, f.TemplatePrintFlags.AllowedFormats()...)
+	ret = append(ret, f.JSONPathPrintFlags.AllowedFormats()...)
 	return ret
 }
 
@@ -66,8 +66,8 @@ func (f *PrintFlags) ToPrinter() (printers.Printer, error) {
 		}
 	}
 
-	if f.TemplatePrintFlags != nil {
-		if p, err := f.TemplatePrintFlags.ToPrinter(outputFormat); !IsNoCompatiblePrinterError(err) {
+	if f.JSONPathPrintFlags != nil {
+		if p, err := f.JSONPathPrintFlags.ToPrinter(outputFormat); !IsNoCompatiblePrinterError(err) {
 			return p, err
 		}
 	}
@@ -77,7 +77,7 @@ func (f *PrintFlags) ToPrinter() (printers.Printer, error) {
 
 func (f *PrintFlags) AddFlags(cmd *cobra.Command) {
 	f.JSONPrintFlags.AddFlags(cmd)
-	f.TemplatePrintFlags.AddFlags(cmd)
+	f.JSONPathPrintFlags.AddFlags(cmd)
 
 	if f.OutputFormat != nil {
 		cmd.Flags().StringVarP(f.OutputFormat, "output", "o", *f.OutputFormat, fmt.Sprintf(`Output format. One of: (%s).`, strings.Join(f.AllowedFormats(), ", ")))
@@ -104,6 +104,6 @@ func NewPrintFlags() *PrintFlags {
 		OutputFormat: &outputFormat,
 
 		JSONPrintFlags:     NewJSONPrintFlags(),
-		TemplatePrintFlags: NewGoTemplatePrintFlags(),
+		JSONPathPrintFlags: NewJSONPathPrintFlags(),
 	}
 }
