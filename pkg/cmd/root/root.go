@@ -206,7 +206,7 @@ func createContext(cmd *cobra.Command, stderr io.Writer, hasDebug bool, hasTelem
 	var telemetryClient telemetry.TelemetryClient
 	var err error
 	if hasTelemetry {
-		telemetryClient, err = telemetry.NewAnalyticsTelemetryClient()
+		telemetryClient, err = telemetry.NewAnalyticsTelemetryClient(hasDebug)
 		// Fail silently if telemetry is not available unless in debug mode.
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error creating telemetry client: %s\n", err)

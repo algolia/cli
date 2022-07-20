@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"log"
 	"net"
 	"runtime"
 
@@ -29,9 +30,32 @@ type AnalyticsTelemetryClient struct {
 	client analytics.Client
 }
 
-func NewAnalyticsTelemetryClient() (TelemetryClient, error) {
+type AnalyticsTelemetryLogger struct {
+	debug  bool
+	logger *log.Logger
+}
+
+func (l AnalyticsTelemetryLogger) Logf(format string, args ...interface{}) {
+	if l.debug {
+		l.logger.Printf("INFO: "+format, args...)
+	}
+}
+
+func (l AnalyticsTelemetryLogger) Errorf(format string, args ...interface{}) {
+	// The telemetry should always fail silently, unless in debug mode
+	if l.debug {
+		l.logger.Printf("ERROR: "+format, args...)
+	}
+}
+
+func newTelemetryLogger(debug bool) AnalyticsTelemetryLogger {
+	return AnalyticsTelemetryLogger{debug, log.New(nil, "telemetry ", log.LstdFlags)}
+}
+
+func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	client, err := analytics.NewWithConfig("", analytics.Config{
 		Endpoint: telemetryAnalyticsURL,
+		Logger:   newTelemetryLogger(debug),
 	})
 	if err != nil {
 		return nil, err
