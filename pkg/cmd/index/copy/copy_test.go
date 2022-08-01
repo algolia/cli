@@ -1,8 +1,6 @@
 package copy
 
 import (
-	"bytes"
-	"io/ioutil"
 	"testing"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -98,42 +96,6 @@ func TestNewCopyCmd(t *testing.T) {
 	}
 }
 
-func runCommand(http *httpmock.Registry, isTTY bool, cli string) (*test.CmdOut, error) {
-	io, _, stdout, stderr := iostreams.Test()
-	io.SetStdoutTTY(isTTY)
-	io.SetStdinTTY(isTTY)
-	io.SetStderrTTY(isTTY)
-
-	client := search.NewClientWithConfig(search.Configuration{
-		Requester: http,
-	})
-
-	factory := &cmdutil.Factory{
-		IOStreams: io,
-		SearchClient: func() (*search.Client, error) {
-			return client, nil
-		},
-	}
-
-	cmd := NewCopyCmd(factory, nil)
-
-	argv, err := shlex.Split(cli)
-	if err != nil {
-		return nil, err
-	}
-	cmd.SetArgs(argv)
-
-	cmd.SetIn(&bytes.Buffer{})
-	cmd.SetOut(ioutil.Discard)
-	cmd.SetErr(ioutil.Discard)
-
-	_, err = cmd.ExecuteC()
-	return &test.CmdOut{
-		OutBuf: stdout,
-		ErrBuf: stderr,
-	}, err
-}
-
 func Test_runCreateCmd(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -175,7 +137,9 @@ func Test_runCreateCmd(t *testing.T) {
 			r.Register(httpmock.REST("POST", "1/indexes/foo/operation"), httpmock.JSONResponse(search.UpdateTaskRes{}))
 			defer r.Verify(t)
 
-			out, err := runCommand(&r, tt.isTTY, tt.cli)
+			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
+			cmd := NewCopyCmd(f, nil)
+			out, err := test.Execute(cmd, tt.cli, out)
 			if err != nil {
 				t.Fatal(err)
 			}

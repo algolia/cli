@@ -18,23 +18,23 @@ func Test_runBrowseCmd(t *testing.T) {
 		wantOut string
 	}{
 		{
-			name:    "single object",
+			name:    "single rule",
 			cli:     "foo",
 			hits:    []map[string]interface{}{{"objectID": "foo"}},
-			wantOut: "{\"objectID\":\"foo\"}\n",
+			wantOut: "{\"consequence\":{},\"objectID\":\"foo\"}\n",
 		},
 		{
-			name:    "multiple objects",
+			name:    "multiple rules",
 			cli:     "foo",
 			hits:    []map[string]interface{}{{"objectID": "foo"}, {"objectID": "bar"}},
-			wantOut: "{\"objectID\":\"foo\"}\n{\"objectID\":\"bar\"}\n",
+			wantOut: "{\"consequence\":{},\"objectID\":\"foo\"}\n{\"consequence\":{},\"objectID\":\"bar\"}\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/browse"), httpmock.JSONResponse(search.QueryRes{
+			r.Register(httpmock.REST("POST", "1/indexes/foo/rules/search"), httpmock.JSONResponse(search.SearchSynonymsRes{
 				Hits: tt.hits,
 			}))
 			defer r.Verify(t)

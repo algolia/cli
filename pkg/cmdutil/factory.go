@@ -9,6 +9,6 @@ import (
 
 type Factory struct {
 	IOStreams    *iostreams.IOStreams
-	Config       *config.Config
+	Config       config.IConfig
 	SearchClient func() (*search.Client, error)
 }

@@ -14,7 +14,7 @@ import (
 
 // DeleteOptions represents the options for the create command
 type DeleteOptions struct {
-	config *config.Config
+	config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)

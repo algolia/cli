@@ -16,7 +16,7 @@ import (
 
 // ListOptions represents the options for the list command
 type AddOptions struct {
-	config *config.Config
+	config config.IConfig
 	IO     *iostreams.IOStreams
 }
 
@@ -29,10 +29,10 @@ func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command
 	cmd := &cobra.Command{
 		Use:   "list",
 		Args:  validators.NoArgs,
-		Short: "List the configured application(s)",
+		Short: "List the configured profile(s)",
 		Example: heredoc.Doc(`
-			# List the configured applications
-			$ algolia application list
+			# List the configured profiles
+			$ algolia profile list
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {
@@ -48,10 +48,17 @@ func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command
 
 // runListCmd executes the list command
 func runListCmd(opts *AddOptions) error {
+	profiles := opts.config.ConfiguredProfiles()
+	if len(profiles) == 0 {
+		fmt.Fprintln(opts.IO.ErrOut, "No configured profiles")
+		fmt.Fprintln(opts.IO.ErrOut, "Use `algolia profile add` to add a profile")
+		return nil
+	}
+
 	table := printers.NewTablePrinter(opts.IO)
 	if table.IsTTY() {
 		table.AddField("NAME", nil, nil)
-		table.AddField("ID", nil, nil)
+		table.AddField("APPLICATION ID", nil, nil)
 		table.AddField("NUMBER OF INDICES", nil, nil)
 		table.AddField("DEFAULT", nil, nil)
 		table.EndRow()
@@ -59,18 +66,18 @@ func runListCmd(opts *AddOptions) error {
 
 	cs := opts.IO.ColorScheme()
 
-	opts.IO.StartProgressIndicatorWithLabel("Fetching configured applications")
-	for _, app := range opts.config.ConfiguredApplications() {
-		client := search.NewClient(app.ID, app.AdminAPIKey)
+	opts.IO.StartProgressIndicatorWithLabel("Fetching configured profiles")
+	for _, profile := range profiles {
+		client := search.NewClient(profile.ApplicationID, profile.AdminAPIKey)
 		res, err := client.ListIndices()
 		if err != nil {
 			return err
 		}
 
-		table.AddField(app.Name, nil, nil)
-		table.AddField(app.ID, nil, nil)
+		table.AddField(profile.Name, nil, nil)
+		table.AddField(profile.ApplicationID, nil, nil)
 		table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
-		if app.Default {
+		if profile.Default {
 			table.AddField(cs.SuccessIcon(), nil, nil)
 		} else {
 			table.AddField("", nil, nil)

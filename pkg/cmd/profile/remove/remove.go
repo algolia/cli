@@ -13,10 +13,12 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-// RemoveOptions represents the options for the list command
+// RemoveOptions represents the options for the remove command
 type RemoveOptions struct {
-	config *config.Config
+	config config.IConfig
 	IO     *iostreams.IOStreams
+
+	Profile string
 
 	DoConfirm bool
 }
@@ -31,22 +33,26 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:               "remove <app-name>",
+		Use:               "remove <profile>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.ConfiguredApplicationsCompletionFunc(f),
-		Short:             "Remove the specified application",
-		Long:              `Remove the specified application from the configuration.`,
+		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
+		Short:             "Remove the specified profile",
+		Long:              `Remove the specified profile from the configuration.`,
 		Example: heredoc.Doc(`
-			# Remove the application named "my-app" from the configuration
-			$ algolia application remove my-app
+			# Remove the profile named "my-app" from the configuration
+			$ algolia profile remove my-app
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.config.Application.Name = args[0]
+			opts.Profile = args[0]
 			if !confirm {
-				if !opts.IO.CanPrompt() {
+				if !opts.IO.CanPrompt() && opts.Profile == opts.config.Default().Name {
 					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
 				opts.DoConfirm = true
+			}
+
+			if !opts.config.ProfileExists(opts.Profile) {
+				return fmt.Errorf("the specified profile does not exist: '%s'", opts.Profile)
 			}
 
 			if runF != nil {
@@ -64,14 +70,9 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 
 // runRemoveCmd executes the remove command
 func runRemoveCmd(opts *RemoveOptions) error {
-	_, err := opts.config.Application.GetID()
-	if err != nil {
-		return fmt.Errorf("the specified app does not exist: %s", opts.config.Application.Name)
-	}
-
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove the application %q?", opts.config.Application.Name), &confirmed)
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove '%s', the default profile?", opts.config.Profile().Name), &confirmed)
 		if err != nil {
 			return err
 		}
@@ -80,14 +81,21 @@ func runRemoveCmd(opts *RemoveOptions) error {
 		}
 	}
 
-	err = opts.config.Application.Remove()
+	err := opts.config.RemoveProfile(opts.Profile)
 	if err != nil {
 		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Application successfully removed: %s\n", cs.SuccessIcon(), opts.config.Application.Name)
+		extra := "."
+		if opts.config.Default().Name == opts.Profile {
+			extra = ". Set a new default profile with 'algolia profile setdefault'."
+		}
+		if len(opts.config.ConfiguredProfiles()) == 0 {
+			extra = ". Add a profile with 'algolia profile add'."
+		}
+		fmt.Fprintf(opts.IO.Out, "%s '%s' removed successfully%s\n", cs.SuccessIcon(), opts.Profile, extra)
 	}
 
 	return nil

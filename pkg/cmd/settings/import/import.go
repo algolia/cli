@@ -15,7 +15,7 @@ import (
 )
 
 type ImportOptions struct {
-	Config *config.Config
+	Config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)

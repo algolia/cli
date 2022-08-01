@@ -1,20 +1,39 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/BurntSushi/toml"
+	"github.com/algolia/cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
+type IConfig interface {
+	InitConfig()
+
+	ConfiguredProfiles() []*Profile
+	ProfileNames() []string
+
+	ProfileExists(name string) bool
+	RemoveProfile(name string) error
+	SetDefaultProfile(name string) error
+
+	ApplicationIDExists(appID string) (bool, string)
+
+	Profile() *Profile
+	Default() *Profile
+}
+
 // Config handles all overall configuration for the CLI
 type Config struct {
 	ApplicationName string
 
-	Application Application
+	CurrentProfile Profile
 
 	File string
 }
@@ -60,12 +79,12 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 	return filepath.Join(configPath, "algolia")
 }
 
-// ConfiguredApplications return the applications in the configuration file
-func (c *Config) ConfiguredApplications() []*Application {
+// ConfiguredProfiles return the profiles in the configuration file
+func (c *Config) ConfiguredProfiles() []*Profile {
 	configs := viper.AllSettings()
-	applications := make([]*Application, 0, len(configs))
+	applications := make([]*Profile, 0, len(configs))
 	for appName := range configs {
-		app := &Application{
+		app := &Profile{
 			Name: appName,
 		}
 		if err := viper.UnmarshalKey(appName, app); err != nil {
@@ -77,12 +96,104 @@ func (c *Config) ConfiguredApplications() []*Application {
 	return applications
 }
 
-// ApplicationNames returns the list of name of the configured applications
-func (c *Config) ApplicationNames() []string {
+// Profile returns the current profile
+func (c *Config) Profile() *Profile {
+	return &c.CurrentProfile
+}
+
+// Default returns the default profile
+func (c *Config) Default() *Profile {
+	for _, profile := range c.ConfiguredProfiles() {
+		if profile.Default {
+			return profile
+		}
+	}
+	return nil
+}
+
+// ProfileNames returns the list of name of the configured profiles
+func (c *Config) ProfileNames() []string {
 	return viper.AllKeys()
 }
 
-// ApplicationExists check if a given application exists
-func (c *Config) AppExists(appName string) bool {
+// ProfileExists check if a profile with the given name exists
+func (c *Config) ProfileExists(appName string) bool {
 	return viper.IsSet(appName)
+}
+
+// RemoveProfile remove a profile from the configuration
+func (c *Config) RemoveProfile(name string) error {
+	runtimeViper := viper.GetViper()
+	configMap := runtimeViper.AllSettings()
+	delete(configMap, name)
+
+	buf := new(bytes.Buffer)
+
+	encodeErr := toml.NewEncoder(buf).Encode(configMap)
+	if encodeErr != nil {
+		return encodeErr
+	}
+
+	nv := viper.New()
+	nv.SetConfigType("toml") // hint to viper that we've encoded the data as toml
+
+	err := nv.ReadConfig(buf)
+	if err != nil {
+		return err
+	}
+
+	return c.write(nv)
+}
+
+// SetDefaultProfile set the default profile
+func (c *Config) SetDefaultProfile(name string) error {
+	runtimeViper := viper.GetViper()
+	configs := runtimeViper.AllSettings()
+
+	found := false
+
+	for profileName := range configs {
+		runtimeViper := viper.GetViper()
+		runtimeViper.Set(profileName+".default", false)
+
+		if profileName == name {
+			found = true
+			runtimeViper.Set(profileName+".default", true)
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("profile '%s' not found", name)
+	}
+
+	return c.write(runtimeViper)
+}
+
+// ApplicationIDExists check if an application ID exists in any profiles
+func (c *Config) ApplicationIDExists(appID string) (bool, string) {
+	for _, profile := range c.ConfiguredProfiles() {
+		if profile.ApplicationID == appID {
+			return true, profile.Name
+		}
+	}
+
+	return false, ""
+}
+
+// write writes the configuration file
+func (c *Config) write(runtimeViper *viper.Viper) error {
+	configFile := viper.ConfigFileUsed()
+	err := utils.MakePath(configFile)
+	if err != nil {
+		return err
+	}
+	runtimeViper.SetConfigFile(configFile)
+	runtimeViper.SetConfigType(filepath.Ext(configFile))
+
+	err = runtimeViper.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

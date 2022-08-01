@@ -16,7 +16,7 @@ import (
 )
 
 type SetOptions struct {
-	Config *config.Config
+	Config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)
@@ -78,11 +78,16 @@ func runSetCmd(opts *SetOptions) error {
 		return err
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Fetching settings for index ", opts.Index))
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Setting settings for index %s", opts.Index))
 	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings, opt.ForwardToReplicas(opts.ForwardToReplicas))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
+	}
+
+	cs := opts.IO.ColorScheme()
+	if opts.IO.IsStdoutTTY() {
+		fmt.Fprintf(opts.IO.Out, "%s Set settings on %v\n", cs.SuccessIcon(), opts.Index)
 	}
 
 	return nil
