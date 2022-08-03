@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/apikey"
+	"github.com/algolia/cli/pkg/cmd/art"
 	"github.com/algolia/cli/pkg/cmd/factory"
 	"github.com/algolia/cli/pkg/cmd/index"
 	"github.com/algolia/cli/pkg/cmd/objects"
@@ -91,6 +92,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(rules.NewRulesCmd(f))
 	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
+
+	// ??? related commands
+	cmd.AddCommand(art.NewArtCmd(f))
 
 	return cmd
 }
