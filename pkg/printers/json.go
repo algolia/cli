@@ -15,7 +15,6 @@ var _ Printer = &JSONPrinter{}
 type JSONPrinter struct{}
 
 type JSONPrinterOptions struct {
-	JQ       string
 	Template string
 }
 
@@ -24,6 +23,7 @@ func (p *JSONPrinter) Print(ios *iostreams.IOStreams, data interface{}) error {
 	buf := bytes.Buffer{}
 	encoder := json.NewEncoder(&buf)
 	encoder.SetEscapeHTML(false)
+
 	if err := encoder.Encode(data); err != nil {
 		return err
 	}

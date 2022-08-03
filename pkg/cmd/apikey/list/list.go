@@ -70,7 +70,11 @@ func runListCmd(opts *ListOptions) error {
 		if err != nil {
 			return err
 		}
-		p.Print(opts.IO, res)
+		for _, key := range res.Keys {
+			if err := p.Print(opts.IO, key); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 
