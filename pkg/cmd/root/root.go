@@ -16,11 +16,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/apikey"
-	"github.com/algolia/cli/pkg/cmd/application"
 	"github.com/algolia/cli/pkg/cmd/factory"
 	"github.com/algolia/cli/pkg/cmd/index"
 	"github.com/algolia/cli/pkg/cmd/objects"
 	"github.com/algolia/cli/pkg/cmd/open"
+	"github.com/algolia/cli/pkg/cmd/profile"
 	"github.com/algolia/cli/pkg/cmd/rules"
 	"github.com/algolia/cli/pkg/cmd/search"
 	"github.com/algolia/cli/pkg/cmd/settings"
@@ -69,16 +69,16 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	})
 	cmd.SetFlagErrorFunc(rootFlagErrorFunc)
 
-	cmd.PersistentFlags().StringVarP(&f.Config.Application.Name, "application", "a", "", "The application to use")
-	_ = cmd.RegisterFlagCompletionFunc("application", cmdutil.ConfiguredApplicationsCompletionFunc(f))
+	cmd.PersistentFlags().StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
+	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
-	cmd.PersistentFlags().StringVarP(&f.Config.Application.ID, "application-id", "", "", "The application ID")
-	cmd.PersistentFlags().StringVarP(&f.Config.Application.AdminAPIKey, "admin-api-key", "", "", "The admin API key")
+	cmd.PersistentFlags().StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
+	cmd.PersistentFlags().StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
 	// CLI related commands
-	cmd.AddCommand(application.NewApplicationCmd(f))
+	cmd.AddCommand(profile.NewProfileCmd(f))
 
 	// Convenience commands
 	cmd.AddCommand(open.NewOpenCmd(f))
@@ -114,7 +114,7 @@ func Execute() exitCode {
 		if cmdutil.IsAuthCheckEnabled(cmd) {
 			if err := cmdutil.CheckAuth(cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
-				fmt.Fprintln(stderr, "Please run `algolia application add` to configure your first application.")
+				fmt.Fprintln(stderr, "Please run `algolia profile add` to configure your first profile.")
 				return authError
 			}
 		}
@@ -124,14 +124,14 @@ func Execute() exitCode {
 		}
 
 		// Initialize telemetry context.
-		appID, err := cfg.Application.GetID()
+		appID, err := cfg.Profile().GetApplicationID()
 		if err != nil {
 			appID = ""
 		}
 		telemetryMetadata := telemetry.GetEventMetadata(cmd.Context())
 		telemetryMetadata.SetCobraCommandContext(cmd)
 		telemetryMetadata.SetAppID(appID)
-		telemetryMetadata.SetConfiguredApplicationsNb(len(cfg.ConfiguredApplications()))
+		telemetryMetadata.SetConfiguredApplicationsNb(len(cfg.ConfiguredProfiles()))
 
 		ctx := cmd.Context()
 		telemetryClient := telemetry.GetTelemetryClient(ctx)

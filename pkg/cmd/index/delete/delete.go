@@ -14,7 +14,7 @@ import (
 )
 
 type DeleteOptions struct {
-	Config *config.Config
+	Config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)

@@ -13,7 +13,7 @@ import (
 
 // SearchOptions represents the options for the search command
 type SearchOptions struct {
-	Config *config.Config
+	Config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*algoliaSearch.Client, error)

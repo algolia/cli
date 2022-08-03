@@ -4,44 +4,64 @@ import (
 	"testing"
 
 	"github.com/google/shlex"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/algolia/cli/test"
 )
 
 func TestNewAddCmd(t *testing.T) {
+	cfg := test.NewDefaultConfigStub()
 	tests := []struct {
 		name      string
 		tty       bool
 		cli       string
+		cfg       config.IConfig
 		wantsErr  bool
 		wantsOpts AddOptions
 	}{
 		{
 			name:     "not interactive, missing flags",
 			cli:      "",
+			cfg:      cfg,
 			tty:      false,
 			wantsErr: true,
 		},
 		{
 			name:     "not interactive, all flags",
 			cli:      "--name my-app --app-id my-app-id --admin-api-key my-admin-api-key",
+			cfg:      cfg,
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: AddOptions{
-				Application: config.Application{
-					Name:        "my-app",
-					ID:          "my-app-id",
-					AdminAPIKey: "my-admin-api-key",
+				Profile: config.Profile{
+					Name:          "my-app",
+					ApplicationID: "my-app-id",
+					AdminAPIKey:   "my-admin-api-key",
 				},
 			},
 		},
 		{
+			name:     "not interactive, all flags, existing profile",
+			cli:      "--name default --app-id my-app-id --admin-api-key my-admin-api-key",
+			cfg:      cfg,
+			tty:      false,
+			wantsErr: true,
+		},
+		{
+			name:     "not interactive, all flags, existing app ID",
+			cli:      "--name my-app --app-id default --admin-api-key my-admin-api-key",
+			cfg:      cfg,
+			tty:      false,
+			wantsErr: true,
+		},
+		{
 			name:     "interactive, no flags",
 			cli:      "",
+			cfg:      cfg,
 			tty:      true,
 			wantsErr: false,
 		},
@@ -49,12 +69,13 @@ func TestNewAddCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			io, _, stdout, stderr := iostreams.Test()
+			io, _, _, _ := iostreams.Test()
 			io.SetStdinTTY(tt.tty)
 			io.SetStdoutTTY(tt.tty)
 
 			f := &cmdutil.Factory{
 				IOStreams: io,
+				Config:    tt.cfg,
 			}
 
 			var opts *AddOptions
@@ -74,13 +95,10 @@ func TestNewAddCmd(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			assert.Equal(t, "", stdout.String())
-			assert.Equal(t, "", stderr.String())
-
-			assert.Equal(t, tt.wantsOpts.Application.Name, opts.Application.Name)
-			assert.Equal(t, tt.wantsOpts.Application.ID, opts.Application.ID)
-			assert.Equal(t, tt.wantsOpts.Application.AdminAPIKey, opts.Application.AdminAPIKey)
-			assert.Equal(t, tt.wantsOpts.Application.Default, opts.Application.Default)
+			assert.Equal(t, tt.wantsOpts.Profile.Name, opts.Profile.Name)
+			assert.Equal(t, tt.wantsOpts.Profile.ApplicationID, opts.Profile.ApplicationID)
+			assert.Equal(t, tt.wantsOpts.Profile.AdminAPIKey, opts.Profile.AdminAPIKey)
+			assert.Equal(t, tt.wantsOpts.Profile.Default, opts.Profile.Default)
 		})
 	}
 }

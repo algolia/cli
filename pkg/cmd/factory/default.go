@@ -8,7 +8,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-func New(cfg *config.Config) *cmdutil.Factory {
+func New(cfg config.IConfig) *cmdutil.Factory {
 	f := &cmdutil.Factory{
 		Config: cfg,
 	}
@@ -25,11 +25,11 @@ func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
 
 func searchClient(f *cmdutil.Factory) func() (*search.Client, error) {
 	return func() (*search.Client, error) {
-		appID, err := f.Config.Application.GetID()
+		appID, err := f.Config.Profile().GetApplicationID()
 		if err != nil {
 			return nil, err
 		}
-		APIKey, err := f.Config.Application.GetAdminAPIKey()
+		APIKey, err := f.Config.Profile().GetAdminAPIKey()
 		if err != nil {
 			return nil, err
 		}

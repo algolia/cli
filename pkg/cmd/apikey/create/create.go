@@ -17,7 +17,7 @@ import (
 
 // CreateOptions represents the options for the create command
 type CreateOptions struct {
-	config *config.Config
+	config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)

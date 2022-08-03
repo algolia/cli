@@ -34,7 +34,7 @@ func openNames() []string {
 
 // OpenOptions represents the options for the open command
 type OpenOptions struct {
-	config *config.Config
+	config config.IConfig
 	IO     *iostreams.IOStreams
 
 	List     bool
@@ -87,11 +87,11 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 
 func runOpenCmd(opts *OpenOptions) error {
 	var applicationID string
-	app := opts.config.Application
-	if app.ID == "" {
+	profile := opts.config.Profile()
+	if profile.ApplicationID == "" {
 		applicationID = ""
 	} else {
-		applicationID = "/" + app.ID
+		applicationID = "/" + profile.ApplicationID
 	}
 
 	if opts.List || opts.Shortcut == "" {

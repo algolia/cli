@@ -1,8 +1,6 @@
 package create
 
 import (
-	"bytes"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -83,45 +81,6 @@ func TestNewCreateCmd(t *testing.T) {
 	}
 }
 
-func runCommand(isTTY bool, cli string) (*test.CmdOut, error) {
-	io, _, stdout, stderr := iostreams.Test()
-	io.SetStdoutTTY(isTTY)
-	io.SetStdinTTY(isTTY)
-	io.SetStderrTTY(isTTY)
-
-	r := httpmock.Registry{}
-	r.Register(httpmock.REST("POST", "1/keys"), httpmock.JSONResponse(search.CreateKeyRes{Key: "foo"}))
-
-	client := search.NewClientWithConfig(search.Configuration{
-		Requester: &r,
-	})
-
-	factory := &cmdutil.Factory{
-		IOStreams: io,
-		SearchClient: func() (*search.Client, error) {
-			return client, nil
-		},
-	}
-
-	cmd := NewCreateCmd(factory, nil)
-
-	argv, err := shlex.Split(cli)
-	if err != nil {
-		return nil, err
-	}
-	cmd.SetArgs(argv)
-
-	cmd.SetIn(&bytes.Buffer{})
-	cmd.SetOut(ioutil.Discard)
-	cmd.SetErr(ioutil.Discard)
-
-	_, err = cmd.ExecuteC()
-	return &test.CmdOut{
-		OutBuf: stdout,
-		ErrBuf: stderr,
-	}, err
-}
-
 func Test_runCreateCmd(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -145,7 +104,12 @@ func Test_runCreateCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := runCommand(tt.isTTY, tt.cli)
+			r := httpmock.Registry{}
+			r.Register(httpmock.REST("POST", "1/keys"), httpmock.JSONResponse(search.CreateKeyRes{Key: "foo"}))
+
+			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
+			cmd := NewCreateCmd(f, nil)
+			out, err := test.Execute(cmd, tt.cli, out)
 			if err != nil {
 				t.Fatal(err)
 			}
