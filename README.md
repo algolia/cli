@@ -10,12 +10,25 @@ See the [documentation](https://algolia.com/doc/tools/cli/) for setup and usage 
 
 ## Installation
 
+### From repository
+
+A `Makefile` is available to help installing and building the CLI.
+
+```bash
+make install
+```
+
 ### MacOS
 
 `algolia` is available on Homebrew and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
 
 ```bash
 brew tap algolia/algolia-cli
+```
+
+then
+
+```bash
 brew install algolia
 ```
 
