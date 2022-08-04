@@ -8,6 +8,7 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
+    - ./scripts/completions.sh
 
 builds:
   - <<: &build_defaults
@@ -37,6 +38,7 @@ archives:
     format: tar.gz
     files:
       - LICENSE
+      - completions/*
   - id: windows
     builds: [windows]
     <<: *archive_defaults
@@ -68,4 +70,7 @@ brews:
     description: Algolia CLI utility
     install: |
       bin.install "algolia"
+      bash_completion.install "completions/algolia.bash" => "algolia"
+      zsh_completion.install "completions/algolia.zsh" => "_algolia"
+      fish_completion.install "completions/algolia.fish"
     caveats: "❤ Thanks for installing the Algolia CLI!"
