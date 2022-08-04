@@ -104,10 +104,12 @@ func (f *JSONPathPrintFlags) ToPrinter(templateFormat string) (printers.Printer,
 func (f *JSONPathPrintFlags) AddFlags(c *cobra.Command) {
 	if f.TemplateArgument != nil {
 		c.Flags().StringVar(f.TemplateArgument, "template", *f.TemplateArgument, "Template string or path to template file to use when --output=jsonpath, --output=jsonpath-file.")
+		_ = c.Flags().SetAnnotation("template", "IsPrint", []string{"true"})
 		_ = c.MarkFlagFilename("template")
 	}
 	if f.AllowMissingKeys != nil {
 		c.Flags().BoolVar(f.AllowMissingKeys, "allow-missing-template-keys", *f.AllowMissingKeys, "If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats.")
+		_ = c.Flags().SetAnnotation("allow-missing-template-keys", "IsPrint", []string{"true"})
 	}
 }
 
