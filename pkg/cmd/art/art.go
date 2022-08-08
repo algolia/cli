@@ -42,9 +42,10 @@ func NewArtCmd(f *cmdutil.Factory) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			io := f.IOStreams
 			io.StartProgressIndicatorWithLabel("LEGENDARY QUEST ACCEPTED")
+			time.Sleep(2 * time.Second)
 			for i := 0; i < len(loadingMessages); i++ {
-				time.Sleep(2 * time.Second)
 				io.UpdateProgressIndicatorLabel(loadingMessages[i])
+				time.Sleep(2 * time.Second)
 			}
 			io.StopProgressIndicator()
 			fmt.Println(art)
