@@ -24,23 +24,33 @@ func TestNewDeleteCmd(t *testing.T) {
 		wantsOpts DeleteOptions
 	}{
 		{
-			name:     "no --confirm without tty",
+			name:     "single indice, no --confirm, without tty",
 			cli:      "foo",
 			tty:      false,
 			wantsErr: true,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				Index:     "foo",
+				Indices:   []string{"foo"},
 			},
 		},
 		{
-			name:     "--confirm without tty",
+			name:     "single indice, --confirm, without tty",
 			cli:      "foo --confirm",
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Index:     "foo",
+				Indices:   []string{"foo"},
+			},
+		},
+		{
+			name:     "multiple indices, --confirm, without tty",
+			cli:      "foo bar baz --confirm",
+			tty:      false,
+			wantsErr: false,
+			wantsOpts: DeleteOptions{
+				DoConfirm: false,
+				Indices:   []string{"foo", "bar", "baz"},
 			},
 		},
 	}
@@ -77,7 +87,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
+			assert.Equal(t, tt.wantsOpts.Indices, opts.Indices)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
 	}
@@ -87,30 +97,47 @@ func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
 		name    string
 		cli     string
-		index   string
+		indices []string
 		isTTY   bool
 		wantOut string
 	}{
 		{
 			name:    "no TTY",
 			cli:     "foo --confirm",
-			index:   "foo",
+			indices: []string{"foo"},
 			isTTY:   false,
 			wantOut: "",
 		},
 		{
 			name:    "TTY",
 			cli:     "foo --confirm",
-			index:   "foo",
+			indices: []string{"foo"},
 			isTTY:   true,
-			wantOut: "✓ Deleted index foo\n",
+			wantOut: "✓ Deleted indices foo\n",
+		},
+		{
+			name:    "no TTY, multiple indices",
+			cli:     "foo bar --confirm",
+			indices: []string{"foo", "bar"},
+			isTTY:   true,
+			wantOut: "✓ Deleted indices foo, bar\n",
+		},
+		{
+			name:    "TTY, multiple indices",
+			cli:     "foo bar --confirm",
+			indices: []string{"foo", "bar"},
+			isTTY:   true,
+			wantOut: "✓ Deleted indices foo, bar\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", tt.index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
+			for _, index := range tt.indices {
+				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
+				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
+			}
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

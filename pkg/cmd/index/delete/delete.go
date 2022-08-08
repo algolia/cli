@@ -2,6 +2,7 @@ package delete
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -19,7 +20,7 @@ type DeleteOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Index     string
+	Indices   []string
 	DoConfirm bool
 }
 
@@ -35,11 +36,11 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "delete <index>",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete an index",
+		Short:             "Delete one or multiple indices",
 		Long: heredoc.Doc(`
-			Delete an index.
+			Delete one or multiples indices.
 			This command permanently removes one or multiple indices from your application, and removes their metadata and configured settings.
 		`),
 		Example: heredoc.Doc(`
@@ -48,9 +49,12 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 			# Delete the index named "TEST_PRODUCTS_1", skipping the confirmation prompt
 			$ algolia indices delete TEST_PRODUCTS_1 -y
+
+			# Delete multiple indices
+			$ algolia indices delete TEST_PRODUCTS_1 TEST_PRODUCTS_2 TEST_PRODUCTS_3
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Index = args[0]
+			opts.Indices = args
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
@@ -80,7 +84,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete the index %q?", opts.Index), &confirmed)
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete the indices %q?", strings.Join(opts.Indices, ", ")), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -89,13 +93,25 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	if _, err := client.InitIndex(opts.Index).Delete(); err != nil {
-		return err
+	indices := make([]*search.Index, 0, len(opts.Indices))
+	for _, indexName := range opts.Indices {
+		index := client.InitIndex(indexName)
+		exists, err := index.Exists()
+		if err != nil || !exists {
+			return fmt.Errorf("index %q does not exist", indexName)
+		}
+		indices = append(indices, index)
+	}
+
+	for _, index := range indices {
+		if _, err := index.Delete(); err != nil {
+			return fmt.Errorf("failed to delete index %q: %w", index.GetName(), err)
+		}
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Deleted index %s\n", cs.SuccessIcon(), opts.Index)
+		fmt.Fprintf(opts.IO.Out, "%s Deleted indices %s\n", cs.SuccessIcon(), strings.Join(opts.Indices, ", "))
 	}
 
 	return nil
