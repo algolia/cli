@@ -15,7 +15,6 @@ import (
 )
 
 func Test_runExportCmd(t *testing.T) {
-
 	tmpFile := filepath.Join(t.TempDir(), "synonyms.json")
 	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0600)
 	require.NoError(t, err)
@@ -25,6 +24,7 @@ func Test_runExportCmd(t *testing.T) {
 		cli     string
 		stdin   string
 		wantOut string
+		wantErr string
 	}{
 		{
 			name:    "from stdin",
@@ -37,19 +37,28 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 		},
+		{
+			name:    "from stdin with invalid JSON",
+			cli:     "foo -F -",
+			stdin:   `{"objectID", "test"},`,
+			wantErr: "failed to parse JSON synonym on line 0: invalid character ',' after object key",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			if tt.wantErr == "" {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			}
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, tt.stdin)
 			cmd := NewImportCmd(f)
 			out, err := test.Execute(cmd, tt.cli, out)
 			if err != nil {
-				t.Fatal(err)
+				assert.EqualError(t, err, tt.wantErr)
+				return
 			}
 
 			assert.Equal(t, tt.wantOut, out.String())

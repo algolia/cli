@@ -24,6 +24,7 @@ func Test_runExportCmd(t *testing.T) {
 		cli     string
 		stdin   string
 		wantOut string
+		wantErr string
 	}{
 		{
 			name:    "from stdin",
@@ -36,19 +37,28 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 objects to foo in",
 		},
+		{
+			name:    "from stdin with invalid JSON",
+			cli:     "foo -F -",
+			stdin:   `{"objectID", "foo"},`,
+			wantErr: "failed to parse JSON object on line 0: invalid character ',' after object key",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/batch"), httpmock.JSONResponse(search.BatchRes{}))
+			if tt.wantErr == "" {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/batch"), httpmock.JSONResponse(search.BatchRes{}))
+			}
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, tt.stdin)
 			cmd := NewImportCmd(f)
 			out, err := test.Execute(cmd, tt.cli, out)
 			if err != nil {
-				t.Fatal(err)
+				assert.EqualError(t, err, tt.wantErr)
+				return
 			}
 
 			assert.Contains(t, out.String(), tt.wantOut)

@@ -41,7 +41,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "Import synonyms to the indice",
 		Long: heredoc.Doc(`
 			Import synonyms to the provided indice.
-			The file must contains one JSON synonym per line (newline delimited JSON objects - ndjson format).
+			The file must contains one single JSON synonym per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
 			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index
@@ -49,6 +49,9 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Import objects from the standard input to the "TEST_PRODUCTS_1" index
 			$ cat synonyms.ndjson | algolia synonyms import TEST_PRODUCTS_1 -F -
+
+			# Browse the synonyms in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
+			$ algolia synonyms browse TEST_PRODUCTS_1 | algolia synonyms import TEST_PRODUCTS_2 -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
@@ -96,6 +99,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 		// Unmarshal as map[string]interface{} to get the type of the synonym
 		if err := json.Unmarshal(lineB, &rawSynonym); err != nil {
+			err := fmt.Errorf("failed to parse JSON synonym on line %d: %s", count, err)
 			return err
 		}
 		typeString := rawSynonym["type"].(string)
