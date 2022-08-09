@@ -106,7 +106,7 @@ func Execute() exitCode {
 	// Set up the command factory.
 	cfg := config.Config{}
 	cfg.InitConfig()
-	cmdFactory := factory.New(&cfg)
+	cmdFactory := factory.New(version.Version, &cfg)
 	stderr := cmdFactory.IOStreams.ErrOut
 
 	// Set up the root command.
