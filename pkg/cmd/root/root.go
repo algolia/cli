@@ -8,13 +8,18 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/MakeNowJust/heredoc"
+	"github.com/cli/safeexec"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/art"
 	"github.com/algolia/cli/pkg/cmd/factory"
@@ -29,6 +34,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/telemetry"
+	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/version"
 )
 
@@ -108,6 +114,16 @@ func Execute() exitCode {
 	cfg.InitConfig()
 	cmdFactory := factory.New(version.Version, &cfg)
 	stderr := cmdFactory.IOStreams.ErrOut
+
+	// Set up the update notifier.
+	updateMessageChan := make(chan *update.ReleaseInfo)
+	go func() {
+		rel, err := checkForUpdate(cfg, version.Version)
+		if err != nil && hasDebug {
+			fmt.Fprintf(stderr, "Error checking for update: %s\n", err)
+		}
+		updateMessageChan <- rel
+	}()
 
 	// Set up the root command.
 	rootCmd := NewRootCmd(cmdFactory)
@@ -198,6 +214,22 @@ func Execute() exitCode {
 		return exitError
 	}
 
+	// If there is an update available, notify the user.
+	newRelease := <-updateMessageChan
+	if newRelease != nil {
+		cs := cmdFactory.IOStreams.ColorScheme()
+		isHomebrew := isUnderHomebrew(cmdFactory.Executable())
+		fmt.Fprintf(stderr, "\n\n%s %s → %s\n",
+			cs.Yellow("A new release of the Algolia CLI is available:"),
+			cs.Cyan(strings.TrimPrefix(version.Version, "v")),
+			cs.Cyan(strings.TrimPrefix(newRelease.Version, "v")))
+		if isHomebrew {
+			fmt.Fprintf(stderr, "To upgrade, run: %s\n", "brew update && brew upgrade algolia")
+		}
+		fmt.Fprintf(stderr, "%s\n\n",
+			cs.Yellow(newRelease.URL))
+	}
+
 	return exitOK
 }
 
@@ -244,4 +276,43 @@ func printError(out io.Writer, err error, cmd *cobra.Command, debug bool) {
 		}
 		fmt.Fprintln(out, cmd.UsageString())
 	}
+}
+
+func shouldCheckForUpdate() bool {
+	if os.Getenv("ALGOLIA_NO_UPDATE_NOTIFIER") != "" {
+		return false
+	}
+	return !isCI() && utils.IsTerminal(os.Stdout) && utils.IsTerminal(os.Stderr)
+}
+
+// based on https://github.com/watson/ci-info/blob/HEAD/index.js
+func isCI() bool {
+	return os.Getenv("CI") != "" || // GitHub Actions, Travis CI, CircleCI, Cirrus CI, GitLab CI, AppVeyor, CodeShip, dsari
+		os.Getenv("BUILD_NUMBER") != "" || // Jenkins, TeamCity
+		os.Getenv("RUN_ID") != "" // TaskCluster, dsari
+}
+
+func checkForUpdate(cfg config.Config, currentVersion string) (*update.ReleaseInfo, error) {
+	if !shouldCheckForUpdate() {
+		return nil, nil
+	}
+	stateFilePath := filepath.Join(cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")), "state.yml")
+	client := http.Client{}
+	return update.CheckForUpdate(&client, stateFilePath, currentVersion)
+}
+
+// Check whether the gh binary was found under the Homebrew prefix
+func isUnderHomebrew(ghBinary string) bool {
+	brewExe, err := safeexec.LookPath("brew")
+	if err != nil {
+		return false
+	}
+
+	brewPrefixBytes, err := exec.Command(brewExe, "--prefix").Output()
+	if err != nil {
+		return false
+	}
+
+	brewBinPrefix := filepath.Join(strings.TrimSpace(string(brewPrefixBytes)), "bin") + string(filepath.Separator)
+	return strings.HasPrefix(ghBinary, brewBinPrefix)
 }
