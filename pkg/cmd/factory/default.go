@@ -1,6 +1,8 @@
 package factory
 
 import (
+	"fmt"
+
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -8,12 +10,12 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-func New(cfg config.IConfig) *cmdutil.Factory {
+func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f := &cmdutil.Factory{
 		Config: cfg,
 	}
 	f.IOStreams = ioStreams(f)
-	f.SearchClient = searchClient(f)
+	f.SearchClient = searchClient(f, appVersion)
 
 	return f
 }
@@ -23,7 +25,7 @@ func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
 	return io
 }
 
-func searchClient(f *cmdutil.Factory) func() (*search.Client, error) {
+func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client, error) {
 	return func() (*search.Client, error) {
 		appID, err := f.Config.Profile().GetApplicationID()
 		if err != nil {
@@ -34,6 +36,11 @@ func searchClient(f *cmdutil.Factory) func() (*search.Client, error) {
 			return nil, err
 		}
 
-		return search.NewClient(appID, APIKey), nil
+		clientCfg := search.Configuration{
+			AppID:          appID,
+			APIKey:         APIKey,
+			ExtraUserAgent: fmt.Sprintf("Algolia CLI (%s)", appVersion),
+		}
+		return search.NewClientWithConfig(clientCfg), nil
 	}
 }
