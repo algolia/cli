@@ -16,7 +16,7 @@ func NewRulesCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your Algolia rules",
 	}
 
-	cmd.AddCommand(importRules.NewImportCmd(f))
+	cmd.AddCommand(importRules.NewImportCmd(f, nil))
 	cmd.AddCommand(browse.NewBrowseCmd(f))
 
 	return cmd
