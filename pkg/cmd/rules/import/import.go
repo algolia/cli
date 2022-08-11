@@ -41,7 +41,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "Import rules to the specified index",
 		Long: heredoc.Doc(`
 			Import rules to the specified index.
-			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format).
+			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
 			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index
@@ -49,6 +49,9 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Import rules from the standard input to the "TEST_PRODUCTS_1" index
 			$ cat rules.ndjson | algolia rules import TEST_PRODUCTS_1 -F -
+
+			# Browse the rules in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
+			$ algolia rules browse TEST_PRODUCTS_2 | algolia rules import TEST_PRODUCTS_2 -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -93,6 +96,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 		var rule search.Rule
 		if err := json.Unmarshal([]byte(line), &rule); err != nil {
+			err := fmt.Errorf("failed to parse JSON rule on line %d: %s", count, err)
 			return err
 		}
 

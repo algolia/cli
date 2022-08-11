@@ -44,7 +44,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "Import objects to the specified indice",
 		Long: heredoc.Doc(`
 			Import objects to the specified indice from a file / the standard input.
-			The file must contains one JSON object per line (newline delimited JSON objects - ndjson format).
+			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
 			# Import objects from the "data.ndjson" file to the "TEST_PRODUCTS_1" index
@@ -52,6 +52,9 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Import objects from the standard input to the "TEST_PRODUCTS_1" index
 			$ cat data.ndjson | algolia objects import TEST_PRODUCTS_1 -F -
+
+			# Browse the objects in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
+			$ algolia objects browse TEST_PRODUCTS_1 | algolia objects import TEST_PRODUCTS_2 -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
@@ -99,6 +102,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 		var obj interface{}
 		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			err := fmt.Errorf("failed to parse JSON object on line %d: %s", count, err)
 			return err
 		}
 
