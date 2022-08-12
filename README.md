@@ -1,6 +1,6 @@
 # Algolia CLI
 
-**Please note** that the Algolia CLI is in a **beta** version and backwards-incompatible changes might be introduced in future releases.
+**Please note:** the Algolia CLI is in **beta** version and subject to the terms governing Beta Services. Algolia CLI may be subject to change or discontinued, and backwards-incompatible changes might be introduced in future releases.
 
 ![cli](https://user-images.githubusercontent.com/5702266/153008646-1fd8fbf2-4a4d-4421-b2f2-0886487f3e27.png)
 
