@@ -2,6 +2,7 @@ package delete
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
@@ -86,6 +87,19 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Indice)
+
+	// Tests if the synonyms exists.
+	for _, synonymID := range opts.SynonymIDs {
+		if _, err := indice.GetSynonym(synonymID); err != nil {
+			// The original error is not helpful, so we print a more helpful message
+			extra := "Operation aborted, no deletion action taken"
+			if strings.Contains(err.Error(), "Synonym set does not exist") {
+				return fmt.Errorf("synonym %s does not exist. %s", synonymID, extra)
+			}
+			return fmt.Errorf("%s. %s", err, extra)
+		}
+	}
+
 	if opts.DoConfirm {
 		var confirmed bool
 		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", utils.Pluralize(len(opts.SynonymIDs), "synonym"), opts.Indice), &confirmed)

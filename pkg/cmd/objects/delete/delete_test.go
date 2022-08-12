@@ -155,6 +155,9 @@ func Test_runDeleteCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
+			for _, id := range tt.objectIDs {
+				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)), httpmock.JSONResponse(search.QueryRes{}))
+			}
 			r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

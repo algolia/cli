@@ -2,6 +2,7 @@ package delete
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -83,6 +84,20 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Indice)
+
+	// Tests if the object IDs exists.
+	for _, objectID := range opts.ObjectIDs {
+		var obj interface{}
+		if err := indice.GetObject(objectID, &obj); err != nil {
+			// The original error is not helpful, so we print a more helpful message
+			extra := "Operation aborted, no deletion action taken"
+			if strings.Contains(err.Error(), "ObjectID does not exist") {
+				return fmt.Errorf("rule %s does not exist. %s", objectID, extra)
+			}
+			return fmt.Errorf("%s. %s", err, extra)
+		}
+	}
+
 	if opts.DoConfirm {
 		var confirmed bool
 		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", utils.Pluralize(len(opts.ObjectIDs), "object"), opts.Indice), &confirmed)
