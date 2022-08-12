@@ -11,9 +11,10 @@
 `algolia` is available on Homebrew and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
 
 ```bash
-brew install algolia/algolia-cli/algolia
+brew tap algolia/algolia-cli
+brew install algolia
 ```
 
 ### Other platforms
 
-Coming soon.
+Download packaged binaries from the [releases page](https://github.com/algolia/cli/releases).
