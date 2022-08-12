@@ -90,10 +90,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		var obj interface{}
 		if err := indice.GetObject(objectID, &obj); err != nil {
 			// The original error is not helpful, so we print a more helpful message
+			extra := "Operation aborted, no deletion action taken"
 			if strings.Contains(err.Error(), "ObjectID does not exist") {
-				return fmt.Errorf("object %s does not exist", objectID)
+				return fmt.Errorf("rule %s does not exist. %s", objectID, extra)
 			}
-			return err
+			return fmt.Errorf("%s. %s", err, extra)
 		}
 	}
 

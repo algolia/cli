@@ -92,10 +92,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	for _, synonymID := range opts.SynonymIDs {
 		if _, err := indice.GetSynonym(synonymID); err != nil {
 			// The original error is not helpful, so we print a more helpful message
+			extra := "Operation aborted, no deletion action taken"
 			if strings.Contains(err.Error(), "Synonym set does not exist") {
-				return fmt.Errorf("synonym %s does not exist", synonymID)
+				return fmt.Errorf("synonym %s does not exist. %s", synonymID, extra)
 			}
-			return err
+			return fmt.Errorf("%s. %s", err, extra)
 		}
 	}
 
