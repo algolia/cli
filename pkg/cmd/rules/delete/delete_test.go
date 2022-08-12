@@ -175,6 +175,7 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.ruleIDs {
+				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/rules/%s", tt.indice, id)), httpmock.JSONResponse(search.SearchRulesRes{}))
 				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/rules/%s", tt.indice, id)), httpmock.JSONResponse(search.DeleteTaskRes{}))
 			}
 
