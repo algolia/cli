@@ -53,8 +53,8 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			$ algolia search MY_INDEX --query "foo"
 			$ algolia objects browse MY_INDEX
-			$ algolia apikey create --acl search
-			$ algolia rule import MY_INDEX -f rules.json
+			$ algolia apikeys create --acl search
+			$ algolia rules import MY_INDEX -f rules.json
 		`),
 	}
 
