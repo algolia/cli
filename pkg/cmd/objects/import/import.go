@@ -41,9 +41,9 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "import <index> -F <file>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import objects to the specified indice",
+		Short:             "Import objects to the specified index",
 		Long: heredoc.Doc(`
-			Import objects to the specified indice from a file / the standard input.
+			Import objects to the specified index from a file / the standard input.
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`

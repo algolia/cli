@@ -15,10 +15,10 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/pkg/cmd/apikey"
+	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/art"
 	"github.com/algolia/cli/pkg/cmd/factory"
-	"github.com/algolia/cli/pkg/cmd/index"
+	"github.com/algolia/cli/pkg/cmd/indices"
 	"github.com/algolia/cli/pkg/cmd/objects"
 	"github.com/algolia/cli/pkg/cmd/open"
 	"github.com/algolia/cli/pkg/cmd/profile"
@@ -86,9 +86,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	// API related commands
 	cmd.AddCommand(search.NewSearchCmd(f))
-	cmd.AddCommand(index.NewIndexCmd(f))
+	cmd.AddCommand(indices.NewIndicesCmd(f))
 	cmd.AddCommand(objects.NewObjectsCmd(f))
-	cmd.AddCommand(apikey.NewAPIKeyCmd(f))
+	cmd.AddCommand(apikeys.NewAPIKeysCmd(f))
 	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(rules.NewRulesCmd(f))
 	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
