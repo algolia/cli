@@ -150,7 +150,8 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, args []string) {
 		helpEntries = append(helpEntries, helpEntry{cs.Bold("Examples"), command.Example})
 	}
 	helpEntries = append(helpEntries, helpEntry{cs.Bold("Learn More"), `
-Use 'algolia <command> <subcommand> --help' for more information about a command.`})
+Use 'algolia <command> <subcommand> --help' for more information about a command.
+Read the documentation at https://algolia.com/doc/tools/cli/`})
 
 	out := f.IOStreams.Out
 	for _, e := range helpEntries {
