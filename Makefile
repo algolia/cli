@@ -7,15 +7,24 @@ test:
 docs:
 	git clone https://github.com/algolia/doc.git "$@"
 
-docs-bump: docs
+.PHONY: docs-commands-data
+docs-commands-data: docs
 	git -C docs pull
-	git -C docs checkout feat/cli 
+	git -C docs checkout master
 	git -C docs rm 'app_data/cli/commands/*.yml' 2>/dev/null || true
 	go run ./cmd/docs --app_data-path docs/app_data/cli/commands
 	git -C docs add 'app_data/cli/commands/*.yml'
-	git -C docs commit -m 'update cli commands app data' || true
-	git -C docs push
-.PHONY: docs-bump
+
+.PHONY: docs-pr
+docs-pr: docs-commands-data
+ifndef GITHUB_REF
+	$(error GITHUB_REF is not set)
+endif
+	git -C docs checkout -B feat/cli-'$(GITHUB_REF:refs/tags/v%=%)'
+	git -C docs commit -m 'feat: update cli commands data for $(GITHUB_REF:refs/tags/v%=%) version' || true
+	git -C docs push --set-upstream origin feat/cli-'$(GITHUB_REF:refs/tags/v%=%)'
+	cd docs; gh pr create -f -b "Changelog: https://github.com/algolia/cli/releases/tag/$(GITHUB_REF:refs/tags/v%=%)"
+
 
 # Build the binary
 build:
