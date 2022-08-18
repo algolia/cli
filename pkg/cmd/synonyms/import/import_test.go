@@ -92,9 +92,8 @@ func TestNewImportCmd(t *testing.T) {
 			if tt.wantsErr {
 				assert.Error(t, err)
 				return
-			} else {
-				require.NoError(t, err)
 			}
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
