@@ -44,8 +44,8 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Profile = args[0]
-			if !confirm {
-				if !opts.IO.CanPrompt() && opts.Profile == opts.config.Default().Name {
+			if !confirm && opts.Profile == opts.config.Default().Name {
+				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
 				opts.DoConfirm = true
@@ -72,7 +72,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 func runRemoveCmd(opts *RemoveOptions) error {
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove '%s', the default profile?", opts.config.Profile().Name), &confirmed)
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to remove '%s', the default profile?", opts.Profile), &confirmed)
 		if err != nil {
 			return err
 		}
