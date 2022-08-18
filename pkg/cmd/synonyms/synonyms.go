@@ -17,7 +17,7 @@ func NewSynonymsCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your Algolia synonyms",
 	}
 
-	cmd.AddCommand(importSynonyms.NewImportCmd(f))
+	cmd.AddCommand(importSynonyms.NewImportCmd(f, nil))
 	cmd.AddCommand(browse.NewBrowseCmd(f))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 
