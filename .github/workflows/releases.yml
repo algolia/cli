@@ -40,4 +40,4 @@ jobs:
           GIT_AUTHOR_NAME: algolia-ci
           GIT_COMMITTER_EMAIL: noreply@algolia.com
           GIT_AUTHOR_EMAIL: noreply@algolia.com
-        run: make docs-bump
+        run: make docs-pr

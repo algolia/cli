@@ -21,6 +21,8 @@ var nameURLmap = map[string]string{
 	"codex":     "https://www.algolia.com/developers/code-exchange/",
 	"devhub":    "https://www.algolia.com/developers/",
 	"docs":      "https://algolia.com/doc/",
+	"cli-docs":  "https://algolia.com/doc/tools/cli/getstarted/",
+	"cli-repo":  "https://github.com/algolia/cli",
 }
 
 func openNames() []string {
@@ -69,6 +71,9 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 			
 			# Open the documentation
 			$ algolia open docs
+
+			# Open the CLI documentation
+			$ algolia open cli-docs
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
