@@ -7,7 +7,7 @@ require (
 	github.com/BurntSushi/toml v1.0.0
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/algolia/algoliasearch-client-go/v3 v3.21.0
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/briandowns/spinner v1.13.0
 	github.com/cli/safeexec v1.0.0
 	github.com/dustin/go-humanize v1.0.0

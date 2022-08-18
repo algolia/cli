@@ -90,6 +90,11 @@ func runRemoveCmd(opts *RemoveOptions) error {
 	if opts.IO.IsStdoutTTY() {
 		extra := "."
 		if opts.config.Default().Name == opts.Profile {
+			fmt.Printf("------------\n")
+			fmt.Printf("FLAKY TEST DEBUG:\n")
+			fmt.Println("opts.config.Default().Name == " + opts.config.Default().Name)
+			fmt.Println("opts.Profile == " + opts.Profile)
+			fmt.Printf("------------\n")
 			extra = ". Set a new default profile with 'algolia profile setdefault'."
 		}
 		if len(opts.config.ConfiguredProfiles()) == 0 {
