@@ -40,7 +40,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Set the settings of the specified index.",
 		Example: heredoc.Doc(`
 			# Set the typo tolerance to false on the PRODUCTS index
-			$ settings set PRODUCTS --typoTolerance="false"
+			$ algolia settings set PRODUCTS --typoTolerance="false"
 		`),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {

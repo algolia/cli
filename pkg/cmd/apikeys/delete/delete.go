@@ -73,7 +73,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the following API Key: %s?", opts.APIKey), &confirmed)
+		err = prompt.Confirm(fmt.Sprintf("Delete the following API key: %s?", opts.APIKey), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}

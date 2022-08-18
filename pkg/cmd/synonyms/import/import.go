@@ -38,14 +38,14 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "import <index> -F <file>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import synonyms to the indice",
+		Short:             "Import synonyms to the index",
 		Long: heredoc.Doc(`
-			Import synonyms to the provided indice.
+			Import synonyms to the provided index.
 			The file must contains one single JSON synonym per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
 			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia import TEST_PRODUCTS_1 -F synonyms.ndjson
+			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson
 
 			# Import objects from the standard input to the "TEST_PRODUCTS_1" index
 			$ cat synonyms.ndjson | algolia synonyms import TEST_PRODUCTS_1 -F -
