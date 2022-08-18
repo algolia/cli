@@ -6,12 +6,14 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/prompt"
 )
 
 type ImportOptions struct {
@@ -20,18 +22,23 @@ type ImportOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indice  string
-	Scanner *bufio.Scanner
+	Indice             string
+	ForwardToReplicas  bool
+	ClearExistingRules bool
+	Scanner            *bufio.Scanner
+
+	DoConfirm bool
 }
 
 // NewImportCmd creates and returns an import command for indice rules
-func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
+func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
 	}
 
+	var confirm bool
 	var file string
 
 	cmd := &cobra.Command{
@@ -52,9 +59,19 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Browse the rules in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
 			$ algolia rules browse TEST_PRODUCTS_2 | algolia rules import TEST_PRODUCTS_2 -F -
+
+			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index and don't forward them to the index replicas
+			$ algolia import TEST_PRODUCTS_1 -F rules.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
+
+			if !confirm && opts.ClearExistingRules {
+				if !opts.IO.CanPrompt() {
+					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+				}
+				opts.DoConfirm = true
+			}
 
 			scanner, err := cmdutil.ScanFile(file, opts.IO.In)
 			if err != nil {
@@ -62,22 +79,47 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			opts.Scanner = scanner
 
+			if runF != nil {
+				return runF(opts)
+			}
+
 			return runImportCmd(opts)
 		},
 	}
 
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+
 	cmd.Flags().StringVarP(&file, "file", "F", "", "Read rules to import from `file` (use \"-\" to read from standard input)")
+	_ = cmd.MarkFlagRequired("file")
+
+	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the rules to the index replicas")
+	cmd.Flags().BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Clear existing rules before importing new ones")
 
 	return cmd
 }
 
 func runImportCmd(opts *ImportOptions) error {
+	if opts.DoConfirm {
+		var confirmed bool
+		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to replace all the existing rules on %q?", opts.Indice), &confirmed)
+		if err != nil {
+			return fmt.Errorf("failed to prompt: %w", err)
+		}
+		if !confirmed {
+			return nil
+		}
+	}
+
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
 	}
 
 	indice := client.InitIndex(opts.Indice)
+	batchOptions := []interface{}{
+		opt.ForwardToReplicas(opts.ForwardToReplicas),
+		opt.ClearExistingRules(opts.ClearExistingRules),
+	}
 
 	// Move the following code to another module?
 	var (
@@ -104,7 +146,7 @@ func runImportCmd(opts *ImportOptions) error {
 		count++
 
 		if count == batchSize {
-			if _, err := indice.SaveRules(batch); err != nil {
+			if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
 				return err
 			}
 
@@ -117,7 +159,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveRules(batch); err != nil {
+		if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
 			return err
 		}
 	}

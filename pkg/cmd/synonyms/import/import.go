@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -20,12 +21,14 @@ type ImportOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Index   string
-	Scanner *bufio.Scanner
+	Index                   string
+	ForwardToReplicas       bool
+	ReplaceExistingSynonyms bool
+	Scanner                 *bufio.Scanner
 }
 
 // NewImportCmd creates and returns an import command for indice synonyms
-func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
+func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -47,11 +50,17 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index
 			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson
 
-			# Import objects from the standard input to the "TEST_PRODUCTS_1" index
+			# Import synonyms from the standard input to the "TEST_PRODUCTS_1" index
 			$ cat synonyms.ndjson | algolia synonyms import TEST_PRODUCTS_1 -F -
 
 			# Browse the synonyms in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
 			$ algolia synonyms browse TEST_PRODUCTS_1 | algolia synonyms import TEST_PRODUCTS_2 -F -
+
+			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index and replace existing synonyms
+			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson -r
+
+			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index and don't forward the synonyms to the index replicas
+			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
@@ -62,11 +71,19 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			opts.Scanner = scanner
 
+			if runF != nil {
+				return runF(opts)
+			}
+
 			return runImportCmd(opts)
 		},
 	}
 
 	cmd.Flags().StringVarP(&file, "file", "F", "", "Read synonyms to import from `file` (use \"-\" to read from standard input)")
+	_ = cmd.MarkFlagRequired("file")
+
+	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
+	cmd.Flags().BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
 
 	return cmd
 }
@@ -78,6 +95,10 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Index)
+	batchOptions := []interface{}{
+		opt.ForwardToReplicas(opts.ForwardToReplicas),
+		opt.ReplaceExistingSynonyms(opts.ReplaceExistingSynonyms),
+	}
 
 	// Move the following code to another module?
 	var (
@@ -154,7 +175,7 @@ func runImportCmd(opts *ImportOptions) error {
 		count++
 
 		if count == batchSize {
-			if _, err := indice.SaveSynonyms(batch); err != nil {
+			if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
 				return err
 			}
 
@@ -167,7 +188,7 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveSynonyms(batch); err != nil {
+		if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
 			return err
 		}
 	}
