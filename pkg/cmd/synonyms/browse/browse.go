@@ -39,10 +39,10 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "List all the the synonyms of the given index",
 		Example: heredoc.Doc(`
 			# List all the synonyms of the 'TEST_PRODUCTS_1' index
-			$ algolia synonym browse TEST_PRODUCTS_1
+			$ algolia synonyms browse TEST_PRODUCTS_1
 
 			# List all the synonyms of the 'TEST_PRODUCTS_1' and save them to the 'synonyms.json' file
-			$ algolia synonym browse TEST_PRODUCTS_1 > synonyms.json
+			$ algolia synonyms browse TEST_PRODUCTS_1 > synonyms.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

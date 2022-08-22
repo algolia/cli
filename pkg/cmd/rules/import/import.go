@@ -52,7 +52,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		`),
 		Example: heredoc.Doc(`
 			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia import TEST_PRODUCTS_1 -F rules.ndjson
+			$ algolia rules import TEST_PRODUCTS_1 -F rules.ndjson
 
 			# Import rules from the standard input to the "TEST_PRODUCTS_1" index
 			$ cat rules.ndjson | algolia rules import TEST_PRODUCTS_1 -F -
