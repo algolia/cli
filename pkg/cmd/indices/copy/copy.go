@@ -51,13 +51,13 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 		`),
 		Example: heredoc.Doc(`
 			# Copy the records, settings, synonyms and rules from the "TEST_PRODUCTS_1" index to the "TEST_PRODUCTS_2" index
-			$ algolia index copy TEST_PRODUCTS DEV_PRODUCTS
+			$ algolia indices copy TEST_PRODUCTS DEV_PRODUCTS
 
 			# Copy only the synonyms of the "TEST_PRODUCTS_1" to the "TEST_PRODUCTS_2" index
-			$ algolia index copy TEST_PRODUCTS DEV_PRODUCTS --scope synonyms
+			$ algolia indices copy TEST_PRODUCTS DEV_PRODUCTS --scope synonyms
 
 			# Copy the synonyms and rules of the index "TEST_PRODUCTS_1" to the "TEST_PRODUCTS_2" index
-			$ algolia index copy TEST_PRODUCTS DEV_PRODUCTS --scope synonyms,rules
+			$ algolia indices copy TEST_PRODUCTS DEV_PRODUCTS --scope synonyms,rules
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.SourceIndex = args[0]

@@ -31,3 +31,19 @@ build:
 	go generate ./...
 	go build -o algolia cmd/algolia/main.go
 .PHONY: build
+
+## Install & uninstall tasks are here for use on *nix platform only.
+
+prefix  := /usr/local
+bindir  := ${prefix}/bin
+
+# Install Algolia CLI
+install:
+	make build
+	install -m755 algolia ${bindir}
+.PHONY: install
+
+# Uninstall Algolia CLI
+uninstall:
+	rm ${bindir}/algolia
+.PHONY: uninstall

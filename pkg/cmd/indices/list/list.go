@@ -38,7 +38,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "List indices",
 		Example: heredoc.Doc(`
 			# List indices
-			$ algolia index list
+			$ algolia indices list
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runListCmd(opts)
