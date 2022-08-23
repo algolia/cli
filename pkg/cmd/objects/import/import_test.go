@@ -43,6 +43,16 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   `{"objectID", "foo"},`,
 			wantErr: "failed to parse JSON object on line 0: invalid character ',' after object key",
 		},
+		{
+			name:    "missing file flag",
+			cli:     "foo",
+			wantErr: "required flag(s) \"file\" not set",
+		},
+		{
+			name:    "non-existant file",
+			cli:     "foo -F /tmp/foo",
+			wantErr: "open /tmp/foo: no such file or directory",
+		},
 	}
 
 	for _, tt := range tests {
