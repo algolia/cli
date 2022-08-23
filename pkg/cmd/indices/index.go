@@ -7,6 +7,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/indices/copy"
 	"github.com/algolia/cli/pkg/cmd/indices/delete"
 	"github.com/algolia/cli/pkg/cmd/indices/list"
+	"github.com/algolia/cli/pkg/cmd/indices/move"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -22,6 +23,7 @@ func NewIndicesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 	cmd.AddCommand(clear.NewClearCmd(f, nil))
 	cmd.AddCommand(copy.NewCopyCmd(f, nil))
+	cmd.AddCommand(move.NewMoveCmd(f, nil))
 
 	return cmd
 }
