@@ -37,7 +37,7 @@ func (r *Registry) Verify(t Testing) {
 	}
 }
 
-// Reuquest satisfies Requester interface
+// Request satisfies Requester interface
 func (r *Registry) Request(req *http.Request) (*http.Response, error) {
 	var stub *Stub
 

@@ -86,22 +86,37 @@ func runAddCmd(opts *AddOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Indice)
-
 	forwardToReplicas := opt.ForwardToReplicas(opts.ForwardToReplicas)
 	synonym := search.NewRegularSynonym(
 		opts.SynonymID,
 		opts.SynonymValues...,
 	)
+
+	synonymToUpdate, _ := indice.GetSynonym(opts.SynonymID)
+	synonymExist := false
+
+	if synonymToUpdate != nil {
+		synonymExist = true
+	}
+
 	_, err = indice.SaveSynonym(synonym, forwardToReplicas)
 
 	if err != nil {
-		err = fmt.Errorf("failed to add synonym '%s' with %s (%s): %w", opts.SynonymID, utils.Pluralize(len(opts.SynonymValues), "value"), strings.Join(opts.SynonymValues, ", "), err)
+		action := "create"
+		if synonymExist {
+			action = "update"
+		}
+		err = fmt.Errorf("failed to %s synonym '%s' with %s (%s): %w", action, opts.SynonymID, utils.Pluralize(len(opts.SynonymValues), "value"), strings.Join(opts.SynonymValues, ", "), err)
 		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Synonym '%s' successfully added with %s (%s) from %s\n", cs.SuccessIcon(), opts.SynonymID, utils.Pluralize(len(opts.SynonymValues), "value"), strings.Join(opts.SynonymValues, ", "), opts.Indice)
+		action := "created"
+		if synonymExist {
+			action = "updated"
+		}
+		fmt.Fprintf(opts.IO.Out, "%s Synonym '%s' successfully %s with %s (%s) from %s\n", cs.SuccessIcon(), opts.SynonymID, action, utils.Pluralize(len(opts.SynonymValues), "value"), strings.Join(opts.SynonymValues, ", "), opts.Indice)
 	}
 
 	return nil
