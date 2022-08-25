@@ -52,7 +52,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			$ algolia synonyms delete TEST_PRODUCTS_1 --synonym-ids 1
 
 			# Delete multiple synonyms with the IDs "1" and "2" from the "TEST_PRODUCTS_1" index
-			$ algolia synonyms delete TEST_PRODUCTS_1 --synonym-ids 1 2
+			$ algolia synonyms delete TEST_PRODUCTS_1 --synonym-ids 1,2
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
