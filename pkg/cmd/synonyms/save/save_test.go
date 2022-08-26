@@ -48,6 +48,26 @@ func TestNewSaveCmd(t *testing.T) {
 			},
 		},
 		{
+			name:     "single, --one-way without --input",
+			cli:      "legends --id 1 --synonyms jordan,mj --one-way",
+			tty:      false,
+			wantsErr: true,
+		},
+		{
+			name:     "single, --one-way",
+			cli:      "legends -i 1 -s jordan,mj --one-way --input goat",
+			tty:      true,
+			wantsErr: false,
+			wantsOpts: SaveOptions{
+				Indice:            "legends",
+				SynonymID:         "1",
+				Synonyms:          []string{"jordan", "mj"},
+				OneWaySynonym:     true,
+				SynonymInput:      "goat",
+				ForwardToReplicas: false,
+			},
+		},
+		{
 			name:     "single, forward to replicas",
 			cli:      "legends --id 1 --synonyms jordan,mj --forward-to-replicas",
 			tty:      false,
@@ -95,6 +115,8 @@ func TestNewSaveCmd(t *testing.T) {
 
 			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
 			assert.Equal(t, tt.wantsOpts.SynonymID, opts.SynonymID)
+			assert.Equal(t, tt.wantsOpts.SynonymInput, opts.SynonymInput)
+			assert.Equal(t, tt.wantsOpts.OneWaySynonym, opts.OneWaySynonym)
 			assert.Equal(t, tt.wantsOpts.Synonyms, opts.Synonyms)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 		})
@@ -124,7 +146,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 2 synonyms (jordan, mj) from legends\n",
+			wantOut:   "✓ Synonym '1' successfully created with 2 synonyms (jordan, mj) to legends\n",
 		},
 		{
 			name:      "single id, mutiple synonyms, TTY",
@@ -132,7 +154,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) from legends\n",
+			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) to legends\n",
 		},
 		{
 			name:      "single id, mutiple synonyms, TTY with shorthands",
@@ -140,7 +162,15 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) from legends\n",
+			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) to legends\n",
+		},
+		{
+			name:      "single id, mutiple synonyms, one way with input",
+			cli:       "legends -i 1 -s jordan,mj,goat,23 -o -n michael",
+			indice:    "legends",
+			synonymID: "1",
+			isTTY:     true,
+			wantOut:   "✓ One way synonym '1' successfully created with 4 synonyms (jordan, mj, goat, 23) to legends\n",
 		},
 	}
 
