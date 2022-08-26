@@ -25,36 +25,36 @@ func TestNewSaveCmd(t *testing.T) {
 	}{
 		{
 			name:     "without tty",
-			cli:      "legends --id 1 --values jordan,mj",
+			cli:      "legends --id 1 --synonyms jordan,mj",
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: SaveOptions{
 				Indice:            "legends",
 				SynonymID:         "1",
-				SynonymValues:     []string{"jordan", "mj"},
+				Synonyms:          []string{"jordan", "mj"},
 				ForwardToReplicas: false,
 			},
 		},
 		{
 			name:     "with tty",
-			cli:      "legends --id 1 --values jordan,mj",
+			cli:      "legends --id 1 --synonyms jordan,mj",
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: SaveOptions{
 				Indice:            "legends",
 				SynonymID:         "1",
-				SynonymValues:     []string{"jordan", "mj"},
+				Synonyms:          []string{"jordan", "mj"},
 				ForwardToReplicas: false,
 			},
 		},
 		{
 			name:     "single, forward to replicas",
-			cli:      "legends --id 1 --values jordan,mj --forward-to-replicas",
+			cli:      "legends --id 1 --synonyms jordan,mj --forward-to-replicas",
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: SaveOptions{
 				Indice:            "legends",
-				SynonymValues:     []string{"jordan", "mj"},
+				Synonyms:          []string{"jordan", "mj"},
 				SynonymID:         "1",
 				ForwardToReplicas: true,
 			},
@@ -95,7 +95,7 @@ func TestNewSaveCmd(t *testing.T) {
 
 			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
 			assert.Equal(t, tt.wantsOpts.SynonymID, opts.SynonymID)
-			assert.Equal(t, tt.wantsOpts.SynonymValues, opts.SynonymValues)
+			assert.Equal(t, tt.wantsOpts.Synonyms, opts.Synonyms)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 		})
 	}
@@ -103,45 +103,44 @@ func TestNewSaveCmd(t *testing.T) {
 
 func Test_runSaveCmd(t *testing.T) {
 	tests := []struct {
-		name          string
-		cli           string
-		indice        string
-		synonymID     string
-		synonymValues []string
-		isTTY         bool
-		wantOut       string
+		name      string
+		cli       string
+		indice    string
+		synonymID string
+		isTTY     bool
+		wantOut   string
 	}{
 		{
-			name:      "single id, two values, no TTY",
-			cli:       "legends --id 1 --values jorda,mj",
+			name:      "single id, two synonyms, no TTY",
+			cli:       "legends --id 1 --synonyms jorda,mj",
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     false,
 			wantOut:   "",
 		},
 		{
-			name:      "single id, two values, TTY",
-			cli:       "legends --id 1 --values jordan,mj",
+			name:      "single id, two synonyms, TTY",
+			cli:       "legends --id 1 --synonyms jordan,mj",
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 2 values (jordan, mj) from legends\n",
+			wantOut:   "✓ Synonym '1' successfully created with 2 synonyms (jordan, mj) from legends\n",
 		},
 		{
-			name:      "single id, mutiple values, TTY",
-			cli:       "legends --id 1 --values jordan,mj,goat,michael,23",
+			name:      "single id, mutiple synonyms, TTY",
+			cli:       "legends --id 1 --synonyms jordan,mj,goat,michael,23",
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 5 values (jordan, mj, goat, michael, 23) from legends\n",
+			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) from legends\n",
 		},
 		{
-			name:      "single id, mutiple values, TTY with shorthands",
-			cli:       "legends -i 1 -v jordan,mj,goat,michael,23",
+			name:      "single id, mutiple synonyms, TTY with shorthands",
+			cli:       "legends -i 1 -s jordan,mj,goat,michael,23",
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 5 values (jordan, mj, goat, michael, 23) from legends\n",
+			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) from legends\n",
 		},
 	}
 
