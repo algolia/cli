@@ -1,4 +1,4 @@
-package add
+package save
 
 import (
 	"fmt"
@@ -15,20 +15,20 @@ import (
 	"github.com/algolia/cli/test"
 )
 
-func TestNewAddCmd(t *testing.T) {
+func TestNewSaveCmd(t *testing.T) {
 	tests := []struct {
 		name      string
 		tty       bool
 		cli       string
 		wantsErr  bool
-		wantsOpts AddOptions
+		wantsOpts SaveOptions
 	}{
 		{
 			name:     "without tty",
 			cli:      "legends --id 1 --values jordan,mj",
 			tty:      false,
 			wantsErr: false,
-			wantsOpts: AddOptions{
+			wantsOpts: SaveOptions{
 				Indice:            "legends",
 				SynonymID:         "1",
 				SynonymValues:     []string{"jordan", "mj"},
@@ -40,7 +40,7 @@ func TestNewAddCmd(t *testing.T) {
 			cli:      "legends --id 1 --values jordan,mj",
 			tty:      true,
 			wantsErr: false,
-			wantsOpts: AddOptions{
+			wantsOpts: SaveOptions{
 				Indice:            "legends",
 				SynonymID:         "1",
 				SynonymValues:     []string{"jordan", "mj"},
@@ -52,7 +52,7 @@ func TestNewAddCmd(t *testing.T) {
 			cli:      "legends --id 1 --values jordan,mj --forward-to-replicas",
 			tty:      false,
 			wantsErr: false,
-			wantsOpts: AddOptions{
+			wantsOpts: SaveOptions{
 				Indice:            "legends",
 				SynonymValues:     []string{"jordan", "mj"},
 				SynonymID:         "1",
@@ -73,8 +73,8 @@ func TestNewAddCmd(t *testing.T) {
 				IOStreams: io,
 			}
 
-			var opts *AddOptions
-			cmd := NewAddCmd(f, func(o *AddOptions) error {
+			var opts *SaveOptions
+			cmd := NewSaveCmd(f, func(o *SaveOptions) error {
 				opts = o
 				return nil
 			})
@@ -101,7 +101,7 @@ func TestNewAddCmd(t *testing.T) {
 	}
 }
 
-func Test_runAddCmd(t *testing.T) {
+func Test_runSaveCmd(t *testing.T) {
 	tests := []struct {
 		name          string
 		cli           string
@@ -152,7 +152,7 @@ func Test_runAddCmd(t *testing.T) {
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
-			cmd := NewAddCmd(f, nil)
+			cmd := NewSaveCmd(f, nil)
 			out, err := test.Execute(cmd, tt.cli, out)
 			if err != nil {
 				t.Fatal(err)
