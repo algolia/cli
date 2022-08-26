@@ -12,7 +12,8 @@ import (
 
 func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f := &cmdutil.Factory{
-		Config: cfg,
+		Config:         cfg,
+		ExecutableName: "gh",
 	}
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)

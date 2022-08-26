@@ -30,6 +30,12 @@ func REST(method, p string) Matcher {
 	}
 }
 
+func StringResponse(body string) Responder {
+	return func(req *http.Request) (*http.Response, error) {
+		return httpResponse(200, req, bytes.NewBufferString(body)), nil
+	}
+}
+
 func JSONResponse(body interface{}) Responder {
 	return func(req *http.Request) (*http.Response, error) {
 		b, _ := json.Marshal(body)

@@ -37,8 +37,38 @@ func (r *Registry) Verify(t Testing) {
 	}
 }
 
-// Reuquest satisfies Requester interface
+// Request satisfies Requester interface
 func (r *Registry) Request(req *http.Request) (*http.Response, error) {
+	var stub *Stub
+
+	r.mu.Lock()
+	for _, s := range r.stubs {
+		if s.matched || !s.Matcher(req) {
+			continue
+		}
+		if stub != nil {
+			r.mu.Unlock()
+			return nil, fmt.Errorf("more than 1 stub matched %v", req)
+		}
+		stub = s
+	}
+	if stub != nil {
+		stub.matched = true
+	}
+
+	if stub == nil {
+		r.mu.Unlock()
+		return nil, fmt.Errorf("no registered stubs matched %v", req)
+	}
+
+	r.Requests = append(r.Requests, req)
+	r.mu.Unlock()
+
+	return stub.Responder(req)
+}
+
+// RoundTrip satisfies http.RoundTripper
+func (r *Registry) RoundTrip(req *http.Request) (*http.Response, error) {
 	var stub *Stub
 
 	r.mu.Lock()
