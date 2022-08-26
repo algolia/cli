@@ -1,4 +1,4 @@
-package add
+package save
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/utils"
 )
 
-type AddOptions struct {
+type SaveOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
@@ -27,24 +27,27 @@ type AddOptions struct {
 	SynonymValues     []string
 }
 
-// NewAddCmd creates and returns an add command for index synonyms
-func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command {
-	opts := &AddOptions{
+// NewSaveCmd creates and returns a save command for index synonyms
+func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Command {
+	opts := &SaveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
 	}
 
 	cmd := &cobra.Command{
-		Use:               "add <index> --id <id> --values <values>",
+		Use:               "save <index> --id <id> --values <values>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Add a synonym to the given index",
+		Short:             "Save a synonym to the given index",
+		Aliases:           []string{"create", "edit"},
 		Long: heredoc.Doc(`
-			This command add a synonym to the specified index.
+			This command save a synonym to the specified index.
+			If the synonym doesn't exist yet, a new one is created.
 		`),
 		Example: heredoc.Doc(`
-			# Add one standard synonym with ID "1" and "foo" and "bar" values to the "TEST_PRODUCTS_1" index
+			# Save one standard synonym with ID "1" and "foo" and "bar" values to the "TEST_PRODUCTS_1" index
+			$ algolia save TEST_PRODUCTS_1 --id 1 --values foo,bar
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -53,20 +56,20 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 				return runF(opts)
 			}
 
-			return runAddCmd(opts)
+			return runSaveCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.SynonymID, "id", "i", "", "Synonym ID to add")
+	cmd.Flags().StringVarP(&opts.SynonymID, "id", "i", "", "Synonym ID to save")
 	_ = cmd.MarkFlagRequired("id")
-	cmd.Flags().StringSliceVarP(&opts.SynonymValues, "values", "v", nil, "Synonym values to add")
+	cmd.Flags().StringSliceVarP(&opts.SynonymValues, "values", "v", nil, "Synonym values to save")
 	_ = cmd.MarkFlagRequired("values")
 	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the delete request to the replicas")
 
 	return cmd
 }
 
-func runAddCmd(opts *AddOptions) error {
+func runSaveCmd(opts *SaveOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
