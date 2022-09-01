@@ -1,6 +1,13 @@
 package shared
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/iostreams"
+)
 
 func Test_GetSynonymSuccessMessage(t *testing.T) {
 	tests := []struct {
@@ -11,7 +18,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		saveWording  string
 	}{
 		{
-			name: "Create regular synonym",
+			name: "Save regular synonym",
 			synonymFlags: SynonymFlags{
 				SynonymID: "23",
 				Synonyms:  []string{"mj", "goat"},
@@ -19,32 +26,71 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 			saveOptions: SaveOptions{
 				Indice: "legends",
 			},
-			wantsOutput: "",
-			saveWording: "created",
+			wantsOutput: "✓ Synonym '23' successfully saved with 2 synonyms (mj, goat) to legends\n",
 		},
-		// {
-		// 	name: "Create one way synonym",
-		// 	saveOptions: SaveOptions{
-		// 		SynonymID: "23",
-		// 		Synonyms:  []string{"mj", "goat"}},
-		// 	wantsOutput: "",
-		// 	saveWording: "created",
-		// },
-		// {
-		// 	name: "Create regular synonym",
-		// 	saveOptions: SaveOptions{
-		// 		SynonymID: "23",
-		// 		Synonyms:  []string{"mj", "goat"}},
-		// 	wantsOutput: "",
-		// 	saveWording: "created",
-		// },
+		{
+			name: "Save one way synonym",
+			synonymFlags: SynonymFlags{
+				SynonymType:  SynonymType(OneWay),
+				SynonymID:    "23",
+				Synonyms:     []string{"mj", "goat"},
+				SynonymInput: "michael",
+			},
+			saveOptions: SaveOptions{
+				Indice: "legends",
+			},
+			wantsOutput: "✓ One way synonym '23' successfully saved with input 'michael' and 2 synonyms (mj, goat) to legends\n",
+		},
+		{
+			name: "Save placeholder synonym",
+			synonymFlags: SynonymFlags{
+				SynonymType:         SynonymType(Placeholder),
+				SynonymID:           "23",
+				SynonymReplacements: []string{"mj", "goat"},
+				SynonymPlaceholder:  "michael",
+			},
+			saveOptions: SaveOptions{
+				Indice: "legends",
+			},
+			wantsOutput: "✓ Placeholder synonym '23' successfully saved with placeholder 'michael' and 2 replacements (mj, goat) to legends\n",
+		},
+		{
+			name: "Save alt correction 1 synonym",
+			synonymFlags: SynonymFlags{
+				SynonymType:        SynonymType(AltCorrection1),
+				SynonymID:          "23",
+				SynonymCorrections: []string{"mj", "goat"},
+				SynonymWord:        "michael",
+			},
+			saveOptions: SaveOptions{
+				Indice: "legends",
+			},
+			wantsOutput: "✓ Alt correction 1 synonym '23' successfully saved with word 'michael' and 2 corrections (mj, goat) to legends\n",
+		},
+		{
+			name: "Save alt correction 2 synonym",
+			synonymFlags: SynonymFlags{
+				SynonymType:        SynonymType(AltCorrection2),
+				SynonymID:          "23",
+				SynonymCorrections: []string{"mj", "goat"},
+				SynonymWord:        "michael",
+			},
+			saveOptions: SaveOptions{
+				Indice: "legends",
+			},
+			wantsOutput: "✓ Alt correction 2 synonym '23' successfully saved with word 'michael' and 2 corrections (mj, goat) to legends\n",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// outputMessage := GetSynonymSuccessWording(tt.saveOptions, tt.saveWording)
+			io, _, _, _ := iostreams.Test()
+			f := &cmdutil.Factory{
+				IOStreams: io,
+			}
+			tt.saveOptions.IO = f.IOStreams
 
-			// assert.Equal(t, outputMessage, tt.wantsOutput)
+			assert.Equal(t, tt.wantsOutput, GetSynonymSuccessMessage(tt.synonymFlags, tt.saveOptions))
 		})
 	}
 }
