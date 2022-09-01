@@ -14,7 +14,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/getkin/kin-openapi v0.97.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/hashicorp/go-version v1.6.0 // indirect
+	github.com/hashicorp/go-version v1.6.0
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.11
 	github.com/mattn/go-isatty v0.0.14
