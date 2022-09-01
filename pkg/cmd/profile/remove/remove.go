@@ -18,7 +18,8 @@ type RemoveOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 
-	Profile string
+	Profile        string
+	DefaultProfile string
 
 	DoConfirm bool
 }
@@ -44,7 +45,14 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Profile = args[0]
-			if !confirm && opts.Profile == opts.config.Default().Name {
+
+			if opts.config.Default() != nil {
+				opts.DefaultProfile = opts.config.Default().Name
+			} else {
+				opts.DefaultProfile = ""
+			}
+
+			if !confirm && opts.Profile == opts.DefaultProfile {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
@@ -89,7 +97,7 @@ func runRemoveCmd(opts *RemoveOptions) error {
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
 		extra := "."
-		if opts.config.Default().Name == opts.Profile {
+		if opts.DefaultProfile == opts.Profile {
 			extra = ". Set a new default profile with 'algolia profile setdefault'."
 		}
 		if len(opts.config.ConfiguredProfiles()) == 0 {
