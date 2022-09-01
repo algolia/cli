@@ -115,10 +115,16 @@ func Test_runRemoveCmd(t *testing.T) {
 			wantsErr: "the specified profile does not exist: 'bar'",
 		},
 		{
-			name:     "only one profile",
+			name:     "only one profile (default)",
 			cli:      "default --confirm",
 			profiles: map[string]bool{"default": true},
 			wantOut:  "✓ 'default' removed successfully. Add a profile with 'algolia profile add'.\n",
+		},
+		{
+			name:     "only one profile (non-default)",
+			cli:      "foo --confirm",
+			profiles: map[string]bool{"foo": false},
+			wantOut:  "✓ 'foo' removed successfully. Add a profile with 'algolia profile add'.\n",
 		},
 	}
 
