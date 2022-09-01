@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"testing"
 
-	validator "github.com/algolia/cli/pkg/cmdutil/validators"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/httpmock"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -22,17 +22,19 @@ func TestNewSaveCmd(t *testing.T) {
 		tty       bool
 		cli       string
 		wantsErr  bool
-		wantsOpts validator.SaveOptions
+		wantsOpts shared.SaveOptions
 	}{
 		{
 			name:     "without tty",
 			cli:      "legends --id 1 --synonyms jordan,mj",
 			tty:      false,
 			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:            "legends",
-				SynonymID:         "1",
-				Synonyms:          []string{"jordan", "mj"},
+			wantsOpts: shared.SaveOptions{
+				Indice: "legends",
+				Synonym: search.NewRegularSynonym(
+					"1",
+					"jordan", "mj",
+				),
 				ForwardToReplicas: false,
 			},
 		},
@@ -41,121 +43,13 @@ func TestNewSaveCmd(t *testing.T) {
 			cli:      "legends --id 1 --synonyms jordan,mj",
 			tty:      true,
 			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:            "legends",
-				SynonymID:         "1",
-				Synonyms:          []string{"jordan", "mj"},
+			wantsOpts: shared.SaveOptions{
+				Indice: "legends",
+				Synonym: search.NewRegularSynonym(
+					"1",
+					"jordan", "mj",
+				),
 				ForwardToReplicas: false,
-			},
-		},
-		{
-			name:     "single, --type oneWaySynonym without --input",
-			cli:      "legends --id 1 --synonyms jordan,mj --type oneWaySynonym",
-			tty:      false,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type oneWaySynonym",
-			cli:      "legends -i 1 -s jordan,mj --type oneWaySynonym --input goat",
-			tty:      true,
-			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:            "legends",
-				SynonymID:         "1",
-				Synonyms:          []string{"jordan", "mj"},
-				SynonymType:       validator.SynonymType(validator.OneWay),
-				SynonymInput:      "goat",
-				ForwardToReplicas: false,
-			},
-		},
-		{
-			name:     "single, --type placeholder without --placeholder",
-			cli:      "legends -i 1 --type placeholder",
-			tty:      true,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type placeholder without --replacements",
-			cli:      "legends -i 1 --type placeholder --placeholder 23",
-			tty:      true,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type placeholder",
-			cli:      "legends -i 1 --type placeholder --placeholder 23 --replacements jordan,mj",
-			tty:      true,
-			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:              "legends",
-				SynonymID:           "1",
-				SynonymPlaceholder:  "23",
-				SynonymReplacements: []string{"jordan", "mj"},
-				SynonymType:         validator.SynonymType(validator.Placeholder),
-				ForwardToReplicas:   false,
-			},
-		},
-		{
-			name:     "single, --type altCorrection1 without --word",
-			cli:      "legends -i 1 --type altCorrection1 --corrections mj,goat",
-			tty:      true,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type altCorrection1 without --corrections",
-			cli:      "legends -i 1 --type altCorrection1 --word mj",
-			tty:      true,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type altCorrection1",
-			cli:      "legends -i 1 --type altCorrection1 --word mj --corrections goat,23",
-			tty:      true,
-			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:             "legends",
-				SynonymID:          "1",
-				SynonymWord:        "mj",
-				SynonymCorrections: []string{"goat", "23"},
-				SynonymType:        validator.SynonymType(validator.AltCorrection1),
-				ForwardToReplicas:  false,
-			},
-		},
-		{
-			name:     "single, --type altCorrection2 without --word",
-			cli:      "legends -i 1 --type altCorrection2 --corrections mj,goat",
-			tty:      true,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type altCorrection2 without --corrections",
-			cli:      "legends -i 1 --type altCorrection2 --word mj",
-			tty:      true,
-			wantsErr: true,
-		},
-		{
-			name:     "single, --type altCorrection2",
-			cli:      "legends -i 1 --type altCorrection2 --word mj --corrections goat,23",
-			tty:      true,
-			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:             "legends",
-				SynonymID:          "1",
-				SynonymWord:        "mj",
-				SynonymCorrections: []string{"goat", "23"},
-				SynonymType:        validator.SynonymType(validator.AltCorrection2),
-				ForwardToReplicas:  false,
-			},
-		},
-		{
-			name:     "single, forward to replicas",
-			cli:      "legends --id 1 --synonyms jordan,mj --forward-to-replicas",
-			tty:      false,
-			wantsErr: false,
-			wantsOpts: validator.SaveOptions{
-				Indice:            "legends",
-				Synonyms:          []string{"jordan", "mj"},
-				SynonymID:         "1",
-				ForwardToReplicas: true,
 			},
 		},
 	}
@@ -172,8 +66,9 @@ func TestNewSaveCmd(t *testing.T) {
 				IOStreams: io,
 			}
 
-			var opts *validator.SaveOptions
-			cmd := NewSaveCmd(f, func(o *validator.SaveOptions) error {
+			var opts *shared.SaveOptions
+
+			cmd := NewSaveCmd(f, func(o *shared.SaveOptions) error {
 				opts = o
 				return nil
 			})
@@ -193,14 +88,7 @@ func TestNewSaveCmd(t *testing.T) {
 			assert.Equal(t, "", stderr.String())
 
 			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
-			assert.Equal(t, tt.wantsOpts.SynonymID, opts.SynonymID)
-			assert.Equal(t, tt.wantsOpts.SynonymType, opts.SynonymType)
-			assert.Equal(t, tt.wantsOpts.SynonymCorrections, opts.SynonymCorrections)
-			assert.Equal(t, tt.wantsOpts.SynonymPlaceholder, opts.SynonymPlaceholder)
-			assert.Equal(t, tt.wantsOpts.SynonymReplacements, opts.SynonymReplacements)
-			assert.Equal(t, tt.wantsOpts.SynonymWord, opts.SynonymWord)
-			assert.Equal(t, tt.wantsOpts.SynonymInput, opts.SynonymInput)
-			assert.Equal(t, tt.wantsOpts.Synonyms, opts.Synonyms)
+			assert.Equal(t, tt.wantsOpts.Synonym, opts.Synonym)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 		})
 	}
@@ -229,7 +117,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 2 synonyms (jordan, mj) to legends\n",
+			wantOut:   "✓ Synonym '1' successfully saved with 2 synonyms (jordan, mj) to legends\n",
 		},
 		{
 			name:      "single id, mutiple synonyms, TTY",
@@ -237,7 +125,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) to legends\n",
+			wantOut:   "✓ Synonym '1' successfully saved with 5 synonyms (jordan, mj, goat, michael, 23) to legends\n",
 		},
 		{
 			name:      "single id, mutiple synonyms, TTY with shorthands",
@@ -245,7 +133,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Synonym '1' successfully created with 5 synonyms (jordan, mj, goat, michael, 23) to legends\n",
+			wantOut:   "✓ Synonym '1' successfully saved with 5 synonyms (jordan, mj, goat, michael, 23) to legends\n",
 		},
 		{
 			name:      "single id, oneWaySynonym type, multiple synonyms, TTY",
@@ -253,7 +141,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ One way synonym '1' successfully created with input '23' and 4 synonyms (jordan, mj, goat, michael) to legends\n",
+			wantOut:   "✓ One way synonym '1' successfully saved with input '23' and 4 synonyms (jordan, mj, goat, michael) to legends\n",
 		},
 		{
 			name:      "single id, placeholder type, one placeholder, multiple replacements, TTY",
@@ -261,7 +149,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Placeholder synonym '1' successfully created with placeholder 'jordan' and 4 replacements (mj, goat, michael, 23) to legends\n",
+			wantOut:   "✓ Placeholder synonym '1' successfully saved with placeholder 'jordan' and 4 replacements (mj, goat, michael, 23) to legends\n",
 		},
 		{
 			name:      "single id, altCorrection1 type, one word, multiple corrections, TTY",
@@ -269,7 +157,7 @@ func Test_runSaveCmd(t *testing.T) {
 			indice:    "legends",
 			synonymID: "1",
 			isTTY:     true,
-			wantOut:   "✓ Alt correction 1 synonym '1' successfully created with word 'jordan' and 4 corrections (mj, goat, michael, 23) to legends\n",
+			wantOut:   "✓ Alt correction 1 synonym '1' successfully saved with word 'jordan' and 4 corrections (mj, goat, michael, 23) to legends\n",
 		},
 	}
 

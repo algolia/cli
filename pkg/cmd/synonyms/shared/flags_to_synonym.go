@@ -1,4 +1,4 @@
-package validator
+package shared
 
 import (
 	"fmt"
@@ -8,23 +8,27 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
+type SynonymFlags struct {
+	SynonymID           string
+	SynonymInput        string
+	SynonymWord         string
+	SynonymPlaceholder  string
+	SynonymType         SynonymType
+	Synonyms            []string
+	SynonymCorrections  []string
+	SynonymReplacements []string
+}
+
 type SaveOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
 	SearchClient func() (*search.Client, error)
 
-	Indice              string
-	SynonymID           string
-	ForwardToReplicas   bool
-	SynonymType         SynonymType
-	SynonymInput        string
-	SynonymWord         string
-	SynonymPlaceholder  string
-	Synonyms            []string
-	SynonymCorrections  []string
-	SynonymReplacements []string
-	Synonym             search.Synonym
+	Indice            string
+	ForwardToReplicas bool
+	Synonym           search.Synonym
+	SuccessMessage    string
 }
 
 // Defining new type that implements pflag.Value interface with String, Set and Type
@@ -63,69 +67,69 @@ func (e *SynonymType) Type() string {
 	return "SynonymType"
 }
 
-func ValidateFlags(options SaveOptions) (search.Synonym, error) {
-	if options.SynonymID == "" {
+func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
+	if flags.SynonymID == "" {
 		return nil, fmt.Errorf("a unique synonym id is required")
 	}
 
 	// Default case
-	if options.SynonymType == "" || options.SynonymType == SynonymType(Regular) {
+	if flags.SynonymType == "" || flags.SynonymType == SynonymType(Regular) {
 		return search.NewRegularSynonym(
-			options.SynonymID,
-			options.Synonyms...,
+			flags.SynonymID,
+			flags.Synonyms...,
 		), nil
 	}
 
-	switch options.SynonymType {
+	switch flags.SynonymType {
 	case SynonymType(OneWay):
-		if options.SynonymInput == "" {
+		if flags.SynonymInput == "" {
 			return nil, fmt.Errorf("a synonym input is required for one way synonyms")
 		}
 		return search.NewOneWaySynonym(
-			options.SynonymID,
-			options.SynonymInput,
-			options.Synonyms...,
+			flags.SynonymID,
+			flags.SynonymInput,
+			flags.Synonyms...,
 		), nil
 	case SynonymType(AltCorrection1):
-		if options.SynonymWord == "" {
+		if flags.SynonymWord == "" {
 			return nil, fmt.Errorf("synonym word is required for alt correction 1 synonyms")
 		}
-		if len(options.SynonymCorrections) < 1 {
+		if len(flags.SynonymCorrections) < 1 {
 			return nil, fmt.Errorf("synonym corrections are required for alt correction 1 synonyms")
 		}
 		return search.NewAltCorrection1(
-			options.SynonymID,
-			options.SynonymWord,
-			options.SynonymCorrections...,
+			flags.SynonymID,
+			flags.SynonymWord,
+			flags.SynonymCorrections...,
 		), nil
 	case SynonymType(AltCorrection2):
-		if options.SynonymWord == "" {
+		if flags.SynonymWord == "" {
 			return nil, fmt.Errorf("synonym word is required for alt correction 2 synonyms")
 		}
-		if len(options.SynonymCorrections) < 1 {
+		if len(flags.SynonymCorrections) < 1 {
 			return nil, fmt.Errorf("synonym corrections are required for alt correction 2 synonyms")
 		}
 		return search.NewAltCorrection2(
-			options.SynonymID,
-			options.SynonymWord,
-			options.SynonymCorrections...,
+			flags.SynonymID,
+			flags.SynonymWord,
+			flags.SynonymCorrections...,
 		), nil
 	case SynonymType(Placeholder):
-		if options.SynonymPlaceholder == "" {
+		if flags.SynonymPlaceholder == "" {
 			return nil, fmt.Errorf("a synonym placeholder is required for placeholder synonyms")
 		}
-		if len(options.SynonymReplacements) < 1 {
+		if len(flags.SynonymReplacements) < 1 {
 			return nil, fmt.Errorf("synonym replacements are required for placeholder synonyms")
 		}
 		return search.NewPlaceholder(
-			options.SynonymID,
-			options.SynonymPlaceholder,
-			options.SynonymReplacements...,
+			flags.SynonymID,
+			flags.SynonymPlaceholder,
+			flags.SynonymReplacements...,
 		), nil
 	case SynonymType(Regular):
 		return search.NewRegularSynonym(
-			options.SynonymID,
-			options.Synonyms...,
+			flags.SynonymID,
+			flags.Synonyms...,
 		), nil
 	}
 
