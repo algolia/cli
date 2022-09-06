@@ -90,7 +90,10 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 			}
 			tt.saveOptions.IO = f.IOStreams
 
-			assert.Equal(t, tt.wantsOutput, GetSynonymSuccessMessage(tt.synonymFlags, tt.saveOptions))
+			err, message := GetSuccessMessage(tt.synonymFlags, tt.saveOptions)
+
+			assert.Equal(t, err, nil)
+			assert.Equal(t, tt.wantsOutput, message)
 		})
 	}
 }

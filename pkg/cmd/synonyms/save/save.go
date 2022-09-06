@@ -45,7 +45,10 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*shared.SaveOptions) error) *cobra
 
 			if synonym != nil {
 				opts.Synonym = synonym
-				opts.SuccessMessage = shared.GetSynonymSuccessMessage(*flags, *opts)
+				err, successMessage := shared.GetSuccessMessage(*flags, *opts)
+				if err == nil {
+					opts.SuccessMessage = successMessage
+				}
 			}
 
 			if runF != nil {
