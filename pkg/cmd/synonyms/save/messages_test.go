@@ -1,10 +1,12 @@
-package shared
+package save
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 )
@@ -12,14 +14,14 @@ import (
 func Test_GetSynonymSuccessMessage(t *testing.T) {
 	tests := []struct {
 		name         string
-		synonymFlags SynonymFlags
+		synonymFlags shared.SynonymFlags
 		saveOptions  SaveOptions
 		wantsOutput  string
 		saveWording  string
 	}{
 		{
 			name: "Save regular synonym",
-			synonymFlags: SynonymFlags{
+			synonymFlags: shared.SynonymFlags{
 				SynonymID: "23",
 				Synonyms:  []string{"mj", "goat"},
 			},
@@ -30,8 +32,8 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		},
 		{
 			name: "Save one way synonym",
-			synonymFlags: SynonymFlags{
-				SynonymType:  SynonymType(OneWay),
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:  shared.SynonymType(shared.OneWay),
 				SynonymID:    "23",
 				Synonyms:     []string{"mj", "goat"},
 				SynonymInput: "michael",
@@ -43,8 +45,8 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		},
 		{
 			name: "Save placeholder synonym",
-			synonymFlags: SynonymFlags{
-				SynonymType:         SynonymType(Placeholder),
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:         shared.SynonymType(shared.Placeholder),
 				SynonymID:           "23",
 				SynonymReplacements: []string{"mj", "goat"},
 				SynonymPlaceholder:  "michael",
@@ -56,8 +58,8 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		},
 		{
 			name: "Save alt correction 1 synonym",
-			synonymFlags: SynonymFlags{
-				SynonymType:        SynonymType(AltCorrection1),
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:        shared.SynonymType(shared.AltCorrection1),
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 				SynonymWord:        "michael",
@@ -69,8 +71,8 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		},
 		{
 			name: "Save alt correction 2 synonym",
-			synonymFlags: SynonymFlags{
-				SynonymType:        SynonymType(AltCorrection2),
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:        shared.SynonymType(shared.AltCorrection2),
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 				SynonymWord:        "michael",
@@ -88,12 +90,11 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 			f := &cmdutil.Factory{
 				IOStreams: io,
 			}
-			tt.saveOptions.IO = f.IOStreams
 
-			err, message := GetSuccessMessage(tt.synonymFlags, tt.saveOptions)
+			err, message := GetSuccessMessage(tt.synonymFlags, tt.saveOptions.Indice)
 
 			assert.Equal(t, err, nil)
-			assert.Equal(t, tt.wantsOutput, message)
+			assert.Equal(t, tt.wantsOutput, fmt.Sprintf("%s %s", f.IOStreams.ColorScheme().SuccessIcon(), message))
 		})
 	}
 }

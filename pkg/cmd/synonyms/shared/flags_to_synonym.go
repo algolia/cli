@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	"github.com/algolia/cli/pkg/config"
-	"github.com/algolia/cli/pkg/iostreams"
 )
 
 type SynonymFlags struct {
@@ -17,18 +15,6 @@ type SynonymFlags struct {
 	Synonyms            []string
 	SynonymCorrections  []string
 	SynonymReplacements []string
-}
-
-type SaveOptions struct {
-	Config config.IConfig
-	IO     *iostreams.IOStreams
-
-	SearchClient func() (*search.Client, error)
-
-	Indice            string
-	ForwardToReplicas bool
-	Synonym           search.Synonym
-	SuccessMessage    string
 }
 
 // Defining new type that implements pflag.Value interface with String, Set and Type

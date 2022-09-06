@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/httpmock"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -22,14 +21,14 @@ func TestNewSaveCmd(t *testing.T) {
 		tty       bool
 		cli       string
 		wantsErr  bool
-		wantsOpts shared.SaveOptions
+		wantsOpts SaveOptions
 	}{
 		{
 			name:     "without tty",
 			cli:      "legends --id 1 --synonyms jordan,mj",
 			tty:      false,
 			wantsErr: false,
-			wantsOpts: shared.SaveOptions{
+			wantsOpts: SaveOptions{
 				Indice: "legends",
 				Synonym: search.NewRegularSynonym(
 					"1",
@@ -43,7 +42,7 @@ func TestNewSaveCmd(t *testing.T) {
 			cli:      "legends --id 1 --synonyms jordan,mj",
 			tty:      true,
 			wantsErr: false,
-			wantsOpts: shared.SaveOptions{
+			wantsOpts: SaveOptions{
 				Indice: "legends",
 				Synonym: search.NewRegularSynonym(
 					"1",
@@ -66,9 +65,9 @@ func TestNewSaveCmd(t *testing.T) {
 				IOStreams: io,
 			}
 
-			var opts *shared.SaveOptions
+			var opts *SaveOptions
 
-			cmd := NewSaveCmd(f, func(o *shared.SaveOptions) error {
+			cmd := NewSaveCmd(f, func(o *SaveOptions) error {
 				opts = o
 				return nil
 			})

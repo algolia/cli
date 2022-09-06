@@ -5,15 +5,30 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
 	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/iostreams"
 )
 
+type SaveOptions struct {
+	Config config.IConfig
+	IO     *iostreams.IOStreams
+
+	SearchClient func() (*search.Client, error)
+
+	Indice            string
+	ForwardToReplicas bool
+	Synonym           search.Synonym
+	SuccessMessage    string
+}
+
 // NewSaveCmd creates and returns a save command for index synonyms
-func NewSaveCmd(f *cmdutil.Factory, runF func(*shared.SaveOptions) error) *cobra.Command {
-	opts := &shared.SaveOptions{
+func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Command {
+	opts := &SaveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
@@ -42,12 +57,13 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*shared.SaveOptions) error) *cobra
 			if err != nil {
 				return err
 			}
-
 			opts.Synonym = synonym
-			err, successMessage := shared.GetSuccessMessage(*flags, *opts)
-			if err == nil {
-				opts.SuccessMessage = successMessage
+
+			err, successMessage := GetSuccessMessage(*flags, opts.Indice)
+			if err != nil {
+				return err
 			}
+			opts.SuccessMessage = fmt.Sprintf("%s %s", f.IOStreams.ColorScheme().SuccessIcon(), successMessage)
 
 			if runF != nil {
 				return runF(opts)
@@ -76,7 +92,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*shared.SaveOptions) error) *cobra
 	return cmd
 }
 
-func runSaveCmd(opts *shared.SaveOptions) error {
+func runSaveCmd(opts *SaveOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err

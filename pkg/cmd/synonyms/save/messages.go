@@ -1,4 +1,4 @@
-package shared
+package save
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"text/template"
 
+	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/utils"
 )
 
@@ -17,24 +18,24 @@ type SuccessMessage struct {
 	Indice string
 }
 
-const successTemplate = `{{ .Icon}} {{ .Type}} '{{ .Id}}' successfully saved with {{ .Values}} to {{ .Indice}}`
+const successTemplate = `{{ .Type}} '{{ .Id}}' successfully saved with {{ .Values}} to {{ .Indice}}`
 
-func GetSuccessMessage(flags SynonymFlags, opts SaveOptions) (error, string) {
+func GetSuccessMessage(flags shared.SynonymFlags, indice string) (error, string) {
 	var successMessage SuccessMessage
 
-	if flags.SynonymType == "" || flags.SynonymType.String() == Regular {
+	if flags.SynonymType == "" || flags.SynonymType.String() == shared.Regular {
 		successMessage = SuccessMessage{
 			Type: "Synonym",
 			Id:   flags.SynonymID,
 			Values: fmt.Sprintf("%s (%s)",
 				utils.Pluralize(len(flags.Synonyms), "synonym"),
 				strings.Join(flags.Synonyms, ", ")),
-			Indice: opts.Indice,
+			Indice: indice,
 		}
 	}
 
 	switch flags.SynonymType.String() {
-	case OneWay:
+	case shared.OneWay:
 		successMessage = SuccessMessage{
 			Type: "One way synonym",
 			Id:   flags.SynonymID,
@@ -42,9 +43,9 @@ func GetSuccessMessage(flags SynonymFlags, opts SaveOptions) (error, string) {
 				flags.SynonymInput,
 				utils.Pluralize(len(flags.Synonyms), "synonym"),
 				strings.Join(flags.Synonyms, ", ")),
-			Indice: opts.Indice,
+			Indice: indice,
 		}
-	case Placeholder:
+	case shared.Placeholder:
 		successMessage = SuccessMessage{
 			Type: "Placeholder synonym",
 			Id:   flags.SynonymID,
@@ -52,11 +53,11 @@ func GetSuccessMessage(flags SynonymFlags, opts SaveOptions) (error, string) {
 				flags.SynonymPlaceholder,
 				utils.Pluralize(len(flags.SynonymReplacements), "replacement"),
 				strings.Join(flags.SynonymReplacements, ", ")),
-			Indice: opts.Indice,
+			Indice: indice,
 		}
-	case AltCorrection1, AltCorrection2:
+	case shared.AltCorrection1, shared.AltCorrection2:
 		altCorrectionType := "1"
-		if flags.SynonymType.String() == AltCorrection2 {
+		if flags.SynonymType.String() == shared.AltCorrection2 {
 			altCorrectionType = "2"
 		}
 		altCorrectionType = "Alt correction " + altCorrectionType + " synonym"
@@ -67,11 +68,10 @@ func GetSuccessMessage(flags SynonymFlags, opts SaveOptions) (error, string) {
 				flags.SynonymWord,
 				utils.Pluralize(len(flags.SynonymCorrections), "correction"),
 				strings.Join(flags.SynonymCorrections, ", ")),
-			Indice: opts.Indice,
+			Indice: indice,
 		}
 	}
 
-	successMessage.Icon = opts.IO.ColorScheme().SuccessIcon()
 	t := template.Must(template.New("successMessage").Parse(successTemplate))
 
 	var tpl bytes.Buffer
