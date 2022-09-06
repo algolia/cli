@@ -33,7 +33,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*shared.SaveOptions) error) *cobra
 		`),
 		Example: heredoc.Doc(`
 			# Save one standard synonym with ID "1" and "foo" and "bar" synonyms to the "TEST_PRODUCTS_1" index
-			$ algolia save TEST_PRODUCTS_1 --id 1 --synonyms foo,bar
+			$ algolia synonyms save TEST_PRODUCTS_1 --id 1 --synonyms foo,bar
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -43,12 +43,10 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*shared.SaveOptions) error) *cobra
 				return err
 			}
 
-			if synonym != nil {
-				opts.Synonym = synonym
-				err, successMessage := shared.GetSuccessMessage(*flags, *opts)
-				if err == nil {
-					opts.SuccessMessage = successMessage
-				}
+			opts.Synonym = synonym
+			err, successMessage := shared.GetSuccessMessage(*flags, *opts)
+			if err == nil {
+				opts.SuccessMessage = successMessage
 			}
 
 			if runF != nil {
