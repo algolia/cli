@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -71,7 +72,15 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Indice)
-	res, err := indice.BrowseObjects(opts.SearchParams)
+
+	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
+	query, ok := opts.SearchParams["query"].(string)
+	if !ok {
+		query = ""
+	} else {
+		delete(opts.SearchParams, "query")
+	}
+	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.SearchParams))
 	if err != nil {
 		return err
 	}
