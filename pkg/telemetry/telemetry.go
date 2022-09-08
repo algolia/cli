@@ -23,7 +23,7 @@ type telemetryClientKey struct{}
 type TelemetryClient interface {
 	Identify(ctx context.Context) error
 	Track(ctx context.Context, event string) error
-	Close() error
+	Close()
 }
 
 type AnalyticsTelemetryClient struct {
@@ -184,10 +184,10 @@ func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) erro
 }
 
 // Close closes the client, waiting for all pending events to be sent.
-func (a *AnalyticsTelemetryClient) Close() error {
-	return a.client.Close()
+func (a *AnalyticsTelemetryClient) Close() {
+	_ = a.client.Close()
 }
 
 func (a *NoOpTelemetryClient) Identify(ctx context.Context) error            { return nil }
 func (a *NoOpTelemetryClient) Track(ctx context.Context, event string) error { return nil }
-func (a *NoOpTelemetryClient) Close() error                                  { return nil }
+func (a *NoOpTelemetryClient) Close()                                        {}

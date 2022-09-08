@@ -169,6 +169,8 @@ func Execute() exitCode {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}
 
+		go telemetryClient.Close() // flush telemetry events
+
 		return nil
 	}
 
@@ -181,20 +183,6 @@ func Execute() exitCode {
 
 	// Run the command.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-
-	if cmdutil.ShouldTrackUsage(cmd) {
-		// Post-command telemetry
-		ctx = cmd.Context()
-		telemetryClient := telemetry.GetTelemetryClient(ctx)
-		telemetryErr := telemetryClient.Track(ctx, "Command Finished")
-		if telemetryErr != nil && hasDebug {
-			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
-		}
-		telemetryErr = telemetryClient.Close() // flush telemetry events
-		if telemetryErr != nil && hasDebug {
-			fmt.Fprintf(stderr, "Error closing telemetry client: %s\n", err)
-		}
-	}
 
 	// Handle eventual errors.
 	if err != nil {
