@@ -50,3 +50,13 @@ func ToKebabCase(str string) string {
 
 	return strings.ToLower(snake)
 }
+
+// Convert comma separated string values to slice
+func StringToSlice(str string) []string {
+	return strings.Split(strings.ReplaceAll(str, " ", ""), ",")
+}
+
+// Convert slice of string to comma separated string
+func SliceToString(str []string) string {
+	return strings.Join(str, ", ")
+}

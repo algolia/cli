@@ -55,8 +55,19 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 			synonym, err := shared.FlagsToSynonym(*flags)
 			if err != nil {
-				return err
+				// Some flags are missing
+				err = AskSynonym(flags)
+				if err != nil {
+					fmt.Println("Error when running the survey:", err)
+				}
+
+				synonym, err = shared.FlagsToSynonym(*flags)
+				if err != nil {
+					fmt.Println("Error when creating the synonym:", err)
+				}
 			}
+
+			// Correct flags are passed
 			opts.Synonym = synonym
 
 			err, successMessage := GetSuccessMessage(*flags, opts.Indice)
@@ -75,8 +86,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 	// Common
 	cmd.Flags().StringVarP(&flags.SynonymID, "id", "i", "", "Synonym ID to save")
-	_ = cmd.MarkFlagRequired("id")
-	cmd.Flags().VarP(&flags.SynonymType, "type", "t", "Synonym type to save (default to regular)")
+	cmd.Flags().StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type to save (default to regular)")
 	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the save request to the replicas")
 	// Regular synonym
 	cmd.Flags().StringSliceVarP(&flags.Synonyms, "synonyms", "s", nil, "Synonyms to save")

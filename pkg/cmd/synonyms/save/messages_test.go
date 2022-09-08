@@ -33,7 +33,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		{
 			name: "Save one way synonym",
 			synonymFlags: shared.SynonymFlags{
-				SynonymType:  shared.SynonymType(shared.OneWay),
+				SynonymType:  shared.OneWay,
 				SynonymID:    "23",
 				Synonyms:     []string{"mj", "goat"},
 				SynonymInput: "michael",
@@ -46,7 +46,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		{
 			name: "Save placeholder synonym",
 			synonymFlags: shared.SynonymFlags{
-				SynonymType:         shared.SynonymType(shared.Placeholder),
+				SynonymType:         shared.Placeholder,
 				SynonymID:           "23",
 				SynonymReplacements: []string{"mj", "goat"},
 				SynonymPlaceholder:  "michael",
@@ -59,7 +59,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		{
 			name: "Save alt correction 1 synonym",
 			synonymFlags: shared.SynonymFlags{
-				SynonymType:        shared.SynonymType(shared.AltCorrection1),
+				SynonymType:        shared.AltCorrection1,
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 				SynonymWord:        "michael",
@@ -72,7 +72,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 		{
 			name: "Save alt correction 2 synonym",
 			synonymFlags: shared.SynonymFlags{
-				SynonymType:        shared.SynonymType(shared.AltCorrection2),
+				SynonymType:        shared.AltCorrection2,
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 				SynonymWord:        "michael",

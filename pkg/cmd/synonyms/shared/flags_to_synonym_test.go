@@ -28,7 +28,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			name:     "Regular synonym explicit type",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType: SynonymType(Regular),
+				SynonymType: Regular,
 				SynonymID:   "23",
 				Synonyms:    []string{"mj", "goat"}},
 			synonymType: "search.RegularSynonym",
@@ -45,7 +45,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			name:     "One way synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:  SynonymType(OneWay),
+				SynonymType:  OneWay,
 				SynonymID:    "23",
 				Synonyms:     []string{"mj", "goat"},
 				SynonymInput: "michael",
@@ -57,7 +57,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			wantsErr:    true,
 			wantsErrMsg: "a synonym input is required for one way synonyms",
 			synonymFlags: SynonymFlags{
-				SynonymType: SynonymType(OneWay),
+				SynonymType: OneWay,
 				SynonymID:   "23",
 				Synonyms:    []string{"mj", "goat"},
 			},
@@ -67,7 +67,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			name:     "AltCorrection1 synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:        SynonymType(AltCorrection1),
+				SynonymType:        AltCorrection1,
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 				SynonymWord:        "michael",
@@ -79,7 +79,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			wantsErr:    true,
 			wantsErrMsg: "synonym word is required for alt correction 1 synonyms",
 			synonymFlags: SynonymFlags{
-				SynonymType:        SynonymType(AltCorrection1),
+				SynonymType:        AltCorrection1,
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 			},
@@ -88,7 +88,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			name:     "AltCorrection2 synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:        SynonymType(AltCorrection2),
+				SynonymType:        AltCorrection2,
 				SynonymID:          "24",
 				SynonymCorrections: []string{"bryant", "mamba"},
 				SynonymWord:        "kobe",
@@ -100,7 +100,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			wantsErr:    true,
 			wantsErrMsg: "synonym corrections are required for alt correction 2 synonyms",
 			synonymFlags: SynonymFlags{
-				SynonymType: SynonymType(AltCorrection2),
+				SynonymType: AltCorrection2,
 				SynonymID:   "24",
 				SynonymWord: "kobe",
 			},
@@ -110,7 +110,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			name:     "Placeholder synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:         SynonymType(Placeholder),
+				SynonymType:         Placeholder,
 				SynonymID:           "23",
 				SynonymReplacements: []string{"james", "lebron"},
 				SynonymPlaceholder:  "king",
@@ -122,7 +122,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			wantsErr:    true,
 			wantsErrMsg: "a synonym placeholder is required for placeholder synonyms",
 			synonymFlags: SynonymFlags{
-				SynonymType:         SynonymType(Placeholder),
+				SynonymType:         Placeholder,
 				SynonymID:           "23",
 				SynonymReplacements: []string{"james", "lebron"},
 			},
@@ -132,7 +132,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 			wantsErr:    true,
 			wantsErrMsg: "synonym replacements are required for placeholder synonyms",
 			synonymFlags: SynonymFlags{
-				SynonymType:        SynonymType(Placeholder),
+				SynonymType:        Placeholder,
 				SynonymID:          "23",
 				SynonymPlaceholder: "king",
 			},

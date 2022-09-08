@@ -11,7 +11,7 @@ type SynonymFlags struct {
 	SynonymInput        string
 	SynonymWord         string
 	SynonymPlaceholder  string
-	SynonymType         SynonymType
+	SynonymType         string
 	Synonyms            []string
 	SynonymCorrections  []string
 	SynonymReplacements []string
@@ -59,7 +59,10 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 	}
 
 	// Default case
-	if flags.SynonymType == "" || flags.SynonymType == SynonymType(Regular) {
+	if flags.SynonymType == "" || flags.SynonymType == Regular {
+		if len(flags.Synonyms) < 1 {
+			return nil, fmt.Errorf("at least 1 synonym is required")
+		}
 		return search.NewRegularSynonym(
 			flags.SynonymID,
 			flags.Synonyms...,
@@ -67,7 +70,10 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 	}
 
 	switch flags.SynonymType {
-	case SynonymType(OneWay):
+	case OneWay:
+		if len(flags.Synonyms) < 1 {
+			return nil, fmt.Errorf("at least 1 synonym is required")
+		}
 		if flags.SynonymInput == "" {
 			return nil, fmt.Errorf("a synonym input is required for one way synonyms")
 		}
@@ -76,7 +82,7 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 			flags.SynonymInput,
 			flags.Synonyms...,
 		), nil
-	case SynonymType(AltCorrection1):
+	case AltCorrection1:
 		if flags.SynonymWord == "" {
 			return nil, fmt.Errorf("synonym word is required for alt correction 1 synonyms")
 		}
@@ -88,7 +94,7 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 			flags.SynonymWord,
 			flags.SynonymCorrections...,
 		), nil
-	case SynonymType(AltCorrection2):
+	case AltCorrection2:
 		if flags.SynonymWord == "" {
 			return nil, fmt.Errorf("synonym word is required for alt correction 2 synonyms")
 		}
@@ -100,7 +106,7 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 			flags.SynonymWord,
 			flags.SynonymCorrections...,
 		), nil
-	case SynonymType(Placeholder):
+	case Placeholder:
 		if flags.SynonymPlaceholder == "" {
 			return nil, fmt.Errorf("a synonym placeholder is required for placeholder synonyms")
 		}
@@ -112,7 +118,7 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 			flags.SynonymPlaceholder,
 			flags.SynonymReplacements...,
 		), nil
-	case SynonymType(Regular):
+	case Regular:
 		return search.NewRegularSynonym(
 			flags.SynonymID,
 			flags.Synonyms...,

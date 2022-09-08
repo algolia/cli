@@ -23,7 +23,7 @@ const successTemplate = `{{ .Type}} '{{ .Id}}' successfully saved with {{ .Value
 func GetSuccessMessage(flags shared.SynonymFlags, indice string) (error, string) {
 	var successMessage SuccessMessage
 
-	if flags.SynonymType == "" || flags.SynonymType.String() == shared.Regular {
+	if flags.SynonymType == "" || flags.SynonymType == shared.Regular {
 		successMessage = SuccessMessage{
 			Type: "Synonym",
 			Id:   flags.SynonymID,
@@ -34,7 +34,7 @@ func GetSuccessMessage(flags shared.SynonymFlags, indice string) (error, string)
 		}
 	}
 
-	switch flags.SynonymType.String() {
+	switch flags.SynonymType {
 	case shared.OneWay:
 		successMessage = SuccessMessage{
 			Type: "One way synonym",
@@ -57,7 +57,7 @@ func GetSuccessMessage(flags shared.SynonymFlags, indice string) (error, string)
 		}
 	case shared.AltCorrection1, shared.AltCorrection2:
 		altCorrectionType := "1"
-		if flags.SynonymType.String() == shared.AltCorrection2 {
+		if flags.SynonymType == shared.AltCorrection2 {
 			altCorrectionType = "2"
 		}
 		altCorrectionType = "Alt correction " + altCorrectionType + " synonym"
