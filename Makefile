@@ -1,3 +1,9 @@
+ifdef VERSION
+VERSION := $(VERSION)
+else
+VERSION := master
+endif
+
 # Run all the tests
 test:
 	go test ./...
@@ -29,7 +35,7 @@ endif
 # Build the binary
 build:
 	go generate ./...
-	go build -o algolia cmd/algolia/main.go
+	go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=$(VERSION)" -o algolia cmd/algolia/main.go
 .PHONY: build
 
 ## Install & uninstall tasks are here for use on *nix platform only.
