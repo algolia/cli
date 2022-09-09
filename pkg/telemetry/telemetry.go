@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"runtime"
@@ -37,14 +38,14 @@ type AnalyticsTelemetryLogger struct {
 
 func (l AnalyticsTelemetryLogger) Logf(format string, args ...interface{}) {
 	if l.debug {
-		l.logger.Printf("INFO: "+format, args...)
+		fmt.Printf("INFO: "+format, args...)
 	}
 }
 
 func (l AnalyticsTelemetryLogger) Errorf(format string, args ...interface{}) {
 	// The telemetry should always fail silently, unless in debug mode
 	if l.debug {
-		l.logger.Printf("ERROR: "+format, args...)
+		fmt.Printf("ERROR: "+format, args...)
 	}
 }
 
