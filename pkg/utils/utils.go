@@ -10,7 +10,7 @@ import (
 
 // Pluralize returns the plural form of a given string
 func Pluralize(num int, thing string) string {
-	if num == 1 {
+	if num <= 1 {
 		return fmt.Sprintf("%d %s", num, thing)
 	}
 	return fmt.Sprintf("%d %ss", num, thing)
