@@ -8,7 +8,8 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
-	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
+	handler "github.com/algolia/cli/pkg/cmd/shared"
+	"github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -53,20 +54,20 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			synonym, err := shared.FlagsToSynonym(*flags)
-			if err != nil {
-				// Some flags are missing
-				err = AskSynonym(flags)
-				if err != nil {
-					fmt.Println("Error when running the survey:", err)
-				}
-
-				synonym, err = shared.FlagsToSynonym(*flags)
-				if err != nil {
-					fmt.Println("Error when creating the synonym:", err)
-				}
+			flagsHandler := &handler.SynonymHandler{
+				Flags: flags,
+				Cmd:   cmd,
 			}
 
+			err := handler.HandleFlags(flagsHandler, opts.IO.CanPrompt())
+			if err != nil {
+				return err
+			}
+
+			synonym, err := shared.FlagsToSynonym(*flags)
+			if err != nil {
+				return err
+			}
 			// Correct flags are passed
 			opts.Synonym = synonym
 

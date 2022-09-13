@@ -54,71 +54,32 @@ func (e *SynonymType) Type() string {
 }
 
 func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
-	if flags.SynonymID == "" {
-		return nil, fmt.Errorf("a unique synonym id is required")
-	}
-
-	// Default case
-	if flags.SynonymType == "" || flags.SynonymType == Regular {
-		if len(flags.Synonyms) < 1 {
-			return nil, fmt.Errorf("at least 1 synonym is required")
-		}
-		return search.NewRegularSynonym(
-			flags.SynonymID,
-			flags.Synonyms...,
-		), nil
-	}
-
 	switch flags.SynonymType {
 	case OneWay:
-		if len(flags.Synonyms) < 1 {
-			return nil, fmt.Errorf("at least 1 synonym is required")
-		}
-		if flags.SynonymInput == "" {
-			return nil, fmt.Errorf("a synonym input is required for one way synonyms")
-		}
 		return search.NewOneWaySynonym(
 			flags.SynonymID,
 			flags.SynonymInput,
 			flags.Synonyms...,
 		), nil
 	case AltCorrection1:
-		if flags.SynonymWord == "" {
-			return nil, fmt.Errorf("synonym word is required for alt correction 1 synonyms")
-		}
-		if len(flags.SynonymCorrections) < 1 {
-			return nil, fmt.Errorf("synonym corrections are required for alt correction 1 synonyms")
-		}
 		return search.NewAltCorrection1(
 			flags.SynonymID,
 			flags.SynonymWord,
 			flags.SynonymCorrections...,
 		), nil
 	case AltCorrection2:
-		if flags.SynonymWord == "" {
-			return nil, fmt.Errorf("synonym word is required for alt correction 2 synonyms")
-		}
-		if len(flags.SynonymCorrections) < 1 {
-			return nil, fmt.Errorf("synonym corrections are required for alt correction 2 synonyms")
-		}
 		return search.NewAltCorrection2(
 			flags.SynonymID,
 			flags.SynonymWord,
 			flags.SynonymCorrections...,
 		), nil
 	case Placeholder:
-		if flags.SynonymPlaceholder == "" {
-			return nil, fmt.Errorf("a synonym placeholder is required for placeholder synonyms")
-		}
-		if len(flags.SynonymReplacements) < 1 {
-			return nil, fmt.Errorf("synonym replacements are required for placeholder synonyms")
-		}
 		return search.NewPlaceholder(
 			flags.SynonymID,
 			flags.SynonymPlaceholder,
 			flags.SynonymReplacements...,
 		), nil
-	case Regular:
+	case "", Regular:
 		return search.NewRegularSynonym(
 			flags.SynonymID,
 			flags.Synonyms...,
