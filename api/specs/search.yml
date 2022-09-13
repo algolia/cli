@@ -257,6 +257,8 @@ components:
             - Filtering
         facetFilters:
           $ref: '#/components/schemas/facetFilters'
+        extensions:
+          $ref: '#/components/schemas/extensions'
         optionalFilters:
           $ref: '#/components/schemas/optionalFilters'
         numericFilters:
@@ -624,6 +626,12 @@ components:
       properties:
         facetOrdering:
           $ref: '#/components/schemas/facetOrdering'
+      x-categories:
+        - Advanced
+    extensions:
+      description: parameters forwarded to search extensions
+      type: object
+      additionalProperties: false
       x-categories:
         - Advanced
     indexSettingsAsSearchParams:

@@ -92,6 +92,7 @@ var SearchParamsObject = []string{
 	"enableReRanking",
 	"enableRules",
 	"exactOnSingleWordQuery",
+	"extensions",
 	"facetFilters",
 	"facetingAfterDistinct",
 	"facets",
@@ -322,6 +323,9 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("enableRules", "Categories", []string{"Rules"})
 	cmd.Flags().String("exactOnSingleWordQuery", "attribute", heredoc.Doc(`Controls how the exact ranking criterion is computed when the query contains only one word. One of: (attribute, none, word).`))
 	cmd.Flags().SetAnnotation("exactOnSingleWordQuery", "Categories", []string{"Query strategy"})
+	extensions := NewJSONVar([]string{}...)
+	cmd.Flags().Var(extensions, "extensions", heredoc.Doc(`parameters forwarded to search extensions`))
+	cmd.Flags().SetAnnotation("extensions", "Categories", []string{"Advanced"})
 	facetFilters := NewJSONVar([]string{"array", "array"}...)
 	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`Filter hits by facet value.`))
 	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})

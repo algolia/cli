@@ -85,6 +85,7 @@ func runSearchCmd(opts *SearchOptions) error {
 	} else {
 		delete(opts.SearchParams, "query")
 	}
+	// opts.SearchParams["extensions"] = map[string]any{"queryCategorization": map[string]bool{"enabled": true, "enableCategoriesRetrieval": false}}
 	res, err := indice.Search(query, opt.ExtraOptions(opts.SearchParams))
 	if err != nil {
 		opts.IO.StopProgressIndicator()
