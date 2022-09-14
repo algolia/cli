@@ -31,6 +31,18 @@ endif
 	git -C docs push --set-upstream origin feat/cli-'$(GITHUB_REF:refs/tags/v%=%)'
 	cd docs; gh pr create -f -b "Changelog: https://github.com/algolia/cli/releases/tag/$(GITHUB_REF:refs/tags/v%=%)"
 
+## Create a new PR (or update the existing one) to update the API specs
+api-specs-pr:
+	wget -O ./api/specs/search.yml https://raw.githubusercontent.com/algolia/api-clients-automation/main/specs/bundled/search.yml
+	if [ -n "$$(git status --porcelain)" ]; then \
+		git checkout -b feat/api-specs; \
+		git add api/specs/search.yml; \
+		git commit -m 'chore: update search api specs'; \
+		git push --set-upstream origin feat/api-specs; \
+		if [-n "$$(gh pr list --base master --head feat/api-specs)"]; then \
+			gh pr create -f
+		fi
+	fi
 
 # Build the binary
 build:
