@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+const maxCapacity = 100 * 1024 // 100KB
+
 func ReadFile(filename string, stdin io.ReadCloser) ([]byte, error) {
 	if filename == "-" {
 		b, err := ioutil.ReadAll(stdin)
@@ -18,12 +20,19 @@ func ReadFile(filename string, stdin io.ReadCloser) ([]byte, error) {
 }
 
 func ScanFile(filename string, stdin io.ReadCloser) (*bufio.Scanner, error) {
+	var scanner *bufio.Scanner
+
 	if filename == "-" {
-		return bufio.NewScanner(stdin), nil
+		scanner = bufio.NewScanner(stdin)
+	} else {
+		f, err := os.Open(filename)
+		if err != nil {
+			return nil, err
+		}
+		scanner = bufio.NewScanner(f)
 	}
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	return bufio.NewScanner(f), nil
+
+	buffer := make([]byte, maxCapacity)
+	scanner.Buffer(buffer, maxCapacity)
+	return scanner, nil
 }
