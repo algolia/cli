@@ -82,6 +82,25 @@ func main() {
 	}
 }
 
+// loadProperties recursively loads the properties of the given schemaRef.
+func loadProperties(schemaRef *openapi3.SchemaRef) map[string]*openapi3.Schema {
+	properties := make(map[string]*openapi3.Schema)
+
+	for _, schema := range schemaRef.Value.AllOf {
+		if schema.Value.Properties != nil {
+			for name, param := range schema.Value.Properties {
+				properties[name] = param.Value
+			}
+		} else {
+			for name, param := range loadProperties(schema) {
+				properties[name] = param
+			}
+		}
+	}
+
+	return properties
+}
+
 // loadSpecs loads the parameters from a OpenAPI 3.0 schema.
 func loadSpecs(specFile, specName string) (map[string]*openapi3.Schema, error) {
 	doc, err := openapi3.NewLoader().LoadFromFile(specFile)
@@ -89,14 +108,12 @@ func loadSpecs(specFile, specName string) (map[string]*openapi3.Schema, error) {
 		return nil, err
 	}
 
-	params := make(map[string]*openapi3.Schema)
-	for _, schema := range doc.Components.Schemas[specName].Value.AllOf {
-		for name, prop := range schema.Value.Properties {
-			params[name] = prop.Value
-		}
+	schemaRef, ok := doc.Components.Schemas[specName]
+	if !ok {
+		return nil, fmt.Errorf("schema %s not found", specName)
 	}
 
-	return params, nil
+	return loadProperties(schemaRef), nil
 }
 
 // This is the function that loads the OpenAPI 3.0 spec file and
