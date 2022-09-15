@@ -28,6 +28,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/open"
 	"github.com/algolia/cli/pkg/cmd/profile"
 	"github.com/algolia/cli/pkg/cmd/rules"
+	"github.com/algolia/cli/pkg/cmd/scaffold"
 	"github.com/algolia/cli/pkg/cmd/search"
 	"github.com/algolia/cli/pkg/cmd/settings"
 	"github.com/algolia/cli/pkg/cmd/synonyms"
@@ -98,6 +99,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(rules.NewRulesCmd(f))
 	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
+
+	// Frontend related commands
+	cmd.AddCommand(scaffold.NewScaffoldCmd(f))
 
 	// ??? related commands
 	cmd.AddCommand(art.NewArtCmd(f))
