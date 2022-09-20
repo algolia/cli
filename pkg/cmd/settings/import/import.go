@@ -57,8 +57,8 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&settingsFile, "settings-file", "F", "", "Read settings from `file` (use \"-\" to read from standard input)")
-	_ = cmd.MarkFlagRequired("settings-file")
+	cmd.Flags().StringVarP(&settingsFile, "file", "F", "", "Read settings from `file` (use \"-\" to read from standard input)")
+	_ = cmd.MarkFlagRequired("file")
 
 	return cmd
 }
