@@ -30,6 +30,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/rules"
 	"github.com/algolia/cli/pkg/cmd/search"
 	"github.com/algolia/cli/pkg/cmd/settings"
+	"github.com/algolia/cli/pkg/cmd/status"
 	"github.com/algolia/cli/pkg/cmd/synonyms"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -98,6 +99,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(rules.NewRulesCmd(f))
 	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
+	cmd.AddCommand(status.NewStatusCmd(f))
 
 	// ??? related commands
 	cmd.AddCommand(art.NewArtCmd(f))
