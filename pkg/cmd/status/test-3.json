@@ -1,0 +1,80 @@
+{
+  "incidents": {
+    "c3-br": [
+      {
+        "t": 1662733459000,
+        "v": {
+          "title": "Incident on cluster c3-br: Everything operating normally.",
+          "status": "operational"
+        }
+      },
+      {
+        "t": 1662731116000,
+        "v": {
+          "title": "Incident on cluster c3-br: We are encountering a major issue that impact all API calls (liveness check).",
+          "status": "major_outage"
+        }
+      }
+    ],
+    "s3-hk": [
+      {
+        "t": 1662796098000,
+        "v": {
+          "title": "Incident on cluster s3-hk: Everything operating normally.",
+          "status": "operational"
+        }
+      },
+      {
+        "t": 1662796008000,
+        "v": {
+          "title": "Incident on cluster s3-hk: We are encountering a major issue that impact all API calls (liveness check).",
+          "status": "major_outage"
+        }
+      },
+      {
+        "t": 1661949621000,
+        "v": {
+          "title": "Incident on cluster s3-hk: Everything operating normally.",
+          "status": "operational"
+        }
+      },
+      {
+        "t": 1661949546000,
+        "v": {
+          "title": "Incident on cluster s3-hk: We are encountering a major issue that impact all API calls.",
+          "status": "major_outage"
+        }
+      }
+    ],
+    "s4-hk": [
+      {
+        "t": 1662796102000,
+        "v": {
+          "title": "Incident on cluster s4-hk: Everything operating normally.",
+          "status": "operational"
+        }
+      },
+      {
+        "t": 1662796016000,
+        "v": {
+          "title": "Incident on cluster s4-hk: We are encountering a major issue that impact all API calls (liveness check).",
+          "status": "major_outage"
+        }
+      },
+      {
+        "t": 1661952862000,
+        "v": {
+          "title": "Incident on cluster s4-hk: Everything operating normally.",
+          "status": "operational"
+        }
+      },
+      {
+        "t": 1661952773000,
+        "v": {
+          "title": "Incident on cluster s4-hk: We are encountering a major issue that impact all API calls (liveness check).",
+          "status": "major_outage"
+        }
+      }
+    ]
+  }
+}
