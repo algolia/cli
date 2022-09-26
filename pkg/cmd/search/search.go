@@ -41,8 +41,17 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Example: heredoc.Doc(`
-			# Search for objects in your index
-			$ algolia search PRODUCTS --query "foo"
+			# Search for objects in the "BOOKS" index matching the query "tolkien"
+			$ algolia search BOOKS --query "tolkien"
+
+			# Search for objects in the "BOOKS" index matching the query "tolkien" with filters
+			$ algolia search BOOKS --query "tolkien" --filters "'(category:Book OR category:Ebook) AND _tags:published'"
+
+			# Search for objects in the "BOOKS" index matching the query "tolkien" while setting the number of hits per page and specifying the page to retrieve
+			$ algolia search BOOKS --query "tolkien" --hitsPerPage 2 --page 4
+
+			# Search for objects in the "BOOKS" index matching the query "tolkien" and export the results to a new line delimited JSON (ndjson) file
+			$ algolia search BOOKS --query "tolkien" > books.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

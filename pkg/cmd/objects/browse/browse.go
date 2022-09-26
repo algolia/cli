@@ -43,8 +43,17 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			This command browse the objects of the specified index.
 		`),
 		Example: heredoc.Doc(`
-			# Browse the objects from the "TEST_PRODUCTS_1" index
-			$ algolia objects browse TEST_PRODUCTS_1
+			# Browse the objects from the "BOOKS" index
+			$ algolia objects browse BOOKS
+
+			# Browse the objects from the "BOOKS" index and select which attributes to retrieve
+			$ algolia objects browse BOOKS --attributesToRetrieve author,title,description
+
+			# Browse the objects from the "BOOKS" index with filters
+			$ algolia objects browse BOOKS --filters "'(category:Book OR category:Ebook) AND _tags:published'"
+
+			# Browse the objects from the "BOOKS" and export the results to a new line delimited JSON (ndjson) file
+			$ algolia objects browse BOOKS > books.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
