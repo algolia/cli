@@ -1,0 +1,13 @@
+name: Scheduled API Specs Pull Request
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+
+jobs:
+  api-specs-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create Pull Request for API Specs
+        run: |
+          make api-specs-pr
