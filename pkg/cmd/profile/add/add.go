@@ -40,7 +40,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 			# Add a new profile (interactive)
 			$ algolia profile add
 
-			# Add a new profile (non-interactive)
+			# Add a new profile (non-interactive) and set it to default
 			$ algolia profile add --name "my-profile" --app-id "my-app-id" --admin-api-key "my-admin-api-key" --default
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
