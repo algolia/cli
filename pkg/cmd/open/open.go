@@ -21,7 +21,7 @@ var nameURLmap = map[string]string{
 	"codex":     "https://www.algolia.com/developers/code-exchange/",
 	"devhub":    "https://www.algolia.com/developers/",
 	"docs":      "https://algolia.com/doc/",
-	"cli-docs":  "https://algolia.com/doc/tools/cli/getstarted/",
+	"cli-docs":  "https://algolia.com/doc/tools/cli/get-started/overview/",
 	"cli-repo":  "https://github.com/algolia/cli",
 }
 
