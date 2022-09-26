@@ -14,12 +14,14 @@ var IndexSettings = []string{
 	"allowTyposOnNumericTokens",
 	"alternativesAsExact",
 	"attributeCriteriaComputedByMinProximity",
+	"attributeForDistinct",
 	"attributesForFaceting",
 	"attributesToHighlight",
 	"attributesToRetrieve",
 	"attributesToSnippet",
 	"attributesToTransliterate",
 	"camelCaseAttributes",
+	"customNormalization",
 	"customRanking",
 	"decompoundQuery",
 	"decompoundedAttributes",
@@ -77,6 +79,7 @@ var SearchParamsObject = []string{
 	"aroundPrecision",
 	"aroundRadius",
 	"attributeCriteriaComputedByMinProximity",
+	"attributeForDistinct",
 	"attributesForFaceting",
 	"attributesToHighlight",
 	"attributesToRetrieve",
@@ -140,7 +143,6 @@ var SearchParamsObject = []string{
 	"synonyms",
 	"tagFilters",
 	"typoTolerance",
-	"unretrievableAttributes",
 	"userToken",
 }
 
@@ -157,18 +159,22 @@ func AddIndexSettingsFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`When attribute is ranked above proximity in your ranking formula, proximity is used to select which searchable attribute is matched in the attribute ranking stage.`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
+	cmd.Flags().String("attributeForDistinct", "", heredoc.Doc(`Name of the de-duplication attribute to be used with the distinct feature.`))
 	cmd.Flags().StringSlice("attributesForFaceting", []string{}, heredoc.Doc(`The complete list of attributes that will be used for faceting.`))
 	cmd.Flags().SetAnnotation("attributesForFaceting", "Categories", []string{"Faceting"})
 	cmd.Flags().StringSlice("attributesToHighlight", []string{}, heredoc.Doc(`List of attributes to highlight.`))
-	cmd.Flags().SetAnnotation("attributesToHighlight", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("attributesToHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("attributesToRetrieve", []string{"*"}, heredoc.Doc(`This parameter controls which attributes to retrieve and which not to retrieve.`))
 	cmd.Flags().SetAnnotation("attributesToRetrieve", "Categories", []string{"Attributes"})
 	cmd.Flags().StringSlice("attributesToSnippet", []string{}, heredoc.Doc(`List of attributes to snippet, with an optional maximum number of words to snippet.`))
-	cmd.Flags().SetAnnotation("attributesToSnippet", "Categories", []string{"Highlighting/Snippeting"})
-	cmd.Flags().StringSlice("attributesToTransliterate", []string{}, heredoc.Doc(`Specify on which attributes to apply transliteration.`))
+	cmd.Flags().SetAnnotation("attributesToSnippet", "Categories", []string{"Highlighting and Snippeting"})
+	cmd.Flags().StringSlice("attributesToTransliterate", []string{}, heredoc.Doc(`Specify on which attributes in your index Algolia should apply Japanese transliteration to make words indexed in Katakana or Kanji searchable in Hiragana.`))
 	cmd.Flags().SetAnnotation("attributesToTransliterate", "Categories", []string{"Languages"})
 	cmd.Flags().StringSlice("camelCaseAttributes", []string{}, heredoc.Doc(`List of attributes on which to do a decomposition of camel case words.`))
 	cmd.Flags().SetAnnotation("camelCaseAttributes", "Categories", []string{"Languages"})
+	customNormalization := NewJSONVar([]string{}...)
+	cmd.Flags().Var(customNormalization, "customNormalization", heredoc.Doc(`Overrides Algolia's default normalization.`))
+	cmd.Flags().SetAnnotation("customNormalization", "Categories", []string{"Languages"})
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Specifies the custom ranking criterion.`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
 	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Splits compound words into their composing atoms in the query.`))
@@ -184,7 +190,8 @@ func AddIndexSettingsFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("disableTypoToleranceOnAttributes", "Categories", []string{"Typos"})
 	cmd.Flags().StringSlice("disableTypoToleranceOnWords", []string{}, heredoc.Doc(`A list of words for which you want to turn off typo tolerance.`))
 	cmd.Flags().SetAnnotation("disableTypoToleranceOnWords", "Categories", []string{"Typos"})
-	cmd.Flags().Int("distinct", 0, heredoc.Doc(`Enables de-duplication or grouping of results.`))
+	distinct := NewJSONVar([]string{"boolean", "integer"}...)
+	cmd.Flags().Var(distinct, "distinct", heredoc.Doc(`Enables de-duplication or grouping of results.`))
 	cmd.Flags().SetAnnotation("distinct", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("enablePersonalization", false, heredoc.Doc(`Enable the Personalization feature.`))
 	cmd.Flags().SetAnnotation("enablePersonalization", "Categories", []string{"Personalization"})
@@ -193,9 +200,9 @@ func AddIndexSettingsFlags(cmd *cobra.Command) {
 	cmd.Flags().String("exactOnSingleWordQuery", "attribute", heredoc.Doc(`Controls how the exact ranking criterion is computed when the query contains only one word. One of: (attribute, none, word).`))
 	cmd.Flags().SetAnnotation("exactOnSingleWordQuery", "Categories", []string{"Query strategy"})
 	cmd.Flags().String("highlightPostTag", "</em>", heredoc.Doc(`The HTML string to insert after the highlighted parts in all highlight and snippet results.`))
-	cmd.Flags().SetAnnotation("highlightPostTag", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("highlightPostTag", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().String("highlightPreTag", "<em>", heredoc.Doc(`The HTML string to insert before the highlighted parts in all highlight and snippet results.`))
-	cmd.Flags().SetAnnotation("highlightPreTag", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("highlightPreTag", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().Int("hitsPerPage", 20, heredoc.Doc(`Set the number of hits per page.`))
 	cmd.Flags().SetAnnotation("hitsPerPage", "Categories", []string{"Pagination"})
 	ignorePlurals := NewJSONVar([]string{"array", "boolean"}...)
@@ -241,13 +248,13 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().Var(renderingContent, "renderingContent", heredoc.Doc(`Content defining how the search interface should be rendered. Can be set via the settings for a default value and can be overridden via rules.`))
 	cmd.Flags().SetAnnotation("renderingContent", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("replaceSynonymsInHighlight", false, heredoc.Doc(`Whether to highlight and snippet the original word that matches the synonym or the synonym itself.`))
-	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("replicas", []string{}, heredoc.Doc(`Creates replicas, exact copies of an index.`))
 	cmd.Flags().SetAnnotation("replicas", "Categories", []string{"Ranking"})
 	cmd.Flags().StringSlice("responseFields", []string{}, heredoc.Doc(`Choose which fields to return in the API response. This parameters applies to search and browse queries.`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Restrict highlighting and snippeting to items that matched the query.`))
-	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("restrictSearchableAttributes", []string{}, heredoc.Doc(`Restricts a given query to look in only a subset of your searchable attributes.`))
 	cmd.Flags().SetAnnotation("restrictSearchableAttributes", "Categories", []string{"Attributes"})
 	cmd.Flags().StringSlice("searchableAttributes", []string{}, heredoc.Doc(`The complete list of attributes used for searching.`))
@@ -255,7 +262,7 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().String("separatorsToIndex", "", heredoc.Doc(`Control which separators are indexed.`))
 	cmd.Flags().SetAnnotation("separatorsToIndex", "Categories", []string{"Typos"})
 	cmd.Flags().String("snippetEllipsisText", "…", heredoc.Doc(`String used as an ellipsis indicator when a snippet is truncated.`))
-	cmd.Flags().SetAnnotation("snippetEllipsisText", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("snippetEllipsisText", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().Bool("synonyms", true, heredoc.Doc(`Whether to take into account an index's synonyms for a particular search.`))
 	cmd.Flags().SetAnnotation("synonyms", "Categories", []string{"Advanced"})
 	typoTolerance := NewJSONVar([]string{"boolean", "string"}...)
@@ -292,14 +299,15 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`When attribute is ranked above proximity in your ranking formula, proximity is used to select which searchable attribute is matched in the attribute ranking stage.`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
+	cmd.Flags().String("attributeForDistinct", "", heredoc.Doc(`Name of the de-duplication attribute to be used with the distinct feature.`))
 	cmd.Flags().StringSlice("attributesForFaceting", []string{}, heredoc.Doc(`The complete list of attributes that will be used for faceting.`))
 	cmd.Flags().SetAnnotation("attributesForFaceting", "Categories", []string{"Faceting"})
 	cmd.Flags().StringSlice("attributesToHighlight", []string{}, heredoc.Doc(`List of attributes to highlight.`))
-	cmd.Flags().SetAnnotation("attributesToHighlight", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("attributesToHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("attributesToRetrieve", []string{"*"}, heredoc.Doc(`This parameter controls which attributes to retrieve and which not to retrieve.`))
 	cmd.Flags().SetAnnotation("attributesToRetrieve", "Categories", []string{"Attributes"})
 	cmd.Flags().StringSlice("attributesToSnippet", []string{}, heredoc.Doc(`List of attributes to snippet, with an optional maximum number of words to snippet.`))
-	cmd.Flags().SetAnnotation("attributesToSnippet", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("attributesToSnippet", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().Bool("clickAnalytics", false, heredoc.Doc(`Enable the Click Analytics feature.`))
 	cmd.Flags().SetAnnotation("clickAnalytics", "Categories", []string{"Analytics"})
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Specifies the custom ranking criterion.`))
@@ -310,7 +318,8 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("disableExactOnAttributes", "Categories", []string{"Query strategy"})
 	cmd.Flags().StringSlice("disableTypoToleranceOnAttributes", []string{}, heredoc.Doc(`List of attributes on which you want to disable typo tolerance.`))
 	cmd.Flags().SetAnnotation("disableTypoToleranceOnAttributes", "Categories", []string{"Typos"})
-	cmd.Flags().Int("distinct", 0, heredoc.Doc(`Enables de-duplication or grouping of results.`))
+	distinct := NewJSONVar([]string{"boolean", "integer"}...)
+	cmd.Flags().Var(distinct, "distinct", heredoc.Doc(`Enables de-duplication or grouping of results.`))
 	cmd.Flags().SetAnnotation("distinct", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("enableABTest", true, heredoc.Doc(`Whether this search should participate in running AB tests.`))
 	cmd.Flags().SetAnnotation("enableABTest", "Categories", []string{"Advanced"})
@@ -322,7 +331,7 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("enableRules", "Categories", []string{"Rules"})
 	cmd.Flags().String("exactOnSingleWordQuery", "attribute", heredoc.Doc(`Controls how the exact ranking criterion is computed when the query contains only one word. One of: (attribute, none, word).`))
 	cmd.Flags().SetAnnotation("exactOnSingleWordQuery", "Categories", []string{"Query strategy"})
-	facetFilters := NewJSONVar([]string{"array", "array"}...)
+	facetFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`Filter hits by facet value.`))
 	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})
 	cmd.Flags().Bool("facetingAfterDistinct", false, heredoc.Doc(`Force faceting to be applied after de-duplication (via the Distinct setting).`))
@@ -334,9 +343,9 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("getRankingInfo", false, heredoc.Doc(`Retrieve detailed ranking information.`))
 	cmd.Flags().SetAnnotation("getRankingInfo", "Categories", []string{"Advanced"})
 	cmd.Flags().String("highlightPostTag", "</em>", heredoc.Doc(`The HTML string to insert after the highlighted parts in all highlight and snippet results.`))
-	cmd.Flags().SetAnnotation("highlightPostTag", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("highlightPostTag", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().String("highlightPreTag", "<em>", heredoc.Doc(`The HTML string to insert before the highlighted parts in all highlight and snippet results.`))
-	cmd.Flags().SetAnnotation("highlightPreTag", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("highlightPreTag", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().Int("hitsPerPage", 20, heredoc.Doc(`Set the number of hits per page.`))
 	cmd.Flags().SetAnnotation("hitsPerPage", "Categories", []string{"Pagination"})
 	ignorePlurals := NewJSONVar([]string{"array", "boolean"}...)
@@ -367,12 +376,12 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().SetAnnotation("minimumAroundRadius", "Categories", []string{"Geo-Search"})
 	cmd.Flags().StringSlice("naturalLanguages", []string{}, heredoc.Doc(`This parameter changes the default values of certain parameters and settings that work best for a natural language query, such as ignorePlurals, removeStopWords, removeWordsIfNoResults, analyticsTags and ruleContexts. These parameters and settings work well together when the query is formatted in natural language instead of keywords, for example when your user performs a voice search.`))
 	cmd.Flags().SetAnnotation("naturalLanguages", "Categories", []string{"Languages"})
-	numericFilters := NewJSONVar([]string{"array", "array"}...)
+	numericFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(numericFilters, "numericFilters", heredoc.Doc(`Filter on numeric attributes.`))
 	cmd.Flags().SetAnnotation("numericFilters", "Categories", []string{"Filtering"})
 	cmd.Flags().Int("offset", 0, heredoc.Doc(`Specify the offset of the first hit to return.`))
 	cmd.Flags().SetAnnotation("offset", "Categories", []string{"Pagination"})
-	optionalFilters := NewJSONVar([]string{"array", "array"}...)
+	optionalFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Create filters for ranking purposes, where records that match the filter are ranked higher, or lower in the case of a negative optional filter.`))
 	cmd.Flags().SetAnnotation("optionalFilters", "Categories", []string{"Filtering"})
 	cmd.Flags().StringSlice("optionalWords", []string{}, heredoc.Doc(`A list of words that should be considered as optional when found in the query.`))
@@ -391,9 +400,9 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().SetAnnotation("queryType", "Categories", []string{"Query strategy"})
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Controls how Algolia should sort your results.`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "array"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`When Dynamic Re-Ranking is enabled, only records that match these filters will be impacted by Dynamic Re-Ranking.`))
-	cmd.Flags().SetAnnotation("reRankingApplyFilter", "Categories", []string{"Advanced"})
+	cmd.Flags().SetAnnotation("reRankingApplyFilter", "Categories", []string{"Filtering"})
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Controls the relevancy threshold below which less relevant results aren't included in the results.`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
 	removeStopWords := NewJSONVar([]string{"array", "boolean"}...)
@@ -408,11 +417,11 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().Var(renderingContent, "renderingContent", heredoc.Doc(`Content defining how the search interface should be rendered. Can be set via the settings for a default value and can be overridden via rules.`))
 	cmd.Flags().SetAnnotation("renderingContent", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("replaceSynonymsInHighlight", false, heredoc.Doc(`Whether to highlight and snippet the original word that matches the synonym or the synonym itself.`))
-	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("responseFields", []string{}, heredoc.Doc(`Choose which fields to return in the API response. This parameters applies to search and browse queries.`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Restrict highlighting and snippeting to items that matched the query.`))
-	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("restrictSearchableAttributes", []string{}, heredoc.Doc(`Restricts a given query to look in only a subset of your searchable attributes.`))
 	cmd.Flags().SetAnnotation("restrictSearchableAttributes", "Categories", []string{"Attributes"})
 	cmd.Flags().StringSlice("ruleContexts", []string{}, heredoc.Doc(`Enables contextual rules.`))
@@ -420,21 +429,19 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().String("similarQuery", "", heredoc.Doc(`Overrides the query parameter and performs a more generic search that can be used to find "similar" results.`))
 	cmd.Flags().SetAnnotation("similarQuery", "Categories", []string{"Search"})
 	cmd.Flags().String("snippetEllipsisText", "…", heredoc.Doc(`String used as an ellipsis indicator when a snippet is truncated.`))
-	cmd.Flags().SetAnnotation("snippetEllipsisText", "Categories", []string{"Highlighting/Snippeting"})
+	cmd.Flags().SetAnnotation("snippetEllipsisText", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().String("sortFacetValuesBy", "count", heredoc.Doc(`Controls how facet values are fetched.`))
 	cmd.Flags().SetAnnotation("sortFacetValuesBy", "Categories", []string{"Faceting"})
 	cmd.Flags().Bool("sumOrFiltersScores", false, heredoc.Doc(`Determines how to calculate the total score for filtering.`))
 	cmd.Flags().SetAnnotation("sumOrFiltersScores", "Categories", []string{"Filtering"})
 	cmd.Flags().Bool("synonyms", true, heredoc.Doc(`Whether to take into account an index's synonyms for a particular search.`))
 	cmd.Flags().SetAnnotation("synonyms", "Categories", []string{"Advanced"})
-	tagFilters := NewJSONVar([]string{"array", "array"}...)
+	tagFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(tagFilters, "tagFilters", heredoc.Doc(`Filter hits by tags.`))
 	cmd.Flags().SetAnnotation("tagFilters", "Categories", []string{"Filtering"})
 	typoTolerance := NewJSONVar([]string{"boolean", "string"}...)
 	cmd.Flags().Var(typoTolerance, "typoTolerance", heredoc.Doc(`Controls whether typo tolerance is enabled and how it is applied.`))
 	cmd.Flags().SetAnnotation("typoTolerance", "Categories", []string{"Typos"})
-	cmd.Flags().StringSlice("unretrievableAttributes", []string{}, heredoc.Doc(`List of attributes that can't be retrieved at query time.`))
-	cmd.Flags().SetAnnotation("unretrievableAttributes", "Categories", []string{"Attributes"})
 	cmd.Flags().String("userToken", "", heredoc.Doc(`Associates a certain user token with the current search.`))
 	cmd.Flags().SetAnnotation("userToken", "Categories", []string{"Personalization"})
 }

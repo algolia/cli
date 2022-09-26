@@ -61,13 +61,6 @@ components:
       schema:
         type: boolean
       description: Replace all synonyms of the index with the ones sent with this request.
-    Query:
-      in: query
-      name: query
-      description: Search for specific synonyms matching this string.
-      schema:
-        type: string
-        default: ''
     Type:
       in: query
       name: type
@@ -168,21 +161,29 @@ components:
       default: ''
       x-categories:
         - Search
+    searchParamsQuery:
+      type: object
+      additionalProperties: false
+      properties:
+        query:
+          $ref: '#/components/schemas/query'
     searchFiltersArrayString:
       type: array
       items:
         type: string
-    searchFiltersNestedArrayString:
+    mixedSearchFilters:
+      oneOf:
+        - $ref: '#/components/schemas/searchFiltersArrayString'
+        - type: string
+    listOfSearchFilters:
       type: array
       items:
-        type: array
-        items:
-          type: string
+        $ref: '#/components/schemas/mixedSearchFilters'
     facetFilters:
       description: Filter hits by facet value.
       oneOf:
-        - $ref: '#/components/schemas/searchFiltersArrayString'
-        - $ref: '#/components/schemas/searchFiltersNestedArrayString'
+        - $ref: '#/components/schemas/listOfSearchFilters'
+        - type: string
       x-categories:
         - Filtering
     optionalFilters:
@@ -190,22 +191,22 @@ components:
         Create filters for ranking purposes, where records that match the filter
         are ranked higher, or lower in the case of a negative optional filter.
       oneOf:
-        - $ref: '#/components/schemas/searchFiltersArrayString'
-        - $ref: '#/components/schemas/searchFiltersNestedArrayString'
+        - $ref: '#/components/schemas/listOfSearchFilters'
+        - type: string
       x-categories:
         - Filtering
     numericFilters:
       description: Filter on numeric attributes.
       oneOf:
-        - $ref: '#/components/schemas/searchFiltersArrayString'
-        - $ref: '#/components/schemas/searchFiltersNestedArrayString'
+        - $ref: '#/components/schemas/listOfSearchFilters'
+        - type: string
       x-categories:
         - Filtering
     tagFilters:
       description: Filter hits by tags.
       oneOf:
-        - $ref: '#/components/schemas/searchFiltersArrayString'
-        - $ref: '#/components/schemas/searchFiltersNestedArrayString'
+        - $ref: '#/components/schemas/listOfSearchFilters'
+        - type: string
       x-categories:
         - Filtering
     page:
@@ -230,17 +231,16 @@ components:
       description: >-
         When Dynamic Re-Ranking is enabled, only records that match these
         filters will be impacted by Dynamic Re-Ranking.
+      nullable: true
       oneOf:
-        - $ref: '#/components/schemas/searchFiltersArrayString'
-        - $ref: '#/components/schemas/searchFiltersNestedArrayString'
+        - $ref: '#/components/schemas/listOfSearchFilters'
+        - type: string
       x-categories:
-        - Advanced
-    baseSearchParams:
+        - Filtering
+    baseSearchParamsWithoutQuery:
       type: object
       additionalProperties: false
       properties:
-        query:
-          $ref: '#/components/schemas/query'
         similarQuery:
           type: string
           description: >-
@@ -447,6 +447,10 @@ components:
             - Advanced
         reRankingApplyFilter:
           $ref: '#/components/schemas/reRankingApplyFilter'
+    baseSearchParams:
+      allOf:
+        - $ref: '#/components/schemas/searchParamsQuery'
+        - $ref: '#/components/schemas/baseSearchParamsWithoutQuery'
     hitsPerPage:
       type: integer
       description: Set the number of hits per page.
@@ -560,6 +564,16 @@ components:
         - excludeWords
       x-categories:
         - Query strategy
+    distinct:
+      description: Enables de-duplication or grouping of results.
+      oneOf:
+        - type: boolean
+        - type: integer
+          minimum: 0
+          maximum: 4
+          default: 0
+      x-categories:
+        - Advanced
     maxFacetHits:
       type: integer
       description: >-
@@ -638,14 +652,6 @@ components:
           default: []
           x-categories:
             - Faceting
-        unretrievableAttributes:
-          type: array
-          items:
-            type: string
-          description: List of attributes that can't be retrieved at query time.
-          default: []
-          x-categories:
-            - Attributes
         attributesToRetrieve:
           type: array
           items:
@@ -705,7 +711,7 @@ components:
             type: string
           description: List of attributes to highlight.
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         attributesToSnippet:
           type: array
           items:
@@ -715,7 +721,7 @@ components:
             words to snippet.
           default: []
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         highlightPreTag:
           type: string
           description: >-
@@ -723,7 +729,7 @@ components:
             highlight and snippet results.
           default: <em>
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         highlightPostTag:
           type: string
           description: >-
@@ -731,13 +737,13 @@ components:
             highlight and snippet results.
           default: </em>
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         snippetEllipsisText:
           type: string
           description: String used as an ellipsis indicator when a snippet is truncated.
           default: …
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         restrictHighlightAndSnippetArrays:
           type: boolean
           description: >-
@@ -745,7 +751,7 @@ components:
             query.
           default: false
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         hitsPerPage:
           $ref: '#/components/schemas/hitsPerPage'
         minWordSizefor1Typo:
@@ -880,13 +886,12 @@ components:
           x-categories:
             - Query strategy
         distinct:
-          type: integer
-          minimum: 0
-          maximum: 4
-          description: Enables de-duplication or grouping of results.
-          default: 0
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/distinct'
+        attributeForDistinct:
+          description: >-
+            Name of the de-duplication attribute to be used with the distinct
+            feature.
+          type: string
         synonyms:
           type: boolean
           description: >-
@@ -902,7 +907,7 @@ components:
             synonym or the synonym itself.
           default: false
           x-categories:
-            - Highlighting/Snippeting
+            - Highlighting and Snippeting
         minProximity:
           type: integer
           minimum: 1
@@ -960,14 +965,12 @@ components:
       type: object
       additionalProperties: false
       required:
-        - hits
         - nbHits
         - page
         - nbPages
         - hitsPerPage
         - processingTimeMS
         - exhaustiveNbHits
-        - exhaustiveTypo
         - query
         - params
       properties:
@@ -980,7 +983,8 @@ components:
           type: integer
           description: >-
             If a search encounters an index that is being A/B tested,
-            abTestVariantID reports the variant ID of the index used.
+            abTestVariantID reports the variant ID of the index used (starting
+            at 1).
         aroundLatLng:
           type: string
           description: The computed geo location.
@@ -1007,7 +1011,7 @@ components:
           additionalProperties:
             type: object
             additionalProperties:
-              type: string
+              type: integer
           description: A mapping of each facet name to the corresponding facet counts.
           example:
             category:
@@ -1083,6 +1087,8 @@ components:
           description: Actual host name of the server that processed the request.
         userData:
           $ref: '#/components/schemas/userData'
+        renderingContent:
+          $ref: '#/components/schemas/renderingContent'
     objectID:
       type: string
       description: Unique identifier of the object.
@@ -1097,9 +1103,9 @@ components:
         - none
         - partial
         - full
-    highlightResult:
+    highlightResultOption:
       type: object
-      description: Highlighted attributes.
+      description: Show highlighted section and words matched on a query.
       additionalProperties: false
       properties:
         value:
@@ -1114,14 +1120,48 @@ components:
         fullyHighlighted:
           type: boolean
           description: Whether the entire attribute value is highlighted.
-    snippetResult:
+      required:
+        - value
+        - matchLevel
+        - matchedWords
+    highlightResult:
+      oneOf:
+        - $ref: '#/components/schemas/highlightResultOption'
+        - type: array
+          items:
+            $ref: '#/components/schemas/highlightResultOption'
+    highlightResultMap:
       type: object
+      description: Show highlighted section and words matched on a query.
+      additionalProperties:
+        $ref: '#/components/schemas/highlightResult'
+    snippetResultOption:
+      type: object
+      description: >-
+        Snippeted attributes show parts of the matched attributes. Only returned
+        when attributesToSnippet is non-empty.
       additionalProperties: false
       properties:
         value:
           $ref: '#/components/schemas/highlightedValue'
         matchLevel:
           $ref: '#/components/schemas/matchLevel'
+      required:
+        - value
+        - matchLevel
+    snippetResult:
+      oneOf:
+        - $ref: '#/components/schemas/snippetResultOption'
+        - type: array
+          items:
+            $ref: '#/components/schemas/snippetResultOption'
+    snippetResultMap:
+      type: object
+      description: >-
+        Snippeted attributes show parts of the matched attributes. Only returned
+        when attributesToSnippet is non-empty.
+      additionalProperties:
+        $ref: '#/components/schemas/snippetResult'
     matchedGeoLocation:
       type: object
       properties:
@@ -1212,6 +1252,7 @@ components:
     hit:
       type: object
       description: A single hit.
+      x-is-generic: true
       additionalProperties: true
       required:
         - objectID
@@ -1219,9 +1260,9 @@ components:
         objectID:
           $ref: '#/components/schemas/objectID'
         _highlightResult:
-          $ref: '#/components/schemas/highlightResult'
+          $ref: '#/components/schemas/highlightResultMap'
         _snippetResult:
-          $ref: '#/components/schemas/snippetResult'
+          $ref: '#/components/schemas/snippetResultMap'
         _rankingInfo:
           $ref: '#/components/schemas/rankingInfo'
         _distinctSeqID:
@@ -1234,7 +1275,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/hit'
-    SearchResponse:
+      required:
+        - hits
+    searchResponse:
       allOf:
         - $ref: '#/components/schemas/baseSearchResponse'
         - $ref: '#/components/schemas/searchHits'
@@ -1308,24 +1351,28 @@ components:
         - none
         - stopIfEnoughMatches
     cursor:
-      type: string
-      description: >-
-        Cursor indicating the location to resume browsing from. Must match the
-        value returned by the previous call.
-      example: jMDY3M2MwM2QwMWUxMmQwYWI0ZTN
-    baseBrowseResponse:
       type: object
       additionalProperties: false
-      required:
-        - cursor
       properties:
         cursor:
-          $ref: '#/components/schemas/cursor'
+          type: string
+          description: >-
+            Cursor indicating the location to resume browsing from. Must match
+            the value returned by the previous call.
+          example: jMDY3M2MwM2QwMWUxMmQwYWI0ZTN
+    browseParamsObject:
+      allOf:
+        - $ref: '#/components/schemas/searchParamsObject'
+        - $ref: '#/components/schemas/cursor'
+    browseParams:
+      oneOf:
+        - $ref: '#/components/schemas/searchParamsString'
+        - $ref: '#/components/schemas/browseParamsObject'
     browseResponse:
       allOf:
         - $ref: '#/components/schemas/baseSearchResponse'
         - $ref: '#/components/schemas/searchHits'
-        - $ref: '#/components/schemas/baseBrowseResponse'
+        - $ref: '#/components/schemas/cursor'
     taskID:
       type: integer
       format: int64
@@ -1367,7 +1414,7 @@ components:
       required:
         - _operation
         - value
-    attributeOrBuiltInOperation:
+    attributeToUpdate:
       oneOf:
         - $ref: '#/components/schemas/attribute'
         - $ref: '#/components/schemas/builtInOperation'
@@ -1403,6 +1450,14 @@ components:
           type: integer
           description: Set the maximum number of hits accessible via pagination.
           default: 1000
+        unretrievableAttributes:
+          type: array
+          items:
+            type: string
+          description: List of attributes that can't be retrieved at query time.
+          default: []
+          x-categories:
+            - Attributes
         disableTypoToleranceOnWords:
           type: array
           items:
@@ -1412,10 +1467,13 @@ components:
           x-categories:
             - Typos
         attributesToTransliterate:
+          description: >-
+            Specify on which attributes in your index Algolia should apply
+            Japanese transliteration to make words indexed in Katakana or Kanji
+            searchable in Hiragana.
           type: array
           items:
             type: string
-          description: Specify on which attributes to apply transliteration.
           x-categories:
             - Languages
         camelCaseAttributes:
@@ -1484,6 +1542,15 @@ components:
             - Attributes
         userData:
           $ref: '#/components/schemas/userData'
+        customNormalization:
+          description: Overrides Algolia's default normalization.
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
+          x-categories:
+            - Languages
     indexSettings:
       description: The Algolia index settings.
       allOf:
@@ -1534,17 +1601,6 @@ components:
           items:
             type: string
           description: List of query words that will match the token.
-        _highlightResult:
-          type: object
-          description: Highlighted results.
-          additionalProperties: false
-          properties:
-            type:
-              $ref: '#/components/schemas/highlightResult'
-            synonyms:
-              type: array
-              items:
-                $ref: '#/components/schemas/highlightResult'
       required:
         - objectID
         - type
@@ -1567,7 +1623,55 @@ components:
       required:
         - hits
         - nbHits
+    keyString:
+      type: string
+      description: The API key.
+    createdAtTimestamp:
+      type: integer
+      format: int64
+      description: Time of the event expressed in milliseconds since the Unix epoch.
+    baseGetApiKeyResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        value:
+          $ref: '#/components/schemas/keyString'
+        createdAt:
+          $ref: '#/components/schemas/createdAtTimestamp'
+      required:
+        - key
+        - createdAt
     acl:
+      description: >
+        List of rights for the API key. The following rights can be used:
+
+
+        addObject: allows to add/update an object in the index (copy/move index
+        are also allowed with this right).
+
+        analytics: allows to retrieve the analytics through the Analytics API.
+
+        browse: allows to retrieve all index content via the browse API.
+
+        deleteIndex: allows to delete or clear index content.
+
+        deleteObject: allows to delete objects from the index.
+
+        editSettings: allows to change index settings.
+
+        listIndexes: allows to list all accessible indices.
+
+        logs: allows to get the logs.
+
+        recommendation: Allows usage of the Personalization dashboard and the
+        Recommendation API.
+
+        search: allows to search the index.
+
+        seeUnretrievableAttributes: disable unretrievableAttributes feature for
+        all operations returning records.
+
+        settings: allows to get index settings.
       type: string
       enum:
         - addObject
@@ -1643,23 +1747,13 @@ components:
           default: 0
       required:
         - acl
+    getApiKeyResponse:
+      allOf:
+        - $ref: '#/components/schemas/baseGetApiKeyResponse'
+        - $ref: '#/components/schemas/apiKey'
     createdAt:
       type: string
       description: Date of creation (ISO-8601 format).
-    createdAtObject:
-      type: object
-      required:
-        - createdAt
-      properties:
-        createdAt:
-          $ref: '#/components/schemas/createdAt'
-    key:
-      allOf:
-        - $ref: '#/components/schemas/apiKey'
-        - $ref: '#/components/schemas/createdAtObject'
-    keyString:
-      type: string
-      description: Key string.
     addApiKeyResponse:
       type: object
       additionalProperties: false
@@ -1717,7 +1811,7 @@ components:
             Text that should be inserted in place of the removed text inside the
             query string.
           type: string
-    consequenceQuery:
+    consequenceQueryObject:
       type: object
       additionalProperties: false
       properties:
@@ -1731,13 +1825,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/edit'
-    schemas_query:
+    consequenceQuery:
       description: >-
         When providing a string, it replaces the entire query string. When
         providing an object, it describes incremental edits to be made to the
         query string (but you can't do both).
       oneOf:
-        - $ref: '#/components/schemas/consequenceQuery'
+        - $ref: '#/components/schemas/consequenceQueryObject'
         - type: string
     automaticFacetFilter:
       type: object
@@ -1778,7 +1872,7 @@ components:
       additionalProperties: false
       properties:
         query:
-          $ref: '#/components/schemas/schemas_query'
+          $ref: '#/components/schemas/consequenceQuery'
         automaticFacetFilters:
           $ref: '#/components/schemas/automaticFacetFilters'
         automaticOptionalFacetFilters:
@@ -1787,31 +1881,48 @@ components:
           $ref: '#/components/schemas/renderingContent'
     consequenceParams:
       allOf:
-        - $ref: '#/components/schemas/params'
-        - $ref: '#/components/schemas/baseSearchParams'
+        - $ref: '#/components/schemas/baseSearchParamsWithoutQuery'
         - $ref: '#/components/schemas/indexSettingsAsSearchParams'
-    promote:
+        - $ref: '#/components/schemas/params'
+    promotePosition:
+      type: integer
+      description: >-
+        The position to promote the objects to (zero-based). If you pass
+        objectIDs, the objects are placed at this position as a group. For
+        example, if you pass four objectIDs to position 0, the objects take the
+        first four positions.
+    promoteObjectIDs:
+      description: Multiple objectIDs to promote as hits.
       type: object
-      description: Object to promote as hits.
       additionalProperties: false
       properties:
-        objectID:
-          type: string
-          description: Unique identifier of the object to promote.
         objectIDs:
           type: array
           description: Array of unique identifiers of the objects to promote.
           items:
             type: string
         position:
-          type: integer
-          description: >-
-            The position to promote the objects to (zero-based). If you pass
-            objectIDs, the objects are placed at this position as a group. For
-            example, if you pass four objectIDs to position 0, the objects take
-            the first four positions.
+          $ref: '#/components/schemas/promotePosition'
       required:
         - position
+        - objectIDs
+    promoteObjectID:
+      description: Single objectID to promote as hits.
+      type: object
+      additionalProperties: false
+      properties:
+        objectID:
+          type: string
+          description: Unique identifier of the object to promote.
+        position:
+          $ref: '#/components/schemas/promotePosition'
+      required:
+        - position
+        - objectID
+    promote:
+      oneOf:
+        - $ref: '#/components/schemas/promoteObjectIDs'
+        - $ref: '#/components/schemas/promoteObjectID'
     consequence:
       type: object
       description: Consequence of the Rule.
@@ -1904,7 +2015,6 @@ components:
             $ref: '#/components/schemas/timeRange'
       required:
         - objectID
-        - consequence
     updatedRuleResponse:
       type: object
       additionalProperties: false
@@ -2182,6 +2292,8 @@ components:
           type: integer
           description: Number of pages.
           example: 100
+      required:
+        - items
   responses:
     BadRequest:
       description: Bad request or request arguments.
@@ -2346,7 +2458,7 @@ paths:
   /1{path}:
     get:
       operationId: get
-      summary: Send requests to the Algolia REST API.
+      summary: Send requests to the Algolia REST API
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2366,8 +2478,6 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
-      tags:
-        - search
     post:
       operationId: post
       requestBody:
@@ -2376,7 +2486,7 @@ paths:
           application/json:
             schema:
               type: object
-      summary: Send requests to the Algolia REST API.
+      summary: Send requests to the Algolia REST API
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2396,8 +2506,6 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
-      tags:
-        - search
     put:
       operationId: put
       requestBody:
@@ -2406,7 +2514,7 @@ paths:
           application/json:
             schema:
               type: object
-      summary: Send requests to the Algolia REST API.
+      summary: Send requests to the Algolia REST API
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2426,11 +2534,9 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
-      tags:
-        - search
     delete:
       operationId: del
-      summary: Send requests to the Algolia REST API.
+      summary: Send requests to the Algolia REST API
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2450,21 +2556,18 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
-      tags:
-        - search
   /1/indexes/{indexName}/query:
     post:
       tags:
-        - search
+        - Search
       operationId: searchSingleIndex
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search in a single index.
+      summary: Search in a single index
       description: Perform a search operation targeting one specific index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
       requestBody:
-        required: true
         content:
           application/json:
             schema:
@@ -2475,7 +2578,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SearchResponse'
+                $ref: '#/components/schemas/searchResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -2487,12 +2590,12 @@ paths:
   /1/indexes/*/queries:
     post:
       tags:
-        - search
+        - Search
       operationId: search
       x-use-read-transporter: true
       x-cacheable: true
       x-legacy-signature: true
-      summary: Search multiple indices.
+      summary: Search multiple indices
       description: Perform a search operation targeting one or many indices.
       requestBody:
         required: true
@@ -2525,7 +2628,7 @@ paths:
                   results:
                     type: array
                     items:
-                      $ref: '#/components/schemas/SearchResponse'
+                      $ref: '#/components/schemas/searchResponse'
                 required:
                   - results
         '400':
@@ -2539,11 +2642,11 @@ paths:
   /1/indexes/{indexName}/facets/{facetName}/query:
     post:
       tags:
-        - search
+        - Search
       operationId: searchForFacetValues
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search for values of a given facet.
+      summary: Search for values of a given facet
       description: >-
         Search for values of a given facet, optionally restricting the returned
         values to those contained in objects matching other search criteria.
@@ -2615,9 +2718,9 @@ paths:
   /1/indexes/{indexName}/browse:
     post:
       tags:
-        - search
+        - Search
       operationId: browse
-      summary: Retrieve all index content.
+      summary: Retrieve all index content
       description: >
         This method allows you to retrieve all index content. It can retrieve up
         to 1,000 records per call and supports full text search and filters.
@@ -2635,14 +2738,7 @@ paths:
         content:
           application/json:
             schema:
-              title: browseRequest
-              type: object
-              additionalProperties: false
-              properties:
-                params:
-                  $ref: '#/components/schemas/paramsAsString'
-                cursor:
-                  $ref: '#/components/schemas/cursor'
+              $ref: '#/components/schemas/browseParams'
       responses:
         '200':
           description: OK
@@ -2661,10 +2757,10 @@ paths:
   /1/indexes/{indexName}:
     post:
       tags:
-        - search
+        - Records
       operationId: saveObject
       description: Add an object to the index, automatically assigning it an object ID.
-      summary: Add an object to the index.
+      summary: Add an object to the index
       parameters:
         - $ref: '#/components/parameters/IndexName'
       requestBody:
@@ -2690,6 +2786,9 @@ paths:
                     $ref: '#/components/schemas/taskID'
                   objectID:
                     $ref: '#/components/schemas/objectID'
+                required:
+                  - taskID
+                  - createdAt
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -2700,9 +2799,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - search
+        - Indices
       operationId: deleteIndex
-      summary: Delete index.
+      summary: Delete index
       description: Delete an existing index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2720,9 +2819,9 @@ paths:
   /1/indexes/{indexName}/{objectID}:
     get:
       tags:
-        - search
+        - Records
       operationId: getObject
-      summary: Retrieve an object.
+      summary: Retrieve an object
       description: Retrieve one object from the index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2757,9 +2856,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Records
       operationId: addOrUpdateObject
-      summary: Add or replace an object.
+      summary: Add or replace an object
       description: |
         Add or replace an object with a given object ID.
         If the object does not exist, it will be created.
@@ -2787,9 +2886,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - search
+        - Records
       operationId: deleteObject
-      summary: Delete an object.
+      summary: Delete an object
       description: Delete an existing object.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2808,9 +2907,9 @@ paths:
   /1/indexes/{indexName}/deleteByQuery:
     post:
       tags:
-        - search
+        - Records
       operationId: deleteBy
-      summary: Delete all records matching the query.
+      summary: Delete all records matching the query
       description: >
         Remove all objects matching a filter (including geo filters).
 
@@ -2840,9 +2939,9 @@ paths:
   /1/indexes/{indexName}/clear:
     post:
       tags:
-        - search
+        - Records
       operationId: clearObjects
-      summary: Clear all objects from an index.
+      summary: Clear all objects from an index
       description: >-
         Delete an index's content, but leave settings and index-specific API
         keys untouched.
@@ -2862,9 +2961,10 @@ paths:
   /1/indexes/{indexName}/{objectID}/partial:
     post:
       tags:
-        - search
+        - Records
       operationId: partialUpdateObject
-      summary: Partially update an object.
+      summary: Partially update an object
+      x-codegen-request-body-name: attributesToUpdate
       description: >
         Update one or more attributes of an existing object.
 
@@ -2886,17 +2986,14 @@ paths:
             default: true
       requestBody:
         required: true
-        description: List of attributes to update.
+        description: Map of attribute(s) to update.
         content:
           application/json:
             schema:
-              type: array
-              items:
-                type: object
-                title: attributeToUpdate
-                description: Attribute to update.
-                additionalProperties:
-                  $ref: '#/components/schemas/attributeOrBuiltInOperation'
+              type: object
+              description: Attribute(s) to update.
+              additionalProperties:
+                $ref: '#/components/schemas/attributeToUpdate'
       responses:
         '200':
           $ref: '#/components/responses/UpdatedAtWithObjectId'
@@ -2911,9 +3008,9 @@ paths:
   /1/indexes/{indexName}/batch:
     post:
       tags:
-        - search
+        - Records
       operationId: batch
-      summary: Batch operations to one index.
+      summary: Batch operations to one index
       description: >-
         Perform multiple write operations targeting one index, in a single API
         call.
@@ -2932,7 +3029,7 @@ paths:
                 requests:
                   type: array
                   items:
-                    title: batchOperation
+                    title: batchRequest
                     type: object
                     additionalProperties: false
                     properties:
@@ -2943,6 +3040,11 @@ paths:
                         description: >-
                           arguments to the operation (depends on the type of the
                           operation).
+                    required:
+                      - action
+                      - body
+              required:
+                - requests
       responses:
         '200':
           description: OK
@@ -2971,12 +3073,12 @@ paths:
   /1/indexes/*/batch:
     post:
       tags:
-        - search
+        - Records
       operationId: multipleBatch
       description: >-
         Perform multiple write operations, potentially targeting multiple
         indices, in a single API call.
-      summary: Batch operations to many indices.
+      summary: Batch operations to many indices
       requestBody:
         required: true
         content:
@@ -2990,7 +3092,7 @@ paths:
                 requests:
                   type: array
                   items:
-                    title: multipleBatchOperation
+                    title: multipleBatchRequest
                     type: object
                     additionalProperties: false
                     properties:
@@ -3004,6 +3106,12 @@ paths:
                       indexName:
                         type: string
                         description: Index to target for this operation.
+                    required:
+                      - action
+                      - body
+                      - indexName
+              required:
+                - requests
       responses:
         '200':
           description: OK
@@ -3017,8 +3125,13 @@ paths:
                   taskID:
                     type: object
                     description: List of tasksIDs per index.
+                    additionalProperties:
+                      $ref: '#/components/schemas/taskID'
                   objectIDs:
                     $ref: '#/components/schemas/objectIDs'
+                required:
+                  - taskID
+                  - objectIDs
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -3030,11 +3143,11 @@ paths:
   /1/indexes/*/objects:
     post:
       tags:
-        - search
+        - Records
       operationId: getObjects
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Retrieve one or more objects.
+      summary: Retrieve one or more objects
       description: >-
         Retrieve one or more objects, potentially from different indices, in a
         single API call.
@@ -3053,7 +3166,7 @@ paths:
                   type: array
                   items:
                     description: getObjects operation on an index.
-                    title: multipleGetObjectsParams
+                    title: getObjectsRequest
                     type: object
                     additionalProperties: false
                     required:
@@ -3073,6 +3186,8 @@ paths:
                       indexName:
                         type: string
                         description: name of the index containing the object.
+              required:
+                - requests
       responses:
         '200':
           description: OK
@@ -3089,6 +3204,9 @@ paths:
                     items:
                       type: object
                       description: Fetched object.
+                      x-is-generic: true
+                required:
+                  - results
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -3100,10 +3218,10 @@ paths:
   /1/indexes/{indexName}/settings:
     get:
       tags:
-        - search
+        - Indices
       operationId: getSettings
       description: Retrieve settings of an index.
-      summary: Retrieve settings of an index.
+      summary: Retrieve settings of an index
       parameters:
         - $ref: '#/components/parameters/IndexName'
       responses:
@@ -3123,13 +3241,13 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Indices
       operationId: setSettings
       description: >-
         Update settings of an index. Only specified settings are overridden;
         unspecified settings are left unchanged. Specifying null for a setting
         resets it to its default value.
-      summary: Update settings of an index.
+      summary: Update settings of an index
       parameters:
         - $ref: '#/components/parameters/IndexName'
         - $ref: '#/components/parameters/ForwardToReplicas'
@@ -3153,9 +3271,9 @@ paths:
   /1/indexes/{indexName}/synonyms/{objectID}:
     get:
       tags:
-        - search
+        - Synonyms
       operationId: getSynonym
-      summary: Get synonym.
+      summary: Get synonym
       description: Fetch a synonym object identified by its objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3177,9 +3295,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Synonyms
       operationId: saveSynonym
-      summary: Save synonym.
+      summary: Save synonym
       description: >-
         Create a new synonym object or update the existing synonym object with
         the given object ID.
@@ -3223,9 +3341,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - search
+        - Synonyms
       operationId: deleteSynonym
-      summary: Delete synonym.
+      summary: Delete synonym
       description: Delete a single synonyms set, identified by the given objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3245,9 +3363,9 @@ paths:
   /1/indexes/{indexName}/synonyms/batch:
     post:
       tags:
-        - search
+        - Synonyms
       operationId: saveSynonyms
-      summary: Save a batch of synonyms.
+      summary: Save a batch of synonyms
       description: >-
         Create/update multiple synonym objects at once, potentially replacing
         the entire list of synonyms if replaceExistingSynonyms is true.
@@ -3275,9 +3393,9 @@ paths:
   /1/indexes/{indexName}/synonyms/clear:
     post:
       tags:
-        - search
+        - Synonyms
       operationId: clearAllSynonyms
-      summary: Clear all synonyms.
+      summary: Clear all synonyms
       description: Remove all synonyms from an index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3296,18 +3414,28 @@ paths:
   /1/indexes/{indexName}/synonyms/search:
     post:
       tags:
-        - search
+        - Synonyms
       operationId: searchSynonyms
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search synonyms.
+      summary: Search synonyms
       description: Search or browse all synonyms, optionally filtering them by type.
       parameters:
         - $ref: '#/components/parameters/IndexName'
-        - $ref: '#/components/parameters/Query'
         - $ref: '#/components/parameters/Type'
         - $ref: '#/components/parameters/PageDefault0'
         - $ref: '#/components/parameters/HitsPerPage'
+      requestBody:
+        description: The body of the the `searchSynonyms` method.
+        content:
+          application/json:
+            schema:
+              title: searchSynonymsParams
+              type: object
+              additionalProperties: false
+              properties:
+                query:
+                  $ref: '#/components/schemas/query'
       responses:
         '200':
           description: OK
@@ -3326,9 +3454,9 @@ paths:
   /1/keys:
     get:
       tags:
-        - search
+        - Api Keys
       operationId: listApiKeys
-      summary: List API Keys.
+      summary: List API Keys
       description: List API keys, along with their associated rights.
       responses:
         '200':
@@ -3346,7 +3474,7 @@ paths:
                     type: array
                     description: List of api keys.
                     items:
-                      $ref: '#/components/schemas/key'
+                      $ref: '#/components/schemas/getApiKeyResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -3357,9 +3485,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     post:
       tags:
-        - search
+        - Api Keys
       operationId: addApiKey
-      summary: Create an API key.
+      summary: Create an API key
       description: Add a new API Key with specific permissions/restrictions.
       requestBody:
         required: true
@@ -3385,9 +3513,9 @@ paths:
   /1/keys/{key}:
     get:
       tags:
-        - search
+        - Api Keys
       operationId: getApiKey
-      summary: Get an API key.
+      summary: Get an API key
       description: Get the permissions of an API key.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3397,7 +3525,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/key'
+                $ref: '#/components/schemas/getApiKeyResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -3408,9 +3536,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Api Keys
       operationId: updateApiKey
-      summary: Update an API key.
+      summary: Update an API key
       description: Replace every permission of an existing API key.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3447,9 +3575,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - search
+        - Api Keys
       operationId: deleteApiKey
-      summary: Delete an API key.
+      summary: Delete an API key
       description: Delete an existing API Key.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3478,9 +3606,9 @@ paths:
   /1/keys/{key}/restore:
     post:
       tags:
-        - search
+        - Api Keys
       operationId: restoreApiKey
-      summary: Restore an API key.
+      summary: Restore an API key
       description: Restore a deleted API key, along with its associated rights.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3502,9 +3630,9 @@ paths:
   /1/indexes/{indexName}/rules/{objectID}:
     get:
       tags:
-        - search
+        - Rules
       operationId: getRule
-      summary: Get a rule.
+      summary: Get a rule
       description: Retrieve the Rule with the specified objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3526,9 +3654,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Rules
       operationId: saveRule
-      summary: Save/Update a rule.
+      summary: Save/Update a rule
       description: Create or update the Rule with the specified objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3557,9 +3685,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - search
+        - Rules
       operationId: deleteRule
-      summary: Delete a rule.
+      summary: Delete a rule
       description: Delete the Rule with the specified objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3579,10 +3707,11 @@ paths:
   /1/indexes/{indexName}/rules/batch:
     post:
       tags:
-        - search
+        - Rules
       operationId: saveRules
-      summary: Save a batch of rules.
+      summary: Save a batch of rules
       description: Create/update multiple rules objects at once.
+      x-codegen-request-body-name: rules
       parameters:
         - $ref: '#/components/parameters/IndexName'
         - $ref: '#/components/parameters/ForwardToReplicas'
@@ -3610,9 +3739,9 @@ paths:
   /1/indexes/{indexName}/rules/clear:
     post:
       tags:
-        - search
+        - Rules
       operationId: clearRules
-      summary: Clear Rules.
+      summary: Clear Rules
       description: Delete all Rules in the index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3631,16 +3760,15 @@ paths:
   /1/indexes/{indexName}/rules/search:
     post:
       tags:
-        - search
+        - Rules
       operationId: searchRules
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search for rules.
+      summary: Search for rules
       description: Search for rules matching various criteria.
       parameters:
         - $ref: '#/components/parameters/IndexName'
       requestBody:
-        required: true
         content:
           application/json:
             schema:
@@ -3715,10 +3843,10 @@ paths:
   /1/dictionaries/{dictionaryName}/batch:
     post:
       tags:
-        - search
+        - Dictionaries
       operationId: batchDictionaryEntries
       description: Send a batch of dictionary entries.
-      summary: Batch dictionary entries.
+      summary: Batch dictionary entries
       parameters:
         - $ref: '#/components/parameters/DictionaryName'
       requestBody:
@@ -3770,12 +3898,12 @@ paths:
   /1/dictionaries/{dictionaryName}/search:
     post:
       tags:
-        - search
+        - Dictionaries
       operationId: searchDictionaryEntries
       x-use-read-transporter: true
       x-cacheable: true
       description: Search the dictionary entries.
-      summary: Search a dictionary entries.
+      summary: Search a dictionary entries
       parameters:
         - $ref: '#/components/parameters/DictionaryName'
       requestBody:
@@ -3812,12 +3940,12 @@ paths:
   /1/dictionaries/*/settings:
     get:
       tags:
-        - search
+        - Dictionaries
       operationId: getDictionarySettings
       description: >-
         Retrieve dictionaries settings. The API stores languages whose standard
         entries are disabled. Fetch settings does not return false values.
-      summary: Retrieve dictionaries settings.
+      summary: Retrieve dictionaries settings
       responses:
         '200':
           description: OK
@@ -3842,10 +3970,10 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Dictionaries
       operationId: setDictionarySettings
       description: Set dictionaries settings.
-      summary: Set dictionaries settings.
+      summary: Set dictionaries settings
       requestBody:
         required: true
         content:
@@ -3876,10 +4004,10 @@ paths:
   /1/dictionaries/*/languages:
     get:
       tags:
-        - search
+        - Dictionaries
       operationId: getDictionaryLanguages
       description: List dictionaries supported per language.
-      summary: List available languages.
+      summary: List available languages
       responses:
         '200':
           description: OK
@@ -3901,9 +4029,9 @@ paths:
   /1/clusters/mapping:
     post:
       tags:
-        - search
+        - Clusters
       operationId: assignUserId
-      summary: Assign or Move userID.
+      summary: Assign or Move userID
       description: >
         Assign or Move a userID to a cluster.
 
@@ -3943,9 +4071,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     get:
       tags:
-        - search
+        - Clusters
       operationId: listUserIds
-      summary: List userIDs.
+      summary: List userIDs
       description: >
         List the userIDs assigned to a multi-clusters appID.
 
@@ -3986,9 +4114,9 @@ paths:
   /1/clusters/mapping/batch:
     post:
       tags:
-        - search
+        - Clusters
       operationId: batchAssignUserIds
-      summary: Batch assign userIDs.
+      summary: Batch assign userIDs
       description: >
         Assign multiple userIDs to a cluster.
 
@@ -4034,9 +4162,9 @@ paths:
   /1/clusters/mapping/top:
     get:
       tags:
-        - search
+        - Clusters
       operationId: getTopUserIds
-      summary: Get top userID.
+      summary: Get top userID
       description: >
         Get the top 10 userIDs with the highest number of records per cluster.
 
@@ -4078,9 +4206,9 @@ paths:
   /1/clusters/mapping/{userID}:
     get:
       tags:
-        - search
+        - Clusters
       operationId: getUserId
-      summary: Get userID.
+      summary: Get userID
       description: >
         Returns the userID data stored in the mapping.
 
@@ -4109,9 +4237,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - search
+        - Clusters
       operationId: removeUserId
-      summary: Remove userID.
+      summary: Remove userID
       description: >
         Remove a userID and its associated data from the multi-clusters.
 
@@ -4144,9 +4272,9 @@ paths:
   /1/clusters:
     get:
       tags:
-        - search
+        - Clusters
       operationId: listClusters
-      summary: List clusters.
+      summary: List clusters
       description: >
         List the clusters available in a multi-clusters setup for a single
         appID.
@@ -4181,11 +4309,11 @@ paths:
   /1/clusters/mapping/search:
     post:
       tags:
-        - search
+        - Clusters
       operationId: searchUserIds
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search userID.
+      summary: Search userID
       description: >
         Search for userIDs.
 
@@ -4258,9 +4386,9 @@ paths:
                           type: object
                           properties:
                             userID:
-                              $ref: '#/components/schemas/highlightResult'
+                              $ref: '#/components/schemas/highlightResultMap'
                             clusterName:
-                              $ref: '#/components/schemas/highlightResult'
+                              $ref: '#/components/schemas/highlightResultMap'
                           required:
                             - userID
                             - clusterName
@@ -4296,9 +4424,9 @@ paths:
   /1/clusters/mapping/pending:
     get:
       tags:
-        - search
+        - Clusters
       operationId: hasPendingMappings
-      summary: Get migration status.
+      summary: Get migration status
       description: >
         Get the status of your clusters' migrations or user creations.
 
@@ -4313,12 +4441,33 @@ paths:
       parameters:
         - in: query
           name: getClusters
-          description: Whether to get clusters or not.
+          description: If the clusters pending mapping state should be on the response.
           schema:
             type: boolean
       responses:
         '200':
-          $ref: '#/components/responses/CreatedAt'
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: hasPendingMappingsResponse
+                type: object
+                additionalProperties: false
+                properties:
+                  pending:
+                    description: If there is any clusters with pending mapping state.
+                    type: boolean
+                  clusters:
+                    description: >-
+                      Describe cluster pending (migrating, creating, deleting)
+                      mapping state.
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                required:
+                  - pending
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -4330,10 +4479,10 @@ paths:
   /1/security/sources:
     get:
       tags:
-        - search
+        - Vaults
       operationId: getSources
       description: List all allowed sources.
-      summary: List all allowed sources.
+      summary: List all allowed sources
       responses:
         '200':
           description: OK
@@ -4351,10 +4500,10 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - search
+        - Vaults
       operationId: replaceSources
       description: Replace all allowed sources.
-      summary: Replace all allowed sources.
+      summary: Replace all allowed sources
       requestBody:
         required: true
         description: The sources to allow.
@@ -4387,10 +4536,10 @@ paths:
   /1/security/sources/append:
     post:
       tags:
-        - search
+        - Vaults
       operationId: appendSource
       description: Add a single source to the list of allowed sources.
-      summary: Add a single source.
+      summary: Add a single source
       requestBody:
         required: true
         description: The source to add.
@@ -4412,10 +4561,10 @@ paths:
   /1/security/sources/{source}:
     delete:
       tags:
-        - search
+        - Vaults
       operationId: deleteSource
       description: Remove a single source from the list of allowed sources.
-      summary: Remove a single source.
+      summary: Remove a single source
       parameters:
         - name: source
           in: path
@@ -4449,10 +4598,10 @@ paths:
   /1/logs:
     get:
       tags:
-        - search
+        - Advanced
       operationId: getLogs
       description: Return the latest log entries.
-      summary: Return the latest log entries.
+      summary: Return the latest log entries
       parameters:
         - name: offset
           in: query
@@ -4589,10 +4738,10 @@ paths:
   /1/indexes/{indexName}/task/{taskID}:
     get:
       tags:
-        - search
+        - Indices
       operationId: getTask
       description: Check the current status of a given task.
-      summary: Check the status of a task.
+      summary: Check the status of a task
       parameters:
         - $ref: '#/components/parameters/IndexName'
         - name: taskID
@@ -4628,9 +4777,9 @@ paths:
   /1/indexes/{indexName}/operation:
     post:
       tags:
-        - search
+        - Indices
       operationId: operationIndex
-      summary: Copy/move index.
+      summary: Copy/move index
       description: Performs a copy or a move operation on a index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -4672,9 +4821,9 @@ paths:
   /1/indexes:
     get:
       tags:
-        - search
+        - Indices
       operationId: listIndices
-      summary: List existing indexes.
+      summary: List existing indexes
       description: List existing indexes from an application.
       parameters:
         - $ref: '#/components/parameters/Page'
