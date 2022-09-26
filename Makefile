@@ -39,9 +39,9 @@ api-specs-pr:
 		git add api/specs/search.yml; \
 		git commit -m 'chore: update search api specs'; \
 		git push --set-upstream origin feat/api-specs; \
-		if [-n "$$(gh pr list --base master --head feat/api-specs)"]; then \
-			gh pr create -f
-		fi
+		if ![ -n "$$(gh pr list --base master --head feat/api-specs)" ]; then \
+			gh pr create -f; \
+		fi \
 	fi
 
 # Build the binary
