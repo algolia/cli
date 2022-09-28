@@ -50,8 +50,12 @@ build:
 	go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=$(VERSION)" -o algolia cmd/algolia/main.go
 .PHONY: build
 
-## Install & uninstall tasks are here for use on *nix platform only.
+# Generate flags for commands
+generate-flags:
+	cd pkg/cmd/root && go run ../../gen/gen_flags.go && cd ../..
+.PHONY: generate
 
+## Install & uninstall tasks are here for use on *nix platform only.
 prefix  := /usr/local
 bindir  := ${prefix}/bin
 
