@@ -40,7 +40,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:               "move <source-index> <destination-index>",
-		Args:              cobra.ExactArgs(2),
+		Args:              cmdutil.ExactArgs(2, "argument required"),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Move an index",
 		Long: heredoc.Doc(`

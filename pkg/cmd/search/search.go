@@ -37,7 +37,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "search  <index>",
 		Short:             "Search the given index",
-		Args:              cobra.ExactArgs(1),
+		Args:              cmdutil.ExactArgs(1, "argument required"),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Example: heredoc.Doc(`

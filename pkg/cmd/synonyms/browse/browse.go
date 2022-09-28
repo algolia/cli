@@ -34,7 +34,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "browse <index>",
-		Args:              cobra.ExactArgs(1),
+		Args:              cmdutil.ExactArgs(1, "argument required"),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "List all the the synonyms of the given index",
 		Example: heredoc.Doc(`
