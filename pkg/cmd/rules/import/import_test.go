@@ -2,7 +2,7 @@ package importRules
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,7 +19,7 @@ import (
 
 func TestNewImportCmd(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "rules.ndjson")
-	_ = ioutil.WriteFile(file, []byte("{\"objectID\":\"test\"}"), 0600)
+	_ = os.WriteFile(file, []byte("{\"objectID\":\"test\"}"), 0600)
 
 	tests := []struct {
 		name      string
@@ -111,7 +111,7 @@ func TestNewImportCmd(t *testing.T) {
 
 func Test_runExportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "rules.json")
-	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"test\"}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"test\"}"), 0600)
 	require.NoError(t, err)
 
 	tests := []struct {

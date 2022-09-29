@@ -14,6 +14,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/utils"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type DeleteOptions struct {
@@ -41,7 +42,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "delete <index> --synonyms <synonym-ids> --confirm",
-		Args:              cmdutil.ExactArgs(1, "argument required"),
+		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Delete synonyms from an index",
 		Long: heredoc.Doc(`

@@ -28,7 +28,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command
 	}
 	cmd := &cobra.Command{
 		Use:   "list",
-		Args:  validators.NoArgs,
+		Args:  validators.NoArgs(),
 		Short: "List the configured profile(s)",
 		Example: heredoc.Doc(`
 			# List the configured profiles

@@ -1,47 +1,53 @@
 package validators
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	cmdutil "github.com/algolia/cli/pkg/cmdutil"
 )
 
-// NoArgs is a validator for commands to print an error when an argument is provided
-func NoArgs(cmd *cobra.Command, args []string) error {
-	errorMessage := fmt.Sprintf(
-		"`%s` does not take any positional arguments. See `%s --help` for supported flags and usage",
-		cmd.CommandPath(),
-		cmd.CommandPath(),
-	)
-
-	if len(args) > 0 {
-		return errors.New(errorMessage)
-	}
-
-	return nil
-}
-
-// ExactArgs is a validator for commands to print an error when the number provided
-// is different than the arguments passed in
-func ExactArgs(num int) cobra.PositionalArgs {
+// ExactArgs is a validator for commands to print an error with a custom message
+// followed by usage, flags and available commands when too few/much arguments are provided
+func ExactArgs(n int, msg string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		argument := "positional argument"
-		if num != 1 {
-			argument = "positional arguments"
+		if len(args) != n {
+			return cmdutil.FlagErrorf(msg)
 		}
 
-		errorMessage := fmt.Sprintf(
-			"`%s` requires exactly %d %s. See `%s --help` for supported flags and usage",
-			cmd.CommandPath(),
-			num,
-			argument,
-			cmd.CommandPath(),
-		)
-
-		if len(args) != num {
-			return errors.New(errorMessage)
-		}
 		return nil
 	}
+}
+
+// NoArgs is a validator for commands to print an error when an argument is provided
+func NoArgs() cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		extractArgs := ExactArgs(0, fmt.Sprintf(
+			"`%s` does not take any positional arguments.",
+			cmd.CommandPath(),
+		))
+
+		return extractArgs(cmd, args)
+	}
+}
+
+// ExactArgsWithDefaultRequiredMsg is the same as ExactArgs but displays
+// a default error message
+func ExactArgsWithDefaultRequiredMsg(n int) cobra.PositionalArgs {
+	argument := "argument"
+	if n > 1 {
+		argument = argument + "s"
+	}
+
+	return func(cmd *cobra.Command, args []string) error {
+		extractArgs := ExactArgs(n, fmt.Sprintf("`%s` requires exactly %d %s.",
+			cmd.CommandPath(),
+			n,
+			argument,
+		))
+
+		return extractArgs(cmd, args)
+	}
+
 }

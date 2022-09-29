@@ -35,7 +35,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	}
 	cmd := &cobra.Command{
 		Use:   "list",
-		Args:  validators.NoArgs,
+		Args:  validators.NoArgs(),
 		Short: "List API keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -47,7 +46,7 @@ func httpResponse(status int, req *http.Request, body io.Reader) *http.Response 
 	return &http.Response{
 		StatusCode: status,
 		Request:    req,
-		Body:       ioutil.NopCloser(body),
+		Body:       io.NopCloser(body),
 		Header:     http.Header{},
 	}
 }

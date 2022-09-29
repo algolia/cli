@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type SaveOptions struct {
@@ -39,7 +40,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
-		Args:              cobra.ExactArgs(1),
+		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Save a synonym to the given index",
 		Aliases:           []string{"create", "edit"},

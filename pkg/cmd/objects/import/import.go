@@ -14,6 +14,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type ImportOptions struct {
@@ -39,7 +40,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
-		Args:              cmdutil.ExactArgs(1, "argument required"),
+		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Import objects to the specified index",
 		Long: heredoc.Doc(`

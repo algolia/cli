@@ -34,7 +34,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "list",
-		Args:  validators.NoArgs,
+		Args:  validators.NoArgs(),
 		Short: "List indices",
 		Example: heredoc.Doc(`
 			# List indices

@@ -38,7 +38,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 	cmd := &cobra.Command{
 		Use:   "create",
-		Args:  validators.NoArgs,
+		Args:  validators.NoArgs(),
 		Short: "Create a new API key",
 		Long:  `Create a new API key with the provided parameters.`,
 		Example: heredoc.Doc(`

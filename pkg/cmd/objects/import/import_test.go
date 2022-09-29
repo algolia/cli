@@ -2,7 +2,7 @@ package importRecords
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +16,7 @@ import (
 
 func Test_runExportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "objects.json")
-	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"foo\"}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"foo\"}"), 0600)
 	require.NoError(t, err)
 
 	tests := []struct {

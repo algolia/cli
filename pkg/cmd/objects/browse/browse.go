@@ -11,6 +11,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type BrowseOptions struct {
@@ -36,7 +37,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "browse <index>",
-		Args:              cmdutil.ExactArgs(1, "argument required"),
+		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Browse the index objects",
 		Long: heredoc.Doc(`
@@ -67,6 +68,10 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			return runBrowseCmd(opts)
 		},
 	}
+
+	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
+		return cmdutil.UsageFuncWithInheritedFlagsOnly(f.IOStreams, cmd)
+	})
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)

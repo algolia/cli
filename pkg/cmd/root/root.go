@@ -69,7 +69,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.SetVersionTemplate(version.Template)
 	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		return rootUsageFunc(f.IOStreams.Out, cmd)
+		return rootUsageFunc(f.IOStreams, cmd)
 	})
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		rootHelpFunc(f, cmd, args)
