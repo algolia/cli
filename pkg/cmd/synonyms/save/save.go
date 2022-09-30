@@ -8,7 +8,8 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
-	shared "github.com/algolia/cli/pkg/cmd/synonyms/shared"
+	handler "github.com/algolia/cli/pkg/cmd/shared"
+	"github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -53,10 +54,21 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
+			flagsHandler := &handler.SynonymHandler{
+				Flags: flags,
+				Cmd:   cmd,
+			}
+
+			err := handler.HandleFlags(flagsHandler, opts.IO.CanPrompt())
+			if err != nil {
+				return err
+			}
+
 			synonym, err := shared.FlagsToSynonym(*flags)
 			if err != nil {
 				return err
 			}
+			// Correct flags are passed
 			opts.Synonym = synonym
 
 			err, successMessage := GetSuccessMessage(*flags, opts.Indice)
@@ -75,8 +87,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 	// Common
 	cmd.Flags().StringVarP(&flags.SynonymID, "id", "i", "", "Synonym ID to save")
-	_ = cmd.MarkFlagRequired("id")
-	cmd.Flags().VarP(&flags.SynonymType, "type", "t", "Synonym type to save (default to regular)")
+	cmd.Flags().StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type to save (default to regular)")
 	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the save request to the replicas")
 	// Regular synonym
 	cmd.Flags().StringSliceVarP(&flags.Synonyms, "synonyms", "s", nil, "Synonyms to save")

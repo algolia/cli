@@ -10,7 +10,7 @@ import (
 
 // Pluralize returns the plural form of a given string
 func Pluralize(num int, thing string) string {
-	if num == 1 {
+	if num <= 1 {
 		return fmt.Sprintf("%d %s", num, thing)
 	}
 	return fmt.Sprintf("%d %ss", num, thing)
@@ -49,4 +49,14 @@ func ToKebabCase(str string) string {
 	snake = matchAllCap.ReplaceAllString(snake, "${1}-${2}")
 
 	return strings.ToLower(snake)
+}
+
+// Convert comma separated string values to slice
+func StringToSlice(str string) []string {
+	return strings.Split(strings.ReplaceAll(str, " ", ""), ",")
+}
+
+// Convert slice of string to comma separated string
+func SliceToString(str []string) string {
+	return strings.Join(str, ", ")
 }
