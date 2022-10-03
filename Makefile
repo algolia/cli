@@ -1,7 +1,7 @@
 ifdef VERSION
 VERSION := $(VERSION)
 else
-VERSION := master
+VERSION := main
 endif
 
 # Run all the tests
@@ -39,7 +39,7 @@ api-specs-pr:
 		git add api/specs/search.yml; \
 		git commit -m 'chore: update search api specs'; \
 		git push -f --set-upstream origin feat/api-specs; \
-		if ![ -n "$$(gh pr list --base master --head feat/api-specs)" ]; then \
+		if ![ -n "$$(gh pr list --base main --head feat/api-specs)" ]; then \
 			gh pr create -f; \
 		fi \
 	fi
