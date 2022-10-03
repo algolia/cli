@@ -12,7 +12,6 @@ func Test_ValidateSynonymFlags(t *testing.T) {
 	tests := []struct {
 		name         string
 		synonymFlags shared.SynonymFlags
-		synonymType  string
 		wantsErr     bool
 		wantsErrMsg  string
 	}{

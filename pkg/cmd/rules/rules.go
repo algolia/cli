@@ -6,6 +6,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/rules/browse"
 	"github.com/algolia/cli/pkg/cmd/rules/delete"
 	importRules "github.com/algolia/cli/pkg/cmd/rules/import"
+	"github.com/algolia/cli/pkg/cmd/rules/save"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -20,6 +21,6 @@ func NewRulesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(importRules.NewImportCmd(f, nil))
 	cmd.AddCommand(browse.NewBrowseCmd(f))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
-
+	cmd.AddCommand(save.NewSaveCmd(f, nil))
 	return cmd
 }

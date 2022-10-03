@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"github.com/algolia/cli/pkg/cmd/synonyms/shared"
+	rules "github.com/algolia/cli/pkg/cmd/rules/shared"
+	synonyms "github.com/algolia/cli/pkg/cmd/synonyms/shared"
 	"github.com/spf13/cobra"
 )
 
@@ -10,10 +11,19 @@ type FlagsHandler interface {
 	AskAndFill() error
 }
 
+func HandleFlags(handler FlagsHandler, interactive bool) error {
+	err := handler.Validate()
+	if interactive && err != nil {
+		return handler.AskAndFill()
+	}
+
+	return err
+}
+
 // Synonyms
 
 type SynonymHandler struct {
-	Flags *shared.SynonymFlags
+	Flags *synonyms.SynonymFlags
 	Cmd   *cobra.Command
 }
 
@@ -30,11 +40,18 @@ func (handler *SynonymHandler) AskAndFill() error {
 	return ValidateSynonymFlags(*handler.Flags)
 }
 
-func HandleFlags(handler FlagsHandler, interactive bool) error {
-	err := handler.Validate()
-	if interactive && err != nil {
-		return handler.AskAndFill()
-	}
+// Rules
 
-	return err
+type RuleHandler struct {
+	Flags *rules.RuleFlags
+	Cmd   *cobra.Command
+}
+
+func (handler RuleHandler) Validate() error {
+	return ValidateRuleFlags(*handler.Flags, GetRuleFlagsProvided(handler.Cmd))
+}
+
+func (handler *RuleHandler) AskAndFill() error {
+	// TODO: interactive mode
+	return nil
 }
