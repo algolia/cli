@@ -11,3 +11,5 @@ jobs:
       - name: Create Pull Request for API Specs
         run: |
           make api-specs-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
