@@ -21,14 +21,9 @@ type UsageEntry struct {
 
 func UsageFunc(IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) error {
 	entries := []UsageEntry{}
-	err := AddBasicUsage(&entries, IOStreams, command)
-	if err != nil {
-		return err
-	}
+	AddBasicUsage(&entries, IOStreams, command)
+	AddFlags(&entries, IOStreams, command, flagUsages)
 
-	if flagUsages != "" {
-		AddFlags(&entries, IOStreams, command, flagUsages)
-	}
 	DisplayUsageEntry(IOStreams.Out, entries)
 
 	return nil
@@ -46,20 +41,9 @@ func UsageFuncWithFilteredFlags(IOStreams *iostreams.IOStreams, command *cobra.C
 
 func UsageFuncWithFilteredAndInheritedFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagsToDisplay []string) error {
 	entries := []UsageEntry{}
-	err := AddBasicUsage(&entries, IOStreams, command)
-	if err != nil {
-		return err
-	}
-
-	err = AddFilteredFlags(&entries, IOStreams, command, flagsToDisplay)
-	if err != nil {
-		return err
-	}
-
-	err = AddInheritedFlags(&entries, IOStreams, command)
-	if err != nil {
-		return err
-	}
+	AddBasicUsage(&entries, IOStreams, command)
+	AddFilteredFlags(&entries, IOStreams, command, flagsToDisplay)
+	AddInheritedFlags(&entries, IOStreams, command)
 
 	DisplayUsageEntry(IOStreams.Out, entries)
 	return nil
@@ -67,16 +51,9 @@ func UsageFuncWithFilteredAndInheritedFlags(IOStreams *iostreams.IOStreams, comm
 
 func UsageFuncWithInheritedFlagsOnly(IOStreams *iostreams.IOStreams, command *cobra.Command) error {
 	entries := []UsageEntry{}
-	err := AddBasicUsage(&entries, IOStreams, command)
-	if err != nil {
-		return err
-	}
 
-	err = AddInheritedFlags(&entries, IOStreams, command)
-	if err != nil {
-		return err
-	}
-
+	AddBasicUsage(&entries, IOStreams, command)
+	AddInheritedFlags(&entries, IOStreams, command)
 	DisplayUsageEntry(IOStreams.Out, entries)
 	return nil
 }
@@ -121,10 +98,9 @@ func Dedent(s string) string {
 	return strings.TrimSuffix(buf.String(), "\n")
 }
 
-func AddBasicUsage(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command) error {
+func AddBasicUsage(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command) {
 	cs := IOStreams.ColorScheme()
 	*entries = append(*entries, UsageEntry{cs.Bold("Usage:"), command.UseLine()})
-
 	subcommands := command.Commands()
 
 	if len(subcommands) > 0 {
@@ -144,32 +120,28 @@ func AddBasicUsage(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, comman
 			cs.Bold("Available commands:"),
 			strings.Join(commands, "\n")},
 		)
-		return nil
 	}
-
-	return nil
 }
 
-func AddFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) error {
+func AddFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) {
 	cs := IOStreams.ColorScheme()
 
 	if flagUsages != "" {
 		*entries = append(*entries, UsageEntry{cs.Bold("Flags:"), flagUsages})
 	}
-	return nil
 }
 
-func AddAllFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command) error {
-	return AddFlags(entries, IOStreams, command, command.LocalFlags().FlagUsages())
+func AddAllFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command) {
+	AddFlags(entries, IOStreams, command, command.LocalFlags().FlagUsages())
 }
 
-func AddFilteredFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command, flagsToDisplay []string) error {
+func AddFilteredFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command, flagsToDisplay []string) {
 	filteredFlags := filterFlagSet(*command.LocalFlags(), flagsToDisplay)
 
-	return AddFlags(entries, IOStreams, command, filteredFlags.FlagUsages())
+	AddFlags(entries, IOStreams, command, filteredFlags.FlagUsages())
 }
 
-func AddInheritedFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command) error {
+func AddInheritedFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, command *cobra.Command) {
 	cs := IOStreams.ColorScheme()
 	inheritedFlagUsages := command.InheritedFlags().FlagUsages()
 
@@ -180,7 +152,6 @@ func AddInheritedFlags(entries *[]UsageEntry, IOStreams *iostreams.IOStreams, co
 			fmt.Sprintln(text.Indent(strings.Trim(dedentedInheritedFlagUsages, "\r\n"), "  ")),
 		})
 	}
-	return nil
 }
 
 func filterFlagSet(f pflag.FlagSet, flagsToDisplay []string) pflag.FlagSet {
