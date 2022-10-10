@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/utils"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type DeleteOptions struct {
@@ -39,7 +40,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "delete <index> --object-ids <object-ids> --confirm",
-		Args:              cobra.ExactArgs(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Delete objects from an index",
 		Long: heredoc.Doc(`

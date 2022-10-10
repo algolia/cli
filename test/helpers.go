@@ -2,7 +2,7 @@ package test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -93,8 +93,8 @@ func Execute(cmd *cobra.Command, cli string, inOut *CmdInOut) (*CmdInOut, error)
 	} else {
 		cmd.SetIn(&bytes.Buffer{})
 	}
-	cmd.SetOut(ioutil.Discard)
-	cmd.SetErr(ioutil.Discard)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 
 	_, err = cmd.ExecuteC()
 	if err != nil {

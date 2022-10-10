@@ -34,7 +34,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 	}
 	cmd := &cobra.Command{
 		Use:   "add",
-		Args:  validators.NoArgs,
+		Args:  validators.NoArgs(),
 		Short: "Add a new profile configuration to the CLI",
 		Example: heredoc.Doc(`
 			# Add a new profile (interactive)

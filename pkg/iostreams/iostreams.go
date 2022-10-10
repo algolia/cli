@@ -363,7 +363,7 @@ func (s *IOStreams) ReadUserFile(fn string) ([]byte, error) {
 		}
 	}
 	defer r.Close()
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func (s *IOStreams) TempFile(dir, pattern string) (*os.File, error) {

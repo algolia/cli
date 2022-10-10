@@ -9,6 +9,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 // SearchOptions represents the options for the search command
@@ -37,7 +38,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "search  <index>",
 		Short:             "Search the given index",
-		Args:              cobra.ExactArgs(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Example: heredoc.Doc(`
@@ -64,6 +65,8 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			return runSearchCmd(opts)
 		},
 	}
+
+	cmd.SetUsageFunc(cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}))
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 

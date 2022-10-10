@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type ImportOptions struct {
@@ -39,7 +40,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
-		Args:              cobra.ExactArgs(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Import synonyms to the index",
 		Long: heredoc.Doc(`

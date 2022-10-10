@@ -2,7 +2,7 @@ package set
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -17,7 +17,7 @@ import (
 func Test_runExportCmd(t *testing.T) {
 
 	tmpFile := filepath.Join(t.TempDir(), "settings.json")
-	err := ioutil.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0600)
 	require.NoError(t, err)
 
 	tests := []struct {

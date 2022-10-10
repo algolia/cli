@@ -14,6 +14,7 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type CopyOptions struct {
@@ -43,7 +44,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:               "copy <source-index> <destination-index>",
-		Args:              cobra.ExactArgs(2),
+		Args:              validators.ExactArgs(2),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Make a copy of an index",
 		Long: heredoc.Doc(`

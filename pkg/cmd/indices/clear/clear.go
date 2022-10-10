@@ -11,6 +11,7 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 type ClearOptions struct {
@@ -35,7 +36,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 	cmd := &cobra.Command{
 		Use:               "clear <index>",
-		Args:              cobra.ExactArgs(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Clear the specified index",
 		Long: heredoc.Doc(`
