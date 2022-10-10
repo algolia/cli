@@ -37,7 +37,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "browse <index>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Browse the index objects",
 		Long: heredoc.Doc(`
@@ -69,9 +69,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		return cmdutil.UsageFuncWithInheritedFlagsOnly(f.IOStreams, cmd)
-	})
+	cmd.SetUsageFunc(cmdutil.UsageFuncWithInheritedFlagsOnly(f.IOStreams, cmd))
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)

@@ -10,7 +10,7 @@ import (
 
 // ExactArgs is a validator for commands to print an error with a custom message
 // followed by usage, flags and available commands when too few/much arguments are provided
-func ExactArgs(n int, msg string) cobra.PositionalArgs {
+func ExactArgsWithMsg(n int, msg string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) != n {
 			return cmdutil.FlagErrorf(msg)
@@ -23,7 +23,7 @@ func ExactArgs(n int, msg string) cobra.PositionalArgs {
 // NoArgs is a validator for commands to print an error when an argument is provided
 func NoArgs() cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		extractArgs := ExactArgs(0, fmt.Sprintf(
+		extractArgs := ExactArgsWithMsg(0, fmt.Sprintf(
 			"`%s` does not take any positional arguments.",
 			cmd.CommandPath(),
 		))
@@ -32,16 +32,16 @@ func NoArgs() cobra.PositionalArgs {
 	}
 }
 
-// ExactArgsWithDefaultRequiredMsg is the same as ExactArgs but displays
+// ExactArgs is the same as ExactArgsWithMsg but displays
 // a default error message
-func ExactArgsWithDefaultRequiredMsg(n int) cobra.PositionalArgs {
+func ExactArgs(n int) cobra.PositionalArgs {
 	argument := "argument"
 	if n > 1 {
 		argument = argument + "s"
 	}
 
 	return func(cmd *cobra.Command, args []string) error {
-		extractArgs := ExactArgs(n, fmt.Sprintf("`%s` requires exactly %d %s.",
+		extractArgs := ExactArgsWithMsg(n, fmt.Sprintf("`%s` requires exactly %d %s.",
 			cmd.CommandPath(),
 			n,
 			argument,

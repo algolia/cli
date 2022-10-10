@@ -35,7 +35,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "remove <profile>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
 		Short:             "Remove the specified profile",
 		Long:              `Remove the specified profile from the configuration.`,

@@ -40,7 +40,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Save a synonym to the given index",
 		Aliases:           []string{"create", "edit"},

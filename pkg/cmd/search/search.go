@@ -38,7 +38,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "search  <index>",
 		Short:             "Search the given index",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Example: heredoc.Doc(`
@@ -66,9 +66,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		return cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"})
-	})
+	cmd.SetUsageFunc(cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}))
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 

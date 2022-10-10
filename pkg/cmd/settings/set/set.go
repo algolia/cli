@@ -36,7 +36,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:   "set <index>",
-		Args:  validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:  validators.ExactArgs(1),
 		Short: "Set the settings of the specified index.",
 		Example: heredoc.Doc(`
 			# Set the typo tolerance to false on the PRODUCTS index

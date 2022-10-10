@@ -33,7 +33,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 	cmd := &cobra.Command{
 		Use:               "get <index>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		Short:             "Get the settings of the specified index.",
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {

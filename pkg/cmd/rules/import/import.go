@@ -44,7 +44,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Import rules to the specified index",
 		Long: heredoc.Doc(`

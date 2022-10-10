@@ -36,7 +36,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 	cmd := &cobra.Command{
 		Use:               "clear <index>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Clear the specified index",
 		Long: heredoc.Doc(`

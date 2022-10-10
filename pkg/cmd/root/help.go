@@ -10,7 +10,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-func rootUsageFunc(IOStreams *iostreams.IOStreams, command *cobra.Command) error {
+func rootUsageFunc(IOStreams *iostreams.IOStreams, command *cobra.Command) func(cmd *cobra.Command) error {
 	return cmdutil.UsageFuncDefault(IOStreams, command)
 }
 
@@ -53,7 +53,7 @@ func nestedSuggestFunc(IOStreams *iostreams.IOStreams, command *cobra.Command, a
 	}
 
 	fmt.Fprint(w, "\n")
-	_ = rootUsageFunc(IOStreams, command)
+	_ = rootUsageFunc(IOStreams, command)(command)
 }
 
 func isRootCmd(command *cobra.Command) bool {
@@ -74,40 +74,40 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, args []string) {
 		longText = command.Short
 	}
 
-	helpEntries := []cmdutil.UsageEntry{}
+	helpEntries := cmdutil.UsageEntries{}
 	if longText != "" {
-		helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: "", Body: longText})
+		helpEntries.AddEntry(cmdutil.UsageEntry{Title: "", Body: longText})
 	}
 
-	cmdutil.AddBasicUsage(&helpEntries, f.IOStreams, command)
+	helpEntries.AddBasicUsage(f.IOStreams, command)
 
 	categoryFlagSet := cmdutil.NewCategoryFlagSet(command.LocalFlags())
 	if len(categoryFlagSet.Categories) > 0 {
 		for _, categoryName := range categoryFlagSet.SortedCategoryNames() {
 			groupName := fmt.Sprintf("%s Flags", categoryName)
-			helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: groupName, Body: cmdutil.Dedent(categoryFlagSet.Categories[categoryName].FlagUsages())})
+			helpEntries.AddEntry(cmdutil.UsageEntry{Title: groupName, Body: cmdutil.Dedent(categoryFlagSet.Categories[categoryName].FlagUsages())})
 		}
 		if categoryFlagSet.Others.FlagUsages() != "" {
-			helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: cs.Bold("Other Flags"), Body: cmdutil.Dedent(categoryFlagSet.Others.FlagUsages())})
+			helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Other Flags"), Body: cmdutil.Dedent(categoryFlagSet.Others.FlagUsages())})
 		}
 	} else {
-		cmdutil.AddFlags(&helpEntries, f.IOStreams, command, cmdutil.Dedent(categoryFlagSet.Others.FlagUsages()))
+		helpEntries.AddFlags(f.IOStreams, command, cmdutil.Dedent(categoryFlagSet.Others.FlagUsages()))
 	}
 
 	printFlagUsages := categoryFlagSet.Print.FlagUsages()
 	if printFlagUsages != "" {
-		helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: cs.Bold("Output Formatting Flags"), Body: cmdutil.Dedent(printFlagUsages)})
+		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Output Formatting Flags"), Body: cmdutil.Dedent(printFlagUsages)})
 	}
 	inheritedFlagUsages := command.InheritedFlags().FlagUsages()
 	if inheritedFlagUsages != "" {
-		helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: cs.Bold("Inherited Flags"), Body: cmdutil.Dedent(inheritedFlagUsages)})
+		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Inherited Flags"), Body: cmdutil.Dedent(inheritedFlagUsages)})
 	}
 	if command.Example != "" {
-		helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: cs.Bold("Examples"), Body: command.Example})
+		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Examples"), Body: command.Example})
 	}
-	helpEntries = append(helpEntries, cmdutil.UsageEntry{Title: cs.Bold("Learn More"), Body: `
+	helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Learn More"), Body: `
 Use 'algolia <command> <subcommand> --help' for more information about a command.
 Read the documentation at https://algolia.com/doc/tools/cli/`})
 
-	cmdutil.DisplayUsageEntry(f.IOStreams.Out, helpEntries)
+	helpEntries.DisplayEntries(f.IOStreams.Out)
 }

@@ -28,7 +28,7 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 	}
 	cmd := &cobra.Command{
 		Use:               "setdefault <profile>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
 		Short:             "Set the default profile",
 		Example: heredoc.Doc(`

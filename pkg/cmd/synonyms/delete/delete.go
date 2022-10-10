@@ -42,7 +42,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "delete <index> --synonyms <synonym-ids> --confirm",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Delete synonyms from an index",
 		Long: heredoc.Doc(`

@@ -44,7 +44,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 
 	cmd := &cobra.Command{
 		Use:               "copy <source-index> <destination-index>",
-		Args:              validators.ExactArgsWithDefaultRequiredMsg(2),
+		Args:              validators.ExactArgs(2),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Make a copy of an index",
 		Long: heredoc.Doc(`
