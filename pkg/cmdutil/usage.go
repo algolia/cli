@@ -27,7 +27,7 @@ func (u *UsageEntries) AddEntry(entry UsageEntry) {
 	u.entries = append(u.entries, entry)
 }
 
-func (u UsageEntries) AddBasicUsage(IOStreams *iostreams.IOStreams, command *cobra.Command) {
+func (u *UsageEntries) AddBasicUsage(IOStreams *iostreams.IOStreams, command *cobra.Command) {
 	cs := IOStreams.ColorScheme()
 	u.AddEntry(UsageEntry{cs.Bold("Usage:"), command.UseLine()})
 	subcommands := command.Commands()
@@ -52,7 +52,7 @@ func (u UsageEntries) AddBasicUsage(IOStreams *iostreams.IOStreams, command *cob
 	}
 }
 
-func (u UsageEntries) AddFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) {
+func (u *UsageEntries) AddFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) {
 	cs := IOStreams.ColorScheme()
 
 	if flagUsages != "" {
@@ -60,17 +60,17 @@ func (u UsageEntries) AddFlags(IOStreams *iostreams.IOStreams, command *cobra.Co
 	}
 }
 
-func (u UsageEntries) AddAllFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) {
+func (u *UsageEntries) AddAllFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagUsages string) {
 	u.AddFlags(IOStreams, command, command.LocalFlags().FlagUsages())
 }
 
-func (u UsageEntries) AddFilteredFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagsToDisplay []string) {
+func (u *UsageEntries) AddFilteredFlags(IOStreams *iostreams.IOStreams, command *cobra.Command, flagsToDisplay []string) {
 	filteredFlags := filterFlagSet(*command.LocalFlags(), flagsToDisplay)
 
 	u.AddFlags(IOStreams, command, filteredFlags.FlagUsages())
 }
 
-func (u UsageEntries) AddInheritedFlags(IOStreams *iostreams.IOStreams, command *cobra.Command) {
+func (u *UsageEntries) AddInheritedFlags(IOStreams *iostreams.IOStreams, command *cobra.Command) {
 	cs := IOStreams.ColorScheme()
 	inheritedFlagUsages := command.InheritedFlags().FlagUsages()
 
@@ -83,7 +83,7 @@ func (u UsageEntries) AddInheritedFlags(IOStreams *iostreams.IOStreams, command 
 	}
 }
 
-func (u UsageEntries) DisplayEntries(out io.Writer) {
+func (u *UsageEntries) DisplayEntries(out io.Writer) {
 	for _, e := range u.entries {
 		if e.Title != "" {
 			// If there is a title, add indentation to each line in the body
