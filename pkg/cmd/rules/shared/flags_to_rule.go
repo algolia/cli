@@ -1,6 +1,8 @@
 package shared
 
 import (
+	"fmt"
+
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 )
@@ -10,6 +12,7 @@ type RuleFlags struct {
 	RuleID          string
 	RuleEnabled     bool
 	RuleDescription string
+	// TODO: RuleValidity array of tuple
 	// Condition
 	ConditionPattern     string
 	ConditionAnchoring   string
@@ -38,6 +41,17 @@ type RuleFlags struct {
 }
 
 func FlagsToRule(flags RuleFlags) (search.Rule, error) {
+	// Base options
+	rule := search.Rule{
+		ObjectID: flags.RuleID,
+		Enabled:  opt.Enabled(flags.RuleEnabled),
+	}
+	if flags.RuleDescription != "" {
+		rule.Description = flags.RuleDescription
+	}
+
+	// Conditions
+	// TODO: handle multiple conditions
 	condition := search.RuleCondition{}
 	if flags.ConditionPattern != "" {
 		condition.Pattern = flags.ConditionPattern
@@ -53,7 +67,7 @@ func FlagsToRule(flags RuleFlags) (search.Rule, error) {
 		case string(search.Contains):
 			condition.Anchoring = search.Contains
 		default:
-			break
+			return rule, fmt.Errorf("wrong consequence anchoring value")
 		}
 	}
 	if flags.ConditionAlternative {
@@ -63,19 +77,23 @@ func FlagsToRule(flags RuleFlags) (search.Rule, error) {
 		condition.Context = flags.ConditionContext
 	}
 
-	rule := search.Rule{
-		ObjectID:   flags.RuleID,
-		Conditions: []search.RuleCondition{condition},
-		Consequence: search.RuleConsequence{
-			Params: &search.RuleParams{
-				QueryParams: search.QueryParams{
-					Filters: opt.Filters("category = 1"),
-				},
-			},
-		},
-		Enabled: opt.Enabled(flags.RuleEnabled), // Optionally, to disable the rule
+	// Consequences
 
-	}
+	rule.Conditions = []search.RuleCondition{condition}
+
+	// rule := search.Rule{
+	// 	ObjectID:   flags.RuleID,
+	// 	Conditions: []search.RuleCondition{condition},
+	// 	Consequence: search.RuleConsequence{
+	// 		Params: &search.RuleParams{
+	// 			QueryParams: search.QueryParams{
+	// 				Filters: opt.Filters("category = 1"),
+	// 			},
+	// 		},
+	// 	},
+	// 	Enabled: opt.Enabled(flags.RuleEnabled), // Optionally, to disable the rule
+
+	// }
 
 	return rule, nil
 }
