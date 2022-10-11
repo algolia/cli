@@ -1,8 +1,6 @@
 package shared
 
 import (
-	"fmt"
-
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 )
@@ -67,7 +65,7 @@ func FlagsToRule(flags RuleFlags) (search.Rule, error) {
 		case string(search.Contains):
 			condition.Anchoring = search.Contains
 		default:
-			return rule, fmt.Errorf("wrong consequence anchoring value")
+			break
 		}
 	}
 	if flags.ConditionAlternative {
