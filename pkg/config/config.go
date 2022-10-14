@@ -148,6 +148,14 @@ func (c *Config) RemoveProfile(name string) error {
 // SetDefaultProfile set the default profile
 func (c *Config) SetDefaultProfile(name string) error {
 	runtimeViper := viper.GetViper()
+
+	// Below is necessary if the config file was just created
+	runtimeViper.SetConfigType("toml")
+	err := runtimeViper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+
 	configs := runtimeViper.AllSettings()
 
 	found := false
