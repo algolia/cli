@@ -1,15 +1,15 @@
 name: Scheduled API Specs Pull Request
 on:
-  schedule:
-    - cron: '0 */12 * * *'
+  pull_request:
 
 jobs:
   api-specs-pr:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Create Pull Request for API Specs
-        run: |
-          make api-specs-pr
+      - run: |
+          git config --global user.name "algolia-ci"
+          git config --global user.email "noreply@algolia.com"
+      - run: make api-specs-pr
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_SECRET }}
