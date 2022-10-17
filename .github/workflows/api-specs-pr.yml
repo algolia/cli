@@ -8,8 +8,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Create Pull Request for API Specs
-        run: |
-          make api-specs-pr
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+      - run: |
+          git config --global user.name "algolia-ci"
+          git config --global user.email "noreply@algolia.com"
+      - run: make api-specs-pr
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_SECRET }}
