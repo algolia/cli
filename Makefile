@@ -34,14 +34,13 @@ endif
 ## Create a new PR (or update the existing one) to update the API specs
 api-specs-pr:
 	wget -O ./api/specs/search.yml https://raw.githubusercontent.com/algolia/api-clients-automation/main/specs/bundled/search.yml
+	go generate ./...
 	if [ -n "$$(git status --porcelain)" ]; then \
 		git checkout -b feat/api-specs; \
-		git add api/specs/search.yml; \
+		git add .; \
 		git commit -m 'chore: update search api specs'; \
 		git push -f --set-upstream origin feat/api-specs; \
-		if ![ -n "$$(gh pr list --base main --head feat/api-specs)" ]; then \
-			gh pr create -f; \
-		fi \
+		if ! [ "$$(gh pr list --base main --head feat/api-specs)" ]; then gh pr create --title "Update search api specs" --body "Update search api specs"; fi; \
 	fi
 
 # Build the binary
