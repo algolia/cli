@@ -167,6 +167,12 @@ components:
       properties:
         query:
           $ref: '#/components/schemas/query'
+    filters:
+      type: string
+      description: Filter the query with numeric, facet and/or tag filters.
+      default: ''
+      x-categories:
+        - Filtering
     searchFiltersArrayString:
       type: array
       items:
@@ -215,6 +221,22 @@ components:
       default: 0
       x-categories:
         - Pagination
+    aroundLatLng:
+      type: string
+      description: >-
+        Search for entries around a central geolocation, enabling a geo search
+        within a circular area.
+      default: ''
+      x-categories:
+        - Geo-Search
+    aroundLatLngViaIP:
+      type: boolean
+      description: >-
+        Search for entries around a given location automatically computed from
+        the requester's IP address.
+      default: false
+      x-categories:
+        - Geo-Search
     aroundRadiusAll:
       type: string
       enum:
@@ -225,6 +247,22 @@ components:
         - type: integer
           minimum: 1
         - $ref: '#/components/schemas/aroundRadiusAll'
+      x-categories:
+        - Geo-Search
+    insideBoundingBox:
+      type: array
+      items:
+        type: number
+        format: double
+      description: Search inside a rectangular area (in geo coordinates).
+      x-categories:
+        - Geo-Search
+    insidePolygon:
+      type: array
+      items:
+        type: number
+        format: double
+      description: Search inside a polygon (in geo coordinates).
       x-categories:
         - Geo-Search
     reRankingApplyFilter:
@@ -250,11 +288,7 @@ components:
           x-categories:
             - Search
         filters:
-          type: string
-          description: Filter the query with numeric, facet and/or tag filters.
-          default: ''
-          x-categories:
-            - Filtering
+          $ref: '#/components/schemas/filters'
         facetFilters:
           $ref: '#/components/schemas/facetFilters'
         optionalFilters:
@@ -314,21 +348,9 @@ components:
           x-categories:
             - Pagination
         aroundLatLng:
-          type: string
-          description: >-
-            Search for entries around a central geolocation, enabling a geo
-            search within a circular area.
-          default: ''
-          x-categories:
-            - Geo-Search
+          $ref: '#/components/schemas/aroundLatLng'
         aroundLatLngViaIP:
-          type: boolean
-          description: >-
-            Search for entries around a given location automatically computed
-            from the requester's IP address.
-          default: false
-          x-categories:
-            - Geo-Search
+          $ref: '#/components/schemas/aroundLatLngViaIP'
         aroundRadius:
           $ref: '#/components/schemas/aroundRadius'
         aroundPrecision:
@@ -348,21 +370,9 @@ components:
           x-categories:
             - Geo-Search
         insideBoundingBox:
-          type: array
-          items:
-            type: number
-            format: double
-          description: Search inside a rectangular area (in geo coordinates).
-          x-categories:
-            - Geo-Search
+          $ref: '#/components/schemas/insideBoundingBox'
         insidePolygon:
-          type: array
-          items:
-            type: number
-            format: double
-          description: Search inside a polygon (in geo coordinates).
-          x-categories:
-            - Geo-Search
+          $ref: '#/components/schemas/insidePolygon'
         naturalLanguages:
           type: array
           items:
@@ -1386,6 +1396,26 @@ components:
     updatedAt:
       type: string
       description: Date of last update (ISO-8601 format).
+    deleteByParams:
+      type: object
+      additionalProperties: false
+      properties:
+        facetFilters:
+          $ref: '#/components/schemas/facetFilters'
+        filters:
+          $ref: '#/components/schemas/filters'
+        numericFilters:
+          $ref: '#/components/schemas/numericFilters'
+        tagFilters:
+          $ref: '#/components/schemas/tagFilters'
+        aroundLatLng:
+          $ref: '#/components/schemas/aroundLatLng'
+        aroundRadius:
+          $ref: '#/components/schemas/aroundRadius'
+        insideBoundingBox:
+          $ref: '#/components/schemas/insideBoundingBox'
+        insidePolygon:
+          $ref: '#/components/schemas/insidePolygon'
     builtInOperationType:
       type: string
       enum:
@@ -2458,7 +2488,7 @@ paths:
   /1{path}:
     get:
       operationId: get
-      summary: Send requests to the Algolia REST API
+      summary: Send requests to the Algolia REST API.
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2478,6 +2508,8 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
+      tags:
+        - search
     post:
       operationId: post
       requestBody:
@@ -2486,7 +2518,7 @@ paths:
           application/json:
             schema:
               type: object
-      summary: Send requests to the Algolia REST API
+      summary: Send requests to the Algolia REST API.
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2506,6 +2538,8 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
+      tags:
+        - search
     put:
       operationId: put
       requestBody:
@@ -2514,7 +2548,7 @@ paths:
           application/json:
             schema:
               type: object
-      summary: Send requests to the Algolia REST API
+      summary: Send requests to the Algolia REST API.
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2534,9 +2568,11 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
+      tags:
+        - search
     delete:
       operationId: del
-      summary: Send requests to the Algolia REST API
+      summary: Send requests to the Algolia REST API.
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
         - $ref: '#/components/parameters/PathInPath'
@@ -2556,14 +2592,16 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed'
         '404':
           $ref: '#/components/responses/IndexNotFound'
+      tags:
+        - search
   /1/indexes/{indexName}/query:
     post:
       tags:
-        - Search
+        - search
       operationId: searchSingleIndex
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search in a single index
+      summary: Search in a single index.
       description: Perform a search operation targeting one specific index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2590,12 +2628,12 @@ paths:
   /1/indexes/*/queries:
     post:
       tags:
-        - Search
+        - search
       operationId: search
       x-use-read-transporter: true
       x-cacheable: true
       x-legacy-signature: true
-      summary: Search multiple indices
+      summary: Search multiple indices.
       description: Perform a search operation targeting one or many indices.
       requestBody:
         required: true
@@ -2642,11 +2680,11 @@ paths:
   /1/indexes/{indexName}/facets/{facetName}/query:
     post:
       tags:
-        - Search
+        - search
       operationId: searchForFacetValues
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search for values of a given facet
+      summary: Search for values of a given facet.
       description: >-
         Search for values of a given facet, optionally restricting the returned
         values to those contained in objects matching other search criteria.
@@ -2718,9 +2756,9 @@ paths:
   /1/indexes/{indexName}/browse:
     post:
       tags:
-        - Search
+        - search
       operationId: browse
-      summary: Retrieve all index content
+      summary: Retrieve all index content.
       description: >
         This method allows you to retrieve all index content. It can retrieve up
         to 1,000 records per call and supports full text search and filters.
@@ -2757,10 +2795,10 @@ paths:
   /1/indexes/{indexName}:
     post:
       tags:
-        - Records
+        - search
       operationId: saveObject
       description: Add an object to the index, automatically assigning it an object ID.
-      summary: Add an object to the index
+      summary: Add an object to the index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
       requestBody:
@@ -2799,9 +2837,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - Indices
+        - search
       operationId: deleteIndex
-      summary: Delete index
+      summary: Delete index.
       description: Delete an existing index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2819,9 +2857,9 @@ paths:
   /1/indexes/{indexName}/{objectID}:
     get:
       tags:
-        - Records
+        - search
       operationId: getObject
-      summary: Retrieve an object
+      summary: Retrieve an object.
       description: Retrieve one object from the index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2856,9 +2894,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Records
+        - search
       operationId: addOrUpdateObject
-      summary: Add or replace an object
+      summary: Add or replace an object.
       description: |
         Add or replace an object with a given object ID.
         If the object does not exist, it will be created.
@@ -2886,9 +2924,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - Records
+        - search
       operationId: deleteObject
-      summary: Delete an object
+      summary: Delete an object.
       description: Delete an existing object.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -2907,9 +2945,9 @@ paths:
   /1/indexes/{indexName}/deleteByQuery:
     post:
       tags:
-        - Records
+        - search
       operationId: deleteBy
-      summary: Delete all records matching the query
+      summary: Delete all records matching the query.
       description: >
         Remove all objects matching a filter (including geo filters).
 
@@ -2924,7 +2962,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/searchParams'
+              $ref: '#/components/schemas/deleteByParams'
       responses:
         '200':
           $ref: '#/components/responses/DeletedAt'
@@ -2939,9 +2977,9 @@ paths:
   /1/indexes/{indexName}/clear:
     post:
       tags:
-        - Records
+        - search
       operationId: clearObjects
-      summary: Clear all objects from an index
+      summary: Clear all objects from an index.
       description: >-
         Delete an index's content, but leave settings and index-specific API
         keys untouched.
@@ -2961,9 +2999,9 @@ paths:
   /1/indexes/{indexName}/{objectID}/partial:
     post:
       tags:
-        - Records
+        - search
       operationId: partialUpdateObject
-      summary: Partially update an object
+      summary: Partially update an object.
       x-codegen-request-body-name: attributesToUpdate
       description: >
         Update one or more attributes of an existing object.
@@ -3008,9 +3046,9 @@ paths:
   /1/indexes/{indexName}/batch:
     post:
       tags:
-        - Records
+        - search
       operationId: batch
-      summary: Batch operations to one index
+      summary: Batch operations to one index.
       description: >-
         Perform multiple write operations targeting one index, in a single API
         call.
@@ -3073,12 +3111,12 @@ paths:
   /1/indexes/*/batch:
     post:
       tags:
-        - Records
+        - search
       operationId: multipleBatch
       description: >-
         Perform multiple write operations, potentially targeting multiple
         indices, in a single API call.
-      summary: Batch operations to many indices
+      summary: Batch operations to many indices.
       requestBody:
         required: true
         content:
@@ -3143,11 +3181,11 @@ paths:
   /1/indexes/*/objects:
     post:
       tags:
-        - Records
+        - search
       operationId: getObjects
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Retrieve one or more objects
+      summary: Retrieve one or more objects.
       description: >-
         Retrieve one or more objects, potentially from different indices, in a
         single API call.
@@ -3218,10 +3256,10 @@ paths:
   /1/indexes/{indexName}/settings:
     get:
       tags:
-        - Indices
+        - search
       operationId: getSettings
       description: Retrieve settings of an index.
-      summary: Retrieve settings of an index
+      summary: Retrieve settings of an index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
       responses:
@@ -3241,13 +3279,13 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Indices
+        - search
       operationId: setSettings
       description: >-
         Update settings of an index. Only specified settings are overridden;
         unspecified settings are left unchanged. Specifying null for a setting
         resets it to its default value.
-      summary: Update settings of an index
+      summary: Update settings of an index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
         - $ref: '#/components/parameters/ForwardToReplicas'
@@ -3271,9 +3309,9 @@ paths:
   /1/indexes/{indexName}/synonyms/{objectID}:
     get:
       tags:
-        - Synonyms
+        - search
       operationId: getSynonym
-      summary: Get synonym
+      summary: Get synonym.
       description: Fetch a synonym object identified by its objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3295,9 +3333,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Synonyms
+        - search
       operationId: saveSynonym
-      summary: Save synonym
+      summary: Save synonym.
       description: >-
         Create a new synonym object or update the existing synonym object with
         the given object ID.
@@ -3341,9 +3379,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - Synonyms
+        - search
       operationId: deleteSynonym
-      summary: Delete synonym
+      summary: Delete synonym.
       description: Delete a single synonyms set, identified by the given objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3363,9 +3401,9 @@ paths:
   /1/indexes/{indexName}/synonyms/batch:
     post:
       tags:
-        - Synonyms
+        - search
       operationId: saveSynonyms
-      summary: Save a batch of synonyms
+      summary: Save a batch of synonyms.
       description: >-
         Create/update multiple synonym objects at once, potentially replacing
         the entire list of synonyms if replaceExistingSynonyms is true.
@@ -3393,9 +3431,9 @@ paths:
   /1/indexes/{indexName}/synonyms/clear:
     post:
       tags:
-        - Synonyms
+        - search
       operationId: clearAllSynonyms
-      summary: Clear all synonyms
+      summary: Clear all synonyms.
       description: Remove all synonyms from an index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3414,11 +3452,11 @@ paths:
   /1/indexes/{indexName}/synonyms/search:
     post:
       tags:
-        - Synonyms
+        - search
       operationId: searchSynonyms
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search synonyms
+      summary: Search synonyms.
       description: Search or browse all synonyms, optionally filtering them by type.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3454,9 +3492,9 @@ paths:
   /1/keys:
     get:
       tags:
-        - Api Keys
+        - search
       operationId: listApiKeys
-      summary: List API Keys
+      summary: List API Keys.
       description: List API keys, along with their associated rights.
       responses:
         '200':
@@ -3485,9 +3523,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     post:
       tags:
-        - Api Keys
+        - search
       operationId: addApiKey
-      summary: Create an API key
+      summary: Create an API key.
       description: Add a new API Key with specific permissions/restrictions.
       requestBody:
         required: true
@@ -3513,9 +3551,9 @@ paths:
   /1/keys/{key}:
     get:
       tags:
-        - Api Keys
+        - search
       operationId: getApiKey
-      summary: Get an API key
+      summary: Get an API key.
       description: Get the permissions of an API key.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3536,9 +3574,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Api Keys
+        - search
       operationId: updateApiKey
-      summary: Update an API key
+      summary: Update an API key.
       description: Replace every permission of an existing API key.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3575,9 +3613,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - Api Keys
+        - search
       operationId: deleteApiKey
-      summary: Delete an API key
+      summary: Delete an API key.
       description: Delete an existing API Key.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3606,9 +3644,9 @@ paths:
   /1/keys/{key}/restore:
     post:
       tags:
-        - Api Keys
+        - search
       operationId: restoreApiKey
-      summary: Restore an API key
+      summary: Restore an API key.
       description: Restore a deleted API key, along with its associated rights.
       parameters:
         - $ref: '#/components/parameters/KeyString'
@@ -3630,9 +3668,9 @@ paths:
   /1/indexes/{indexName}/rules/{objectID}:
     get:
       tags:
-        - Rules
+        - search
       operationId: getRule
-      summary: Get a rule
+      summary: Get a rule.
       description: Retrieve the Rule with the specified objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3654,9 +3692,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Rules
+        - search
       operationId: saveRule
-      summary: Save/Update a rule
+      summary: Save/Update a rule.
       description: Create or update the Rule with the specified objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3685,9 +3723,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - Rules
+        - search
       operationId: deleteRule
-      summary: Delete a rule
+      summary: Delete a rule.
       description: Delete the Rule with the specified objectID.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3707,9 +3745,9 @@ paths:
   /1/indexes/{indexName}/rules/batch:
     post:
       tags:
-        - Rules
+        - search
       operationId: saveRules
-      summary: Save a batch of rules
+      summary: Save a batch of rules.
       description: Create/update multiple rules objects at once.
       x-codegen-request-body-name: rules
       parameters:
@@ -3739,9 +3777,9 @@ paths:
   /1/indexes/{indexName}/rules/clear:
     post:
       tags:
-        - Rules
+        - search
       operationId: clearRules
-      summary: Clear Rules
+      summary: Clear Rules.
       description: Delete all Rules in the index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3760,11 +3798,11 @@ paths:
   /1/indexes/{indexName}/rules/search:
     post:
       tags:
-        - Rules
+        - search
       operationId: searchRules
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search for rules
+      summary: Search for rules.
       description: Search for rules matching various criteria.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -3843,10 +3881,10 @@ paths:
   /1/dictionaries/{dictionaryName}/batch:
     post:
       tags:
-        - Dictionaries
+        - search
       operationId: batchDictionaryEntries
       description: Send a batch of dictionary entries.
-      summary: Batch dictionary entries
+      summary: Batch dictionary entries.
       parameters:
         - $ref: '#/components/parameters/DictionaryName'
       requestBody:
@@ -3898,12 +3936,12 @@ paths:
   /1/dictionaries/{dictionaryName}/search:
     post:
       tags:
-        - Dictionaries
+        - search
       operationId: searchDictionaryEntries
       x-use-read-transporter: true
       x-cacheable: true
       description: Search the dictionary entries.
-      summary: Search a dictionary entries
+      summary: Search a dictionary entries.
       parameters:
         - $ref: '#/components/parameters/DictionaryName'
       requestBody:
@@ -3940,12 +3978,12 @@ paths:
   /1/dictionaries/*/settings:
     get:
       tags:
-        - Dictionaries
+        - search
       operationId: getDictionarySettings
       description: >-
         Retrieve dictionaries settings. The API stores languages whose standard
         entries are disabled. Fetch settings does not return false values.
-      summary: Retrieve dictionaries settings
+      summary: Retrieve dictionaries settings.
       responses:
         '200':
           description: OK
@@ -3970,10 +4008,10 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Dictionaries
+        - search
       operationId: setDictionarySettings
       description: Set dictionaries settings.
-      summary: Set dictionaries settings
+      summary: Set dictionaries settings.
       requestBody:
         required: true
         content:
@@ -4004,10 +4042,10 @@ paths:
   /1/dictionaries/*/languages:
     get:
       tags:
-        - Dictionaries
+        - search
       operationId: getDictionaryLanguages
       description: List dictionaries supported per language.
-      summary: List available languages
+      summary: List available languages.
       responses:
         '200':
           description: OK
@@ -4029,9 +4067,9 @@ paths:
   /1/clusters/mapping:
     post:
       tags:
-        - Clusters
+        - search
       operationId: assignUserId
-      summary: Assign or Move userID
+      summary: Assign or Move userID.
       description: >
         Assign or Move a userID to a cluster.
 
@@ -4071,9 +4109,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     get:
       tags:
-        - Clusters
+        - search
       operationId: listUserIds
-      summary: List userIDs
+      summary: List userIDs.
       description: >
         List the userIDs assigned to a multi-clusters appID.
 
@@ -4114,9 +4152,9 @@ paths:
   /1/clusters/mapping/batch:
     post:
       tags:
-        - Clusters
+        - search
       operationId: batchAssignUserIds
-      summary: Batch assign userIDs
+      summary: Batch assign userIDs.
       description: >
         Assign multiple userIDs to a cluster.
 
@@ -4162,9 +4200,9 @@ paths:
   /1/clusters/mapping/top:
     get:
       tags:
-        - Clusters
+        - search
       operationId: getTopUserIds
-      summary: Get top userID
+      summary: Get top userID.
       description: >
         Get the top 10 userIDs with the highest number of records per cluster.
 
@@ -4206,9 +4244,9 @@ paths:
   /1/clusters/mapping/{userID}:
     get:
       tags:
-        - Clusters
+        - search
       operationId: getUserId
-      summary: Get userID
+      summary: Get userID.
       description: >
         Returns the userID data stored in the mapping.
 
@@ -4237,9 +4275,9 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     delete:
       tags:
-        - Clusters
+        - search
       operationId: removeUserId
-      summary: Remove userID
+      summary: Remove userID.
       description: >
         Remove a userID and its associated data from the multi-clusters.
 
@@ -4272,9 +4310,9 @@ paths:
   /1/clusters:
     get:
       tags:
-        - Clusters
+        - search
       operationId: listClusters
-      summary: List clusters
+      summary: List clusters.
       description: >
         List the clusters available in a multi-clusters setup for a single
         appID.
@@ -4309,11 +4347,11 @@ paths:
   /1/clusters/mapping/search:
     post:
       tags:
-        - Clusters
+        - search
       operationId: searchUserIds
       x-use-read-transporter: true
       x-cacheable: true
-      summary: Search userID
+      summary: Search userID.
       description: >
         Search for userIDs.
 
@@ -4424,9 +4462,9 @@ paths:
   /1/clusters/mapping/pending:
     get:
       tags:
-        - Clusters
+        - search
       operationId: hasPendingMappings
-      summary: Get migration status
+      summary: Get migration status.
       description: >
         Get the status of your clusters' migrations or user creations.
 
@@ -4479,10 +4517,10 @@ paths:
   /1/security/sources:
     get:
       tags:
-        - Vaults
+        - search
       operationId: getSources
       description: List all allowed sources.
-      summary: List all allowed sources
+      summary: List all allowed sources.
       responses:
         '200':
           description: OK
@@ -4500,10 +4538,10 @@ paths:
           $ref: '#/components/responses/IndexNotFound'
     put:
       tags:
-        - Vaults
+        - search
       operationId: replaceSources
       description: Replace all allowed sources.
-      summary: Replace all allowed sources
+      summary: Replace all allowed sources.
       requestBody:
         required: true
         description: The sources to allow.
@@ -4536,10 +4574,10 @@ paths:
   /1/security/sources/append:
     post:
       tags:
-        - Vaults
+        - search
       operationId: appendSource
       description: Add a single source to the list of allowed sources.
-      summary: Add a single source
+      summary: Add a single source.
       requestBody:
         required: true
         description: The source to add.
@@ -4561,10 +4599,10 @@ paths:
   /1/security/sources/{source}:
     delete:
       tags:
-        - Vaults
+        - search
       operationId: deleteSource
       description: Remove a single source from the list of allowed sources.
-      summary: Remove a single source
+      summary: Remove a single source.
       parameters:
         - name: source
           in: path
@@ -4598,10 +4636,10 @@ paths:
   /1/logs:
     get:
       tags:
-        - Advanced
+        - search
       operationId: getLogs
       description: Return the latest log entries.
-      summary: Return the latest log entries
+      summary: Return the latest log entries.
       parameters:
         - name: offset
           in: query
@@ -4738,10 +4776,10 @@ paths:
   /1/indexes/{indexName}/task/{taskID}:
     get:
       tags:
-        - Indices
+        - search
       operationId: getTask
       description: Check the current status of a given task.
-      summary: Check the status of a task
+      summary: Check the status of a task.
       parameters:
         - $ref: '#/components/parameters/IndexName'
         - name: taskID
@@ -4777,9 +4815,9 @@ paths:
   /1/indexes/{indexName}/operation:
     post:
       tags:
-        - Indices
+        - search
       operationId: operationIndex
-      summary: Copy/move index
+      summary: Copy/move index.
       description: Performs a copy or a move operation on a index.
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -4821,9 +4859,9 @@ paths:
   /1/indexes:
     get:
       tags:
-        - Indices
+        - search
       operationId: listIndices
-      summary: List existing indexes
+      summary: List existing indexes.
       description: List existing indexes from an application.
       parameters:
         - $ref: '#/components/parameters/Page'
