@@ -21,7 +21,7 @@ type BrowseOptions struct {
 	SearchClient func() (*search.Client, error)
 
 	Indice       string
-	SearchParams map[string]interface{}
+	BrowseParams map[string]interface{}
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -59,11 +59,11 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
 
-			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
+			browseParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.BrowseParamsObject...)
 			if err != nil {
 				return err
 			}
-			opts.SearchParams = searchParams
+			opts.BrowseParams = browseParams
 
 			return runBrowseCmd(opts)
 		},
@@ -86,13 +86,13 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	indice := client.InitIndex(opts.Indice)
 
 	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.SearchParams["query"].(string)
+	query, ok := opts.BrowseParams["query"].(string)
 	if !ok {
 		query = ""
 	} else {
-		delete(opts.SearchParams, "query")
+		delete(opts.BrowseParams, "query")
 	}
-	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.SearchParams))
+	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.BrowseParams))
 	if err != nil {
 		return err
 	}
