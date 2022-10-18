@@ -15,14 +15,20 @@ import (
 	"github.com/algolia/cli/pkg/printers"
 )
 
-var nameURLmap = map[string]string{
-	"api":       "https://www.algolia.com/doc/api-reference/rest-api/",
-	"dashboard": "https://www.algolia.com/apps%s/dashboard",
-	"codex":     "https://www.algolia.com/developers/code-exchange/",
-	"devhub":    "https://www.algolia.com/developers/",
-	"docs":      "https://algolia.com/doc/",
-	"cli-docs":  "https://algolia.com/doc/tools/cli/get-started/overview/",
-	"cli-repo":  "https://github.com/algolia/cli",
+type OpenUrl struct {
+	Default   string
+	WithAppId string
+}
+
+var nameURLmap = map[string]OpenUrl{
+	"api":       {Default: "https://www.algolia.com/doc/api-reference/rest-api/"},
+	"dashboard": {Default: "https://www.algolia.com/dashboard", WithAppId: "https://www.algolia.com/apps%s/dashboard"},
+	"codex":     {Default: "https://www.algolia.com/developers/code-exchange/"},
+	"devhub":    {Default: "https://www.algolia.com/developers/"},
+	"docs":      {Default: "https://algolia.com/doc/"},
+	"cli-docs":  {Default: "https://algolia.com/doc/tools/cli/get-started/overview/"},
+	"cli-repo":  {Default: "https://github.com/algolia/cli"},
+	"status":    {Default: "https://status.algolia.com/", WithAppId: "https://www.algolia.com/apps/%s/monitoring/status"},
 }
 
 func openNames() []string {
@@ -74,6 +80,9 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Open the CLI documentation
 			$ algolia open cli-docs
+
+			# Open the status page
+			$ algolia open status
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -115,7 +124,10 @@ func runOpenCmd(opts *OpenOptions) error {
 		}
 
 		for _, shortcut := range shortcuts {
-			url := nameURLmap[shortcut]
+			url := nameURLmap[shortcut].Default
+			if applicationID != "" {
+				url = nameURLmap[shortcut].WithAppId
+			}
 			if strings.Contains(url, "%s") {
 				url = fmt.Sprintf(url, applicationID)
 			}
@@ -129,7 +141,11 @@ func runOpenCmd(opts *OpenOptions) error {
 	}
 
 	var err error
-	if url, ok := nameURLmap[opts.Shortcut]; ok {
+	if openUrl, ok := nameURLmap[opts.Shortcut]; ok {
+		url := openUrl.Default
+		if applicationID != "" {
+			url = openUrl.WithAppId
+		}
 		if strings.Contains(url, "%s") {
 			err = open.Browser(fmt.Sprintf(url, applicationID))
 		} else {
