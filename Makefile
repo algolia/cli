@@ -50,7 +50,6 @@ build:
 .PHONY: build
 
 ## Install & uninstall tasks are here for use on *nix platform only.
-
 prefix  := /usr/local
 bindir  := ${prefix}/bin
 

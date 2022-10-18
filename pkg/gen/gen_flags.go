@@ -44,7 +44,7 @@ func main() {
 	// This is the script that generates the `flags.go` file from the
 	// OpenAPI spec file.
 
-	specNames := []string{"searchParamsObject", "indexSettings"}
+	specNames := []string{"searchParamsObject", "browseParamsObject", "indexSettings"}
 	templateData, err := getTemplateData(specNames)
 	if err != nil {
 		panic(err)
