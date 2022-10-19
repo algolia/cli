@@ -6,7 +6,7 @@ endif
 
 # Run all the tests
 test:
-	go test ./...
+	go test ./... -p 1
 .PHONY: test
 
 ## Build & publish the documentation
