@@ -19,3 +19,13 @@ func ConfiguredProfilesCompletionFunc(f *Factory) func(cmd *cobra.Command, args 
 		return completions, cobra.ShellCompDirectiveNoFileComp
 	}
 }
+
+func StringSliceCompletionFunc(allowedMap map[string]string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		allowedValues := make([]string, 0, len(allowedMap))
+		for scope, description := range allowedMap {
+			allowedValues = append(allowedValues, fmt.Sprintf("%s\t%s", scope, description))
+		}
+		return allowedValues, cobra.ShellCompDirectiveNoFileComp
+	}
+}

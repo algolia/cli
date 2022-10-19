@@ -89,20 +89,16 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	// Common
 	cmd.Flags().StringVarP(&flags.SynonymID, "id", "i", "", "Synonym ID to save")
 	cmd.Flags().StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type to save (default to regular)")
-	_ = cmd.RegisterFlagCompletionFunc("type", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		allowedSynonymTypesMap := map[string]string{
+
+	// Autocompletion
+	_ = cmd.RegisterFlagCompletionFunc("type",
+		cmdutil.StringSliceCompletionFunc(map[string]string{
 			shared.Regular:        "(default) Used when you want a word or phrase to find its synonyms or the other way around.",
 			shared.OneWay:         "Used when you want a word or phrase to find its synonyms, but not the reverse.",
 			shared.AltCorrection1: "Used when you want records with an exact query match to rank higher than a synonym match. (will return matches with one typo)",
 			shared.AltCorrection2: "Used when you want records with an exact query match to rank higher than a synonym match. (will return matches with two typos)",
 			shared.Placeholder:    "Used to place not-yet-defined “tokens” (that can take any value from a list of defined words).",
-		}
-		allowedSynonymTypes := make([]string, 0, len(allowedSynonymTypesMap))
-		for synonymType, description := range allowedSynonymTypesMap {
-			allowedSynonymTypes = append(allowedSynonymTypes, fmt.Sprintf("%s\t%s", synonymType, description))
-		}
-		return allowedSynonymTypes, cobra.ShellCompDirectiveNoFileComp
-	})
+		}))
 
 	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the save request to the replicas")
 	// Regular synonym

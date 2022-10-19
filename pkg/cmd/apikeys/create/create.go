@@ -112,8 +112,9 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		return allowedIndices, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	_ = cmd.RegisterFlagCompletionFunc("acl", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		allowedACLs := map[string]string{
+	// Autocompletion
+	_ = cmd.RegisterFlagCompletionFunc("acl",
+		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"search":                     "allowed to perform search operations",
 			"browse":                     "allowed to retrieve all index data with the browse endpoint",
 			"addObject":                  "allowed to add or update a records in the index",
@@ -127,13 +128,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			"usage":                      "allowed to retrieve data with the Usage API",
 			"logs":                       "allowed to query the logs",
 			"seeUnretrievableAttributes": "allowed to retrieve unretrievableAttributes for all operations that return records",
-		}
-		allowedACLsSlice := make([]string, 0, len(allowedACLs))
-		for acl, description := range allowedACLs {
-			allowedACLsSlice = append(allowedACLsSlice, fmt.Sprintf("%s\t%s", acl, description))
-		}
-		return allowedACLsSlice, cobra.ShellCompDirectiveNoFileComp
-	})
+		}))
 
 	return cmd
 }

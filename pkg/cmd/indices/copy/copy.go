@@ -89,18 +89,13 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "scope to copy (default: all)")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
-	_ = cmd.RegisterFlagCompletionFunc("scope", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		allowedScopesMap := map[string]string{
+	// Autocompletion
+	_ = cmd.RegisterFlagCompletionFunc("scope",
+		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"settings": "copy only the settings",
 			"synonyms": "copy only the synonyms",
 			"rules":    "copy only the rules",
-		}
-		allowedScopes := make([]string, 0, len(allowedScopesMap))
-		for scope, description := range allowedScopesMap {
-			allowedScopes = append(allowedScopes, fmt.Sprintf("%s\t%s", scope, description))
-		}
-		return allowedScopes, cobra.ShellCompDirectiveNoFileComp
-	})
+		}))
 
 	return cmd
 }
