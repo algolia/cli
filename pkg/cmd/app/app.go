@@ -4,7 +4,8 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/pkg/cmd/app/migrate"
+	"github.com/algolia/cli/pkg/cmd/app/copy"
+	"github.com/algolia/cli/pkg/cmd/app/move"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -27,7 +28,8 @@ func NewAppCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your Algolia apps",
 	}
 
-	cmd.AddCommand(migrate.NewMigrateCmd(f))
+	cmd.AddCommand(copy.NewCopyCmd(f))
+	cmd.AddCommand(move.NewMoveCmd(f))
 
 	return cmd
 }
