@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/algolia/cli/pkg/config"
@@ -81,7 +80,7 @@ func RunCopyCmd(opts *CopyOptions) error {
 		targetIndexClient := targetClient.InitIndex(index.Name)
 
 		opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Copying index '%s'...", index.Name))
-		_, err := search.NewAccount().CopyIndex(sourceIndexClient, targetIndexClient, opt.Scopes(opts.Scope...))
+		_, err := CopyIndex(sourceIndexClient, targetIndexClient, opts.Scope...)
 		opts.IO.StopProgressIndicator()
 
 		if opts.ContinueOnError && err != nil {
