@@ -112,28 +112,22 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		return allowedIndices, cobra.ShellCompDirectiveNoFileComp
 	})
 
-	_ = cmd.RegisterFlagCompletionFunc("acl", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		allowedACLs := map[string]string{
-			"search":                     "allowed to perform search operations",
-			"browse":                     "allowed to retrieve all index data with the browse endpoint",
-			"addObject":                  "allowed to add or update a records in the index",
-			"deleteObject":               "allowed to delete an existing record",
-			"listIndexes":                "allowed to get a list of all existing indices",
-			"deleteIndex":                "allowed to delete an index",
-			"settings":                   "allowed to read all index settings",
-			"editSettings":               "allowed to update all index settings",
-			"analytics":                  "allowed to retrieve data with the Analytics API",
-			"recommendation":             "allowed to interact with the Recommendation API",
-			"usage":                      "allowed to retrieve data with the Usage API",
-			"logs":                       "allowed to query the logs",
-			"seeUnretrievableAttributes": "allowed to retrieve unretrievableAttributes for all operations that return records",
-		}
-		allowedACLsSlice := make([]string, 0, len(allowedACLs))
-		for acl, description := range allowedACLs {
-			allowedACLsSlice = append(allowedACLsSlice, fmt.Sprintf("%s\t%s", acl, description))
-		}
-		return allowedACLsSlice, cobra.ShellCompDirectiveNoFileComp
-	})
+	_ = cmd.RegisterFlagCompletionFunc("acl",
+		cmdutil.StringSliceCompletionFunc(map[string]string{
+			"search":                     "perform search operations",
+			"browse":                     "retrieve all index data with the browse endpoint",
+			"addObject":                  "add or update a records in the index",
+			"deleteObject":               "delete an existing record",
+			"listIndexes":                "get a list of all existing indices",
+			"deleteIndex":                "delete an index",
+			"settings":                   "read all index settings",
+			"editSettings":               "update all index settings",
+			"analytics":                  "retrieve data with the Analytics API",
+			"recommendation":             "interact with the Recommendation API",
+			"usage":                      "retrieve data with the Usage API",
+			"logs":                       "query the logs",
+			"seeUnretrievableAttributes": "retrieve unretrievableAttributes for all operations that return records",
+		}, "allowed to"))
 
 	return cmd
 }
