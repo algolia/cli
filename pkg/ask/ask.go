@@ -30,6 +30,19 @@ func AskCommaSeparatedInputQuestion(message string, storage *[]string, defaultVa
 	return err
 }
 
+func AskMultiSelectQuestion(message string, defaultValues []string, storage *[]string, options []string, opts ...survey.AskOpt) error {
+	err := survey.AskOne(
+		&survey.MultiSelect{
+			Message: message,
+			Default: defaultValues,
+			Options: options,
+		},
+		storage,
+	)
+
+	return err
+}
+
 func AskSelectQuestion(message string, storage *string, options []string, defaultValue string, opts ...survey.AskOpt) error {
 	return survey.AskOne(&survey.Select{
 		Message: message,

@@ -183,30 +183,60 @@ func TestSliceToString(t *testing.T) {
 			expected: "maguro",
 		},
 		{
-			name:     "comma separated",
+			name:     "two elements",
 			input:    []string{"maguro", "otoro"},
 			expected: "maguro, otoro",
 		},
 		{
-			name:     "with spaces",
-			input:    []string{"maguro"},
-			expected: "maguro",
-		},
-		{
-			name:     "comma separated with spaces",
+			name:     "three elements",
 			input:    []string{"maguro", "otoro", "tamago"},
 			expected: "maguro, otoro, tamago",
-		},
-		{
-			name:     "space separated",
-			input:    []string{"magurootorotamago"},
-			expected: "magurootorotamago",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, SliceToString(tt.input))
+		})
+	}
+}
+
+func TestSliceToReadableString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected string
+	}{
+		{
+			name:     "no element",
+			input:    []string{""},
+			expected: "",
+		},
+		{
+			name:     "one element",
+			input:    []string{"maguro"},
+			expected: "maguro",
+		},
+		{
+			name:     "two element",
+			input:    []string{"maguro", "otoro"},
+			expected: "maguro and otoro",
+		},
+		{
+			name:     "three element",
+			input:    []string{"maguro", "otoro", "tamago"},
+			expected: "maguro, otoro and tamago",
+		},
+		{
+			name:     "five element",
+			input:    []string{"one", "two", "three", "four", "five"},
+			expected: "one, two, three, four and five",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, SliceToReadableString(tt.input))
 		})
 	}
 }
