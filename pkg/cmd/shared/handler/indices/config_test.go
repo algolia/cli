@@ -59,3 +59,27 @@ func Test_ValidateExportConfigFlags(t *testing.T) {
 		})
 	}
 }
+
+// TODO: Test
+func Test_ValidateImportConfigFlags(t *testing.T) {
+	tests := []struct {
+		name        string
+		opts        ImportOptions
+		wantsErr    bool
+		wantsErrMsg string
+	}{}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			io, _, _, _ := iostreams.Test()
+			tt.opts.IO = io
+
+			err := ValidateImportConfigFlags(&tt.opts)
+
+			if tt.wantsErr {
+				assert.EqualError(t, err, tt.wantsErrMsg)
+				return
+			}
+		})
+	}
+}

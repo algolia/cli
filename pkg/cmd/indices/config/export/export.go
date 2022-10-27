@@ -1,4 +1,4 @@
-package export
+package indiceexport
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
 	indiceConfig "github.com/algolia/cli/pkg/cmd/shared/config"
@@ -14,18 +13,11 @@ import (
 	config "github.com/algolia/cli/pkg/cmd/shared/handler/indices"
 	"github.com/algolia/cli/pkg/cmdutil"
 
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/validators"
 )
 
-type ConfigJson struct {
-	Settings *search.Settings `json:"settings,omitempty"`
-	Rules    []search.Rule    `json:"rules,omitempty"`
-	Synonyms []search.Synonym `json:"synonyms,omitempty"`
-}
-
 // NewExportCmd creates and returns an export command for indices config
-func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *cobra.Command {
+func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -104,34 +96,9 @@ func runExportCmd(opts *config.ExportOptions) error {
 
 	for _, indexName := range opts.Indices {
 		indice := client.InitIndex(indexName)
-		var configJson ConfigJson
-
-		if utils.Contains(opts.Scope, "synonyms") {
-			rawSynonyms, err := indiceConfig.GetSynonyms(indice)
-			if err != nil {
-				return fmt.Errorf("%s An error occured when retrieving synonyms: %w", cs.FailureIcon(), err)
-			}
-			configJson.Synonyms = rawSynonyms
-		}
-
-		if utils.Contains(opts.Scope, "rules") {
-			rawRules, err := indiceConfig.GetRules(indice)
-			if err != nil {
-				return fmt.Errorf("%s An error occured when retrieving rules: %w", cs.FailureIcon(), err)
-			}
-			configJson.Rules = rawRules
-		}
-
-		if utils.Contains(opts.Scope, "settings") {
-			rawSettings, err := indice.GetSettings()
-			if err != nil {
-				return fmt.Errorf("%s An error occured when retrieving settings: %w", cs.FailureIcon(), err)
-			}
-			configJson.Settings = &rawSettings
-		}
-
-		if len(configJson.Rules) == 0 && len(configJson.Synonyms) == 0 && configJson.Settings == nil {
-			return fmt.Errorf("%s No config to export", cs.FailureIcon())
+		configJson, err := indiceConfig.GetIndiceConfig(indice, opts.Scope, cs)
+		if err != nil {
+			return err
 		}
 
 		configJsonIndented, err := json.MarshalIndent(configJson, "", "  ")
