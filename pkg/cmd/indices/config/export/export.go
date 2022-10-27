@@ -1,4 +1,4 @@
-package export
+package indiceexport
 
 import (
 	"encoding/json"
@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
 	indiceConfig "github.com/algolia/cli/pkg/cmd/shared/config"
@@ -14,18 +13,11 @@ import (
 	config "github.com/algolia/cli/pkg/cmd/shared/handler/indices"
 	"github.com/algolia/cli/pkg/cmdutil"
 
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/validators"
 )
 
-type ConfigJson struct {
-	Settings *search.Settings `json:"settings,omitempty"`
-	Rules    []search.Rule    `json:"rules,omitempty"`
-	Synonyms []search.Synonym `json:"synonyms,omitempty"`
-}
-
 // NewExportCmd creates and returns an export command for indices config
-func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *cobra.Command {
+func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -34,18 +26,15 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *c
 
 	cmd := &cobra.Command{
 		Use:               "export <index>...",
-		Args:              validators.AtLeastNArgs(1),
+		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export the config of one or multiple indice(s)",
+		Short:             "Export the config of an indice",
 		Long: heredoc.Doc(`
-			Export the config of one or multiple indice(s) including their settings, synonyms and rules.
+			Export the config of an indice including its settings, synonyms and rules.
 		`),
 		Example: heredoc.Doc(`
 			# Export the config of the index 'TEST_PRODUCTS' to a .json in the current folder
 			$ algolia indices config export TEST_PRODUCTS
-
-			# Export the config of the 'TEST_PRODUCTS_1', 'TEST_PRODUCTS_2' and 'TEST_PRODUCTS_3' indices to a .json in the current folder
-			$ algolia indices config export TEST_PRODUCTS_1 TEST_PRODUCTS_2 TEST_PRODUCTS_3
 
 			# Export the synonyms and rules of the index 'TEST_PRODUCTS' to a .json in the current folder
 			$ algolia indices config export TEST_PRODUCTS --scope synonyms,rules
@@ -54,7 +43,7 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *c
 			$ algolia indices config export TEST_PRODUCTS --directory exports
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indices = args
+			opts.Indice = args[0]
 
 			client, err := opts.SearchClient()
 			if err != nil {
@@ -84,7 +73,7 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *c
 
 	cmd.Flags().StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (default: current folder)")
 	_ = cmd.MarkFlagDirname("directory")
-	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{"settings, synonyms, rules"}, "Scope to export (default: all)")
+	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{"settings", "synonyms", "rules"}, "Scope to export (default: all)")
 	_ = cmd.RegisterFlagCompletionFunc("scope",
 		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"settings": "settings",
@@ -102,51 +91,24 @@ func runExportCmd(opts *config.ExportOptions) error {
 		return err
 	}
 
-	for _, indexName := range opts.Indices {
-		indice := client.InitIndex(indexName)
-		var configJson ConfigJson
-
-		if utils.Contains(opts.Scope, "synonyms") {
-			rawSynonyms, err := indiceConfig.GetSynonyms(indice)
-			if err != nil {
-				return fmt.Errorf("%s An error occured when retrieving synonyms: %w", cs.FailureIcon(), err)
-			}
-			configJson.Synonyms = rawSynonyms
-		}
-
-		if utils.Contains(opts.Scope, "rules") {
-			rawRules, err := indiceConfig.GetRules(indice)
-			if err != nil {
-				return fmt.Errorf("%s An error occured when retrieving rules: %w", cs.FailureIcon(), err)
-			}
-			configJson.Rules = rawRules
-		}
-
-		if utils.Contains(opts.Scope, "settings") {
-			rawSettings, err := indice.GetSettings()
-			if err != nil {
-				return fmt.Errorf("%s An error occured when retrieving settings: %w", cs.FailureIcon(), err)
-			}
-			configJson.Settings = &rawSettings
-		}
-
-		if len(configJson.Rules) == 0 && len(configJson.Synonyms) == 0 && configJson.Settings == nil {
-			return fmt.Errorf("%s No config to export", cs.FailureIcon())
-		}
-
-		configJsonIndented, err := json.MarshalIndent(configJson, "", "  ")
-		if err != nil {
-			return fmt.Errorf("%s An error occured when creating the config json: %w", cs.FailureIcon(), err)
-		}
-
-		filePath := config.GetConfigFileName(opts.Directory, indexName, indice.GetAppID())
-		err = os.WriteFile(filePath, configJsonIndented, 0644)
-		if err != nil {
-			return fmt.Errorf("%s An error occured when saving the file: %w", cs.FailureIcon(), err)
-		}
-
-		fmt.Printf("%s '%s' Index config successfully exported to %s\n", cs.SuccessIcon(), indexName, filePath)
+	indice := client.InitIndex(opts.Indice)
+	configJson, err := indiceConfig.GetIndiceConfig(indice, opts.Scope, cs)
+	if err != nil {
+		return err
 	}
+
+	configJsonIndented, err := json.MarshalIndent(configJson, "", "  ")
+	if err != nil {
+		return fmt.Errorf("%s An error occurred when creating the config json: %w", cs.FailureIcon(), err)
+	}
+
+	filePath := config.GetConfigFileName(opts.Directory, opts.Indice, indice.GetAppID())
+	err = os.WriteFile(filePath, configJsonIndented, 0644)
+	if err != nil {
+		return fmt.Errorf("%s An error occurred when saving the file: %w", cs.FailureIcon(), err)
+	}
+
+	fmt.Printf("%s '%s' Index config successfully exported to %s\n", cs.SuccessIcon(), opts.Indice, filePath)
 
 	return nil
 }

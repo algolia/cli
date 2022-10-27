@@ -3,7 +3,8 @@ package config
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/pkg/cmd/indices/config/export"
+	indiceexport "github.com/algolia/cli/pkg/cmd/indices/config/export"
+	indiceimport "github.com/algolia/cli/pkg/cmd/indices/config/import"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -14,7 +15,8 @@ func NewConfigCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Manage your Algolia indice config",
 	}
 
-	cmd.AddCommand(export.NewExportCmd(f, nil))
+	cmd.AddCommand(indiceexport.NewExportCmd(f))
+	cmd.AddCommand(indiceimport.NewImportCmd(f))
 
 	return cmd
 }

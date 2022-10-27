@@ -57,3 +57,18 @@ func AskInputQuestion(message string, storage *string, defaultValue string, opts
 		Default: defaultValue,
 	}, storage, opts...)
 }
+
+func AskInputQuestionWithSuggestion(message string, storage *string, defaultValue string, suggest func(toComplete string) []string, opts ...survey.AskOpt) error {
+	return survey.AskOne(&survey.Input{
+		Message: message,
+		Default: defaultValue,
+		Suggest: suggest,
+	}, storage, opts...)
+}
+
+func AskBooleanQuestion(message string, storage *bool, defaultValue bool, opts ...survey.AskOpt) error {
+	return survey.AskOne(&survey.Confirm{
+		Message: message,
+		Default: defaultValue,
+	}, storage, opts...)
+}
