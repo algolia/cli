@@ -11,6 +11,7 @@ import (
 	"github.com/xtgo/uuid"
 	"gopkg.in/segmentio/analytics-go.v3"
 
+	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/version"
 )
 
@@ -157,6 +158,11 @@ func (e *CLIAnalyticsEventMetadata) SetConfiguredApplicationsNb(nb int) {
 func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	metadata := GetEventMetadata(ctx)
 
+	var isCI int8
+	if utils.IsCI() {
+		isCI = 1
+	}
+
 	return a.client.Enqueue(analytics.Identify{
 		AnonymousId: metadata.UserId,
 		UserId:      metadata.UserId,
@@ -164,6 +170,7 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 			"configured_applications": metadata.ConfiguredApplicationsNb,
 			"version":                 metadata.CLIVersion,
 			"operating_system":        metadata.OS,
+			"is_ci":                   isCI,
 		},
 	})
 }

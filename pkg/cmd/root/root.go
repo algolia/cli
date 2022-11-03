@@ -268,14 +268,7 @@ func shouldCheckForUpdate() bool {
 	if os.Getenv("ALGOLIA_NO_UPDATE_NOTIFIER") != "" {
 		return false
 	}
-	return !isCI() && utils.IsTerminal(os.Stdout) && utils.IsTerminal(os.Stderr)
-}
-
-// based on https://github.com/watson/ci-info/blob/HEAD/index.js
-func isCI() bool {
-	return os.Getenv("CI") != "" || // GitHub Actions, Travis CI, CircleCI, Cirrus CI, GitLab CI, AppVeyor, CodeShip, dsari
-		os.Getenv("BUILD_NUMBER") != "" || // Jenkins, TeamCity
-		os.Getenv("RUN_ID") != "" // TaskCluster, dsari
+	return !utils.IsCI() && utils.IsTerminal(os.Stdout) && utils.IsTerminal(os.Stderr)
 }
 
 func checkForUpdate(cfg config.Config, currentVersion string) (*update.ReleaseInfo, error) {
