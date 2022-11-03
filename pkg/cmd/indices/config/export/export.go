@@ -93,7 +93,8 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 
 	cmd.Flags().StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (directy must exist)")
 	_ = cmd.MarkFlagDirname("directory")
-	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{"settings", "synonyms", "rules"}, "Scope to export (default: all)")
+	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "Scope to export (default: nothing)")
+	_ = cmd.MarkFlagRequired("scope")
 	_ = cmd.RegisterFlagCompletionFunc("scope",
 		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"settings": "settings",
