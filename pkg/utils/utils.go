@@ -60,3 +60,14 @@ func StringToSlice(str string) []string {
 func SliceToString(str []string) string {
 	return strings.Join(str, ", ")
 }
+
+// based on https://github.com/watson/ci-info/blob/HEAD/index.js
+func IsCI() bool {
+	return os.Getenv("CI") != "" || // GitHub Actions, Travis CI, CircleCI, Cirrus CI, GitLab CI, AppVeyor, CodeShip, dsari
+		os.Getenv("CONTINUOUS_INTEGRATION") != "" || // Travis CI, Cirrus CI
+		os.Getenv("BUILD_NUMBER") != "" || // Jenkins, TeamCity
+		os.Getenv("CI_APP_ID") != "" || // Appflow
+		os.Getenv("CI_BUILD_ID") != "" || // Appflow
+		os.Getenv("CI_BUILD_NUMBER") != "" || // Appflow
+		os.Getenv("RUN_ID") != "" // TaskCluster, dsari
+}
