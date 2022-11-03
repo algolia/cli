@@ -12,23 +12,13 @@ import (
 	"github.com/spf13/cobra"
 
 	indiceConfig "github.com/algolia/cli/pkg/cmd/shared/config"
+	"github.com/algolia/cli/pkg/cmd/shared/handler"
+	config "github.com/algolia/cli/pkg/cmd/shared/handler/indices"
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/config"
-	"github.com/algolia/cli/pkg/iostreams"
+
 	"github.com/algolia/cli/pkg/utils"
+	"github.com/algolia/cli/pkg/validators"
 )
-
-type ExportOptions struct {
-	Config config.IConfig
-	IO     *iostreams.IOStreams
-
-	Indices   []string
-	Scope     []string
-	Directory string
-
-	SearchClient func() (*search.Client, error)
-	Client       *search.Client
-}
 
 type ConfigJson struct {
 	Settings *search.Settings `json:"settings,omitempty"`
@@ -37,8 +27,8 @@ type ConfigJson struct {
 }
 
 // NewExportCmd creates and returns an export command for indices config
-func NewExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Command {
-	opts := &ExportOptions{
+func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *cobra.Command {
+	opts := &config.ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
@@ -46,6 +36,7 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:               "export <index>...",
+		Args:              validators.AtLeastArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Export the config of one or multiple indice(es)",
 		Long: heredoc.Doc(`
@@ -65,36 +56,37 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 			$ algolia indices config export TEST_PRODUCTS --directory exports
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cs := opts.IO.ColorScheme()
 			opts.Indices = args
+
 			client, err := opts.SearchClient()
 			if err != nil {
 				return err
 			}
-			opts.Client = client
-
 			existingIndices, err := client.ListIndices()
 			if err != nil {
 				return err
 			}
 			var existingIndicesNames []string
-			for _, existingIndex := range existingIndices.Items {
-				existingIndicesNames = append(existingIndicesNames, existingIndex.Name)
+			for _, currentIndexName := range existingIndices.Items {
+				existingIndicesNames = append(existingIndicesNames, currentIndexName.Name)
 			}
-			for _, indexToCheck := range opts.Indices {
-				if !utils.Contains(existingIndicesNames, indexToCheck) {
-					return fmt.Errorf("%s Indice '%s' doesn't exist", cs.FailureIcon(), indexToCheck)
-				}
+			opts.ExistingIndices = existingIndicesNames
+			exportConfigHandler := &handler.IndexConfigExportHandler{
+				Opts: opts,
+			}
+
+			err = handler.HandleFlags(exportConfigHandler, opts.IO.CanPrompt())
+			if err != nil {
+				return err
 			}
 
 			return runExportCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (directy must exist)")
+	cmd.Flags().StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (default: current folder)")
 	_ = cmd.MarkFlagDirname("directory")
 	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "Scope to export (default: nothing)")
-	_ = cmd.MarkFlagRequired("scope")
 	_ = cmd.RegisterFlagCompletionFunc("scope",
 		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"settings": "settings",
@@ -105,11 +97,15 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 	return cmd
 }
 
-func runExportCmd(opts *ExportOptions) error {
+func runExportCmd(opts *config.ExportOptions) error {
 	cs := opts.IO.ColorScheme()
+	client, err := opts.SearchClient()
+	if err != nil {
+		return err
+	}
 
 	for _, indexName := range opts.Indices {
-		indice := opts.Client.InitIndex(indexName)
+		indice := client.InitIndex(indexName)
 		var configJson ConfigJson
 
 		if utils.Contains(opts.Scope, "synonyms") {
