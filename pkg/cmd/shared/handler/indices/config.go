@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -32,11 +34,6 @@ func ValidateExportConfigFlags(opts ExportOptions) error {
 		}
 	}
 
-	// Mandatory flag
-	if len(opts.Scope) == 0 {
-		return fmt.Errorf("%s required flag scope not set", cs.FailureIcon())
-	}
-
 	return nil
 }
 
@@ -59,4 +56,15 @@ func AskExportConfig(opts *ExportOptions) error {
 	}
 
 	return nil
+}
+
+// Matching Algolia Dashboard file naming
+// https://github.com/algolia/AlgoliaWeb/blob/develop/_client/src/routes/explorer/components/Explorer/IndexExportSettingsModal.tsx#L88
+func GetConfigFileName(path string, indiceName string, appId string) string {
+	rootPath := ""
+	if path != "" {
+		rootPath = path + "/"
+	}
+
+	return fmt.Sprintf("%sexport-%s-%s-%s.json", rootPath, indiceName, appId, strconv.FormatInt(time.Now().UTC().Unix(), 10))
 }

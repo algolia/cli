@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
-	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -36,9 +34,9 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *c
 
 	cmd := &cobra.Command{
 		Use:               "export <index>...",
-		Args:              validators.AtLeastArgs(1),
+		Args:              validators.AtLeastNArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export the config of one or multiple indice(es)",
+		Short:             "Export the config of one or multiple indice(s)",
 		Long: heredoc.Doc(`
 			Export the config of one or multiple indice(s) including their settings, synonyms and rules.
 		`),
@@ -66,11 +64,11 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *c
 			if err != nil {
 				return err
 			}
-			var existingIndicesNames []string
+			var availableIndicesNames []string
 			for _, currentIndexName := range existingIndices.Items {
-				existingIndicesNames = append(existingIndicesNames, currentIndexName.Name)
+				availableIndicesNames = append(availableIndicesNames, currentIndexName.Name)
 			}
-			opts.ExistingIndices = existingIndicesNames
+			opts.ExistingIndices = availableIndicesNames
 			exportConfigHandler := &handler.IndexConfigExportHandler{
 				Opts: opts,
 			}
@@ -86,7 +84,7 @@ func NewExportCmd(f *cmdutil.Factory, runF func(*config.ExportOptions) error) *c
 
 	cmd.Flags().StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (default: current folder)")
 	_ = cmd.MarkFlagDirname("directory")
-	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "Scope to export (default: nothing)")
+	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{"settings, synonyms, rules"}, "Scope to export (default: all)")
 	_ = cmd.RegisterFlagCompletionFunc("scope",
 		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"settings": "settings",
@@ -141,7 +139,7 @@ func runExportCmd(opts *config.ExportOptions) error {
 			return fmt.Errorf("%s An error occured when creating the config json: %w", cs.FailureIcon(), err)
 		}
 
-		filePath := getConfigFileName(opts.Directory, indexName, indice.GetAppID(), strconv.FormatInt(time.Now().UTC().Unix(), 10))
+		filePath := config.GetConfigFileName(opts.Directory, indexName, indice.GetAppID())
 		err = os.WriteFile(filePath, configJsonIndented, 0644)
 		if err != nil {
 			return fmt.Errorf("%s An error occured when saving the file: %w", cs.FailureIcon(), err)
@@ -151,15 +149,4 @@ func runExportCmd(opts *config.ExportOptions) error {
 	}
 
 	return nil
-}
-
-// Matching Algolia Dashboard file naming
-// https://github.com/algolia/AlgoliaWeb/blob/develop/_client/src/routes/explorer/components/Explorer/IndexExportSettingsModal.tsx#L88
-func getConfigFileName(path string, indiceName string, appId string, unixTimestamp string) string {
-	rootPath := ""
-	if path != "" {
-		rootPath = path + "/"
-	}
-
-	return fmt.Sprintf("%sexport-%s-%s-%s.json", rootPath, indiceName, appId, unixTimestamp)
 }

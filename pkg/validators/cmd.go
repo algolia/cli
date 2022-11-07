@@ -52,9 +52,9 @@ func ExactArgs(n int) cobra.PositionalArgs {
 
 }
 
-// AtLeastArgs is a validator for commands to print an error with a custom message
+// AtLeastNArgs is a validator for commands to print an error with a custom message
 // followed by usage, flags and available commands when too few argument(s) are provided
-func AtLeastArgs(n int) cobra.PositionalArgs {
+func AtLeastNArgs(n int) cobra.PositionalArgs {
 	argument := "argument"
 	if n > 1 {
 		argument = argument + "s"
