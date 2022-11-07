@@ -25,16 +25,6 @@ func Test_ValidateExportConfigFlags(t *testing.T) {
 			wantsErrMsg: "X Indice 'INDICE_1' doesn't exist",
 		},
 		{
-			name: "No scope",
-			opts: ExportOptions{
-				Indices:         []string{"INDICE_1"},
-				Scope:           []string{},
-				ExistingIndices: []string{"INDICE_1", "INDICE_2"},
-			},
-			wantsErr:    true,
-			wantsErrMsg: "X required flag scope not set",
-		},
-		{
 			name: "Full scope with existing indices",
 			opts: ExportOptions{
 				Indices:         []string{"INDICE_1"},

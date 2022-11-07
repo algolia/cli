@@ -2,6 +2,7 @@ package cmdutil
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/algolia/cli/pkg/utils"
@@ -35,37 +36,41 @@ func StringCompletionFunc(allowedMap map[string]string) func(cmd *cobra.Command,
 // Inspired from https://github.com/cli/cli/blob/trunk/pkg/cmdutil/json_flags.go#L26
 func StringSliceCompletionFunc(allowedMap map[string]string, prefixAllDescription string) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		var results []string
-		var prefix string
-
-		if idx := strings.LastIndexByte(toComplete, ','); idx >= 0 {
-			prefix = toComplete[:idx+1]
-			toComplete = toComplete[idx+1:]
-		}
-		toComplete = strings.ToLower(toComplete)
-
-		for name, description := range allowedMap {
-			prefixSlice := utils.StringToSlice(prefix)
-
-			// Build dynamic description with previous selected values
-			dynamicSliceDescriptions := []string{}
-			for _, prefixName := range prefixSlice {
-				prefixDescription := allowedMap[prefixName]
-				if prefixDescription != "" {
-					dynamicSliceDescriptions = append(dynamicSliceDescriptions, prefixDescription)
-				}
-			}
-			// If current value isn't already selected and if prefix matches
-			if !utils.Contains(prefixSlice, name) && strings.HasPrefix(strings.ToLower(name), toComplete) {
-				// Add description of current value
-				dynamicSliceDescriptions = append(dynamicSliceDescriptions, description)
-				results = append(results, fmt.Sprintf("%s%s\t%s",
-					prefix,
-					name,
-					fmt.Sprintf("%s %s", prefixAllDescription, utils.SliceToReadableString(dynamicSliceDescriptions))))
-			}
-		}
-
-		return results, cobra.ShellCompDirectiveNoSpace
+		return runStringSliceCompletion(allowedMap, toComplete, prefixAllDescription)
 	}
+}
+func runStringSliceCompletion(allowedMap map[string]string, toComplete string, prefixAllDescription string) ([]string, cobra.ShellCompDirective) {
+	var results []string
+	var prefix string
+
+	if idx := strings.LastIndexByte(toComplete, ','); idx >= 0 {
+		prefix = toComplete[:idx+1]
+		toComplete = toComplete[idx+1:]
+	}
+	toComplete = strings.ToLower(toComplete)
+
+	for name, description := range allowedMap {
+		prefixSlice := utils.StringToSlice(prefix)
+
+		// Build dynamic description with previous selected values
+		dynamicSliceDescriptions := []string{}
+		for _, prefixName := range prefixSlice {
+			prefixDescription := allowedMap[prefixName]
+			if prefixDescription != "" {
+				dynamicSliceDescriptions = append(dynamicSliceDescriptions, prefixDescription)
+			}
+		}
+		// If current value isn't already selected and if prefix matches
+		if !utils.Contains(prefixSlice, name) && strings.HasPrefix(strings.ToLower(name), toComplete) {
+			// Add description of current value
+			dynamicSliceDescriptions = append(dynamicSliceDescriptions, description)
+			results = append(results, fmt.Sprintf("%s%s\t%s",
+				prefix,
+				name,
+				fmt.Sprintf("%s %s", prefixAllDescription, utils.SliceToReadableString(dynamicSliceDescriptions))))
+		}
+	}
+
+	sort.Strings(results)
+	return results, cobra.ShellCompDirectiveNoSpace
 }
