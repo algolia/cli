@@ -114,10 +114,11 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 		return fmt.Errorf("%s Config file is required", cs.FailureIcon())
 	}
 
-	err := readConfigFromFile(cs, opts.FilePath, &opts.ImportConfig)
+	config, err := readConfigFromFile(cs, opts.FilePath)
 	if err != nil {
 		return err
 	}
+	opts.ImportConfig = *config
 
 	// Required flags
 	if len(opts.Scope) == 0 {
@@ -159,10 +160,11 @@ func AskImportConfig(opts *ImportOptions) error {
 	if err != nil {
 		return err
 	}
-	err = readConfigFromFile(opts.IO.ColorScheme(), opts.FilePath, &opts.ImportConfig)
+	config, err := readConfigFromFile(opts.IO.ColorScheme(), opts.FilePath)
 	if err != nil {
 		return err
 	}
+	opts.ImportConfig = *config
 
 	scopeOptions := []string{}
 	if len(opts.ImportConfig.Rules) > 0 {
@@ -234,20 +236,22 @@ func AskImportConfig(opts *ImportOptions) error {
 	return nil
 }
 
-func readConfigFromFile(cs *iostreams.ColorScheme, filePath string, storage *ImportConfigJson) error {
+func readConfigFromFile(cs *iostreams.ColorScheme, filePath string) (*ImportConfigJson, error) {
+	var config *ImportConfigJson
+
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("%s An error occured when opening file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf("%s An error occured when opening file: %w", cs.FailureIcon(), err)
 	}
 	defer jsonFile.Close()
 	byteValue, err := ioutil.ReadAll(jsonFile)
 	if err != nil {
-		return fmt.Errorf("%s An error occured when reading JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf("%s An error occured when reading JSON file: %w", cs.FailureIcon(), err)
 	}
-	err = json.Unmarshal(byteValue, storage)
+	err = json.Unmarshal(byteValue, &config)
 	if err != nil {
-		return fmt.Errorf("%s An error occured when parsing JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf("%s An error occured when parsing JSON file: %w", cs.FailureIcon(), err)
 	}
 
-	return nil
+	return config, nil
 }
