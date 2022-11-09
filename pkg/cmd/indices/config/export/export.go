@@ -103,13 +103,13 @@ func runExportCmd(opts *config.ExportOptions) error {
 
 		configJsonIndented, err := json.MarshalIndent(configJson, "", "  ")
 		if err != nil {
-			return fmt.Errorf("%s An error occured when creating the config json: %w", cs.FailureIcon(), err)
+			return fmt.Errorf("%s An error occurred when creating the config json: %w", cs.FailureIcon(), err)
 		}
 
 		filePath := config.GetConfigFileName(opts.Directory, indexName, indice.GetAppID())
 		err = os.WriteFile(filePath, configJsonIndented, 0644)
 		if err != nil {
-			return fmt.Errorf("%s An error occured when saving the file: %w", cs.FailureIcon(), err)
+			return fmt.Errorf("%s An error occurred when saving the file: %w", cs.FailureIcon(), err)
 		}
 
 		fmt.Printf("%s '%s' Index config successfully exported to %s\n", cs.SuccessIcon(), indexName, filePath)

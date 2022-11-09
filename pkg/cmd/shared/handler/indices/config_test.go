@@ -110,7 +110,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 				FilePath: "wrong_path.json",
 			},
 			wantsErr:    true,
-			wantsErrMsg: "X An error occured when opening file: open wrong_path.json: no such file or directory",
+			wantsErrMsg: "X An error occurred when opening file: open wrong_path.json: no such file or directory",
 		},
 		{
 			name: "Import settings",

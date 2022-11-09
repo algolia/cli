@@ -241,16 +241,16 @@ func readConfigFromFile(cs *iostreams.ColorScheme, filePath string) (*ImportConf
 
 	jsonFile, err := os.Open(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occured when opening file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf("%s An error occurred when opening file: %w", cs.FailureIcon(), err)
 	}
 	defer jsonFile.Close()
 	byteValue, err := ioutil.ReadAll(jsonFile)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occured when reading JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf("%s An error occurred when reading JSON file: %w", cs.FailureIcon(), err)
 	}
 	err = json.Unmarshal(byteValue, &config)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occured when parsing JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf("%s An error occurred when parsing JSON file: %w", cs.FailureIcon(), err)
 	}
 
 	return config, nil

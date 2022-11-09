@@ -108,7 +108,7 @@ func runImportCmd(opts *config.ImportOptions) error {
 		if opts.ImportConfig.Settings != nil && utils.Contains(opts.Scope, "settings") {
 			_, err = indice.SetSettings(*opts.ImportConfig.Settings, opt.ForwardToReplicas(opts.ForwardSettingsToReplicas))
 			if err != nil {
-				return fmt.Errorf("%s An error occured when saving settings: %w", cs.FailureIcon(), err)
+				return fmt.Errorf("%s An error occurred when saving settings: %w", cs.FailureIcon(), err)
 			}
 		}
 		if len(opts.ImportConfig.Synonyms) > 0 && utils.Contains(opts.Scope, "synonyms") {
@@ -123,7 +123,7 @@ func runImportCmd(opts *config.ImportOptions) error {
 				},
 			)
 			if err != nil {
-				return fmt.Errorf("%s An error occured when saving synonyms: %w", cs.FailureIcon(), err)
+				return fmt.Errorf("%s An error occurred when saving synonyms: %w", cs.FailureIcon(), err)
 			}
 		}
 		if len(opts.ImportConfig.Rules) > 0 && utils.Contains(opts.Scope, "rules") {
@@ -133,7 +133,7 @@ func runImportCmd(opts *config.ImportOptions) error {
 					opt.ClearExistingRules(opts.ClearExistingRules),
 				})
 			if err != nil {
-				return fmt.Errorf("%s An error occured when saving rules: %w", cs.FailureIcon(), err)
+				return fmt.Errorf("%s An error occurred when saving rules: %w", cs.FailureIcon(), err)
 			}
 		}
 
