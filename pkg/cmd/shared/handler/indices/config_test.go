@@ -17,7 +17,7 @@ func Test_ValidateExportConfigFlags(t *testing.T) {
 		{
 			name: "No existing indice",
 			opts: ExportOptions{
-				Indices:         []string{"INDICE_1"},
+				Indice:          "INDICE_1",
 				Scope:           []string{"settings", "rules", "synonyms"},
 				ExistingIndices: []string{},
 			},
@@ -27,7 +27,7 @@ func Test_ValidateExportConfigFlags(t *testing.T) {
 		{
 			name: "Full scope with existing indices",
 			opts: ExportOptions{
-				Indices:         []string{"INDICE_1"},
+				Indice:          "INDICE_1",
 				Scope:           []string{"settings", "rules", "synonyms"},
 				ExistingIndices: []string{"INDICE_1", "INDICE_2"},
 			},
@@ -36,7 +36,7 @@ func Test_ValidateExportConfigFlags(t *testing.T) {
 		{
 			name: "Full score, existing indices with directory",
 			opts: ExportOptions{
-				Indices:         []string{"INDICE_1"},
+				Indice:          "INDICE_1",
 				Scope:           []string{"settings", "rules", "synonyms"},
 				ExistingIndices: []string{"INDICE_1", "INDICE_2"},
 				Directory:       "test/folder",

@@ -23,7 +23,7 @@ type ExportOptions struct {
 	IO     *iostreams.IOStreams
 
 	ExistingIndices []string
-	Indices         []string
+	Indice          string
 	Scope           []string
 	Directory       string
 
@@ -33,12 +33,9 @@ type ExportOptions struct {
 func ValidateExportConfigFlags(opts ExportOptions) error {
 	cs := opts.IO.ColorScheme()
 
-	for _, indexToCheck := range opts.Indices {
-		if !utils.Contains(opts.ExistingIndices, indexToCheck) {
-			return fmt.Errorf("%s Indice '%s' doesn't exist", cs.FailureIcon(), indexToCheck)
-		}
+	if !utils.Contains(opts.ExistingIndices, opts.Indice) {
+		return fmt.Errorf("%s Indice '%s' doesn't exist", cs.FailureIcon(), opts.Indice)
 	}
-
 	return nil
 }
 
@@ -82,7 +79,7 @@ type ImportOptions struct {
 
 	ImportConfig ImportConfigJson
 
-	Indices               []string
+	Indice                string
 	FilePath              string
 	Scope                 []string
 	ClearExistingSynonyms bool
