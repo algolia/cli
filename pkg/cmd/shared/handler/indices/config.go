@@ -185,7 +185,7 @@ func AskImportConfig(opts *ImportOptions) error {
 	}
 	if utils.Contains(opts.Scope, "synonyms") {
 		err = ask.AskBooleanQuestion(
-			"clearExistingSynonyms (default: false)",
+			"Clear and replace existing synonyms? (default: no)",
 			&opts.ClearExistingSynonyms,
 			false,
 		)
@@ -193,7 +193,7 @@ func AskImportConfig(opts *ImportOptions) error {
 			return err
 		}
 		err = ask.AskBooleanQuestion(
-			"forwardSynonymsToReplicas (default: false)",
+			"Forward synonyms to replicas? (default: no)",
 			&opts.ForwardSynonymsToReplicas,
 			false,
 		)
@@ -203,7 +203,7 @@ func AskImportConfig(opts *ImportOptions) error {
 	}
 	if utils.Contains(opts.Scope, "rules") {
 		err = ask.AskBooleanQuestion(
-			"clearExistingRules (default: false)",
+			"Clear and replace existing rules? (default: no)",
 			&opts.ClearExistingRules,
 			false,
 		)
@@ -211,7 +211,7 @@ func AskImportConfig(opts *ImportOptions) error {
 			return err
 		}
 		err = ask.AskBooleanQuestion(
-			"forwardRulesToReplicas (default: false)",
+			"Forward rules to replicas? (default: no)",
 			&opts.ForwardRulesToReplicas,
 			false,
 		)
@@ -221,7 +221,7 @@ func AskImportConfig(opts *ImportOptions) error {
 	}
 	if utils.Contains(opts.Scope, "settings") {
 		err = ask.AskBooleanQuestion(
-			"forwardSettingsToReplicas (default: false)",
+			"Forward settings to replicas? (default: no)",
 			&opts.ForwardSettingsToReplicas,
 			false,
 		)
