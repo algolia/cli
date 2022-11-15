@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/xtgo/uuid"
 	"gopkg.in/segmentio/analytics-go.v3"
 
@@ -87,13 +88,14 @@ func userID() string {
 type NoOpTelemetryClient struct{}
 
 type CLIAnalyticsEventMetadata struct {
-	UserId                   string // the user id is the mac address of the machine
-	InvocationID             string // the invocation id is unique to each context object and represents all events coming from one command
-	ConfiguredApplicationsNb int    // the number of configured applications
-	AppID                    string // the app id with which the command was called
-	CommandPath              string // the command path is the full path of the command
-	CLIVersion               string // the version of the CLI
-	OS                       string // the OS of the system
+	UserId                   string   // the user id is the mac address of the machine
+	InvocationID             string   // the invocation id is unique to each context object and represents all events coming from one command
+	ConfiguredApplicationsNb int      // the number of configured applications
+	AppID                    string   // the app id with which the command was called
+	CommandPath              string   // the command path is the full path of the command
+	CommandFlags             []string // the command flags is the full list of flags passed to the command
+	CLIVersion               string   // the version of the CLI
+	OS                       string   // the OS of the system
 }
 
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
@@ -137,6 +139,13 @@ func GetTelemetryClient(ctx context.Context) TelemetryClient {
 // SetCobraCommandContext sets the telemetry values for the command being executed.
 func (e *CLIAnalyticsEventMetadata) SetCobraCommandContext(cmd *cobra.Command) {
 	e.CommandPath = cmd.CommandPath()
+	var flags []string
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			flags = append(flags, f.Name)
+		}
+	})
+	e.CommandFlags = flags
 }
 
 // SetAppID sets the AppID on the CLIAnalyticsEventContext object
@@ -187,6 +196,7 @@ func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) erro
 			"invocation_id": metadata.InvocationID,
 			"app_id":        metadata.AppID,
 			"command":       metadata.CommandPath,
+			"flags":         metadata.CommandFlags,
 		},
 	})
 }
