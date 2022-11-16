@@ -119,7 +119,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 				FilePath: "test_artifacts/config_mock.json",
 			},
 			wantsErr:    true,
-			wantsErrMsg: "X No setting found in config file",
+			wantsErrMsg: "X No settings found in config file",
 		},
 	}
 
