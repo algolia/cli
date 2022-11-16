@@ -71,7 +71,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 			name: "Import rules",
 			opts: ImportOptions{
 				Scope:    []string{"rules"},
-				FilePath: "config_mock.json",
+				FilePath: "test_artifacts/config_mock.json",
 			},
 			wantsErr: false,
 		},
@@ -79,7 +79,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 			name: "Import rules and synonyms",
 			opts: ImportOptions{
 				Scope:    []string{"rules", "synonyms"},
-				FilePath: "config_mock.json",
+				FilePath: "test_artifacts/config_mock.json",
 			},
 			wantsErr: false,
 		},
@@ -87,7 +87,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 			name: "Clear existing rules without rules in scope",
 			opts: ImportOptions{
 				Scope:              []string{"synonyms"},
-				FilePath:           "config_mock.json",
+				FilePath:           "test_artifacts/config_mock.json",
 				ClearExistingRules: true,
 			},
 			wantsErr:    true,
@@ -97,7 +97,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 			name: "Clear existing synonyms without synonyms in scope",
 			opts: ImportOptions{
 				Scope:                 []string{"rules"},
-				FilePath:              "config_mock.json",
+				FilePath:              "test_artifacts/config_mock.json",
 				ClearExistingSynonyms: true,
 			},
 			wantsErr:    true,
@@ -116,7 +116,7 @@ func Test_ValidateImportConfigFlags(t *testing.T) {
 			name: "Import settings",
 			opts: ImportOptions{
 				Scope:    []string{"settings"},
-				FilePath: "config_mock.json",
+				FilePath: "test_artifacts/config_mock.json",
 			},
 			wantsErr:    true,
 			wantsErrMsg: "X No setting found in config file",
