@@ -130,7 +130,7 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 	}
 	// Scope and config
 	if utils.Contains(opts.Scope, "settings") && opts.ImportConfig.Settings == nil {
-		return fmt.Errorf("%s No setting found in config file", cs.FailureIcon())
+		return fmt.Errorf("%s No settings found in config file", cs.FailureIcon())
 	}
 	if utils.Contains(opts.Scope, "rules") && len(opts.ImportConfig.Rules) == 0 {
 		return fmt.Errorf("%s No rule found in config file", cs.FailureIcon())
