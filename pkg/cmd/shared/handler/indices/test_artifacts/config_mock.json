@@ -1,0 +1,134 @@
+{
+  "rules": [
+    {
+      "conditions": [
+        {
+          "alternatives": false,
+          "anchoring": "is",
+          "pattern": ""
+        }
+      ],
+      "consequence": {
+        "promote": [
+          {
+            "objectIDs": ["integrate_amplience_with_algolia"],
+            "position": 7
+          }
+        ],
+        "filterPromotes": true
+      },
+      "description": "Experiment: will pinning apps with the highest CVR on the main landing page on empty query improve CTR on CodeX",
+      "enabled": true,
+      "objectID": "qr-1666641724603"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools \u003e Integrations\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Discover how to integrate Algolia's technology with popular frameworks and platforms, and the tools we provide to enhance your Algolia experience"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664299074535"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Frontend Tools \u003e Code samples\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Learn how to customize and extend Algolia powered frontend experience with concrete examples created by Algolia and the community"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664296791005"
+    },
+    {
+      "conditions": [
+        {
+          "alternatives": false,
+          "anchoring": "is",
+          "pattern": ""
+        }
+      ],
+      "consequence": {
+        "promote": [
+          {
+            "objectIDs": ["Media Search Starter"],
+            "position": 3
+          },
+          {
+            "objectIDs": ["Geo Search Starter"],
+            "position": 4
+          },
+          {
+            "objectIDs": ["eCommerce Starter"],
+            "position": 2
+          },
+          {
+            "objectIDs": ["Autocomplete Playground"],
+            "position": 1
+          }
+        ],
+        "filterPromotes": true
+      },
+      "enabled": true,
+      "objectID": "qr-1633369709340"
+    }
+  ],
+  "synonyms": [
+    {
+      "objectID": "synonymidtest10",
+      "type": "synonym",
+      "synonyms": ["legends", "test"]
+    },
+    {
+      "objectID": "syn-1660066617185-325",
+      "type": "oneWaySynonym",
+      "input": "sports \u0026 goods",
+      "synonyms": ["ecommerce"]
+    },
+    {
+      "objectID": "syn-1659031801138-211",
+      "type": "synonym",
+      "synonyms": ["experience", "xperience"]
+    },
+    {
+      "objectID": "syn-1652388035428-76",
+      "type": "synonym",
+      "synonyms": ["adobe", "magento"]
+    },
+    {
+      "objectID": "syn-1633951514783-19",
+      "type": "oneWaySynonym",
+      "input": "suggester",
+      "synonyms": ["autocomplete"]
+    },
+    {
+      "objectID": "syn-1633945369297-196",
+      "type": "oneWaySynonym",
+      "input": "es6",
+      "synonyms": ["javascript"]
+    },
+    {
+      "objectID": "syn-1633945350928-192",
+      "type": "oneWaySynonym",
+      "input": "ts",
+      "synonyms": ["typescript"]
+    },
+    {
+      "objectID": "syn-1633945331372-188",
+      "type": "oneWaySynonym",
+      "input": "js",
+      "synonyms": ["javascript"]
+    }
+  ]
+}
