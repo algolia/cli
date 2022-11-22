@@ -87,6 +87,17 @@ var BrowseParamsObject = []string{
 	"userToken",
 }
 
+var DeleteByParams = []string{
+	"aroundLatLng",
+	"aroundRadius",
+	"facetFilters",
+	"filters",
+	"insideBoundingBox",
+	"insidePolygon",
+	"numericFilters",
+	"tagFilters",
+}
+
 var IndexSettings = []string{
 	"advancedSyntax",
 	"advancedSyntaxFeatures",
@@ -396,6 +407,29 @@ list: language ISO codes for which ignoring plurals should be enabled. This list
 	cmd.Flags().SetAnnotation("typoTolerance", "Categories", []string{"Typos"})
 	cmd.Flags().String("userToken", "", heredoc.Doc(`Associates a certain user token with the current search.`))
 	cmd.Flags().SetAnnotation("userToken", "Categories", []string{"Personalization"})
+}
+
+func AddDeleteByParamsFlags(cmd *cobra.Command) {
+	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Search for entries around a central geolocation, enabling a geo search within a circular area.`))
+	cmd.Flags().SetAnnotation("aroundLatLng", "Categories", []string{"Geo-Search"})
+	aroundRadius := NewJSONVar([]string{"integer", "string"}...)
+	cmd.Flags().Var(aroundRadius, "aroundRadius", heredoc.Doc(`Define the maximum radius for a geo search (in meters).`))
+	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
+	facetFilters := NewJSONVar([]string{"array", "string"}...)
+	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`Filter hits by facet value.`))
+	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})
+	cmd.Flags().String("filters", "", heredoc.Doc(`Filter the query with numeric, facet and/or tag filters.`))
+	cmd.Flags().SetAnnotation("filters", "Categories", []string{"Filtering"})
+	cmd.Flags().Float64Slice("insideBoundingBox", []float64{}, heredoc.Doc(`Search inside a rectangular area (in geo coordinates).`))
+	cmd.Flags().SetAnnotation("insideBoundingBox", "Categories", []string{"Geo-Search"})
+	cmd.Flags().Float64Slice("insidePolygon", []float64{}, heredoc.Doc(`Search inside a polygon (in geo coordinates).`))
+	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
+	numericFilters := NewJSONVar([]string{"array", "string"}...)
+	cmd.Flags().Var(numericFilters, "numericFilters", heredoc.Doc(`Filter on numeric attributes.`))
+	cmd.Flags().SetAnnotation("numericFilters", "Categories", []string{"Filtering"})
+	tagFilters := NewJSONVar([]string{"array", "string"}...)
+	cmd.Flags().Var(tagFilters, "tagFilters", heredoc.Doc(`Filter hits by tags.`))
+	cmd.Flags().SetAnnotation("tagFilters", "Categories", []string{"Filtering"})
 }
 
 func AddIndexSettingsFlags(cmd *cobra.Command) {

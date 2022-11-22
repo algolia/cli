@@ -44,7 +44,7 @@ func main() {
 	// This is the script that generates the `flags.go` file from the
 	// OpenAPI spec file.
 
-	specNames := []string{"searchParamsObject", "browseParamsObject", "indexSettings"}
+	specNames := []string{"searchParamsObject", "browseParamsObject", "indexSettings", "deleteByParams"}
 	templateData, err := getTemplateData(specNames)
 	if err != nil {
 		panic(err)
@@ -86,6 +86,14 @@ func main() {
 func loadProperties(schemaRef *openapi3.SchemaRef) map[string]*openapi3.Schema {
 	properties := make(map[string]*openapi3.Schema)
 
+	// Load the direct properties of the current  (ex: `deleteByParams`)
+	if schemaRef.Value.Properties != nil {
+		for name, property := range schemaRef.Value.Properties {
+			properties[name] = property.Value
+		}
+	}
+
+	// Load the properties of the allOf schemas (ex: `searchParamsObject`)
 	for _, schema := range schemaRef.Value.AllOf {
 		if schema.Value.Properties != nil {
 			for name, param := range schema.Value.Properties {
