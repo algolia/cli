@@ -21,12 +21,13 @@ type OpenUrl struct {
 
 var openUrlMap = map[string]OpenUrl{
 	"api":       {Default: "https://www.algolia.com/doc/api-reference/rest-api/"},
-	"dashboard": {Default: "https://www.algolia.com/dashboard", WithAppId: "https://www.algolia.com/apps/%s/dashboard"},
 	"codex":     {Default: "https://www.algolia.com/developers/code-exchange/"},
-	"devhub":    {Default: "https://www.algolia.com/developers/"},
-	"docs":      {Default: "https://algolia.com/doc/"},
 	"cli-docs":  {Default: "https://algolia.com/doc/tools/cli/get-started/overview/"},
 	"cli-repo":  {Default: "https://github.com/algolia/cli"},
+	"dashboard": {Default: "https://www.algolia.com/dashboard", WithAppId: "https://www.algolia.com/apps/%s/dashboard"},
+	"devhub":    {Default: "https://www.algolia.com/developers/"},
+	"docs":      {Default: "https://algolia.com/doc/"},
+	"languages": {Default: "https://alg.li/supported-languages"},
 	"status":    {Default: "https://status.algolia.com/", WithAppId: "https://www.algolia.com/apps/%s/monitoring/status"},
 }
 
@@ -95,6 +96,9 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Open the status page
 			$ algolia open status
+
+			# Open Algolia supported languages page
+			$ algolia open languages
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
