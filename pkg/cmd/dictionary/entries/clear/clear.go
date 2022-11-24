@@ -1,9 +1,11 @@
 package clear
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -25,6 +27,22 @@ type ClearOptions struct {
 
 	DoConfirm bool
 }
+
+// EntryType represents the type of an entry in a dictionnary.
+// It can be either a custom entry or a standard entry.
+type EntryType string
+
+// DictionaryEntry is a simple type alias for the search.DictionaryEntry type (which do not include the type of the entry).
+type DictionaryEntry struct {
+	Type EntryType
+}
+
+const (
+	// CustomEntryType is the type of a custom entry in a dictionnary (i.e. added by the user).
+	CustomEntryType EntryType = "custom"
+	// StandardEntryType is the type of a standard entry in a dictionnary (i.e. added by Algolia).
+	StandardEntryType EntryType = "standard"
+)
 
 var (
 	// DictionaryNames returns the list of available dictionnaries.
@@ -105,20 +123,37 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 // runClearCmd executes the clear command
 func runClearCmd(opts *ClearOptions) error {
+	cs := opts.IO.ColorScheme()
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
 	}
 
-	dictionnaries := opts.Dictionnaries
-	dictionnariesNames := make([]string, len(dictionnaries))
-	for i, dictionnary := range dictionnaries {
-		dictionnariesNames[i] = string(dictionnary)
+	dictionaries := opts.Dictionnaries
+	dictionariesNames := make([]string, len(dictionaries))
+	dictionariesCustomEntriesNb := make([]int, len(dictionaries))
+	for i, dictionnary := range dictionaries {
+		nbCustomEntries, err := customEntriesNb(client, dictionnary)
+		if err != nil {
+			return err
+		}
+		dictionariesCustomEntriesNb[i] = nbCustomEntries
+		dictionariesNames[i] = string(dictionnary)
+	}
+
+	totalEntries := 0
+	for _, nb := range dictionariesCustomEntriesNb {
+		totalEntries += nb
+	}
+
+	if totalEntries == 0 {
+		fmt.Fprintf(opts.IO.Out, "%s No entries to clear in %s dictionary.\n", cs.WarningIcon(), utils.SliceToReadableString(dictionariesNames))
+		return nil
 	}
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Clear all entries from %s dictionary?", utils.SliceToReadableString(dictionnariesNames)), &confirmed)
+		err = prompt.Confirm(fmt.Sprintf("Clear %d entries from %s dictionary?", totalEntries, utils.SliceToReadableString(dictionariesNames)), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -127,17 +162,42 @@ func runClearCmd(opts *ClearOptions) error {
 		}
 	}
 
-	for _, dictionnary := range dictionnaries {
-		_, err = client.ClearDictionaryEntries(dictionnary)
+	for _, dictionary := range dictionaries {
+		_, err = client.ClearDictionaryEntries(dictionary)
 		if err != nil {
 			return err
 		}
 	}
 
-	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully cleared all entries from %s dictionary\n", cs.SuccessIcon(), utils.SliceToReadableString(dictionnariesNames))
+		fmt.Fprintf(opts.IO.Out, "%s Successfully cleared %d entries from %s dictionary\n", cs.SuccessIcon(), totalEntries, utils.SliceToReadableString(dictionariesNames))
 	}
 
 	return nil
+}
+
+func customEntriesNb(client *search.Client, dictionnary search.DictionaryName) (int, error) {
+	res, err := client.SearchDictionaryEntries(dictionnary, "", opt.HitsPerPage(1000))
+	if err != nil {
+		return 0, err
+	}
+	data, err := json.Marshal(res.Hits)
+	if err != nil {
+		return 0, fmt.Errorf("cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v", err)
+	}
+
+	var entries []DictionaryEntry
+	err = json.Unmarshal(data, &entries)
+	if err != nil {
+		return 0, fmt.Errorf("cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
+	}
+
+	var customEntriesNb int
+	for _, entry := range entries {
+		if entry.Type == CustomEntryType {
+			customEntriesNb++
+		}
+	}
+
+	return customEntriesNb, nil
 }

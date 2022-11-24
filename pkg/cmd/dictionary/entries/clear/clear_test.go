@@ -127,6 +127,7 @@ func Test_runDeleteCmd(t *testing.T) {
 		name         string
 		cli          string
 		dictionaries []search.DictionaryName
+		entries      bool
 		isTTY        bool
 		wantOut      string
 	}{
@@ -136,6 +137,7 @@ func Test_runDeleteCmd(t *testing.T) {
 			dictionaries: []search.DictionaryName{
 				search.Plurals,
 			},
+			entries: true,
 			isTTY:   false,
 			wantOut: "",
 		},
@@ -146,6 +148,7 @@ func Test_runDeleteCmd(t *testing.T) {
 				search.Plurals,
 				search.Compounds,
 			},
+			entries: true,
 			isTTY:   false,
 			wantOut: "",
 		},
@@ -157,8 +160,19 @@ func Test_runDeleteCmd(t *testing.T) {
 				search.Plurals,
 				search.Compounds,
 			},
+			entries: true,
 			isTTY:   false,
 			wantOut: "",
+		},
+		{
+			name: "no entries",
+			cli:  "plurals --confirm",
+			dictionaries: []search.DictionaryName{
+				search.Plurals,
+			},
+			entries: false,
+			isTTY:   false,
+			wantOut: "! No entries to clear in plurals dictionary.\n",
 		},
 	}
 
@@ -166,6 +180,13 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, d := range tt.dictionaries {
+				var entries []DictionaryEntry
+				if tt.entries {
+					entries = append(entries, DictionaryEntry{Type: "custom"})
+				}
+				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)), httpmock.JSONResponse(search.SearchDictionariesRes{
+					Hits: entries,
+				}))
 				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", d)), httpmock.JSONResponse(search.TaskStatusRes{}))
 			}
 
