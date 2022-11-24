@@ -187,7 +187,6 @@ func AskImportConfig(opts *ImportOptions) error {
 		scopeOptions,
 		survey.WithValidator(survey.Required),
 	)
-	fmt.Println(opts.Scope)
 	if err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-package indexexport
+package configexport
 
 import (
 	"encoding/json"
@@ -109,8 +109,13 @@ func runExportCmd(opts *config.ExportOptions) error {
 	if err != nil {
 		return fmt.Errorf("%s An error occurred when saving the file: %w", cs.FailureIcon(), err)
 	}
-
-	fmt.Printf("%s '%s' Index config (%s) successfully exported to %s\n", cs.SuccessIcon(), opts.Indice, utils.SliceToReadableString(opts.Scope), filePath)
+	currentDir, _ := os.Getwd()
+	rootPath := "."
+	if opts.Directory != "" {
+		rootPath = currentDir
+	}
+	fmt.Printf("%s '%s' Index config (%s) successfully exported to %s\n",
+		cs.SuccessIcon(), opts.Indice, utils.SliceToReadableString(opts.Scope), fmt.Sprintf("%s/%s", rootPath, filePath))
 
 	return nil
 
