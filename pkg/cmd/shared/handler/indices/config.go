@@ -129,14 +129,18 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 		return fmt.Errorf("%s Cannot clear existing synonyms if synonyms are not in scope", cs.FailureIcon())
 	}
 	// Scope and config
+	scopeError := make([]string, 0, 3)
 	if utils.Contains(opts.Scope, "settings") && opts.ImportConfig.Settings == nil {
-		return fmt.Errorf("%s No settings found in config file", cs.FailureIcon())
+		scopeError = append(scopeError, "settings")
 	}
 	if utils.Contains(opts.Scope, "rules") && len(opts.ImportConfig.Rules) == 0 {
-		return fmt.Errorf("%s No rule found in config file", cs.FailureIcon())
+		scopeError = append(scopeError, "rules")
 	}
 	if utils.Contains(opts.Scope, "synonyms") && len(opts.ImportConfig.Synonyms) == 0 {
-		return fmt.Errorf("%s No synonym found in config file", cs.FailureIcon())
+		scopeError = append(scopeError, "synonyms")
+	}
+	if len(scopeError) > 0 {
+		return fmt.Errorf("%s No %s found in config file", cs.FailureIcon(), utils.SliceToReadableString(scopeError))
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package indiceimport
+package indeximport
 
 import (
 	"fmt"
