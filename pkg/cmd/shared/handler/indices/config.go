@@ -177,13 +177,17 @@ func AskImportConfig(opts *ImportOptions) error {
 	if opts.ImportConfig.Settings != nil {
 		scopeOptions = append(scopeOptions, "settings")
 	}
+
+	erroredScope := opts.Scope
+	opts.Scope = []string{}
 	err = ask.AskMultiSelectQuestion(
 		"scope (comma separated):",
-		opts.Scope,
+		erroredScope,
 		&opts.Scope,
 		scopeOptions,
 		survey.WithValidator(survey.Required),
 	)
+	fmt.Println(opts.Scope)
 	if err != nil {
 		return err
 	}
