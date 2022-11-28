@@ -33,7 +33,6 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "Import an index configuration (settings, synonyms, rules) from a file",
 		Long: heredoc.Doc(`
 			Import an index configuration (settings, synonyms, rules) from a file.
-			Default behavior: empty scope, clear existing synonyms and rules to false, clear existing settings to true (cannot be modified).
 		`),
 		Example: heredoc.Doc(`
 			# Import the config from a .json file into 'PROD_TEST_PRODUCTS' index

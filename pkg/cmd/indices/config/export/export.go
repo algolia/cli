@@ -32,7 +32,6 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "Export an index configuration (settings, synonyms, rules) to a file",
 		Long: heredoc.Doc(`
 			Export an index configuration (settings, synonyms, rules) to a file.
-			Default behavior: full scope (setting, synonyms and rules).
 		`),
 		Example: heredoc.Doc(`
 			# Export the config of the index 'TEST_PRODUCTS' to a .json in the current folder
