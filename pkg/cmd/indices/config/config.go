@@ -12,7 +12,7 @@ import (
 func NewConfigCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Manage your Algolia indice config",
+		Short: "Manage your Algolia index config (settings, synonyms, rules)",
 	}
 
 	cmd.AddCommand(configexport.NewExportCmd(f))
