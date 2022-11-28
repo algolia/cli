@@ -27,7 +27,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	cs := opts.IO.ColorScheme()
 
 	cmd := &cobra.Command{
-		Use:               "import <index> -F <file>",
+		Use:               "import <index> -F <file> --scope <scope>...",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Import an index configuration (settings, synonyms, rules) from a file",

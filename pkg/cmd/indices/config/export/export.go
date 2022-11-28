@@ -26,7 +26,7 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "export <index>...",
+		Use:               "export <index> [--scope <scope>...] [--directory]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Export an index configuration (settings, synonyms, rules) to a file",

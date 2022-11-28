@@ -1,0 +1,530 @@
+{
+  "rules": [
+    {
+      "conditions": [
+        {
+          "alternatives": false,
+          "anchoring": "is",
+          "pattern": ""
+        }
+      ],
+      "consequence": {
+        "promote": [
+          {
+            "objectIDs": ["instantsearch_and_next_js_starter"],
+            "position": 0
+          },
+          {
+            "objectIDs": ["integrate_drupal_with_algolia"],
+            "position": 1
+          },
+          {
+            "objectIDs": ["integrate_docusaurus_with_algolia_docsearch"],
+            "position": 2
+          },
+          {
+            "objectIDs": ["ecommerce_pwa_ui_template"],
+            "position": 3
+          },
+          {
+            "objectIDs": ["date_range_picker"],
+            "position": 4
+          },
+          {
+            "objectIDs": ["integrate_vuepress_with_algolia"],
+            "position": 5
+          },
+          {
+            "objectIDs": ["quick_start_with_wordpress"],
+            "position": 6
+          },
+          {
+            "objectIDs": ["integrate_gatsby_with_algolia"],
+            "position": 8
+          },
+          {
+            "objectIDs": ["integrate_amplience_with_algolia"],
+            "position": 7
+          }
+        ],
+        "filterPromotes": true
+      },
+      "description": "Experiment: will pinning apps with the highest CVR on the main landing page on empty query improve CTR on CodeX",
+      "enabled": true,
+      "objectID": "qr-1666641724603"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Showcase > Sample Applications\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Explore innovative use cases of Algolia combined with other APIs with Algolia sample apps. Get inspired and bootstrap your own implementation"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664299924027"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Showcase > Demo\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Algolia demos showcase innovative use cases of Algolia combined with other APIs. Get inspired and bootstrap your own implementation"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664299872310"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > Web Scrapers\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Web scrapers can populate and maintain Algolia indices for you by periodically extracting content from your web pages"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664299107544"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > Integrations\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Discover how to integrate Algolia's technology with popular frameworks and platforms, and the tools we provide to enhance your Algolia experience"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664299074535"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > Events Connectors\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Leverage event connectors to send click, conversion and view events to the Algolia Insights API"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664298889625"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > Code Snippets\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Learn how to customize and extend Algolia powered backend tools with concrete examples created by Algolia and the community"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664298487073"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > API Clients & Frameworks\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Use Algolia’s officially supported API clients, each in a specific programming language, and tailored to that language’s unique paradigm and ecosystem"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664297851368"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Frontend Tools > Code samples\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Learn how to customize and extend Algolia powered frontend experience with concrete examples created by Algolia and the community"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664296791005"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Frontend Tools > Templates & Starters\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Quickly bootstrap your Algolia powered experience using one of the following templates"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664296750951"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Frontend Tools > Widgets & Plugins\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Add capabilities to your InstantSearch and AutocompleteJS implementations using those UI Components built by both Algolia and the community"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664296682907"
+    },
+    {
+      "conditions": [
+        {
+          "filters": "(\"hierarchical_categories.lvl1\":\"Frontend Tools > Libraries & Integrations\")"
+        }
+      ],
+      "consequence": {
+        "filterPromotes": true,
+        "userData": {
+          "short_description": "Integrate with your favorite framework or platform in no time using integrations built by Algolia and the community"
+        }
+      },
+      "enabled": true,
+      "objectID": "qr-1664293768076"
+    },
+    {
+      "conditions": [
+        {
+          "alternatives": false,
+          "anchoring": "is",
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > Integrations\")",
+          "pattern": ""
+        }
+      ],
+      "consequence": {
+        "promote": [
+          {
+            "objectIDs": ["quick_start_with_magento_2"],
+            "position": 0
+          },
+          {
+            "objectIDs": ["quick_start_with_shopify"],
+            "position": 1
+          },
+          {
+            "objectIDs": ["quick_start_with_firebase"],
+            "position": 2
+          },
+          {
+            "objectIDs": ["quick_start_with_wordpress"],
+            "position": 4
+          },
+          {
+            "objectIDs": ["quick_start_with_salesforce_commerce_cloud"],
+            "position": 5
+          },
+          {
+            "objectIDs": ["integrate_mongo_db_with_algolia"],
+            "position": 7
+          },
+          {
+            "objectIDs": ["integrate_woocommerce_with_algolia"],
+            "position": 8
+          },
+          {
+            "objectIDs": ["integrate_gatsby_with_algolia"],
+            "position": 6
+          },
+          {
+            "objectIDs": ["integrate_drupal_with_algolia"],
+            "position": 3
+          }
+        ],
+        "filterPromotes": true
+      },
+      "enabled": true,
+      "objectID": "qr-1653604697054"
+    },
+    {
+      "conditions": [
+        {
+          "alternatives": false,
+          "anchoring": "is",
+          "filters": "(\"hierarchical_categories.lvl1\":\"Backend Tools > API Clients & Frameworks\")",
+          "pattern": ""
+        }
+      ],
+      "consequence": {
+        "promote": [
+          {
+            "objectIDs": ["indexing_with_javascript"],
+            "position": 0
+          },
+          {
+            "objectIDs": ["indexing_with_php"],
+            "position": 1
+          },
+          {
+            "objectIDs": ["indexing_with_python"],
+            "position": 4
+          },
+          {
+            "objectIDs": ["indexing_with_rails"],
+            "position": 3
+          },
+          {
+            "objectIDs": ["indexing_with_laravel"],
+            "position": 2
+          }
+        ],
+        "filterPromotes": true
+      },
+      "description": "API clients ranking based on most used tools among Algolia developers",
+      "enabled": true,
+      "objectID": "qr-1653604282609"
+    },
+    {
+      "conditions": [
+        {
+          "alternatives": false,
+          "anchoring": "is",
+          "pattern": ""
+        }
+      ],
+      "consequence": {
+        "promote": [
+          {
+            "objectIDs": ["Media Search Starter"],
+            "position": 3
+          },
+          {
+            "objectIDs": ["Geo Search Starter"],
+            "position": 4
+          },
+          {
+            "objectIDs": ["eCommerce Starter"],
+            "position": 2
+          },
+          {
+            "objectIDs": ["Indexing Starters with API Clients & Frameworks"],
+            "position": 0
+          },
+          {
+            "objectIDs": ["Machine Learning based Email Recommendations"],
+            "position": 6
+          },
+          {
+            "objectIDs": ["Query Suggestions with recent searches"],
+            "position": 8
+          },
+          {
+            "objectIDs": ["Query Suggestions with recently viewed items"],
+            "position": 9
+          },
+          {
+            "objectIDs": ["Workplace App Search"],
+            "position": 7
+          },
+          {
+            "objectIDs": ["Autocomplete Playground"],
+            "position": 1
+          }
+        ],
+        "filterPromotes": true
+      },
+      "enabled": true,
+      "objectID": "qr-1633369709340"
+    }
+  ],
+  "settings": {
+    "advancedSyntax": true,
+    "alternativesAsExact": ["ignorePlurals", "singleWordSynonym"],
+    "attributesForFaceting": [
+      "authors.name",
+      "searchable(backend)",
+      "company.name",
+      "searchable(contributed_by)",
+      "searchable(frontend)",
+      "hierarchical_categories.lvl0",
+      "hierarchical_categories.lvl1",
+      "searchable(integrations)",
+      "searchable(product_features)",
+      "searchable(subtype)",
+      "searchable(tags)",
+      "technologies",
+      "searchable(type)",
+      "searchable(use_cases)"
+    ],
+    "attributesToHighlight": [
+      "coauthors.job_title",
+      "coauthors.nickname",
+      "title"
+    ],
+    "attributesToRetrieve": [
+      "categories",
+      "cloudinary_url",
+      "coauthors",
+      "featured_media",
+      "primary_category",
+      "slug",
+      "title"
+    ],
+    "attributesToSnippet": ["content:20"],
+    "camelCaseAttributes": ["backend", "frontend", "technologies"],
+    "customRanking": ["desc(last_update_at)"],
+    "exactOnSingleWordQuery": "attribute",
+    "highlightPostTag": "</em>",
+    "highlightPreTag": "<em>",
+    "hitsPerPage": 20,
+    "ignorePlurals": ["en"],
+    "indexLanguages": ["en"],
+    "maxValuesPerFacet": 100,
+    "minProximity": 3,
+    "minWordSizefor1Typo": 4,
+    "minWordSizefor2Typos": 8,
+    "paginationLimitedTo": 1000,
+    "queryLanguages": ["en"],
+    "queryType": "prefixLast",
+    "ranking": [
+      "typo",
+      "geo",
+      "words",
+      "filters",
+      "proximity",
+      "attribute",
+      "exact",
+      "custom"
+    ],
+    "removeWordsIfNoResults": "none",
+    "renderingContent": {
+      "facetOrdering": {
+        "facets": {
+          "order": [
+            "hierarchical_categories.lvl0",
+            "use_cases",
+            "product_features",
+            "frontend",
+            "backend",
+            "integrations",
+            "contributed_by"
+          ]
+        },
+        "values": {
+          "backend": {
+            "sortRemainingBy": "count"
+          },
+          "contributed_by": {
+            "sortRemainingBy": "count"
+          },
+          "frontend": {
+            "sortRemainingBy": "count"
+          },
+          "hierarchical_categories.lvl0": {
+            "sortRemainingBy": "count"
+          },
+          "integrations": {
+            "sortRemainingBy": "count"
+          },
+          "product_features": {
+            "sortRemainingBy": "count"
+          },
+          "use_cases": {
+            "sortRemainingBy": "count"
+          }
+        }
+      }
+    },
+    "searchableAttributes": [
+      "unordered(type)",
+      "unordered(subtype)",
+      "unordered(title)",
+      "unordered(description)",
+      "unordered(use_cases)",
+      "unordered(contributed_by)",
+      "unordered(company.name)",
+      "unordered(authors.name)",
+      "unordered(frontend)",
+      "unordered(backend)",
+      "unordered(product_features)",
+      "unordered(integrations)",
+      "unordered(tags)"
+    ],
+    "separatorsToIndex": "",
+    "snippetEllipsisText": "",
+    "typoTolerance": "strict",
+    "version": 2
+  },
+  "synonyms": [
+    {
+      "objectID": "synonymidtest10",
+      "type": "synonym",
+      "synonyms": ["legends", "test"]
+    },
+    {
+      "objectID": "syn-1660066617185-325",
+      "type": "oneWaySynonym",
+      "input": "sports & goods",
+      "synonyms": ["ecommerce"]
+    },
+    {
+      "objectID": "syn-1659031801138-211",
+      "type": "synonym",
+      "synonyms": ["experience", "xperience"]
+    },
+    {
+      "objectID": "syn-1652388035428-76",
+      "type": "synonym",
+      "synonyms": ["adobe", "magento"]
+    },
+    {
+      "objectID": "syn-1633951514783-19",
+      "type": "oneWaySynonym",
+      "input": "suggester",
+      "synonyms": ["autocomplete"]
+    },
+    {
+      "objectID": "syn-1633945369297-196",
+      "type": "oneWaySynonym",
+      "input": "es6",
+      "synonyms": ["javascript"]
+    },
+    {
+      "objectID": "syn-1633945350928-192",
+      "type": "oneWaySynonym",
+      "input": "ts",
+      "synonyms": ["typescript"]
+    },
+    {
+      "objectID": "syn-1633945331372-188",
+      "type": "oneWaySynonym",
+      "input": "js",
+      "synonyms": ["javascript"]
+    }
+  ]
+}
