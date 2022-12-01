@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/dictionary/entries"
+	"github.com/algolia/cli/pkg/cmd/dictionary/settings"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -15,6 +16,7 @@ func NewDictionaryCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your Algolia dictionaries",
 	}
 
+	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(entries.NewEntriesCmd(f))
 
 	return cmd
