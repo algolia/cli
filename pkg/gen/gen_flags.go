@@ -36,8 +36,11 @@ type SpecFlag struct {
 const (
 	searchSpecFile = "../../../api/specs/search.yml"
 	pathTemplate   = "../../gen/flags.go.tpl"
+	pathTemplateTs = "../../gen/flags.ts.tpl"
 	pathName       = "flags.go.tpl"
+	pathNameTs     = "flags.ts.tpl"
 	pathOutput     = "../../cmdutil/spec_flags.go"
+	pathOutputTs   = "../../gen/spec_flags.ts"
 )
 
 func main() {
@@ -77,6 +80,39 @@ func main() {
 	// Write the formatted source code to disk
 	fmt.Printf("writing %s\n", pathOutput)
 	err = ioutil.WriteFile(pathOutput, formatted, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	generateTs()
+}
+
+func generateTs() {
+	// This is the script that generates the `flags.go` file from the
+	// OpenAPI spec file.
+
+	specNames := []string{"searchParamsObject"}
+	templateData, err := getTemplateData(specNames)
+	if err != nil {
+		panic(err)
+	}
+
+	// Load the template with a custom function map
+	tmpl := template.Must(template.
+		// Note that the template name MUST match the file name
+		New(pathNameTs).
+		ParseFiles(pathTemplateTs))
+
+	// Execute the template
+	var result bytes.Buffer
+	err = tmpl.Execute(&result, templateData.SpecFlags["searchParamsObject"])
+	if err != nil {
+		panic(err)
+	}
+
+	// Write the formatted source code to disk
+	fmt.Printf("writing %s\n", pathOutputTs)
+	err = ioutil.WriteFile(pathOutputTs, result.Bytes(), 0644)
 	if err != nil {
 		panic(err)
 	}
