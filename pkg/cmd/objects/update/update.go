@@ -117,8 +117,10 @@ func runDeleteCmd(opts *UpdateOptions) error {
 
 	index := client.InitIndex(opts.Index)
 
-	_, err = index.PartialUpdateObjects(objectsToUpdate,
-		opt.CreateIfNotExists(opts.CreateIfNotExists), opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist))
+	options := []interface{}{
+		opt.CreateIfNotExists(opts.CreateIfNotExists), opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist),
+	}
+	_, err = index.PartialUpdateObjects(objectsToUpdate, options)
 	if err != nil {
 		return err
 	}
