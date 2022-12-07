@@ -23,10 +23,9 @@ type UpdateOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Index                          string
-	FilePath                       string
-	CreateIfNotExists              bool
-	AutoGenerateObjectIDIfNotExist bool
+	Index             string
+	FilePath          string
+	CreateIfNotExists bool
 
 	DoConfirm bool
 }
@@ -56,12 +55,8 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 
 			# Update objects (create if not exists) from the "objects.json" file to the "TEST_PRODUCTS" index
 			$ algolia objects update TEST_PRODUCTS -F objects.json --create-if-not-exists
-
-			# Update objects (create and auto generate objectID if not exists) from the "objects.json" file to the "TEST_PRODUCTS" index
-			$ algolia objects update TEST_PRODUCTS -F objects.json --create-if-not-exists --auto-generate-object-id-if-not-exist
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cs := opts.IO.ColorScheme()
 			opts.Index = args[0]
 
 			if !confirm {
@@ -69,10 +64,6 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
 				}
 				opts.DoConfirm = true
-			}
-
-			if opts.AutoGenerateObjectIDIfNotExist && !opts.CreateIfNotExists {
-				return fmt.Errorf("%s --auto-generate-object-id-if-not-exist flag can only be set if --create-if-not-exists flag is set", cs.FailureIcon())
 			}
 
 			if runF != nil {
@@ -87,7 +78,6 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	cmd.Flags().StringVarP(&opts.FilePath, "file", "F", "", "Directory path of the JSON that contains updated objects")
 	_ = cmd.MarkFlagRequired("file")
 	cmd.Flags().BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "Updating a nonexistent object will create a new object")
-	cmd.Flags().BoolVarP(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", "a", false, "The engine assigns an objectID to any object without objectID")
 
 	return cmd
 }
@@ -117,10 +107,7 @@ func runDeleteCmd(opts *UpdateOptions) error {
 
 	index := client.InitIndex(opts.Index)
 
-	options := []interface{}{
-		opt.CreateIfNotExists(opts.CreateIfNotExists), opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist),
-	}
-	_, err = index.PartialUpdateObjects(objectsToUpdate, options)
+	_, err = index.PartialUpdateObjects(objectsToUpdate, opt.CreateIfNotExists(opts.CreateIfNotExists))
 	if err != nil {
 		return err
 	}
