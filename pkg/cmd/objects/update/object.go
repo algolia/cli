@@ -1,4 +1,4 @@
-package updateObjects
+package update
 
 import (
 	"encoding/json"
@@ -6,73 +6,73 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/pkg/utils"
+	"github.com/mitchellh/mapstructure"
 )
 
-type ObjectsToUpdate []map[string]interface{}
+// Object is a map[string]interface{} that can be unmarshalled from a JSON object
+// The object must have an objectID field
+// Each field could be either an `search.PartialUpdateOperation` or a scalar value
+type Object map[string]interface{}
 
-func (o *ObjectsToUpdate) UnmarshalJSON(data []byte) error {
-	var rawObjectsToUpdate []map[string]interface{}
-	err := json.Unmarshal(data, &rawObjectsToUpdate)
-	if err != nil {
-		return err
+// Valid operations
+const (
+	Increment     string = "Increment"
+	Decrement     string = "Decrement"
+	Add           string = "Add"
+	AddUnique     string = "AddUnique"
+	IncrementSet  string = "IncrementSet"
+	IncrementFrom string = "IncrementFrom"
+)
+
+// ValidateOperation checks that the operation is valid
+func ValidateOperation(p search.PartialUpdateOperation) error {
+	allowedOperations := []string{Increment, Decrement, Add, AddUnique, IncrementSet, IncrementFrom}
+	extra := fmt.Sprintf("valid operations are %s", utils.SliceToReadableString(allowedOperations))
+
+	if p.Operation == "" {
+		return fmt.Errorf("missing operation")
 	}
-
-	var objectsToUpdate ObjectsToUpdate
-	for objectIndex := range rawObjectsToUpdate {
-		rawObject := rawObjectsToUpdate[objectIndex]
-		objectToUpdate := map[string]interface{}{}
-
-		for name, rawValue := range rawObject {
-			valueString, isValueString := rawValue.(string)
-			if name != "objectID" {
-				_, isValueBool := rawValue.(bool)
-				_, isValueFloat := rawValue.(float64)
-
-				if isValueBool || isValueFloat || isValueString {
-					objectToUpdate[name] = rawValue
-				} else {
-					mapValue, isMap := rawValue.(map[string]interface{})
-					if !isMap {
-						return fmt.Errorf("Object value/operation not recognized for object %d", objectIndex+1)
-					}
-					mapValueString, isMapValueString := mapValue["value"].(string)
-					// JSON unmarshal numbers to float64 by default
-					mapValueFloat, isMapValueFloat := mapValue["value"].(float64)
-					mapValueInt := int(mapValueFloat)
-
-					operationString, ok := mapValue["operation"].(string)
-					if !ok {
-						return fmt.Errorf("Invalid operation for object %d", objectIndex+1)
-					}
-					isOperationValid := isOperationTypeValid(operationString)
-					if !isOperationValid {
-						return fmt.Errorf("Invalid operation type for object %d", objectIndex+1)
-					}
-
-					var operationValue interface{}
-					if isMapValueFloat {
-						operationValue = mapValueInt
-					} else if isMapValueString {
-						operationValue = mapValueString
-					}
-					objectToUpdate[name] = search.PartialUpdateOperation{
-						Operation: operationString,
-						Value:     operationValue,
-					}
-				}
-			} else if !isValueString {
-				return fmt.Errorf("Error at object %d: objectID should be a string", objectIndex+1)
-			} else {
-				objectToUpdate["objectID"] = valueString
-			}
-		}
-		objectsToUpdate = append(objectsToUpdate, objectToUpdate)
+	if !utils.Contains(allowedOperations, p.Operation) {
+		return fmt.Errorf("invalid operation \"%s\" (%s)", p.Operation, extra)
 	}
-	*o = objectsToUpdate
 	return nil
 }
 
-func isOperationTypeValid(value string) bool {
-	return utils.Contains([]string{"Increment", "Decrement", "Add", "Remove",
-		"AddUnique", "IncrementFrom", "IncrementSet"}, value)
+// UnmarshalJSON unmarshals a JSON object into an Object
+func (o *Object) UnmarshalJSON(data []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	// The object must be a map[string]interface{}
+	switch v := v.(type) {
+	case map[string]interface{}:
+		*o = v
+	default:
+		return fmt.Errorf("invalid object: %v", v)
+	}
+
+	// The object must have an objectID
+	if _, ok := (*o)["objectID"]; !ok {
+		return fmt.Errorf("objectID is required")
+	}
+
+	// Each field could be either an `search.PartialUpdateOperation` or a scalar value
+	for k, v := range *o {
+		switch v := v.(type) {
+		case map[string]interface{}:
+			var op search.PartialUpdateOperation
+			if err := mapstructure.Decode(v, &op); err != nil {
+				return err
+			}
+			// Check thate the operation is valid
+			if err := ValidateOperation(op); err != nil {
+				return err
+			}
+			(*o)[k] = op
+		}
+	}
+
+	return nil
 }

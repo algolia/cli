@@ -1,10 +1,11 @@
-package updateObjects
+package update
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
+	"strings"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
@@ -14,6 +15,9 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/text"
+	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -24,16 +28,17 @@ type UpdateOptions struct {
 	SearchClient func() (*search.Client, error)
 
 	Index             string
-	FilePath          string
 	CreateIfNotExists bool
+	Wait              bool
 
-	DoConfirm bool
+	File    string
+	Scanner *bufio.Scanner
+
+	ContinueOnError bool
 }
 
 // NewUpdateCmd creates and returns an update command for index objects
 func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Command {
-	var confirm bool
-
 	opts := &UpdateOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
@@ -41,30 +46,36 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:               "update <index> -F <file>",
+		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-errors]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Update objects from file to the specified index",
+		Short:             "Update objects from a file to the specified index",
 		Long: heredoc.Doc(`
-			Update objects from JSON file to the specified index.
-			The JSON file must contains an array of valid objects
+			Update objects from a file to the specified index.
+			
+			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Update objects from the "objects.json" file to the "TEST_PRODUCTS" index
-			$ algolia objects update TEST_PRODUCTS -F objects.json
+			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index
+			$ algolia objects update TEST_PRODUCTS -F objects.ndjson
 
-			# Update objects (create if not exists) from the "objects.json" file to the "TEST_PRODUCTS" index
-			$ algolia objects update TEST_PRODUCTS -F objects.json --create-if-not-exists
+			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index and create the objects if they don't exist
+			$ algolia objects update TEST_PRODUCTS -F objects.ndjson --create-if-not-exists
+
+			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index and wait for the operation to complete
+			$ algolia objects update TEST_PRODUCTS -F objects.ndjson --wait
+
+			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index and continue updating objects even if some objects are invalid
+			$ algolia objects update TEST_PRODUCTS -F objects.ndjson --continue-on-errors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 
-			if !confirm {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
-				}
-				opts.DoConfirm = true
+			scanner, err := cmdutil.ScanFile(opts.File, opts.IO.In)
+			if err != nil {
+				return err
 			}
+			opts.Scanner = scanner
 
 			if runF != nil {
 				return runF(opts)
@@ -74,44 +85,110 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().StringVarP(&opts.FilePath, "file", "F", "", "Directory path of the JSON that contains updated objects")
+	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Read objects to update from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
-	cmd.Flags().BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "Updating a nonexistent object will create a new object")
+
+	cmd.Flags().BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new object with the objectID and the attributes defined in the object")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+
+	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating objects even if some objects are invalid.")
 
 	return cmd
 }
 
 func runDeleteCmd(opts *UpdateOptions) error {
-	cs := opts.IO.ColorScheme()
-
-	jsonFile, err := os.Open(opts.FilePath)
-	if err != nil {
-		return err
-	}
-	defer jsonFile.Close()
-	byteValue, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return err
-	}
-	var objectsToUpdate ObjectsToUpdate
-	err = json.Unmarshal(byteValue, &objectsToUpdate)
-	if err != nil {
-		return err
-	}
-
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
 	}
 
+	cs := opts.IO.ColorScheme()
 	index := client.InitIndex(opts.Index)
 
-	_, err = index.PartialUpdateObjects(objectsToUpdate, opt.CreateIfNotExists(opts.CreateIfNotExists))
-	if err != nil {
+	var (
+		objects      []interface{}
+		currentLine  = 0
+		totalObjects = 0
+	)
+
+	// Scan the file
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Reading objects from %s", opts.File))
+	elapsed := time.Now()
+
+	var errors []string
+	for opts.Scanner.Scan() {
+		currentLine++
+		line := opts.Scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		totalObjects++
+		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File))
+
+		var obj Object
+		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+			err := fmt.Errorf("line %d: %s", currentLine, err)
+			errors = append(errors, err.Error())
+			continue
+		}
+
+		objects = append(objects, obj)
+	}
+
+	opts.IO.StopProgressIndicator()
+
+	if err := opts.Scanner.Err(); err != nil {
 		return err
 	}
 
-	fmt.Printf("%s %d objects successfully updated", cs.SuccessIcon(), len(objectsToUpdate))
+	errorMsg := heredoc.Docf(`
+		%s Found %s (out of %d objects) while parsing the file:
+		%s
+	`, cs.FailureIcon(), utils.Pluralize(len(errors), "error"), totalObjects, text.Indent(strings.Join(errors, "\n"), "  "))
+
+	// No objects found
+	if len(objects) == 0 {
+		if len(errors) > 0 {
+			return fmt.Errorf(errorMsg)
+		}
+		return fmt.Errorf("%s No objects found in the file", cs.FailureIcon())
+	}
+
+	// Ask for confirmation if there are errors
+	if len(errors) > 0 {
+		if !opts.ContinueOnError {
+			fmt.Print(errorMsg)
+
+			var confirmed bool
+			err = prompt.Confirm("Do you want to continue?", &confirmed)
+			if err != nil {
+				return fmt.Errorf("failed to prompt: %w", err)
+			}
+			if !confirmed {
+				return nil
+			}
+		}
+	}
+
+	// Update the objects
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating %s objects on %s", cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index)))
+	res, err := index.PartialUpdateObjects(objects, opt.CreateIfNotExists(opts.CreateIfNotExists))
+	if err != nil {
+		opts.IO.StopProgressIndicator()
+		return err
+	}
+
+	// Wait for the operation to complete if requested
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for operation to complete")
+		if err := res.Wait(); err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
+	}
+
+	opts.IO.StopProgressIndicator()
+	fmt.Fprintf(opts.IO.Out, "%s Successfully updated %s objects on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index), time.Since(elapsed))
 	return nil
 }
