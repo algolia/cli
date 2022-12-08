@@ -7,6 +7,53 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func Test_ValidateOperation(t *testing.T) {
+	tests := []struct {
+		name       string
+		operation  string
+		wantErr    bool
+		wantErrMsg string
+	}{
+		{
+			name:       "no operation",
+			operation:  "",
+			wantErr:    true,
+			wantErrMsg: "missing operation",
+		},
+		{
+			name:       "invalid operation",
+			operation:  "invalid",
+			wantErr:    true,
+			wantErrMsg: "invalid operation \"invalid\" (valid operations are Increment, Decrement, Add, AddUnique, IncrementSet and IncrementFrom)",
+		},
+	}
+
+	for _, ops := range []string{"Increment", "Decrement", "Add", "AddUnique", "IncrementSet", "IncrementFrom"} {
+		tests = append(tests, struct {
+			name       string
+			operation  string
+			wantErr    bool
+			wantErrMsg string
+		}{
+			name:      ops,
+			operation: ops,
+			wantErr:   false,
+		})
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateOperation(search.PartialUpdateOperation{Operation: tt.operation})
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Equal(t, tt.wantErrMsg, err.Error())
+				return
+			}
+			assert.NoError(t, err)
+		})
+	}
+}
+
 func Test_Object_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name       string
