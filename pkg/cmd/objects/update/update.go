@@ -81,7 +81,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 				return runF(opts)
 			}
 
-			return runDeleteCmd(opts)
+			return runUpdateCmd(opts)
 		},
 	}
 
@@ -96,7 +96,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	return cmd
 }
 
-func runDeleteCmd(opts *UpdateOptions) error {
+func runUpdateCmd(opts *UpdateOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
