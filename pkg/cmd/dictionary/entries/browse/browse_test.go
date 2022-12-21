@@ -28,7 +28,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "\"plurals\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
 		},
 		{
 			name: "multiple dictionaries",
@@ -39,7 +39,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "\"plurals\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n\"compounds\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
 		},
 		{
 			name: "all dictionaries",
@@ -51,7 +51,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "\"stopwords\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n\"plurals\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n\"compounds\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
 		},
 		{
 			name: "one dictionnary with default stopwords",
@@ -63,7 +63,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "\"stopwords\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n\"plurals\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n\"compounds\"\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
 		},
 		{
 			name: "no entries",
