@@ -72,7 +72,7 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
-		Use:       "browse {<dictionary>... | --showStopWords}",
+		Use:       "browse {<dictionary>... | --all} [--include-defaults]",
 		Args:      cobra.OnlyValidArgs,
 		ValidArgs: DictionaryNames(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -83,7 +83,7 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			This command retrieves all entries from the specified %s dictionnaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
-			# Retrieve all entries from the custom dictionary (doesn't include default stopwords)
+			# Retrieve all entries from the "stopword" dictionary (doesn't include default stopwords)
 			$ algolia dictionary entries browse stopword
 
 			# Retrieve all entries from the "stopword" and "plural" dictionnaries
