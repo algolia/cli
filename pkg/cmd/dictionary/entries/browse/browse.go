@@ -114,21 +114,17 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	}
 
 	for _, dictionnary := range dictionaries {
-		if err != nil {
-			return err
-		}
-
 		pageCount := 0
 		maxPages := 1
 
 		// implement infinite pagination
 		for pageCount < maxPages {
 			res, err := client.SearchDictionaryEntries(dictionnary, "", opt.HitsPerPage(1000), opt.Page(pageCount))
-
-			maxPages = res.NbPages
 			if err != nil {
 				return err
 			}
+
+			maxPages = res.NbPages
 
 			data, err := json.Marshal(res.Hits)
 			if err != nil {
