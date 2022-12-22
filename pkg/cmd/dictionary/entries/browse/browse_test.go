@@ -28,7 +28,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n",
 		},
 		{
 			name: "multiple dictionaries",
@@ -39,7 +39,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n",
 		},
 		{
 			name: "all dictionaries",
@@ -51,11 +51,11 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n",
 		},
 		{
 			name: "one dictionnary with default stopwords",
-			cli:  "--all --showDefaultStopwords",
+			cli:  "--all --include-defaults",
 			dictionaries: []search.DictionaryName{
 				search.Stopwords,
 				search.Plurals,
@@ -63,7 +63,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: true,
 			isTTY:   false,
-			wantOut: "[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n[{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}]\n",
+			wantOut: "{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n",
 		},
 		{
 			name: "no entries",
@@ -73,7 +73,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: false,
 			isTTY:   false,
-			wantOut: "! No custom entries in plurals dictionary.\n",
+			wantOut: "! No entries in plurals dictionary.\n\n",
 		},
 	}
 
