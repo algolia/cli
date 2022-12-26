@@ -43,18 +43,18 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 	}
 
 	cmd := &cobra.Command{
-		Use:               "operations -F <file> [--wait] [--continue-on-errors]",
-		Args:              validators.NoArgs(),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Aliases:           []string{"operation", "batch"},
-		Short:             "Batch multiple different indexing operations",
+		Use:     "operations -F <file> [--wait] [--continue-on-errors]",
+		Args:    validators.NoArgs(),
+		Aliases: []string{"operation", "batch"},
+		Short:   "Perform several indexing operations",
 		Long: heredoc.Doc(`
-			Batch multiple different indexing operations
+			Perform several indexing operations
 
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			Each JSON object must be a valid indexing operation, as documented in the REST API documentation: https://www.algolia.com/doc/rest-api/search/#batch-write-operations-multiple-indices
 		`),
 		Example: heredoc.Doc(`
-			#  Batch operations from the "operations.ndjson" file
+			# Batch operations from the "operations.ndjson" file
 			$ algolia objects operations -F operations.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -72,10 +72,10 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Read batch operation from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "The file to read the indexing operations from (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the indexing operation(s) to complete before returning.")
 	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue processing operations even if some operations are invalid.")
 
 	return cmd
@@ -171,7 +171,7 @@ func runOperationsCmd(opts *OperationsOptions) error {
 
 	// Wait for the operation to complete if requested
 	if opts.Wait {
-		opts.IO.UpdateProgressIndicatorLabel("Waiting for operation to complete")
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the operations to complete")
 		if err := res.Wait(); err != nil {
 			opts.IO.StopProgressIndicator()
 			return err
