@@ -14,9 +14,10 @@ type DictionaryEntry struct {
 	Type          EntryType
 	Word          string   `json:"word,omitempty"`
 	Words         []string `json:"words,omitempty"`
-	Decomposition string   `json:"decomposition,omitempty"`
+	Decomposition []string `json:"decomposition,omitempty"`
 	ObjectID      string
 	Language      string
+	State         string
 }
 
 const (
