@@ -60,17 +60,17 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			This command retrieves all entries from the specified %s dictionnaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
-			# Retrieve all entries from the "stopword" dictionary (doesn't include default stopwords)
-			$ algolia dictionary entries browse stopword
+			# Retrieve all entries from the "stopwords" dictionary (doesn't include default stopwords)
+			$ algolia dictionary entries browse stopwords
 
-			# Retrieve all entries from the "stopword" and "plural" dictionnaries
-			$ algolia dictionary entries browse stopword plural
+			# Retrieve all entries from the "stopwords" and "plurals" dictionnaries
+			$ algolia dictionary entries browse stopwords plurals
 
 			# Retrieve all entries from all dictionnaries
 			$ algolia dictionary entries browse --all
 
-			# Retrieve all entries from the "stopword" dictionnaries (including default stopwords)
-			$ algolia dictionary entries browse stopword --include-defaults
+			# Retrieve all entries from the "stopwords" dictionnaries (including default stopwords)
+			$ algolia dictionary entries browse stopwords --include-defaults
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.All && len(args) > 0 || !opts.All && len(args) == 0 {
