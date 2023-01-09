@@ -60,17 +60,18 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			This command retrieves all entries from the specified %s dictionnaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
-			# Retrieve all entries from the "stopword" dictionary (doesn't include default stopwords)
-			$ algolia dictionary entries browse stopword
+			# Retrieve all entries from the "stopwords" dictionary (doesn't include default stopwords)
+			$ algolia dictionary entries browse stopwords
 
-			# Retrieve all entries from the "stopword" and "plural" dictionnaries
-			$ algolia dictionary entries browse stopword plural
+			# Retrieve all entries from the "stopwords" and "plurals" dictionnaries
+			$ algolia dictionary entries browse stopwords plurals
+
 
 			# Retrieve all entries from all dictionnaries
 			$ algolia dictionary entries browse --all
 
-			# Retrieve all entries from the "stopword" dictionnaries (including default stopwords)
-			$ algolia dictionary entries browse stopword --include-defaults
+			# Retrieve all entries from the "stopwords" dictionnaries (including default stopwords)
+			$ algolia dictionary entries browse stopwords --include-defaults
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.All && len(args) > 0 || !opts.All && len(args) == 0 {
@@ -91,7 +92,8 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "browse all dictionnaries")
-	cmd.Flags().BoolVarP(&opts.IncludeDefaultStopwords, "include-defaults", "d", false, "browse dictionaries and include default stopwords")
+	cmd.Flags().BoolVarP(&opts.IncludeDefaultStopwords, "include-defaults", "d", false, "include default stopwords")
+
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -106,14 +108,15 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
-	dictionaries := opts.Dictionnaries
-
 	p, err := opts.PrintFlags.ToPrinter()
 	if err != nil {
 		return err
 	}
 
-	for _, dictionnary := range dictionaries {
+
+	hasNoEntries := true
+
+	for _, dictionnary := range opts.Dictionnaries {
 		pageCount := 0
 		maxPages := 1
 
@@ -137,10 +140,8 @@ func runBrowseCmd(opts *BrowseOptions) error {
 				return fmt.Errorf("cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
 			}
 
-			if len(entries) == 0 {
-				fmt.Fprintf(opts.IO.Out, "%s No entries in %s dictionary.\n\n", cs.WarningIcon(), dictionnary)
-				// go to the next dictionary
-				break
+			if len(entries) != 0 {
+				hasNoEntries = false
 			}
 
 			for _, entry := range entries {
@@ -154,6 +155,13 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			}
 
 			pageCount++
+		}
+
+		// in case no entry is found in all the dictionaries
+		if hasNoEntries {
+			fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon())
+			// go to the next dictionary
+			break
 		}
 	}
 

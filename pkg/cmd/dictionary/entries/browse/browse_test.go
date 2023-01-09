@@ -73,7 +73,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			},
 			entries: false,
 			isTTY:   false,
-			wantOut: "! No entries in plurals dictionary.\n\n",
+			wantOut: "! No entries found.\n\n",
 		},
 	}
 
