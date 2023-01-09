@@ -20,6 +20,5 @@ func NewEntriesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(browse.NewBrowseCmd(f, nil))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 
-
 	return cmd
 }

@@ -66,7 +66,6 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			# Retrieve all entries from the "stopwords" and "plurals" dictionnaries
 			$ algolia dictionary entries browse stopwords plurals
 
-
 			# Retrieve all entries from all dictionnaries
 			$ algolia dictionary entries browse --all
 
@@ -94,7 +93,6 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "browse all dictionnaries")
 	cmd.Flags().BoolVarP(&opts.IncludeDefaultStopwords, "include-defaults", "d", false, "include default stopwords")
 
-
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
@@ -112,7 +110,6 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	if err != nil {
 		return err
 	}
-
 
 	hasNoEntries := true
 
