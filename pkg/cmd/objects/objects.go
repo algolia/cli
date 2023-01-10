@@ -6,6 +6,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/objects/browse"
 	"github.com/algolia/cli/pkg/cmd/objects/delete"
 	importObjects "github.com/algolia/cli/pkg/cmd/objects/import"
+	"github.com/algolia/cli/pkg/cmd/objects/operations"
 	updateObjects "github.com/algolia/cli/pkg/cmd/objects/update"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
@@ -21,6 +22,7 @@ func NewObjectsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(importObjects.NewImportCmd(f))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 	cmd.AddCommand(updateObjects.NewUpdateCmd(f, nil))
+	cmd.AddCommand(operations.NewOperationsCmd(f, nil))
 
 	return cmd
 }

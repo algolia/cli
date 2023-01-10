@@ -14,6 +14,8 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/utils"
+
+	"github.com/algolia/cli/pkg/cmd/dictionary/shared"
 )
 
 type ClearOptions struct {
@@ -28,32 +30,9 @@ type ClearOptions struct {
 	DoConfirm bool
 }
 
-// EntryType represents the type of an entry in a dictionnary.
-// It can be either a custom entry or a standard entry.
-type EntryType string
-
-// DictionaryEntry is a simple type alias for the search.DictionaryEntry type (which do not include the type of the entry).
 type DictionaryEntry struct {
-	Type EntryType
+	Type shared.EntryType
 }
-
-const (
-	// CustomEntryType is the type of a custom entry in a dictionnary (i.e. added by the user).
-	CustomEntryType EntryType = "custom"
-	// StandardEntryType is the type of a standard entry in a dictionnary (i.e. added by Algolia).
-	StandardEntryType EntryType = "standard"
-)
-
-var (
-	// DictionaryNames returns the list of available dictionnaries.
-	DictionaryNames = func() []string {
-		return []string{
-			string(search.Stopwords),
-			string(search.Compounds),
-			string(search.Plurals),
-		}
-	}
-)
 
 // NewClearCmd creates and returns a clear command for dictionnaries' entries.
 func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Command {
@@ -68,9 +47,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:       "clear {<dictionnary>... | --all} [--confirm]",
 		Args:      cobra.OnlyValidArgs,
-		ValidArgs: DictionaryNames(),
+		ValidArgs: shared.DictionaryNames(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Short: "Clear dictionary entries",
 		Long: heredoc.Docf(`
@@ -194,7 +173,7 @@ func customEntriesNb(client *search.Client, dictionnary search.DictionaryName) (
 
 	var customEntriesNb int
 	for _, entry := range entries {
-		if entry.Type == CustomEntryType {
+		if entry.Type == shared.CustomEntryType {
 			customEntriesNb++
 		}
 	}

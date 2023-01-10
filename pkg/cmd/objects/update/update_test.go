@@ -14,9 +14,9 @@ import (
 	"github.com/algolia/cli/test"
 )
 
-func Test_runExportCmd(t *testing.T) {
+func Test_runUpdateCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "objects.json")
-	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"foo\"}"), 0600)
+	err := os.WriteFile(tmpFile, []byte(`{"objectID":"foo"}`), 0600)
 	require.NoError(t, err)
 
 	tests := []struct {
