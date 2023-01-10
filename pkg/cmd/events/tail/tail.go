@@ -23,7 +23,7 @@ import (
 
 const (
 	// DefaultRegion is the default region to use.
-	DefaultRegion = "us"
+	DefaultRegion = region.US
 
 	// Interval is the interval between each request to fetch events.
 	Interval = 3 * time.Second
@@ -78,10 +78,10 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Region, "region", "r", DefaultRegion, "Region where your analytics data is stored and processed.")
+	cmd.Flags().StringVarP(&opts.Region, "region", "r", string(DefaultRegion), "Region where your analytics data is stored and processed.")
 	_ = cmd.RegisterFlagCompletionFunc("region", cmdutil.StringCompletionFunc(map[string]string{
-		"us": "United States",
-		"de": "Germany (Europe)",
+		string(region.US): "United States",
+		string(region.DE): "Germany (Europe)",
 	}))
 
 	opts.PrintFlags.AddFlags(cmd)
