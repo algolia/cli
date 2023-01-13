@@ -111,7 +111,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	return nil
 }
 
-func PluralizeEntry(count int) string {
+func pluralizeEntry(count int) string {
 	if count == 1 {
 		return fmt.Sprintf("%d entry", count)
 	}
