@@ -12,7 +12,6 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -90,7 +89,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", utils.Pluralize(len(opts.ObjectIDs), "object"), opts.Dictionnary), &confirmed)
+		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionnary), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -106,8 +105,15 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), utils.Pluralize(len(opts.ObjectIDs), "object"), opts.Dictionnary)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionnary)
 	}
 
 	return nil
+}
+
+func pluralizeEntry(count int) string {
+	if count <= 1 {
+		return fmt.Sprintf("%d entry", count)
+	}
+	return fmt.Sprintf("%d entries", count)
 }

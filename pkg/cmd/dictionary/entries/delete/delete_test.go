@@ -137,7 +137,7 @@ func Test_runDeleteCmd(t *testing.T) {
 				"1",
 			},
 			isTTY:   true,
-			wantOut: "✓ Successfully deleted 1 object from plural\n",
+			wantOut: "✓ Successfully deleted 1 entry from plural\n",
 		},
 		{
 			name:        "multiple object-ids, TTY",
@@ -148,7 +148,7 @@ func Test_runDeleteCmd(t *testing.T) {
 				"2",
 			},
 			isTTY:   true,
-			wantOut: "✓ Successfully deleted 2 objects from plural\n",
+			wantOut: "✓ Successfully deleted 2 entries from plural\n",
 		},
 	}
 
