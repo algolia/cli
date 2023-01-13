@@ -112,7 +112,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 }
 
 func pluralizeEntry(count int) string {
-	if count == 1 {
+	if count <= 1 {
 		return fmt.Sprintf("%d entry", count)
 	}
 	return fmt.Sprintf("%d entries", count)
