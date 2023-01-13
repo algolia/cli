@@ -50,10 +50,10 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		`),
 		Example: heredoc.Doc(`
 			# Delete one single entry with the ID "1" from the "plurals" dictionary
-			$ algolia dictionary entries delete plural --object-ids 1
+			$ algolia dictionary entries delete plurals --object-ids 1
 
 			# Delete multiple entries with the IDs "1" and "2" from the "plurals" dictionary
-			$ algolia dictionary entries delete plural --object-ids 1,2
+			$ algolia dictionary entries delete plurals --object-ids 1,2
 		`),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -106,7 +106,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted entries from %s\n", cs.SuccessIcon(), opts.Dictionnary)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), utils.Pluralize(len(opts.ObjectIDs), "object"), opts.Dictionnary)
 	}
 
 	return nil
