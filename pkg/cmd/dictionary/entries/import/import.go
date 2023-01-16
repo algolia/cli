@@ -49,7 +49,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:       "import <dictionary> -F <file> [--wait] [--continue-on-errors]",
 		Args:      validators.ExactArgs(1),
-		ValidArgs: []string{"stopwords", "plurals", "compounds"},
+		ValidArgs: shared.DictionaryNames(),
 		Short:     "Import dictionary entries from a file to the specified index",
 		Long: heredoc.Doc(`
 			Import dictionary entries from a file to the specified index.
