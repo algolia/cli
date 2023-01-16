@@ -10,6 +10,7 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/validators"
 )
 
 // DeleteOptions represents the options for the create command
@@ -36,7 +37,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:   "delete <api-key>",
 		Short: "Delete API key",
-		Args:  cobra.ArbitraryArgs,
+		Args:  validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.APIKey = args[0]
 			if !confirm {
