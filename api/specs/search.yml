@@ -2278,13 +2278,15 @@ components:
         lastBuildTimeS:
           type: integer
           description: Last build time.
-        numberOfPendingTask:
+        numberOfPendingTasks:
           type: integer
+          default: 0
           description: >-
             Number of pending indexing operations. This value is deprecated and
             should not be used.
         pendingTask:
           type: boolean
+          default: false
           description: >-
             A boolean which says whether the index has pending tasks. This value
             is deprecated and should not be used.
@@ -2309,6 +2311,7 @@ components:
         - fileSize
         - lastBuildTimeS
         - pendingTask
+        - numberOfPendingTasks
     listIndicesResponse:
       type: object
       additionalProperties: false
@@ -2416,7 +2419,7 @@ components:
               createdAt:
                 $ref: '#/components/schemas/createdAt'
 servers:
-  - url: https://{appId}.algolianet.com
+  - url: https://{appId}.algolia.net
     variables:
       appId:
         default: myAppId
@@ -2432,7 +2435,7 @@ servers:
     variables:
       appId:
         default: myAppId
-  - url: https://{appId}-dsn.algolianet.com
+  - url: https://{appId}-dsn.algolia.net
     variables:
       appId:
         default: myAppId
@@ -3830,6 +3833,7 @@ paths:
                   $ref: '#/components/schemas/parameters_hitsPerPage'
                 enabled:
                   type: boolean
+                  nullable: true
                   default: null
                   description: >-
                     When specified, restricts matches to rules with a specific
@@ -4789,7 +4793,7 @@ paths:
           schema:
             type: integer
             format: int64
-            example: '13235'
+            example: 13235
       responses:
         '200':
           description: OK
