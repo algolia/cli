@@ -25,6 +25,12 @@ type ListOptions struct {
 	PrintFlags *cmdutil.PrintFlags
 }
 
+type JSONKey struct {
+	search.Key
+
+	KeyValue string `json:"value"` // Overwrite the key value with the actual key
+}
+
 // NewListCmd creates and returns a list command for API Keys.
 func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
@@ -71,7 +77,9 @@ func runListCmd(opts *ListOptions) error {
 			return err
 		}
 		for _, key := range res.Keys {
-			if err := p.Print(opts.IO, key); err != nil {
+			jsonKey := JSONKey{Key: key, KeyValue: key.Value}
+
+			if err := p.Print(opts.IO, jsonKey); err != nil {
 				return err
 			}
 		}
