@@ -36,7 +36,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "search  <index>",
+		Use:               "search <index>",
 		Short:             "Search the given index",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
@@ -51,8 +51,11 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			# Search for objects in the "BOOKS" index matching the query "tolkien" while setting the number of hits per page and specifying the page to retrieve
 			$ algolia search BOOKS --query "tolkien" --hitsPerPage 2 --page 4
 
-			# Search for objects in the "BOOKS" index matching the query "tolkien" and export the results to a new line delimited JSON (ndjson) file
-			$ algolia search BOOKS --query "tolkien" > books.ndjson
+			# Search for objects in the "BOOKS" index matching the query "tolkien" and export the response to a .json file
+			$ algolia search BOOKS --query "tolkien" > books.json
+
+			# Search for objects in the "BOOKS" index matching the query "tolkien" and only export the results to a .json file
+			$ algolia search BOOKS --query "tolkien" --output="jsonpath={$.Hits}" > books.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
