@@ -66,7 +66,7 @@ func (o *Object) UnmarshalJSON(data []byte) error {
 			if err := mapstructure.Decode(v, &op); err != nil {
 				return err
 			}
-// Check that the operation is valid
+			// Check that the operation is valid
 			if err := ValidateOperation(op); err != nil {
 				return err
 			}

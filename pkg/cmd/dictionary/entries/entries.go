@@ -6,6 +6,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/dictionary/entries/browse"
 	"github.com/algolia/cli/pkg/cmd/dictionary/entries/clear"
 	"github.com/algolia/cli/pkg/cmd/dictionary/entries/delete"
+	importentries "github.com/algolia/cli/pkg/cmd/dictionary/entries/import"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -19,6 +20,7 @@ func NewEntriesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(clear.NewClearCmd(f, nil))
 	cmd.AddCommand(browse.NewBrowseCmd(f, nil))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
+	cmd.AddCommand(importentries.NewImportCmd(f, nil))
 
 	return cmd
 }
