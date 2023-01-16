@@ -104,7 +104,7 @@ func runImportCmd(opts *ImportOptions) error {
 	)
 
 	// Scan the file
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Reading words from %s", opts.File))
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Reading entries from %s", opts.File))
 	elapsed := time.Now()
 
 	var errors []string
