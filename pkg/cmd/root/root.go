@@ -22,6 +22,8 @@ import (
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/art"
+	"github.com/algolia/cli/pkg/cmd/dictionary"
+	"github.com/algolia/cli/pkg/cmd/events"
 	"github.com/algolia/cli/pkg/cmd/factory"
 	"github.com/algolia/cli/pkg/cmd/indices"
 	"github.com/algolia/cli/pkg/cmd/objects"
@@ -96,6 +98,8 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(settings.NewSettingsCmd(f))
 	cmd.AddCommand(rules.NewRulesCmd(f))
 	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
+	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
+	cmd.AddCommand(events.NewEventsCmd(f))
 
 	// ??? related commands
 	cmd.AddCommand(art.NewArtCmd(f))

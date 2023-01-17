@@ -105,6 +105,9 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, args []string) {
 	if command.Example != "" {
 		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Examples"), Body: command.Example})
 	}
+	if _, ok := command.Annotations["help:see-also"]; ok {
+		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("See also"), Body: command.Annotations["help:see-also"]})
+	}
 	helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Learn More"), Body: `
 Use 'algolia <command> <subcommand> --help' for more information about a command.
 Read the documentation at https://algolia.com/doc/tools/cli/`})

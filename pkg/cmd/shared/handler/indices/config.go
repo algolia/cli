@@ -129,17 +129,12 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 		return fmt.Errorf("%s Cannot clear existing synonyms if synonyms are not in scope", cs.FailureIcon())
 	}
 	// Scope and config
-	if utils.Contains(opts.Scope, "settings") && opts.ImportConfig.Settings == nil {
-		return fmt.Errorf("%s No settings found in config file", cs.FailureIcon())
+	if (utils.Contains(opts.Scope, "settings") && opts.ImportConfig.Settings != nil) ||
+		(utils.Contains(opts.Scope, "rules") && len(opts.ImportConfig.Rules) > 0) ||
+		(utils.Contains(opts.Scope, "synonyms") && len(opts.ImportConfig.Synonyms) > 0) {
+		return nil
 	}
-	if utils.Contains(opts.Scope, "rules") && len(opts.ImportConfig.Rules) == 0 {
-		return fmt.Errorf("%s No rule found in config file", cs.FailureIcon())
-	}
-	if utils.Contains(opts.Scope, "synonyms") && len(opts.ImportConfig.Synonyms) == 0 {
-		return fmt.Errorf("%s No synonym found in config file", cs.FailureIcon())
-	}
-
-	return nil
+	return fmt.Errorf("%s No %s found in config file", cs.FailureIcon(), utils.SliceToReadableString(opts.Scope))
 }
 
 func AskImportConfig(opts *ImportOptions) error {
@@ -173,9 +168,12 @@ func AskImportConfig(opts *ImportOptions) error {
 	if opts.ImportConfig.Settings != nil {
 		scopeOptions = append(scopeOptions, "settings")
 	}
+
+	erroredScope := opts.Scope
+	opts.Scope = []string{}
 	err = ask.AskMultiSelectQuestion(
 		"scope (comma separated):",
-		opts.Scope,
+		erroredScope,
 		&opts.Scope,
 		scopeOptions,
 		survey.WithValidator(survey.Required),

@@ -1,4 +1,4 @@
-package indiceimport
+package configimport
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-// NewImportCmd creates and returns an import command for indices config
+// NewImportCmd creates and returns an import command for index config
 func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ImportOptions{
 		IO:           f.IOStreams,
@@ -24,31 +24,31 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	var confirm bool
+	cs := opts.IO.ColorScheme()
 
 	cmd := &cobra.Command{
-		Use:               "import <index> -F <file>",
+		Use:               "import <index> -F <file> --scope <scope>...",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import the indice config from a config file to an indice",
+		Short:             "Import an index configuration (settings, synonyms, rules) from a file",
 		Long: heredoc.Doc(`
-			Import the indice config from a config file to an indice including settings, synonyms and rules.
+			Import an index configuration (settings, synonyms, rules) from a file.
 		`),
 		Example: heredoc.Doc(`
 			# Import the config from a .json file into 'PROD_TEST_PRODUCTS' index
-			$ algolia indices config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json
+			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json
 
 			# Import only the synonyms and settings from a .json file to the 'PROD_TEST_PRODUCTS' index
-			$ algolia indices config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope synonyms, settings
+			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope synonyms, settings
 
-			# Import only the synonyms from a .json file to the 'PROD_TEST_PRODUCTS' index and clear existing ones
-			$ algolia indices config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope synonyms --clear-existing-synonyms
+			# Import only the synonyms from a .json file to the 'PROD_TEST_PRODUCTS' index and clear all existing ones
+			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope synonyms --clear-existing-synonyms
 
-			# Import only the rules from a .json file to the 'PROD_TEST_PRODUCTS' index and clear existing ones
-			$ algolia indices config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope rules --clear-existing-rules
+			# Import only the rules from a .json file to the 'PROD_TEST_PRODUCTS' index and clear all existing ones
+			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope rules --clear-existing-rules
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
-			cs := opts.IO.ColorScheme()
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
@@ -65,8 +65,8 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 			if opts.DoConfirm {
 				var confirmed bool
-				err = prompt.Confirm(fmt.Sprintf("%s\nImport config?",
-					GetConfirmMessage(cs, opts.Scope, opts.ClearExistingRules, opts.ClearExistingSynonyms)), &confirmed)
+				fmt.Printf("\n%s", GetConfirmMessage(cs, opts.Scope, opts.ClearExistingRules, opts.ClearExistingSynonyms))
+				err = prompt.Confirm("Import config?", &confirmed)
 				if err != nil {
 					return fmt.Errorf("failed to prompt: %w", err)
 				}
@@ -90,8 +90,8 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			"synonyms": "synonyms",
 			"rules":    "rules",
 		}, "import only"))
-	cmd.Flags().BoolVarP(&opts.ClearExistingSynonyms, "clear-existing-synonyms", "o", false, "Clear existing synonyms of the index before import")
-	cmd.Flags().BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "r", false, "Clear existing rules of the index before import")
+	cmd.Flags().BoolVarP(&opts.ClearExistingSynonyms, "clear-existing-synonyms", "o", false, fmt.Sprintf("Clear %s existing synonyms of the index before import", cs.Bold("ALL")))
+	cmd.Flags().BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "r", false, fmt.Sprintf("Clear %s existing rules of the index before import", cs.Bold("ALL")))
 	// Replicas
 	cmd.Flags().BoolVarP(&opts.ForwardSynonymsToReplicas, "forward-synonyms-to-replicas", "m", false, "Forward imported synonyms to replicas")
 	cmd.Flags().BoolVarP(&opts.ForwardRulesToReplicas, "forward-rules-to-replicas", "l", false, "Forward imported rules to replicas")

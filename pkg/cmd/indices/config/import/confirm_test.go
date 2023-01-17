@@ -1,4 +1,4 @@
-package indiceimport
+package configimport
 
 import (
 	"testing"

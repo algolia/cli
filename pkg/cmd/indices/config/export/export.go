@@ -1,4 +1,4 @@
-package indiceexport
+package configexport
 
 import (
 	"encoding/json"
@@ -12,11 +12,12 @@ import (
 	"github.com/algolia/cli/pkg/cmd/shared/handler"
 	config "github.com/algolia/cli/pkg/cmd/shared/handler/indices"
 	"github.com/algolia/cli/pkg/cmdutil"
+	"github.com/algolia/cli/pkg/utils"
 
 	"github.com/algolia/cli/pkg/validators"
 )
 
-// NewExportCmd creates and returns an export command for indices config
+// NewExportCmd creates and returns an export command for index config
 func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ExportOptions{
 		IO:           f.IOStreams,
@@ -25,22 +26,22 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:               "export <index>...",
+		Use:               "export <index> [--scope <scope>...] [--directory]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export the config of an indice",
+		Short:             "Export an index configuration (settings, synonyms, rules) to a file",
 		Long: heredoc.Doc(`
-			Export the config of an indice including its settings, synonyms and rules.
+			Export an index configuration (settings, synonyms, rules) to a file.
 		`),
 		Example: heredoc.Doc(`
 			# Export the config of the index 'TEST_PRODUCTS' to a .json in the current folder
-			$ algolia indices config export TEST_PRODUCTS
+			$ algolia index config export TEST_PRODUCTS
 
 			# Export the synonyms and rules of the index 'TEST_PRODUCTS' to a .json in the current folder
-			$ algolia indices config export TEST_PRODUCTS --scope synonyms,rules
+			$ algolia index config export TEST_PRODUCTS --scope synonyms,rules
 
 			# Export the config of the index 'TEXT_PRODUCTS' to a .json into 'exports' folder
-			$ algolia indices config export TEST_PRODUCTS --directory exports
+			$ algolia index config export TEST_PRODUCTS --directory exports
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -107,8 +108,14 @@ func runExportCmd(opts *config.ExportOptions) error {
 	if err != nil {
 		return fmt.Errorf("%s An error occurred when saving the file: %w", cs.FailureIcon(), err)
 	}
-
-	fmt.Printf("%s '%s' Index config successfully exported to %s\n", cs.SuccessIcon(), opts.Indice, filePath)
+	currentDir, _ := os.Getwd()
+	rootPath := "."
+	if opts.Directory != "" {
+		rootPath = currentDir
+	}
+	fmt.Printf("%s '%s' Index config (%s) successfully exported to %s\n",
+		cs.SuccessIcon(), opts.Indice, utils.SliceToReadableString(opts.Scope), fmt.Sprintf("%s/%s", rootPath, filePath))
 
 	return nil
+
 }
