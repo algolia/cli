@@ -112,12 +112,14 @@ func TestNewDeleteCmd(t *testing.T) {
 
 func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
-		name      string
-		cli       string
-		indice    string
-		objectIDs []string
-		isTTY     bool
-		wantOut   string
+		name             string
+		cli              string
+		indice           string
+		objectIDs        []string
+		nbHits           int
+		exhaustiveNbHits bool
+		isTTY            bool
+		wantOut          string
 	}{
 		{
 			name:   "single object-id, no TTY",
@@ -137,7 +139,7 @@ func Test_runDeleteCmd(t *testing.T) {
 				"1",
 			},
 			isTTY:   true,
-			wantOut: "✓ Successfully deleted 1 object from foo\n",
+			wantOut: "✓ Successfully deleted exactly 1 object from foo\n",
 		},
 		{
 			name:   "multiple object-ids, TTY",
@@ -148,7 +150,35 @@ func Test_runDeleteCmd(t *testing.T) {
 				"2",
 			},
 			isTTY:   true,
-			wantOut: "✓ Successfully deleted 2 objects from foo\n",
+			wantOut: "✓ Successfully deleted exactly 2 objects from foo\n",
+		},
+		{
+			name:      "filters, TTY",
+			cli:       "foo --filters 'foo:bar' --confirm",
+			indice:    "foo",
+			objectIDs: []string{},
+			nbHits:    2,
+			isTTY:     true,
+			wantOut:   "✓ Successfully deleted approximately 2 objects from foo\n",
+		},
+		{
+			name:             "filters, TTY",
+			cli:              "foo --filters 'foo:bar' --confirm",
+			indice:           "foo",
+			objectIDs:        []string{},
+			nbHits:           2,
+			exhaustiveNbHits: true,
+			isTTY:            true,
+			wantOut:          "✓ Successfully deleted exactly 2 objects from foo\n",
+		},
+		{
+			name:      "filters and object-ids, TTY",
+			cli:       "foo --filters 'foo:bar' --object-ids 1,2 --confirm",
+			indice:    "foo",
+			objectIDs: []string{"1", "2"},
+			nbHits:    2,
+			isTTY:     true,
+			wantOut:   "✓ Successfully deleted approximately 4 objects from foo\n",
 		},
 	}
 
@@ -156,7 +186,17 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.objectIDs {
+				// Checking that the object exists
 				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)), httpmock.JSONResponse(search.QueryRes{}))
+			}
+			if tt.nbHits > 0 {
+				// Searching for the objects to delete (if filters are used)
+				r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.indice)), httpmock.JSONResponse(search.QueryRes{
+					NbHits:           tt.nbHits,
+					ExhaustiveNbHits: tt.exhaustiveNbHits,
+				}))
+				// Deleting the objects
+				r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
 			}
 			r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
 
