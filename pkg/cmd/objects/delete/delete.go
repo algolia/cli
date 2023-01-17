@@ -50,7 +50,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Long: heredoc.Doc(`
 			This command deletes the objects from the specified index.
 
-			You can either directly specify the objects to delete by theirs IDs or use the filters related flags to delete the matching objects.
+			You can either directly specify the objects to delete by theirs IDs and/or use the filters related flags to delete the matching objects.
 		`),
 		Example: heredoc.Doc(`
 			# Delete one single object with the ID "1" from the "TEST_PRODUCTS_1" index
