@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-const maxCapacity = 100 * 1024 // 100KB
+const maxCapacity = 1024 * 1024 // 1MB
 
 func ReadFile(filename string, stdin io.ReadCloser) ([]byte, error) {
 	if filename == "-" {
