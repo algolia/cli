@@ -114,9 +114,9 @@ chocolateys:
       - windows
     project_url: https://algolia.com/doc/tools/cli
     url_template: "https://github.com/algolia/cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    icon_url: 'https://raw.githubusercontent.com/algolia/cli/master/screenshots/logo.png'
+    icon_url: 'https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiYWxnb2xpYS1icmFuZFwvZmlsZVwvRGVRczRpYzJpcWRwcHNQaTQ0aVoucG5nIn0:algolia-brand:iMztVbeCSM-SuJ011FE1EigUhc-yZZ5RPPpmq6DP8T0?width=300'
     copyright: 2023 Algolia
-    license_url: https://github.com/algolia/cli/blob/master/LICENSE
+    license_url: https://github.com/algolia/cli/blob/main/LICENSE
     require_license_acceptance: false
     project_source_url: https://github.com/algolia/cli
     docs_url: https://algolia.com/doc/tools/cli
