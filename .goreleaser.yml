@@ -27,6 +27,11 @@ builds:
     env:
       - CGO_ENABLED=0
 
+  - <<: *build_defaults
+    id: windows
+    goos: [windows]
+    goarch: [386, amd64, arm64]
+
 archives:
   - id: nix
     builds: [macos, linux]
@@ -99,3 +104,30 @@ dockers:
       - algolia
       - algolia-linux-arm
     <<: *docker_defaults
+
+chocolateys:
+  -
+    name: algolia
+    title: Algolia CLI
+    authors: Algolia
+    ids:
+      - windows
+    project_url: https://algolia.com/doc/tools/cli
+    url_template: "https://github.com/algolia/cli/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    icon_url: 'https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoiYWxnb2xpYS1icmFuZFwvZmlsZVwvRGVRczRpYzJpcWRwcHNQaTQ0aVoucG5nIn0:algolia-brand:iMztVbeCSM-SuJ011FE1EigUhc-yZZ5RPPpmq6DP8T0?width=300'
+    copyright: 2023 Algolia
+    license_url: https://github.com/algolia/cli/blob/main/LICENSE
+    require_license_acceptance: false
+    project_source_url: https://github.com/algolia/cli
+    docs_url: https://algolia.com/doc/tools/cli
+    bug_tracker_url: https://github.com/algolia/cli/issues
+    tags: "algolia search cli automation interface command-line tool devtool"
+    summary: Algolia's official CLI devtool
+    description: |
+      {{ .ProjectName }} chocolatey installer package.
+      A command line interface to enable Algolia developers to interact with and configure their Algolia applications straight from a command line or terminal window. Automate common workloads, create snapshots, revert to backups, or quickly modify applications as needed! This is a lightweight tool, providing a text-only interface, that is easy to install and use!
+    release_notes: "https://github.com/algolia/cli/releases/tag/v{{ .Version }}"
+    api_key: '{{ .Env.CHOCOLATEY_API_KEY }}'
+    source_repo: "https://push.chocolatey.org/"
+    skip_publish: false
+    goamd64: v1
