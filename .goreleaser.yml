@@ -80,30 +80,30 @@ brews:
       fish_completion.install "completions/algolia.fish"
     caveats: "❤ Thanks for installing the Algolia CLI!"
 
-dockers:
-  - goos: linux
-    goarch: amd64
-    ids:
-      - algolia
-      - algolia-linux
-    <<: &docker_defaults
-      image_templates:
-        - "algolia/cli:latest"
-        - "algolia/cli:{{ .Tag }}"
-      build_flag_templates:
-        - "--pull"
-        - "--label=org.opencontainers.image.created={{.Date}}"
-        - "--label=org.opencontainers.image.name={{.ProjectName}}"
-        - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-        - "--label=org.opencontainers.image.version={{.Version}}"
-        - "--label=repository=https://github.com/algolia/cli"
-        - "--label=homepage=https://algolia.com"
-  - goos: linux
-    goarch: arm64
-    ids:
-      - algolia
-      - algolia-linux-arm
-    <<: *docker_defaults
+# dockers:
+#   - goos: linux
+#     goarch: amd64
+#     ids:
+#       - algolia
+#       - algolia-linux
+#     <<: &docker_defaults
+#       image_templates:
+#         - "algolia/cli:latest"
+#         - "algolia/cli:{{ .Tag }}"
+#       build_flag_templates:
+#         - "--pull"
+#         - "--label=org.opencontainers.image.created={{.Date}}"
+#         - "--label=org.opencontainers.image.name={{.ProjectName}}"
+#         - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+#         - "--label=org.opencontainers.image.version={{.Version}}"
+#         - "--label=repository=https://github.com/algolia/cli"
+#         - "--label=homepage=https://algolia.com"
+#   - goos: linux
+#     goarch: arm64
+#     ids:
+#       - algolia
+#       - algolia-linux-arm
+#     <<: *docker_defaults
 
 chocolateys:
   -
