@@ -30,7 +30,7 @@ brew tap algolia/algolia-cli && brew install algolia
 
 ### Windows
 
-`algolia` is available via [Chocolatey][https://community.chocolatey.org/packages/algolia/] and as downloadable .exe files.
+`algolia` is available via [Chocolatey](https://community.chocolatey.org/packages/algolia/) and as downloadable .exe files.
 
 #### Chocolatey
 
