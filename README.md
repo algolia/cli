@@ -28,6 +28,20 @@ git clone git@github.com:algolia/cli.git && make install
 brew tap algolia/algolia-cli && brew install algolia
 ```
 
+### Windows
+
+`algolia` is available via [Chocolatey][https://community.chocolatey.org/packages/algolia/] and as downloadable .exe files.
+
+#### Chocolatey
+
+| Install:           | Upgrade:           |
+| ------------------ | ------------------ |
+| `choco install algolia` | `choco upgrade algolia` |
+
+#### Executable
+
+Executable files are available on the [releases page](https://github.com/algolia/cli/releases).
+
 ### Other platforms
 
 Download packaged binaries from the [releases page](https://github.com/algolia/cli/releases).
