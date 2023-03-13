@@ -67,7 +67,7 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	return &AnalyticsTelemetryClient{client: client}, nil
 }
 
-// anonymousID is a unique identifier for an anymous user of the CLI (basically the hash of the mac address)
+// anonymousID is a unique identifier for an anonymous user of the CLI (basically the hash of the mac address)
 func anonymousID() string {
 	addrs, err := net.Interfaces()
 	if err != nil {
