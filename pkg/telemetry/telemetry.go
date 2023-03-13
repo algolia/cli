@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"log"
 	"net"
@@ -66,8 +67,8 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	return &AnalyticsTelemetryClient{client: client}, nil
 }
 
-// userID is a unique identifier for the user of the CLI (basically the mac address of the machine)
-func userID() string {
+// anonymousID is a unique identifier for an anymous user of the CLI (basically the hash of the mac address)
+func anonymousID() string {
 	addrs, err := net.Interfaces()
 	if err != nil {
 		return ""
@@ -79,7 +80,7 @@ func userID() string {
 		}
 		a := a.HardwareAddr.String()
 		if a != "" {
-			return a
+			return fmt.Sprintf("%x", md5.Sum([]byte(a)))
 		}
 	}
 	return ""
@@ -88,7 +89,8 @@ func userID() string {
 type NoOpTelemetryClient struct{}
 
 type CLIAnalyticsEventMetadata struct {
-	UserId                   string   // the user id is the mac address of the machine
+	AnonymousID              string   // the anonymous id is the hash of the mac address of the machine
+	UserId                   string   // TODO: Once we implement OAuth
 	InvocationID             string   // the invocation id is unique to each context object and represents all events coming from one command
 	ConfiguredApplicationsNb int      // the number of configured applications
 	AppID                    string   // the app id with which the command was called
@@ -101,7 +103,7 @@ type CLIAnalyticsEventMetadata struct {
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
 func NewEventMetadata() *CLIAnalyticsEventMetadata {
 	return &CLIAnalyticsEventMetadata{
-		UserId:       userID(),
+		AnonymousID:  anonymousID(),
 		InvocationID: uuid.NewRandom().String(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
@@ -173,13 +175,17 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	}
 
 	return a.client.Enqueue(analytics.Identify{
-		AnonymousId: metadata.UserId,
-		UserId:      metadata.UserId,
+		AnonymousId: metadata.AnonymousID,
 		Traits: map[string]interface{}{
 			"configured_applications": metadata.ConfiguredApplicationsNb,
 			"version":                 metadata.CLIVersion,
 			"operating_system":        metadata.OS,
 			"is_ci":                   isCI,
+		},
+		Context: &analytics.Context{
+			Device: analytics.DeviceInfo{
+				Id: metadata.AnonymousID,
+			},
 		},
 	})
 }
@@ -190,13 +196,17 @@ func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) erro
 
 	return a.client.Enqueue(analytics.Track{
 		Event:       event,
-		AnonymousId: metadata.UserId,
-		UserId:      metadata.UserId,
+		AnonymousId: metadata.AnonymousID,
 		Properties: map[string]interface{}{
 			"invocation_id": metadata.InvocationID,
 			"app_id":        metadata.AppID,
 			"command":       metadata.CommandPath,
 			"flags":         metadata.CommandFlags,
+		},
+		Context: &analytics.Context{
+			Device: analytics.DeviceInfo{
+				Id: metadata.AnonymousID,
+			},
 		},
 	})
 }
