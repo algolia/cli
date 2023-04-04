@@ -2,8 +2,10 @@ package importRules
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -19,7 +21,7 @@ import (
 
 func TestNewImportCmd(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "rules.ndjson")
-	_ = os.WriteFile(file, []byte("{\"objectID\":\"test\"}"), 0600)
+	_ = os.WriteFile(file, []byte("{\"objectID\":\"test\"}"), 0o600)
 
 	tests := []struct {
 		name      string
@@ -111,8 +113,13 @@ func TestNewImportCmd(t *testing.T) {
 
 func Test_runExportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "rules.json")
-	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"test\"}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"test\"}"), 0o600)
 	require.NoError(t, err)
+
+	var largeBatchBuilder strings.Builder
+	for i := 0; i < 1001; i += 1 {
+		largeBatchBuilder.Write([]byte("{\"objectID\":\"test\"}\n"))
+	}
 
 	tests := []struct {
 		name    string
@@ -120,31 +127,69 @@ func Test_runExportCmd(t *testing.T) {
 		stdin   string
 		wantOut string
 		wantErr string
+		setup   func(*httpmock.Registry)
 	}{
 		{
 			name:    "from stdin",
 			cli:     "foo -F -",
 			stdin:   `{"objectID":"test"}`,
 			wantOut: "✓ Successfully imported 1 rules to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 		{
 			name:    "from file",
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 rules to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 		{
 			name:    "from stdin with invalid JSON",
 			cli:     "foo -F -",
 			stdin:   `{"objectID", "test"},`,
 			wantErr: "failed to parse JSON rule on line 0: invalid character ',' after object key",
+			setup:   func(r *httpmock.Registry) {},
+		},
+		{
+			name:    "from empty batch with clear existing",
+			cli:     "foo -c -y -F -",
+			stdin:   ``,
+			wantOut: "✓ Successfully imported 0 rules to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/clear"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
+		},
+		{
+			name:    "from empty batch without clear existing",
+			cli:     "foo -F -",
+			stdin:   ``,
+			wantOut: "✓ Successfully imported 0 rules to foo\n",
+			setup:   func(r *httpmock.Registry) {},
+		},
+		{
+			name:    "from large batch clear existing",
+			cli:     "foo -c -y -F -",
+			stdin:   largeBatchBuilder.String(),
+			wantOut: "✓ Successfully imported 1001 rules to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) && req.URL.Query().Get("clearExistingRules") == "true"
+				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) && req.URL.Query().Get("clearExistingRules") == ""
+				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			if tt.setup != nil {
+				tt.setup(&r)
 			}
 			defer r.Verify(t)
 
