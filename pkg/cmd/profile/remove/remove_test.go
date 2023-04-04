@@ -92,38 +92,38 @@ func Test_runRemoveCmd(t *testing.T) {
 	tests := []struct {
 		name     string
 		cli      string
-		profiles map[string]bool
+		profiles []config.Profile
 		wantsErr string
 		wantOut  string
 	}{
 		{
 			name:     "existing profile (default)",
 			cli:      "default --confirm",
-			profiles: map[string]bool{"default": true, "foo": false},
+			profiles: []config.Profile{{Name: "default", Default: true}, {Name: "foo", Default: false}},
 			wantOut:  "✓ 'default' removed successfully. Set a new default profile with 'algolia profile setdefault'.\n",
 		},
 		{
 			name:     "existing profile (non-default)",
 			cli:      "foo --confirm",
-			profiles: map[string]bool{"default": true, "foo": false},
+			profiles: []config.Profile{{Name: "default", Default: true}, {Name: "foo", Default: false}},
 			wantOut:  "✓ 'foo' removed successfully.\n",
 		},
 		{
 			name:     "non-existant profile",
 			cli:      "bar --confirm",
-			profiles: map[string]bool{"default": true, "foo": false},
+			profiles: []config.Profile{{Name: "default", Default: true}, {Name: "foo", Default: false}},
 			wantsErr: "the specified profile does not exist: 'bar'",
 		},
 		{
 			name:     "only one profile (default)",
 			cli:      "default --confirm",
-			profiles: map[string]bool{"default": true},
+			profiles: []config.Profile{{Name: "default", Default: true}},
 			wantOut:  "✓ 'default' removed successfully. Add a profile with 'algolia profile add'.\n",
 		},
 		{
 			name:     "only one profile (non-default)",
 			cli:      "foo --confirm",
-			profiles: map[string]bool{"foo": false},
+			profiles: []config.Profile{{Name: "foo", Default: false}},
 			wantOut:  "✓ 'foo' removed successfully. Add a profile with 'algolia profile add'.\n",
 		},
 	}
@@ -131,11 +131,9 @@ func Test_runRemoveCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var p []*config.Profile
-			for k, v := range tt.profiles {
-				p = append(p, &config.Profile{
-					Name:    k,
-					Default: v,
-				})
+			for _, v := range tt.profiles {
+				v := v
+				p = append(p, &v)
 			}
 			cfg := test.NewConfigStubWithProfiles(p)
 			f, out := test.NewFactory(true, nil, cfg, "")
