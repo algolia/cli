@@ -117,6 +117,10 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Indice)
+	defaultBatchOptions := []interface{}{
+		opt.ForwardToReplicas(opts.ForwardToReplicas),
+	}
+	// Only clear existing rules on the first batch
 	batchOptions := []interface{}{
 		opt.ForwardToReplicas(opts.ForwardToReplicas),
 		opt.ClearExistingRules(opts.ClearExistingRules),
@@ -150,7 +154,7 @@ func runImportCmd(opts *ImportOptions) error {
 			if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
 				return err
 			}
-
+			batchOptions = defaultBatchOptions
 			batch = make([]search.Rule, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d rules", totalCount))
@@ -161,6 +165,12 @@ func runImportCmd(opts *ImportOptions) error {
 	if count > 0 {
 		totalCount += count
 		if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
+			return err
+		}
+	}
+	// Clear rules if 0 rules are imported and the clear existing is set
+	if totalCount == 0 && opts.ClearExistingRules {
+		if _, err := indice.ClearRules(); err != nil {
 			return err
 		}
 	}
