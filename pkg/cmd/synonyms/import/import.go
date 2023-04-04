@@ -96,6 +96,10 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Index)
+	defaultBatchOptions := []interface{}{
+		opt.ForwardToReplicas(opts.ForwardToReplicas),
+	}
+	// Only clear existing rules on the first batch
 	batchOptions := []interface{}{
 		opt.ForwardToReplicas(opts.ForwardToReplicas),
 		opt.ReplaceExistingSynonyms(opts.ReplaceExistingSynonyms),
@@ -179,7 +183,7 @@ func runImportCmd(opts *ImportOptions) error {
 			if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
 				return err
 			}
-
+			batchOptions = defaultBatchOptions
 			batch = make([]search.Synonym, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d synonyms", totalCount))
@@ -190,6 +194,12 @@ func runImportCmd(opts *ImportOptions) error {
 	if count > 0 {
 		totalCount += count
 		if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
+			return err
+		}
+	}
+
+	if totalCount == 0 && opts.ReplaceExistingSynonyms {
+		if _, err := indice.ClearSynonyms(); err != nil {
 			return err
 		}
 	}
