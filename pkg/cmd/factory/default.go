@@ -41,6 +41,7 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client,
 			AppID:          appID,
 			APIKey:         APIKey,
 			ExtraUserAgent: fmt.Sprintf("Algolia CLI (%s)", appVersion),
+			Hosts:          f.Config.Profile().GetSearchHosts(),
 		}
 		return search.NewClientWithConfig(clientCfg), nil
 	}
