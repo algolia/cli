@@ -103,7 +103,9 @@ func runRemoveCmd(opts *RemoveOptions) error {
 		if len(opts.config.ConfiguredProfiles()) == 0 {
 			extra = ". Add a profile with 'algolia profile add'."
 		}
-		fmt.Fprintf(opts.IO.Out, "%s '%s' removed successfully%s\n", cs.SuccessIcon(), opts.Profile, extra)
+		if _, err = fmt.Fprintf(opts.IO.Out, "%s '%s' removed successfully%s\n", cs.SuccessIcon(), opts.Profile, extra); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -83,6 +83,8 @@ func runListCmd(opts *ExportOptions) error {
 			}
 			return err
 		}
-		p.Print(opts.IO, iObject)
+		if err = p.Print(opts.IO, iObject); err != nil {
+			return err
+		}
 	}
 }

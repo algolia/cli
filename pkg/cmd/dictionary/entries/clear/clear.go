@@ -126,7 +126,9 @@ func runClearCmd(opts *ClearOptions) error {
 	}
 
 	if totalEntries == 0 {
-		fmt.Fprintf(opts.IO.Out, "%s No entries to clear in %s dictionary.\n", cs.WarningIcon(), utils.SliceToReadableString(dictionariesNames))
+		if _, err = fmt.Fprintf(opts.IO.Out, "%s No entries to clear in %s dictionary.\n", cs.WarningIcon(), utils.SliceToReadableString(dictionariesNames)); err != nil {
+			return err
+		}
 		return nil
 	}
 

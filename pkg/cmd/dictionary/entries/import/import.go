@@ -141,7 +141,6 @@ func runImportCmd(opts *ImportOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	if err := opts.Scanner.Err(); err != nil {
-
 		return err
 	}
 
@@ -193,8 +192,8 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s entries on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(entries))), cs.Bold(opts.DictionaryName), time.Since(elapsed))
-	return nil
+	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s entries on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(entries))), cs.Bold(opts.DictionaryName), time.Since(elapsed))
+	return err
 }
 
 func ValidateDictionaryEntry(entry shared.DictionaryEntry, currentLine int) error {

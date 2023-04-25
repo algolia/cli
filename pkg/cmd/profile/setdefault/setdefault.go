@@ -76,9 +76,13 @@ func runSetDefaultCmd(opts *SetDefaultOptions) error {
 
 	if opts.IO.IsStdoutTTY() {
 		if defaultName != "" {
-			fmt.Fprintf(opts.IO.Out, "%s Default profile successfuly changed from '%s' to '%s'.\n", cs.SuccessIcon(), defaultName, opts.Profile)
+			if _, err = fmt.Fprintf(opts.IO.Out, "%s Default profile successfuly changed from '%s' to '%s'.\n", cs.SuccessIcon(), defaultName, opts.Profile); err != nil {
+				return err
+			}
 		} else {
-			fmt.Fprintf(opts.IO.Out, "%s Default profile successfuly set to '%s'.\n", cs.SuccessIcon(), opts.Profile)
+			if _, err = fmt.Fprintf(opts.IO.Out, "%s Default profile successfuly set to '%s'.\n", cs.SuccessIcon(), opts.Profile); err != nil {
+				return err
+			}
 		}
 	}
 
