@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/algolia/cli/pkg/utils"
 	"github.com/spf13/viper"
@@ -11,8 +12,9 @@ import (
 type Profile struct {
 	Name string
 
-	ApplicationID string `mapstructure:"application_id"`
-	AdminAPIKey   string `mapstructure:"admin_api_key"`
+	ApplicationID string   `mapstructure:"application_id"`
+	AdminAPIKey   string   `mapstructure:"admin_api_key"`
+	SearchHosts   []string `mapstructure:"search_hosts"`
 
 	Default bool `mapstructure:"default"`
 }
@@ -74,6 +76,30 @@ func (p *Profile) GetAdminAPIKey() (string, error) {
 	}
 
 	return "", ErrAdminAPIKeyNotConfigured
+}
+
+func (p *Profile) GetSearchHosts() []string {
+	envHosts := os.Getenv("ALGOLIA_SEARCH_HOSTS")
+	if envHosts != "" {
+		return strings.Split(envHosts, ",")
+	}
+
+	if p.SearchHosts != nil {
+		return p.SearchHosts
+	}
+
+	if p.Name == "" {
+		p.LoadDefault()
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		hosts := viper.GetStringSlice(p.GetFieldName("search_hosts"))
+		if hosts != nil {
+			return hosts
+		}
+	}
+
+	return nil
 }
 
 // Add add a profile to the configuration

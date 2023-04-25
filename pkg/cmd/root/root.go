@@ -81,6 +81,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
+	cmd.PersistentFlags().StringSliceVar(&f.Config.Profile().SearchHosts, "search-hosts", nil, "The list of search hosts as CSV")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
@@ -185,7 +186,6 @@ func Execute() exitCode {
 
 	// Run the command.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
