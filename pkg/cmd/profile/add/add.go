@@ -164,7 +164,9 @@ func runAddCmd(opts *AddOptions) error {
 			}
 		}
 
-		fmt.Fprintf(opts.IO.Out, "%s Profile '%s' (%s) added successfully%s\n", cs.SuccessIcon(), opts.Profile.Name, opts.Profile.ApplicationID, extra)
+		if _, err = fmt.Fprintf(opts.IO.Out, "%s Profile '%s' (%s) added successfully%s\n", cs.SuccessIcon(), opts.Profile.Name, opts.Profile.ApplicationID, extra); err != nil {
+			return err
+		}
 	}
 
 	return nil

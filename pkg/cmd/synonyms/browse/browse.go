@@ -82,6 +82,8 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			}
 			return err
 		}
-		p.Print(opts.IO, iObject)
+		if err = p.Print(opts.IO, iObject); err != nil {
+			return err
+		}
 	}
 }

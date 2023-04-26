@@ -163,7 +163,6 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	// Process operations
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(operations)))))
 	res, err := client.MultipleBatch(operations)
-
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -179,14 +178,16 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	fmt.Fprintf(opts.IO.Out, "%s Successfully processed %s operations in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(operations))), time.Since(elapsed))
-	return nil
+	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully processed %s operations in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(operations))), time.Since(elapsed))
+	return err
 }
 
 // ValidateBatchOperation checks that the batch operation is valid
 func ValidateBatchOperation(p search.BatchOperationIndexed) error {
-	allowedActions := []string{string(search.AddObject), string(search.UpdateObject), string(search.PartialUpdateObject),
-		string(search.PartialUpdateObjectNoCreate), string(search.DeleteObject)}
+	allowedActions := []string{
+		string(search.AddObject), string(search.UpdateObject), string(search.PartialUpdateObject),
+		string(search.PartialUpdateObjectNoCreate), string(search.DeleteObject),
+	}
 	extra := fmt.Sprintf("valid actions are %s", utils.SliceToReadableString(allowedActions))
 
 	if p.Action == "" {

@@ -189,6 +189,6 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	fmt.Fprintf(opts.IO.Out, "%s Successfully updated %s objects on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index), time.Since(elapsed))
-	return nil
+	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully updated %s objects on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index), time.Since(elapsed))
+	return err
 }

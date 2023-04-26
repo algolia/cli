@@ -138,7 +138,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	if nbObjectsToDelete == 0 {
-		fmt.Fprintf(opts.IO.Out, "%s No objects to delete. %s\n", cs.WarningIcon(), extra)
+		if _, err = fmt.Fprintf(opts.IO.Out, "%s No objects to delete. %s\n", cs.WarningIcon(), extra); err != nil {
+			return err
+		}
 		return nil
 	}
 

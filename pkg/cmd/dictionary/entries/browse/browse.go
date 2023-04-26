@@ -144,10 +144,14 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			for _, entry := range entries {
 				if opts.IncludeDefaultStopwords {
 					// print all entries (default stopwords included)
-					p.Print(opts.IO, entry)
+					if err = p.Print(opts.IO, entry); err != nil {
+						return err
+					}
 				} else if entry.Type == shared.CustomEntryType {
 					// print only custom entries
-					p.Print(opts.IO, entry)
+					if err = p.Print(opts.IO, entry); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -156,7 +160,9 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 		// in case no entry is found in all the dictionaries
 		if hasNoEntries {
-			fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon())
+			if _, err = fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon()); err != nil {
+				return err
+			}
 			// go to the next dictionary
 			break
 		}
