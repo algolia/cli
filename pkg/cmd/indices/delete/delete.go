@@ -162,7 +162,7 @@ func findPrimaryIndex(replicaIndex *search.Index) (string, error) {
 }
 
 // Remove replica from `replicas` settings of the primary index
-func unlinkReplicaIndex(replicaName string, primaryName string, client *search.Client) error {
+func detachReplicaIndex(replicaName string, primaryName string, client *search.Client) error {
 	primaryIndex := client.InitIndex(primaryName)
 	settings, err := primaryIndex.GetSettings()
 
