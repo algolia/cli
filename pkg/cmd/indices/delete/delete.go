@@ -187,7 +187,7 @@ func unlinkReplicaIndex(replicaName string, primaryName string, client *search.C
 	}
 
 	// Wait until the settings are updated, else a subsequent `delete` will fail.
-	res.Wait()
+	_ = res.Wait()
 	return nil
 }
 
