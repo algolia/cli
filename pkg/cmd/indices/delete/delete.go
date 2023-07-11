@@ -131,7 +131,7 @@ func deleteReplicaIndex(client *search.Client, replicaIndex *search.Index) error
 		return fmt.Errorf("can't find primary index for %q: %w", replicaName, err)
 	}
 
-	err = unlinkReplicaIndex(replicaName, primaryName, client)
+	err = detachReplicaIndex(replicaName, primaryName, client)
 	if err != nil {
 		return fmt.Errorf("can't unlink replica index %s from primary index %s: %w", replicaName, primaryName, err)
 	}
