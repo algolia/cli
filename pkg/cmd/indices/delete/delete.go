@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -105,7 +106,12 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	for _, index := range indices {
 		if _, err := index.Delete(); err != nil {
-			return fmt.Errorf("failed to delete index %q: %w", index.GetName(), err)
+			opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Deleting replica index ", index.GetName()))
+			err := deleteReplicaIndex(client, index)
+			opts.IO.StopProgressIndicator()
+			if err != nil {
+				return fmt.Errorf("failed to delete index %q: %w", index.GetName(), err)
+			}
 		}
 	}
 
@@ -115,4 +121,82 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	return nil
+}
+
+// Delete a replica index.
+func deleteReplicaIndex(client *search.Client, replicaIndex *search.Index) error {
+	replicaName := replicaIndex.GetName()
+	primaryName, err := findPrimaryIndex(replicaIndex)
+	if err != nil {
+		return fmt.Errorf("can't find primary index for %q: %w", replicaName, err)
+	}
+
+	err = detachReplicaIndex(replicaName, primaryName, client)
+	if err != nil {
+		return fmt.Errorf("can't unlink replica index %s from primary index %s: %w", replicaName, primaryName, err)
+	}
+
+	_, err = replicaIndex.Delete()
+	if err != nil {
+		return fmt.Errorf("can't delete replica index %q: %w", replicaName, err)
+	}
+
+	return nil
+}
+
+// Find the primary index of a replica index
+func findPrimaryIndex(replicaIndex *search.Index) (string, error) {
+	replicaName := replicaIndex.GetName()
+	settings, err := replicaIndex.GetSettings()
+
+	if err != nil {
+		return "", fmt.Errorf("can't get settings of replica index %q: %w", replicaName, err)
+	}
+
+	primary := settings.Primary
+	if primary == nil {
+		return "", fmt.Errorf("index %s doesn't have a primary", replicaName)
+	}
+
+	return primary.Get(), nil
+}
+
+// Remove replica from `replicas` settings of the primary index
+func detachReplicaIndex(replicaName string, primaryName string, client *search.Client) error {
+	primaryIndex := client.InitIndex(primaryName)
+	settings, err := primaryIndex.GetSettings()
+
+	if err != nil {
+		return fmt.Errorf("can't get settings of primary index %q: %w", primaryName, err)
+	}
+
+	replicas := settings.Replicas.Get()
+	indexOfReplica := findIndex(replicas, replicaName)
+
+	// Delete the replica at position `indexOfReplica` from the array
+	replicas = append(replicas[:indexOfReplica], replicas[indexOfReplica+1:]...)
+
+	res, err := primaryIndex.SetSettings(
+		search.Settings{
+			Replicas: opt.Replicas(replicas...),
+		},
+	)
+
+	if err != nil {
+		return fmt.Errorf("can't update settings of index %q: %w", primaryName, err)
+	}
+
+	// Wait until the settings are updated, else a subsequent `delete` will fail.
+	_ = res.Wait()
+	return nil
+}
+
+// Find the index of the string `target` in the array `arr`
+func findIndex(arr []string, target string) int {
+	for i, v := range arr {
+		if v == target {
+			return i
+		}
+	}
+	return -1
 }
