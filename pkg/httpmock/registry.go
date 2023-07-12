@@ -46,11 +46,9 @@ func (r *Registry) Request(req *http.Request) (*http.Response, error) {
 		if s.matched || !s.Matcher(req) {
 			continue
 		}
-		if stub != nil {
-			r.mu.Unlock()
-			return nil, fmt.Errorf("more than 1 stub matched %v", req)
-		}
+
 		stub = s
+		break
 	}
 	if stub != nil {
 		stub.matched = true
