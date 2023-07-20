@@ -91,8 +91,14 @@ func GenYamlTree(cmd *cobra.Command, dir string) error {
 		}
 		command := newCommand(c)
 		if c.HasAvailableSubCommands() {
-			for _, sub := range c.Commands() {
-				command.SubCommands = append(command.SubCommands, newCommand(sub))
+			for _, s := range c.Commands() {
+				sub := newCommand(s)
+				if s.HasAvailableSubCommands() {
+					for _, sus := range s.Commands() {
+						sub.SubCommands = append(sub.SubCommands, newCommand(sus))
+					}
+				}
+				command.SubCommands = append(command.SubCommands, sub)
 			}
 		}
 		commands = append(commands, command)
