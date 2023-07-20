@@ -21,8 +21,9 @@ type DeleteOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Indices   []string
-	DoConfirm bool
+	Indices         []string
+	DoConfirm       bool
+	IncludeReplicas bool
 }
 
 // NewDeleteCmd creates and returns a delete command for indices
@@ -47,6 +48,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Example: heredoc.Doc(`
 			# Delete the index named "TEST_PRODUCTS_1"
 			$ algolia indices delete TEST_PRODUCTS_1
+
+      # Delete the index named "TEST_PRODUCTS_1" and its replicas
+      $ algolia indices delete TEST_PRODUCTS_1 --includeReplicas
 
 			# Delete the index named "TEST_PRODUCTS_1", skipping the confirmation prompt
 			$ algolia indices delete TEST_PRODUCTS_1 -y
@@ -73,6 +77,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.IncludeReplicas, "includeReplicas", "", false, "delete replica indices too")
 
 	return cmd
 }
@@ -85,7 +90,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to delete the indices %q?", strings.Join(opts.Indices, ", ")), &confirmed)
+		msg := "Are you sure you want to delete the indices %q?"
+		if opts.IncludeReplicas {
+			msg = "Are you sure you want to delete the indices %q including their replicas?"
+		}
+		err := prompt.Confirm(fmt.Sprintf(msg, strings.Join(opts.Indices, ", ")), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -102,10 +111,43 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			return fmt.Errorf("index %q does not exist", indexName)
 		}
 		indices = append(indices, index)
+
+		if opts.IncludeReplicas {
+			settings, err := index.GetSettings()
+
+			if err != nil {
+				return fmt.Errorf("can't get settings of index %q: %w", indexName, err)
+			}
+
+			replicas := settings.Replicas
+			for _, replicaName := range replicas.Get() {
+				replica := client.InitIndex(replicaName)
+				indices = append(indices, replica)
+			}
+		}
 	}
 
 	for _, index := range indices {
-		if _, err := index.Delete(); err != nil {
+		var mustWait bool
+
+		if opts.IncludeReplicas {
+			settings, err := index.GetSettings()
+			if err != nil {
+				return fmt.Errorf("failed to get settings of index %q: %w", index.GetName(), err)
+			}
+			if len(settings.Replicas.Get()) > 0 {
+				mustWait = true
+			}
+		}
+
+		res, err := index.Delete()
+
+		// Otherwise, the replica indices might not be 'fully detached' yet.
+		if mustWait {
+			res.Wait()
+		}
+
+		if err != nil {
 			opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Deleting replica index ", index.GetName()))
 			err := deleteReplicaIndex(client, index)
 			opts.IO.StopProgressIndicator()
