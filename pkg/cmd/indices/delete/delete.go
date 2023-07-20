@@ -144,7 +144,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 		// Otherwise, the replica indices might not be 'fully detached' yet.
 		if mustWait {
-			res.Wait()
+			_ = res.Wait()
 		}
 
 		if err != nil {
