@@ -21,7 +21,6 @@ func TestNewDeleteCmd(t *testing.T) {
 		name      string
 		tty       bool
 		cli       string
-		isReplica bool
 		wantsErr  bool
 		wantsOpts DeleteOptions
 	}{
@@ -97,12 +96,13 @@ func TestNewDeleteCmd(t *testing.T) {
 
 func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
-		name    string
-		cli     string
-		indices []string
-		replica bool
-		isTTY   bool
-		wantOut string
+		name        string
+		cli         string
+		indices     []string
+		isReplica   bool
+		hasReplicas bool
+		isTTY       bool
+		wantOut     string
 	}{
 		{
 			name:    "no TTY",
@@ -133,12 +133,20 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "✓ Deleted indices foo, bar\n",
 		},
 		{
-			name:    "TTY, replica indice",
-			cli:     "foo --confirm",
-			indices: []string{"foo"},
-			replica: true,
-			isTTY:   true,
-			wantOut: "✓ Deleted indices foo\n",
+			name:      "TTY, replica indices",
+			cli:       "foo --confirm",
+			indices:   []string{"foo"},
+			isReplica: true,
+			isTTY:     true,
+			wantOut:   "✓ Deleted indices foo\n",
+		},
+		{
+			name:        "TTY, has replica indices",
+			cli:         "foo --confirm --includeReplicas",
+			indices:     []string{"foo"},
+			hasReplicas: true,
+			isTTY:       true,
+			wantOut:     "✓ Deleted indices foo\n",
 		},
 	}
 
@@ -148,7 +156,13 @@ func Test_runDeleteCmd(t *testing.T) {
 			for _, index := range tt.indices {
 				// First settings call with `Exists()`
 				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{}))
-				if tt.replica {
+				if tt.hasReplicas {
+					// Settings call to detect if there are replicas
+					r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{
+						Replicas: opt.Replicas("bar"),
+					}))
+				}
+				if tt.isReplica {
 					// We want the first `Delete()` call to fail
 					r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", index)), httpmock.ErrorResponse())
 					// Second settings call to fetch the primary index name
