@@ -24,8 +24,8 @@ type ClearOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Dictionnaries []search.DictionaryName
-	All           bool
+	Dictionaries []search.DictionaryName
+	All          bool
 
 	DoConfirm bool
 }
@@ -34,7 +34,7 @@ type DictionaryEntry struct {
 	Type shared.EntryType
 }
 
-// NewClearCmd creates and returns a clear command for dictionnaries' entries.
+// NewClearCmd creates and returns a clear command for dictionaries' entries.
 func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Command {
 	var confirm bool
 	cs := f.IOStreams.ColorScheme()
@@ -45,7 +45,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
-		Use:       "clear {<dictionnary>... | --all} [--confirm]",
+		Use:       "clear {<dictionary>... | --all} [--confirm]",
 		Args:      cobra.OnlyValidArgs,
 		ValidArgs: shared.DictionaryNames(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -53,29 +53,29 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		},
 		Short: "Clear dictionary entries",
 		Long: heredoc.Docf(`
-			This command deletes all entries from the specified %s dictionnaries.
+			This command deletes all entries from the specified %s dictionaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
-			# Delete all entries from the "stopword" dictionnary
+			# Delete all entries from the "stopword" dictionary
 			$ algolia dictionary entries clear stopword
 
-			# Delete all entries from the "stopword" and "plural" dictionnaries
+			# Delete all entries from the "stopword" and "plural" dictionaries
 			$ algolia dictionary entries clear stopword plural
 
-			# Delete all entries from all dictionnaries
+			# Delete all entries from all dictionaries
 			$ algolia dictionary entries clear --all
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.All && len(args) > 0 || !opts.All && len(args) == 0 {
-				return cmdutil.FlagErrorf("Either specify dictionnaries' names or use --all to clear all dictionnaries")
+				return cmdutil.FlagErrorf("Either specify dictionaries' names or use --all to clear all dictionaries")
 			}
 
 			if opts.All {
-				opts.Dictionnaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
+				opts.Dictionaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
 			} else {
-				opts.Dictionnaries = make([]search.DictionaryName, len(args))
-				for i, dictionnary := range args {
-					opts.Dictionnaries[i] = search.DictionaryName(dictionnary)
+				opts.Dictionaries = make([]search.DictionaryName, len(args))
+				for i, dictionary := range args {
+					opts.Dictionaries[i] = search.DictionaryName(dictionary)
 				}
 			}
 
@@ -95,7 +95,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "clear all dictionnaries")
+	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "clear all dictionaries")
 
 	return cmd
 }
@@ -108,16 +108,16 @@ func runClearCmd(opts *ClearOptions) error {
 		return err
 	}
 
-	dictionaries := opts.Dictionnaries
+	dictionaries := opts.Dictionaries
 	dictionariesNames := make([]string, len(dictionaries))
 	dictionariesCustomEntriesNb := make([]int, len(dictionaries))
-	for i, dictionnary := range dictionaries {
-		nbCustomEntries, err := customEntriesNb(client, dictionnary)
+	for i, dictionary := range dictionaries {
+		nbCustomEntries, err := customEntriesNb(client, dictionary)
 		if err != nil {
 			return err
 		}
 		dictionariesCustomEntriesNb[i] = nbCustomEntries
-		dictionariesNames[i] = string(dictionnary)
+		dictionariesNames[i] = string(dictionary)
 	}
 
 	totalEntries := 0
@@ -157,8 +157,8 @@ func runClearCmd(opts *ClearOptions) error {
 	return nil
 }
 
-func customEntriesNb(client *search.Client, dictionnary search.DictionaryName) (int, error) {
-	res, err := client.SearchDictionaryEntries(dictionnary, "", opt.HitsPerPage(1000))
+func customEntriesNb(client *search.Client, dictionary search.DictionaryName) (int, error) {
+	res, err := client.SearchDictionaryEntries(dictionary, "", opt.HitsPerPage(1000))
 	if err != nil {
 		return 0, err
 	}
