@@ -54,7 +54,7 @@ func Test_runBrowseCmd(t *testing.T) {
 			wantOut: "{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n{\"Type\":\"custom\",\"ObjectID\":\"\",\"Language\":\"\"}\n",
 		},
 		{
-			name: "one dictionnary with default stopwords",
+			name: "one dictionary with default stopwords",
 			cli:  "--all --include-defaults",
 			dictionaries: []search.DictionaryName{
 				search.Stopwords,
