@@ -30,7 +30,7 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: true,
 			wantsOpts: ClearOptions{
 				DoConfirm: true,
-				Dictionnaries: []search.DictionaryName{
+				Dictionaries: []search.DictionaryName{
 					search.Plurals,
 				},
 			},
@@ -42,7 +42,7 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: ClearOptions{
 				DoConfirm: false,
-				Dictionnaries: []search.DictionaryName{
+				Dictionaries: []search.DictionaryName{
 					search.Plurals,
 				},
 			},
@@ -54,7 +54,7 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: ClearOptions{
 				DoConfirm: true,
-				Dictionnaries: []search.DictionaryName{
+				Dictionaries: []search.DictionaryName{
 					search.Stopwords,
 					search.Plurals,
 					search.Compounds,
@@ -68,7 +68,7 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: true,
 			wantsOpts: ClearOptions{
 				DoConfirm: false,
-				Dictionnaries: []search.DictionaryName{
+				Dictionaries: []search.DictionaryName{
 					search.Plurals,
 				},
 			},
@@ -116,7 +116,7 @@ func TestNewClearCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Dictionnaries, opts.Dictionnaries)
+			assert.Equal(t, tt.wantsOpts.Dictionaries, opts.Dictionaries)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
-// NewDictionaryCmd returns a new command for dictionnaries.
+// NewDictionaryCmd returns a new command for dictionaries.
 func NewDictionaryCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "dictionary",

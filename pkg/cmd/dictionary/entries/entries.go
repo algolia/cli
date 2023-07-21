@@ -10,7 +10,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
-// NewEntriesCmd returns a new command for dictionnaries' entries.
+// NewEntriesCmd returns a new command for dictionaries' entries.
 func NewEntriesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "entries",

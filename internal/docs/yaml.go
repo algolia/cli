@@ -91,16 +91,22 @@ func GenYamlTree(cmd *cobra.Command, dir string) error {
 		}
 		command := newCommand(c)
 		if c.HasAvailableSubCommands() {
-			for _, sub := range c.Commands() {
-				command.SubCommands = append(command.SubCommands, newCommand(sub))
+			for _, s := range c.Commands() {
+				sub := newCommand(s)
+				if s.HasAvailableSubCommands() {
+					for _, sus := range s.Commands() {
+						sub.SubCommands = append(sub.SubCommands, newCommand(sus))
+					}
+				}
+				command.SubCommands = append(command.SubCommands, sub)
 			}
 		}
 		commands = append(commands, command)
 	}
 
-	for i, c := range commands {
+	for _, c := range commands {
 		command_path := strings.ReplaceAll(c.Name, " ", "_")
-		filename := filepath.Join(dir, fmt.Sprintf("0%d-%s.yml", i+1, command_path))
+		filename := filepath.Join(dir, fmt.Sprintf("%s.yml", command_path))
 		f, err := os.Create(filename)
 		if err != nil {
 			return err

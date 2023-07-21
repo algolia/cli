@@ -8,7 +8,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
-// NewSettingsCmd returns a new command for dictionnaries' entries.
+// NewSettingsCmd returns a new command for dictionaries' entries.
 func NewSettingsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
