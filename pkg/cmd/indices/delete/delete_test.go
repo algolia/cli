@@ -122,8 +122,8 @@ func Test_runDeleteCmd(t *testing.T) {
 			name:    "no TTY, multiple indices",
 			cli:     "foo bar --confirm",
 			indices: []string{"foo", "bar"},
-			isTTY:   true,
-			wantOut: "✓ Deleted indices foo, bar\n",
+			isTTY:   false,
+			wantOut: "",
 		},
 		{
 			name:    "TTY, multiple indices",
