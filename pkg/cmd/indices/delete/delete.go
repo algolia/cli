@@ -77,7 +77,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVarP(&opts.IncludeReplicas, "includeReplicas", "", false, "delete replica indices too")
+	cmd.Flags().BoolVarP(&opts.IncludeReplicas, "includeReplicas", "r", false, "delete replica indices too")
 
 	return cmd
 }
