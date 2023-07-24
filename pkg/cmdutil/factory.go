@@ -7,14 +7,16 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
+	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
 type Factory struct {
-	IOStreams    *iostreams.IOStreams
-	Config       config.IConfig
-	SearchClient func() (*search.Client, error)
+	IOStreams     *iostreams.IOStreams
+	Config        config.IConfig
+	SearchClient  func() (*search.Client, error)
+	CrawlerClient func() (*crawler.Client, error)
 
 	ExecutableName string
 }
