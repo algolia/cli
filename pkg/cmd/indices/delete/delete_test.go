@@ -157,10 +157,18 @@ func Test_runDeleteCmd(t *testing.T) {
 				// First settings call with `Exists()`
 				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{}))
 				if tt.hasReplicas {
-					// Settings call to detect if there are replicas
+					// Settings calls for the primary index and its replicas
 					r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{
 						Replicas: opt.Replicas("bar"),
 					}))
+					r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{
+						Replicas: opt.Replicas("bar"),
+					}))
+					r.Register(httpmock.REST("GET", "1/indexes/bar/settings"), httpmock.JSONResponse(search.Settings{
+						Primary: opt.Primary("foo"),
+					}))
+					// Additional DELETE calls for the replicas
+					r.Register(httpmock.REST("DELETE", "1/indexes/bar"), httpmock.JSONResponse(search.Settings{}))
 				}
 				if tt.isReplica {
 					// We want the first `Delete()` call to fail
