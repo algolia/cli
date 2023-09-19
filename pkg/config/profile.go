@@ -102,6 +102,46 @@ func (p *Profile) GetSearchHosts() []string {
 	return nil
 }
 
+// GetCrawlerUserID returns the Crawler user ID.
+func (p *Profile) GetCrawlerUserID() (string, error) {
+	if os.Getenv("ALGOLIA_CRAWLER_USER_ID") != "" {
+		return os.Getenv("ALGOLIA_CRAWLER_USER_ID"), nil
+	}
+
+	if p.Name == "" {
+		p.LoadDefault()
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		userID := viper.GetString(p.GetFieldName("crawler_user_id"))
+		if userID != "" {
+			return userID, nil
+		}
+	}
+
+	return "", ErrCrawlerUserIDNotConfigured
+}
+
+// GetCrawlerAPIKey returns the Crawler API key.
+func (p *Profile) GetCrawlerAPIKey() (string, error) {
+	if os.Getenv("ALGOLIA_CRAWLER_API_KEY") != "" {
+		return os.Getenv("ALGOLIA_CRAWLER_API_KEY"), nil
+	}
+
+	if p.Name == "" {
+		p.LoadDefault()
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		apiKey := viper.GetString(p.GetFieldName("crawler_api_key"))
+		if apiKey != "" {
+			return apiKey, nil
+		}
+	}
+
+	return "", ErrCrawlerAPIKeyNotConfigured
+}
+
 // Add add a profile to the configuration
 func (p *Profile) Add() error {
 	runtimeViper := viper.GetViper()
