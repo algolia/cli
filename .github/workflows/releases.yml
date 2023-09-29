@@ -51,4 +51,6 @@ jobs:
           GIT_COMMITTER_EMAIL: noreply@algolia.com
           GIT_AUTHOR_EMAIL: noreply@algolia.com
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-        run: make docs-pr
+        run: |
+          make docs-pr
+          make VARIATON=new docs-pr

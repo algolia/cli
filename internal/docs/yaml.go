@@ -18,6 +18,7 @@ type Command struct {
 	Usage       string
 	Aliases     []string
 	Examples    string
+	Slug        string
 
 	Flags map[string][]Flag
 

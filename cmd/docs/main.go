@@ -25,6 +25,11 @@ func run(args []string) error {
 	flags := pflag.NewFlagSet("", pflag.ContinueOnError)
 	dir := flags.StringP("app_data-path", "", "", "Path directory where you want generate documentation data files")
 	help := flags.BoolP("help", "h", false, "Help about any command")
+	target := flags.StringP("target", "T", "old", "target old or new documentation website")
+
+	if *target != "old" && *target != "new" {
+		return fmt.Errorf("error: --destination can only be 'old' or 'new' ('old' by default)")
+	}
 
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -50,8 +55,14 @@ func run(args []string) error {
 		return err
 	}
 
-	if err := docs.GenYamlTree(rootCmd, *dir); err != nil {
-		return err
+	if *target == "old" {
+		if err := docs.GenYamlTree(rootCmd, *dir); err != nil {
+			return err
+		}
+	} else {
+		if err := docs.GenMdxFile(rootCmd, *dir); err != nil {
+			return err
+		}
 	}
 
 	return nil
