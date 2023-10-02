@@ -199,6 +199,9 @@ func getFlag(param *openapi3.Schema) *SpecFlag {
 
 // getDescription returns the description for the given parameter.
 func getDescription(param *openapi3.Schema) string {
+	// Escape backticks
+	param.Description = strings.ReplaceAll(param.Description, "`", "`+\"`\"+`")
+
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
 		for i, e := range param.Enum {
