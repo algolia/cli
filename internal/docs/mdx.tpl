@@ -16,8 +16,16 @@ slug: tools/cli/commands/{{ .Slug }}
 
 `{{ $subCommand.Usage }}`
 
-{{ if $subCommand.Examples }}### Examples{{ end }}
-{{ $subCommand.Examples }}
+{{ $examples := getExamples $subCommand }}
+{{ if $examples }}
+### Examples
+{{ range $example := $examples }}
+{{ $example.Desc }}
+
+```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
+{{ $example.Code }}
+```
+{{ end }}{{ end }}
 {{ range $flagKey, $flagSlice := $subCommand.Flags }}
 {{ if $flagSlice }}### Flags {{ end }}
 {{ range $flag := $flagSlice }}
@@ -27,13 +35,19 @@ slug: tools/cli/commands/{{ .Slug }}
 {{ end }}
 {{ else }}
 ## {{ .Name }}
+
 ### Usage
 
 `{{ .Usage }}`
+{{ $examples := getExamples . }}
+{{ if $examples }}### Examples
+{{ range $example := $examples }}
+{{ $example.Desc }}
 
-{{ if .Examples }}
-### Examples
-{{ .Examples }}
+```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
+{{ $example.Code }}
+```
+{{ end }}
 {{ end }}
 {{ range $flagKey, $flagSlice := .Flags }}
 ### {{ $flagKey }}

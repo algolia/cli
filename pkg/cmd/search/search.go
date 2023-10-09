@@ -41,6 +41,9 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
+		Annotations: map[string]string{
+			"runInWebCLI": "true",
+		},
 		Example: heredoc.Doc(`
 			# Search for objects in the "BOOKS" index matching the query "tolkien"
 			$ algolia search BOOKS --query "tolkien"

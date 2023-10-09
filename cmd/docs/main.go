@@ -60,7 +60,7 @@ func run(args []string) error {
 			return err
 		}
 	} else {
-		if err := docs.GenMdxFile(rootCmd, *dir); err != nil {
+		if err := docs.GenMdxTree(rootCmd, *dir); err != nil {
 			return err
 		}
 	}

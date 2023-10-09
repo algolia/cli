@@ -43,6 +43,9 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runListCmd(opts)
 		},
+		Annotations: map[string]string{
+			"runInWebCLI": "true",
+		},
 	}
 
 	opts.PrintFlags.AddFlags(cmd)
