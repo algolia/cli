@@ -42,11 +42,11 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Short: "Create a new API key",
 		Long:  `Create a new API key with the provided parameters.`,
 		Example: heredoc.Doc(`
-			# Create a new API key targeting the index "foo", with the "search" and "browse" ACL and a description
-			$ algolia apikeys create --indices foo --acl search,browse --description "Search & Browse API Key"
+			# Create a new API key targeting the index "MOVIES", with the "search" and "browse" ACL and a description
+			$ algolia apikeys create --indices MOVIES --acl search,browse --description "Search & Browse API Key"
 
-			# Create a new API key targeting the indices "foo" and "bar", with the "http://foo.com" referer, with a validity of 1 hour and a description
-			$ algolia apikeys create -i foo,bar --acl search -r "http://foo.com" --u 1h -d "Search-only API Key for foo & bar"
+			# Create a new API key targeting the indices "MOVIES" and "SERIES", with the "https://netflix.com" referer, with a validity of 1 hour and a description
+			$ algolia apikeys create -i MOVIES,SERIES --acl search -r "https://netflix.com" --u 1h -d "Search-only API Key for MOVIES & SERIES"
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {

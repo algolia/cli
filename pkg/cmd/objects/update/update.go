@@ -56,17 +56,17 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index
-			$ algolia objects update TEST_PRODUCTS -F objects.ndjson
+			# Update objects from the "objects.ndjson" file to the "MOVIES" index
+			$ algolia objects update MOVIES -F objects.ndjson
 
-			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index and create the objects if they don't exist
-			$ algolia objects update TEST_PRODUCTS -F objects.ndjson --create-if-not-exists
+			# Update objects from the "objects.ndjson" file to the "MOVIES" index and create the objects if they don't exist
+			$ algolia objects update MOVIES -F objects.ndjson --create-if-not-exists
 
-			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index and wait for the operation to complete
-			$ algolia objects update TEST_PRODUCTS -F objects.ndjson --wait
+			# Update objects from the "objects.ndjson" file to the "MOVIES" index and wait for the operation to complete
+			$ algolia objects update MOVIES -F objects.ndjson --wait
 
-			# Update objects from the "objects.ndjson" file to the "TEST_PRODUCTS" index and continue updating objects even if some objects are invalid
-			$ algolia objects update TEST_PRODUCTS -F objects.ndjson --continue-on-errors
+			# Update objects from the "objects.ndjson" file to the "MOVIES" index and continue updating objects even if some objects are invalid
+			$ algolia objects update MOVIES -F objects.ndjson --continue-on-errors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

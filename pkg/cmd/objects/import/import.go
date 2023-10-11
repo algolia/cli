@@ -48,14 +48,14 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import objects from the "data.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia objects import TEST_PRODUCTS_1 -F data.ndjson
+			# Import objects from the "data.ndjson" file to the "MOVIES" index
+			$ algolia objects import MOVIES -F data.ndjson
 
-			# Import objects from the standard input to the "TEST_PRODUCTS_1" index
-			$ cat data.ndjson | algolia objects import TEST_PRODUCTS_1 -F -
+			# Import objects from the standard input to the "MOVIES" index
+			$ cat data.ndjson | algolia objects import MOVIES -F -
 
-			# Browse the objects in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
-			$ algolia objects browse TEST_PRODUCTS_1 | algolia objects import TEST_PRODUCTS_2 -F -
+			# Browse the objects in the "SERIES" index and import them to the "MOVIES" index
+			$ algolia objects browse SERIES | algolia objects import MOVIES -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

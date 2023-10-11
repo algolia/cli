@@ -46,17 +46,17 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			This command permanently removes one or multiple indices from your application, and removes their metadata and configured settings.
 		`),
 		Example: heredoc.Doc(`
-			# Delete the index named "TEST_PRODUCTS_1"
-			$ algolia indices delete TEST_PRODUCTS_1
+			# Delete the index named "MOVIES"
+			$ algolia indices delete MOVIES
 
-      # Delete the index named "TEST_PRODUCTS_1" and its replicas
-      $ algolia indices delete TEST_PRODUCTS_1 --includeReplicas
+      # Delete the index named "MOVIES" and its replicas
+      $ algolia indices delete MOVIES --includeReplicas
 
-			# Delete the index named "TEST_PRODUCTS_1", skipping the confirmation prompt
-			$ algolia indices delete TEST_PRODUCTS_1 -y
+			# Delete the index named "MOVIES", skipping the confirmation prompt
+			$ algolia indices delete MOVIES -y
 
 			# Delete multiple indices
-			$ algolia indices delete TEST_PRODUCTS_1 TEST_PRODUCTS_2 TEST_PRODUCTS_3
+			$ algolia indices delete MOVIES SERIES ANIMES
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indices = args

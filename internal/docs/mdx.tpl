@@ -1,9 +1,9 @@
 ---
 navigation: "cli"
 title: |-
-{{ .Name }}
+  {{ .Name }}
 description: |-
-{{ .Description }}
+  {{ .Description }}
 slug: tools/cli/commands/{{ .Slug }}
 ---
 {{ if .SubCommands }}{{ range $subCommand := .SubCommands }}{{ if $subCommand.SubCommands }}{{ range $susCommand := $subCommand.SubCommands}}
@@ -19,8 +19,7 @@ slug: tools/cli/commands/{{ .Slug }}
 ### Examples
 {{ range $example := $examples }}{{ $example.Desc }}
 
-```sh 
-{{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
+```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
 {{ $example.Code }}
 ```
 {{ end }}{{ end }}{{ range $flagKey, $flagSlice := $susCommand.Flags }}{{ if $flagSlice }}
@@ -43,8 +42,7 @@ slug: tools/cli/commands/{{ .Slug }}
 {{ range $example := $examples }}
 {{ $example.Desc }}
 
-```sh 
-{{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
+```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
 {{ $example.Code }}
 ```
 {{ end }}
@@ -66,8 +64,7 @@ slug: tools/cli/commands/{{ .Slug }}
 {{ range $example := $examples }}
 {{ $example.Desc }}
 
-```sh 
-{{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
+```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
 {{ $example.Code }}
 ```
 {{ end }}{{ end }}

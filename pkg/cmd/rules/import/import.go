@@ -52,17 +52,17 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia rules import TEST_PRODUCTS_1 -F rules.ndjson
+			# Import rules from the "rules.ndjson" file to the "MOVIES" index
+			$ algolia rules import MOVIES -F rules.ndjson
 
-			# Import rules from the standard input to the "TEST_PRODUCTS_1" index
-			$ cat rules.ndjson | algolia rules import TEST_PRODUCTS_1 -F -
+			# Import rules from the standard input to the "MOVIES" index
+			$ cat rules.ndjson | algolia rules import MOVIES -F -
 
-			# Browse the rules in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
-			$ algolia rules browse TEST_PRODUCTS_2 | algolia rules import TEST_PRODUCTS_2 -F -
+			# Browse the rules in the "SERIES" index and import them to the "MOVIES" index
+			$ algolia rules browse SERIES | algolia rules import MOVIES -F -
 
-			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index and don't forward them to the index replicas
-			$ algolia import TEST_PRODUCTS_1 -F rules.ndjson -f=false
+			# Import rules from the "rules.ndjson" file to the "MOVIES" index and don't forward them to the index replicas
+			$ algolia import MOVIES -F rules.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
