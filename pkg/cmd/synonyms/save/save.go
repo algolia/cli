@@ -49,8 +49,8 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			If the synonym doesn't exist yet, a new one is created.
 		`),
 		Example: heredoc.Doc(`
-			# Save one standard synonym with ID "1" and "foo" and "bar" synonyms to the "TEST_PRODUCTS_1" index
-			$ algolia synonyms save TEST_PRODUCTS_1 --id 1 --synonyms foo,bar
+			# Save one standard synonym with ID "1" and "foo" and "bar" synonyms to the "MOVIES" index
+			$ algolia synonyms save MOVIES --id 1 --synonyms foo,bar
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

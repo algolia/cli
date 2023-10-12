@@ -48,20 +48,20 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 			The file must contains one single JSON synonym per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson
+			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index
+			$ algolia synonyms import MOVIES -F synonyms.ndjson
 
-			# Import synonyms from the standard input to the "TEST_PRODUCTS_1" index
-			$ cat synonyms.ndjson | algolia synonyms import TEST_PRODUCTS_1 -F -
+			# Import synonyms from the standard input to the "MOVIES" index
+			$ cat synonyms.ndjson | algolia synonyms import MOVIES -F -
 
-			# Browse the synonyms in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
-			$ algolia synonyms browse TEST_PRODUCTS_1 | algolia synonyms import TEST_PRODUCTS_2 -F -
+			# Browse the synonyms in the "SERIES" index and import them to the "MOVIES" index
+			$ algolia synonyms browse SERIES | algolia synonyms import MOVIES -F -
 
-			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index and replace existing synonyms
-			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson -r
+			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index and replace existing synonyms
+			$ algolia synonyms import MOVIES -F synonyms.ndjson -r
 
-			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index and don't forward the synonyms to the index replicas
-			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson -f=false
+			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index and don't forward the synonyms to the index replicas
+			$ algolia synonyms import MOVIES -F synonyms.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

@@ -60,10 +60,10 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Example: heredoc.Doc(`
-			$ algolia search MY_INDEX --query "foo"
-			$ algolia objects browse MY_INDEX
+			$ algolia search MOVIES --query "toy story"
+			$ algolia objects browse MOVIES
 			$ algolia apikeys create --acl search
-			$ algolia rules import MY_INDEX -f rules.json
+			$ algolia rules import MOVIES -f rules.json
 		`),
 	}
 

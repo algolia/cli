@@ -43,8 +43,8 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 			Clear the objects of an index without affecting its settings.
 		`),
 		Example: heredoc.Doc(`
-			# Clear the index named "TEST_PRODUCTS_1"
-			$ algolia index clear TEST_PRODUCTS_1
+			# Clear the index named "MOVIES"
+			$ algolia index clear MOVIES
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

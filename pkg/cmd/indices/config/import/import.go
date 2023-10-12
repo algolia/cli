@@ -35,17 +35,17 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			Import an index configuration (settings, synonyms, rules) from a file.
 		`),
 		Example: heredoc.Doc(`
-			# Import the config from a .json file into 'PROD_TEST_PRODUCTS' index
-			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json
+			# Import the config from a .json file into 'PROD_MOVIES' index
+			$ algolia index config import PROD_MOVIES -F export-STAGING_MOVIES-APP_ID-1666792448.json
 
-			# Import only the synonyms and settings from a .json file to the 'PROD_TEST_PRODUCTS' index
-			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope synonyms, settings
+			# Import only the synonyms and settings from a .json file to the 'PROD_MOVIES' index
+			$ algolia index config import PROD_MOVIES -F export-STAGING_MOVIES-APP_ID-1666792448.json --scope synonyms, settings
 
-			# Import only the synonyms from a .json file to the 'PROD_TEST_PRODUCTS' index and clear all existing ones
-			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope synonyms --clear-existing-synonyms
+			# Import only the synonyms from a .json file to the 'PROD_MOVIES' index and clear all existing ones
+			$ algolia index config import PROD_MOVIES -F export-STAGING_MOVIES-APP_ID-1666792448.json --scope synonyms --clear-existing-synonyms
 
-			# Import only the rules from a .json file to the 'PROD_TEST_PRODUCTS' index and clear all existing ones
-			$ algolia index config import PROD_TEST_PRODUCTS -F export-STAGING_TEST_PRODUCTS-APP_ID-1666792448.json --scope rules --clear-existing-rules
+			# Import only the rules from a .json file to the 'PROD_MOVIES' index and clear all existing ones
+			$ algolia index config import PROD_MOVIES -F export-STAGING_MOVIES-APP_ID-1666792448.json --scope rules --clear-existing-rules
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

@@ -43,14 +43,14 @@ func NewCrawlCmd(f *cmdutil.Factory, runF func(*CrawlOptions) error) *cobra.Comm
 			The generated records are pushed to the live index if there's no ongoing reindex, and to the temporary index otherwise.
 		`),
 		Example: heredoc.Doc(`
-			# Crawl the URLs "https://www.algolia.com" and "https://www.algolia.com/doc" for the crawler with the ID "my-crawler"
-			$ algolia crawler crawl my-crawler --urls https://www.algolia.com,https://www.algolia.com/doc
+			# Crawl the URLs "https://www.example.com" and "https://www.example2.com/" for the crawler with the ID "my-crawler"
+			$ algolia crawler crawl my-crawler --urls https://www.example.com,https://www.example2.com/
 
-			# Crawl the URLs "https://www.algolia.com" and "https://www.algolia.com/doc" for the crawler with the ID "my-crawler" and save them in the configuration
-			$ algolia crawler crawl my-crawler --urls https://www.algolia.com,https://www.algolia.com/doc --save
+			# Crawl the URLs "https://www.example.com" and "https://www.example2.com/" for the crawler with the ID "my-crawler" and save them in the configuration
+			$ algolia crawler crawl my-crawler --urls https://www.example.com,https://www.example2.com/ --save
 
-			# Crawl the URLs "https://www.algolia.com" and "https://www.algolia.com/doc" for the crawler with the ID "my-crawler" and don't save them in the configuration
-			$ algolia crawler crawl my-crawler --urls https://www.algolia.com,https://www.algolia.com/doc --save=false
+			# Crawl the URLs "https://www.example.com" and "https://www.example2.com/" for the crawler with the ID "my-crawler" and don't save them in the configuration
+			$ algolia crawler crawl my-crawler --urls https://www.example.com,https://www.example2.com/ --save=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ID = args[0]

@@ -36,9 +36,12 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "get <index>",
 		Args:  validators.ExactArgs(1),
 		Short: "Get the settings of the specified index.",
+		Annotations: map[string]string{
+			"runInWebCLI": "true",
+		},
 		Example: heredoc.Doc(`
 			# Store the settings of an index in a file
-			$ algolia settings get PRODUCTS > products_settings.json
+			$ algolia settings get MOVIES > movies_settings.json
 		`),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {

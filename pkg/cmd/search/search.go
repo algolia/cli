@@ -45,20 +45,20 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			"runInWebCLI": "true",
 		},
 		Example: heredoc.Doc(`
-			# Search for objects in the "BOOKS" index matching the query "tolkien"
-			$ algolia search BOOKS --query "tolkien"
+			# Search for objects in the "MOVIES" index matching the query "toy story"
+			$ algolia search MOVIES --query "toy story"
 
-			# Search for objects in the "BOOKS" index matching the query "tolkien" with filters
-			$ algolia search BOOKS --query "tolkien" --filters "'(category:Book OR category:Ebook) AND _tags:published'"
+			# Search for objects in the "MOVIES" index matching the query "toy story" with filters
+			$ algolia search MOVIES --query "toy story" --filters "'(genres:Animation OR genres:Family) AND original_language:en'"
 
-			# Search for objects in the "BOOKS" index matching the query "tolkien" while setting the number of hits per page and specifying the page to retrieve
-			$ algolia search BOOKS --query "tolkien" --hitsPerPage 2 --page 4
+			# Search for objects in the "MOVIES" index matching the query "toy story" while setting the number of hits per page and specifying the page to retrieve
+			$ algolia search MOVIES --query "toy story" --hitsPerPage 2 --page 4
 
-			# Search for objects in the "BOOKS" index matching the query "tolkien" and export the response to a .json file
-			$ algolia search BOOKS --query "tolkien" > books.json
+			# Search for objects in the "MOVIES" index matching the query "toy story" and export the response to a .json file
+			$ algolia search MOVIES --query "toy story" > movies.json
 
-			# Search for objects in the "BOOKS" index matching the query "tolkien" and only export the results to a .json file
-			$ algolia search BOOKS --query "tolkien" --output="jsonpath={$.Hits}" > books.json
+			# Search for objects in the "MOVIES" index matching the query "toy story" and only export the results to a .json file
+			$ algolia search MOVIES --query "toy story" --output="jsonpath={$.Hits}" > movies.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
