@@ -48,11 +48,11 @@ func NewTestCmd(f *cmdutil.Factory, runF func(*TestOptions) error) *cobra.Comman
 			You can also override parts of the configuration to try your changes before updating the configuration.
 		`),
 		Example: heredoc.Doc(`
-			# Test the URL "https://www.netflix.com" against the crawler with the ID "my-crawler"
-			$ algolia crawler test my-crawler --url https://www.netflix.com
+			# Test the URL "https://www.example.com" against the crawler with the ID "my-crawler"
+			$ algolia crawler test my-crawler --url https://www.example.com
 
-			# Test the URL "https://www.netflix.com" against the crawler with the ID "my-crawler" and override the configuration with the file "config.json"
-			$ algolia crawler test my-crawler --url https://www.netflix.com -F config.json
+			# Test the URL "https://www.example.com" against the crawler with the ID "my-crawler" and override the configuration with the file "config.json"
+			$ algolia crawler test my-crawler --url https://www.example.com -F config.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ID = args[0]

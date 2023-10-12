@@ -45,8 +45,8 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			# Create a new API key targeting the index "MOVIES", with the "search" and "browse" ACL and a description
 			$ algolia apikeys create --indices MOVIES --acl search,browse --description "Search & Browse API Key"
 
-			# Create a new API key targeting the indices "MOVIES" and "SERIES", with the "https://netflix.com" referer, with a validity of 1 hour and a description
-			$ algolia apikeys create -i MOVIES,SERIES --acl search -r "https://netflix.com" --u 1h -d "Search-only API Key for MOVIES & SERIES"
+			# Create a new API key targeting the indices "MOVIES" and "SERIES", with the "https://example.com" referer, with a validity of 1 hour and a description
+			$ algolia apikeys create -i MOVIES,SERIES --acl search -r "https://example.com" --u 1h -d "Search-only API Key for MOVIES & SERIES"
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {
@@ -60,19 +60,19 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringSliceVar(&opts.ACL, "acl", nil, heredoc.Docf(`
 		ACL of the API Key.
 
-		%[1]ssearch%[1]s: allowed to perform search operations.
-		%[1]sbrowse%[1]s: allowed to retrieve all index data with the browse endpoint.
-		%[1]saddObject%[1]s: allowed to add or update a records in the index.
-		%[1]sdeleteObject%[1]s: allowed to delete an existing record.
-		%[1]slistIndexes%[1]s: allowed to get a list of all existing indices.
-		%[1]sdeleteIndex%[1]s: allowed to delete an index.
-		%[1]ssettings%[1]s: allowed to read all index settings.
-		%[1]seditSettings%[1]s: allowed to update all index settings.
-		%[1]sanalytics%[1]s: allowed to retrieve data with the Analytics API.
-		%[1]srecommendation%[1]s: allowed to interact with the Recommendation API.
-		%[1]susage%[1]s: allowed to retrieve data with the Usage API.
-		%[1]slogs%[1]s: allowed to query the logs.
-		%[1]sseeUnretrievableAttributes%[1]s: allowed to retrieve unretrievableAttributes for all operations that return records.
+			%[1]ssearch%[1]s: allowed to perform search operations.
+			%[1]sbrowse%[1]s: allowed to retrieve all index data with the browse endpoint.
+			%[1]saddObject%[1]s: allowed to add or update a records in the index.
+			%[1]sdeleteObject%[1]s: allowed to delete an existing record.
+			%[1]slistIndexes%[1]s: allowed to get a list of all existing indices.
+			%[1]sdeleteIndex%[1]s: allowed to delete an index.
+			%[1]ssettings%[1]s: allowed to read all index settings.
+			%[1]seditSettings%[1]s: allowed to update all index settings.
+			%[1]sanalytics%[1]s: allowed to retrieve data with the Analytics API.
+			%[1]srecommendation%[1]s: allowed to interact with the Recommendation API.
+			%[1]susage%[1]s: allowed to retrieve data with the Usage API.
+			%[1]slogs%[1]s: allowed to query the logs.
+			%[1]sseeUnretrievableAttributes%[1]s: allowed to retrieve unretrievableAttributes for all operations that return records.
 	`, "`"))
 
 	cmd.Flags().StringSliceVarP(&opts.Indices, "indices", "i", nil, heredoc.Docf(`
