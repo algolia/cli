@@ -338,9 +338,7 @@ When the end of the index has been reached, `+"`"+`cursor`+"`"+` is absent from 
 _list_: language ISO codes for which ignoring plurals should be enabled. This list will override any values that you may have set in `+"`"+`queryLanguages`+"`"+`. _true_: enables the ignore plurals feature, where singulars and plurals are considered equivalent ("foot" = "feet"). The languages supported here are either [every language](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/supported-languages/) (this is the default) or those set by `+"`"+`queryLanguages`+"`"+`. _false_: turns off the ignore plurals feature, so that singulars and plurals aren't considered to be the same ("foot" will not find "feet").
 `))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
-	cmd.Flags().Float64Slice("insideBoundingBox", []float64{}, heredoc.Doc(`Search inside a [rectangular area](https://www.algolia.com/doc/guides/managing-results/refine-results/geolocation/#filtering-inside-rectangular-or-polygonal-areas) (in geographical coordinates).`))
 	cmd.Flags().SetAnnotation("insideBoundingBox", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Float64Slice("insidePolygon", []float64{}, heredoc.Doc(`Search inside a [polygon](https://www.algolia.com/doc/guides/managing-results/refine-results/geolocation/#filtering-inside-rectangular-or-polygonal-areas) (in geographical coordinates).`))
 	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
 	cmd.Flags().String("keepDiacriticsOnCharacters", "", heredoc.Doc(`Characters that the engine shouldn't automatically [normalize](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/normalization/).`))
 	cmd.Flags().SetAnnotation("keepDiacriticsOnCharacters", "Categories", []string{"Languages"})
@@ -460,9 +458,7 @@ func AddDeleteByParamsFlags(cmd *cobra.Command) {
 	cmd.Flags().String("filters", "", heredoc.Doc(`[Filter](https://www.algolia.com/doc/guides/managing-results/refine-results/filtering/) the query with numeric, facet, or tag filters.
 `))
 	cmd.Flags().SetAnnotation("filters", "Categories", []string{"Filtering"})
-	cmd.Flags().Float64Slice("insideBoundingBox", []float64{}, heredoc.Doc(`Search inside a [rectangular area](https://www.algolia.com/doc/guides/managing-results/refine-results/geolocation/#filtering-inside-rectangular-or-polygonal-areas) (in geographical coordinates).`))
 	cmd.Flags().SetAnnotation("insideBoundingBox", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Float64Slice("insidePolygon", []float64{}, heredoc.Doc(`Search inside a [polygon](https://www.algolia.com/doc/guides/managing-results/refine-results/geolocation/#filtering-inside-rectangular-or-polygonal-areas) (in geographical coordinates).`))
 	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
 	numericFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(numericFilters, "numericFilters", heredoc.Doc(`[Filter on numeric attributes](https://www.algolia.com/doc/api-reference/api-parameters/numericFilters/).
@@ -708,9 +704,7 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 _list_: language ISO codes for which ignoring plurals should be enabled. This list will override any values that you may have set in `+"`"+`queryLanguages`+"`"+`. _true_: enables the ignore plurals feature, where singulars and plurals are considered equivalent ("foot" = "feet"). The languages supported here are either [every language](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/supported-languages/) (this is the default) or those set by `+"`"+`queryLanguages`+"`"+`. _false_: turns off the ignore plurals feature, so that singulars and plurals aren't considered to be the same ("foot" will not find "feet").
 `))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
-	cmd.Flags().Float64Slice("insideBoundingBox", []float64{}, heredoc.Doc(`Search inside a [rectangular area](https://www.algolia.com/doc/guides/managing-results/refine-results/geolocation/#filtering-inside-rectangular-or-polygonal-areas) (in geographical coordinates).`))
 	cmd.Flags().SetAnnotation("insideBoundingBox", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Float64Slice("insidePolygon", []float64{}, heredoc.Doc(`Search inside a [polygon](https://www.algolia.com/doc/guides/managing-results/refine-results/geolocation/#filtering-inside-rectangular-or-polygonal-areas) (in geographical coordinates).`))
 	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
 	cmd.Flags().String("keepDiacriticsOnCharacters", "", heredoc.Doc(`Characters that the engine shouldn't automatically [normalize](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/normalization/).`))
 	cmd.Flags().SetAnnotation("keepDiacriticsOnCharacters", "Categories", []string{"Languages"})
