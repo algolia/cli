@@ -49,6 +49,11 @@ func newFlags(flagSet *pflag.FlagSet) []Flag {
 
 func newCommand(cmd *cobra.Command) Command {
 	categoryFlagSet := cmdutil.NewCategoryFlagSet(cmd.NonInheritedFlags())
+	// Make sure the command description ends with a period.
+	if !strings.HasSuffix(cmd.Short, ".") {
+		cmd.Short += "."
+	}
+
 	command := Command{
 		Name:        cmd.CommandPath(),
 		Description: cmd.Short,
