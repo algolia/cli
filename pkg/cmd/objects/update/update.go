@@ -46,13 +46,13 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-errors]",
+		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-error]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Update objects from a file to the specified index",
 		Long: heredoc.Doc(`
 			Update objects from a file to the specified index.
-			
+
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
@@ -66,7 +66,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 			$ algolia objects update MOVIES -F objects.ndjson --wait
 
 			# Update objects from the "objects.ndjson" file to the "MOVIES" index and continue updating objects even if some objects are invalid
-			$ algolia objects update MOVIES -F objects.ndjson --continue-on-errors
+			$ algolia objects update MOVIES -F objects.ndjson --continue-on-error
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
@@ -85,13 +85,17 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Read objects to update from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "Read objects to update from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new object with the objectID and the attributes defined in the object")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+	cmd.Flags().
+		BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new object with the objectID and the attributes defined in the object")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
 
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating objects even if some objects are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating objects even if some objects are invalid.")
 
 	return cmd
 }
@@ -124,7 +128,9 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		}
 
 		totalObjects++
-		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File))
+		opts.IO.UpdateProgressIndicatorLabel(
+			fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File),
+		)
 
 		var obj Object
 		if err := json.Unmarshal([]byte(line), &obj); err != nil {
@@ -172,7 +178,13 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	// Update the objects
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating %s objects on %s", cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index)))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Updating %s objects on %s",
+			cs.Bold(fmt.Sprint(len(objects))),
+			cs.Bold(opts.Index),
+		),
+	)
 	res, err := index.PartialUpdateObjects(objects, opt.CreateIfNotExists(opts.CreateIfNotExists))
 	if err != nil {
 		opts.IO.StopProgressIndicator()
@@ -189,6 +201,13 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully updated %s objects on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully updated %s objects on %s in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(objects))),
+		cs.Bold(opts.Index),
+		time.Since(elapsed),
+	)
 	return err
 }
