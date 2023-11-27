@@ -11,7 +11,7 @@ import (
 
 // Object is a map[string]interface{} that can be unmarshalled from a JSON object
 // The object must have an objectID field
-// Each field could be either an `search.PartialUpdateOperation` or a scalar value
+// Each field could be either an `search.PartialUpdateOperation` or a any value
 type Object map[string]interface{}
 
 // Valid operations
@@ -29,9 +29,6 @@ func ValidateOperation(p search.PartialUpdateOperation) error {
 	allowedOperations := []string{Increment, Decrement, Add, AddUnique, IncrementSet, IncrementFrom}
 	extra := fmt.Sprintf("valid operations are %s", utils.SliceToReadableString(allowedOperations))
 
-	if p.Operation == "" {
-		return fmt.Errorf("missing operation")
-	}
 	if !utils.Contains(allowedOperations, p.Operation) {
 		return fmt.Errorf("invalid operation \"%s\" (%s)", p.Operation, extra)
 	}
@@ -58,7 +55,7 @@ func (o *Object) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("objectID is required")
 	}
 
-	// Each field could be either an `search.PartialUpdateOperation` or a scalar value
+	// Each field could be either an `search.PartialUpdateOperation` or any value
 	for k, v := range *o {
 		switch v := v.(type) {
 		case map[string]interface{}:
@@ -66,6 +63,12 @@ func (o *Object) UnmarshalJSON(data []byte) error {
 			if err := mapstructure.Decode(v, &op); err != nil {
 				return err
 			}
+
+			// If we don't get the operation, it's probably a simple object
+			if op.Operation == "" {
+				continue
+			}
+
 			// Check that the operation is valid
 			if err := ValidateOperation(op); err != nil {
 				return err
