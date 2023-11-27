@@ -25,7 +25,8 @@ type StatsOptions struct {
 
 	Indice       string
 	BrowseParams map[string]interface{}
-	Limit        int
+	NoLimit      bool
+	Only         string
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -38,8 +39,6 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
-
-	var noLimit bool
 
 	cmd := &cobra.Command{
 		Use:               "analyze <index>",
@@ -60,6 +59,12 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Display records statistics for the "MOVIES" index without limit
 			$ algolia index analyze MOVIES --no-limit
+
+			# Display records statistics for the "MOVIES" index for the first 1000 records and output the result as JSON
+			$ algolia index analyze MOVIES -o json
+
+			# Display records statistics for the "MOVIES" index with the "actors" attribute only
+			$ algolia index analyze MOVIES --only actors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -70,15 +75,12 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			opts.BrowseParams = browseParams
 
-			if !noLimit {
-				opts.Limit = 1000
-			}
-
 			return runAnalyzeCmd(opts)
 		},
 	}
 
-	cmd.Flags().BoolVarP(&noLimit, "no-limit", "n", false, "If set, the command will not limit the number of objects to analyze. Otherwise, the default limit is 1000 objects.")
+	cmd.Flags().BoolVarP(&opts.NoLimit, "no-limit", "n", false, "If set, the command will not limit the number of objects to analyze. Otherwise, the default limit is 1000 objects.")
+	cmd.Flags().StringVarP(&opts.Only, "only", "", "", "If set, the command will only analyze the specified attribute. Chosen attribute values statistics will be shown in the output.")
 
 	cmdutil.AddBrowseParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)
@@ -89,7 +91,6 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 func runAnalyzeCmd(opts *StatsOptions) error {
 	client, err := opts.SearchClient()
 	io := opts.IO
-	cs := io.ColorScheme()
 	if err != nil {
 		return err
 	}
@@ -104,7 +105,19 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		delete(opts.BrowseParams, "query")
 	}
 
-	io.StartProgressIndicatorWithLabel("Analyzing objects...")
+	// If no-limit flag is passed, count the number of objects in the index
+	count := 1000
+	limit := 1000
+	if opts.NoLimit {
+		limit = 0
+		res, err := indice.Search("", opt.HitsPerPage(0))
+		if err != nil {
+			return err
+		}
+		count = res.NbHits
+	}
+
+	io.StartProgressIndicatorWithLabel(fmt.Sprintf("Analyzing %d objects", count))
 
 	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.BrowseParams))
 	if err != nil {
@@ -118,7 +131,7 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		return err
 	}
 
-	stats, err := analyze.ComputeStats(res, settings, opts.Limit)
+	stats, err := analyze.ComputeStats(res, settings, limit, opts.Only)
 	if err != nil {
 		io.StopProgressIndicator()
 		return err
@@ -131,9 +144,35 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		if err != nil {
 			return err
 		}
+
+		// If "only" is specified, we need to format the output differently
+		if opts.Only != "" {
+			var statsArray []interface{}
+			for key := range stats.Attributes {
+				for value := range stats.Attributes[key].Values {
+					statsArray = append(statsArray, map[string]interface{}{
+						"value": value,
+						"count": stats.Attributes[key].Values[value],
+					})
+				}
+			}
+			return p.Print(io, statsArray)
+		}
+
 		return p.Print(io, stats)
 	}
 
+	if opts.Only != "" {
+		printSingleAttributeStats(stats, opts)
+		return nil
+	}
+
+	return printStats(stats, opts)
+}
+
+// printStats prints the global stats for the index in a table format
+func printStats(stats *analyze.Stats, opts *StatsOptions) error {
+	cs := opts.IO.ColorScheme()
 	table := printers.NewTablePrinter(opts.IO)
 	if table.IsTTY() {
 		table.AddField("KEY", nil, nil)
@@ -184,6 +223,38 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		table.AddField(fmt.Sprintf("%v", value.InSettings), nil, nil)
 
 		table.EndRow()
+	}
+
+	return table.Render()
+}
+
+// printSingleAttributeStats prints the stats for a single attribute in a table format
+func printSingleAttributeStats(stats *analyze.Stats, opts *StatsOptions) error {
+	table := printers.NewTablePrinter(opts.IO)
+	if table.IsTTY() {
+		table.AddField("VALUE", nil, nil)
+		table.AddField("COUNT", nil, nil)
+		table.AddField("%", nil, nil)
+		table.EndRow()
+	}
+
+	for key := range stats.Attributes {
+		value := stats.Attributes[key]
+		// Order the values by count (descending)
+		sorted := make([]interface{}, 0, len(value.Values))
+		for key := range value.Values {
+			sorted = append(sorted, key)
+		}
+		sort.Slice(sorted, func(i, j int) bool {
+			return value.Values[sorted[i]] > value.Values[sorted[j]]
+		})
+
+		for _, v := range sorted {
+			table.AddField(fmt.Sprintf("%v", v), nil, nil)
+			table.AddField(fmt.Sprintf("%d", value.Values[v]), nil, nil)
+			table.AddField(fmt.Sprintf("%.2f%%", float64(value.Values[v])*100/float64(stats.TotalRecords)), nil, nil)
+			table.EndRow()
+		}
 	}
 
 	return table.Render()

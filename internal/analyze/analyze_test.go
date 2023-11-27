@@ -35,58 +35,42 @@ func Test_computeObjectStats(t *testing.T) {
 						Types: map[AttributeType]float64{
 							String: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"baz": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Numeric: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"qux": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Boolean: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"quux": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Array: 1,
 						},
-						StringValues: map[string]int{
-							"corge":  1,
-							"grault": 1,
-							"garply": 1,
-						},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"waldo": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"waldo.fred": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							String: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 				},
 			},
@@ -115,63 +99,49 @@ func Test_computeObjectStats(t *testing.T) {
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"foo.bar": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"foo.bar.baz": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"foo.bar.baz.qux": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"foo.bar.baz.qux.quux": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"foo.bar.baz.qux.quux.waldo": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							Object: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 					"foo.bar.baz.qux.quux.waldo.fred": {
 						Count: 1,
 						Types: map[AttributeType]float64{
 							String: 1,
 						},
-						StringValues:  map[string]int{},
-						NumericValues: map[float64]int{},
-						BooleanValues: map[bool]int{},
+						Values: map[interface{}]int{},
 					},
 				},
 			},
@@ -183,7 +153,7 @@ func Test_computeObjectStats(t *testing.T) {
 			stats := Stats{
 				Attributes: make(map[string]*AttributeStats),
 			}
-			out := computeObjectStats(&stats, "", s.Input)
+			out := computeObjectStats(&stats, "", s.Input, "")
 			require.NotNil(t, out)
 			assert.Equal(t, s.Output, out)
 		})

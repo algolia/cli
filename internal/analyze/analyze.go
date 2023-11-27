@@ -37,9 +37,7 @@ type AttributeStats struct {
 	Types      map[AttributeType]float64 `json:"types"`
 	InSettings []string                  `json:"inSettings,omitempty"`
 
-	StringValues  map[string]int  `json:"string_values,omitempty"`
-	NumericValues map[float64]int `json:"numeric_values,omitempty"`
-	BooleanValues map[bool]int    `json:"boolean_values,omitempty"`
+	Values map[interface{}]int `json:"values,omitempty"`
 }
 
 // Stats contains the stats for an Algolia index.
@@ -49,7 +47,7 @@ type Stats struct {
 }
 
 // ComputeStats computes the stats for the given index.
-func ComputeStats(i iterator.Iterator, s search.Settings, limit int) (*Stats, error) {
+func ComputeStats(i iterator.Iterator, s search.Settings, limit int, only string) (*Stats, error) {
 	settingsMap := settingsAsMap(s)
 	stats := &Stats{
 		Attributes: make(map[string]*AttributeStats),
@@ -74,7 +72,7 @@ func ComputeStats(i iterator.Iterator, s search.Settings, limit int) (*Stats, er
 		}
 
 		stats.TotalRecords++
-		stats = computeObjectStats(stats, "", object)
+		stats = computeObjectStats(stats, "", object, only)
 	}
 
 	for key, value := range stats.Attributes {
@@ -112,8 +110,12 @@ func ComputeStats(i iterator.Iterator, s search.Settings, limit int) (*Stats, er
 }
 
 // computeObjectStats computes the stats for the given object.
-func computeObjectStats(s *Stats, p string, o map[string]interface{}) *Stats {
+func computeObjectStats(s *Stats, p string, o map[string]interface{}, only string) *Stats {
 	for key, value := range o {
+		if only != "" && only != key {
+			continue
+		}
+
 		var fullPath string
 		if p == "" {
 			fullPath = key
@@ -124,47 +126,26 @@ func computeObjectStats(s *Stats, p string, o map[string]interface{}) *Stats {
 		if getType(value) == Object {
 			v, ok := value.(map[string]interface{})
 			if ok {
-				s = computeObjectStats(s, fullPath, v)
+				s = computeObjectStats(s, fullPath, v, only)
 			}
 		}
 
-		// We don't support arrays of objects as we cannot compute meaningful stats for them (yet?)
-		// if getType(value) == "array" {
-		// 	v, ok := value.([]interface{})
-		// 	if ok {
-		// 		for _, v := range v {
-		// 			if getType(v) == "object" {
-		// 				v, ok := v.(map[string]interface{})
-		// 				if ok {
-		// 					s = computeObjectStats(s, fullPath, v)
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// }
-
 		if _, ok := s.Attributes[fullPath]; !ok {
 			s.Attributes[fullPath] = &AttributeStats{
-				Types:         make(map[AttributeType]float64),
-				NumericValues: make(map[float64]int),
-				StringValues:  make(map[string]int),
-				BooleanValues: make(map[bool]int),
+				Types:  make(map[AttributeType]float64),
+				Values: make(map[interface{}]int),
 			}
 		}
 		s.Attributes[fullPath].Count++
 		s.Attributes[fullPath].Types[getType(value)]++
 
-		if getType(value) == Array {
-			for _, v := range value.([]interface{}) {
-				switch getType(v) {
-				case String:
-					s.Attributes[fullPath].StringValues[v.(string)]++
-				case Numeric:
-					s.Attributes[fullPath].NumericValues[v.(float64)]++
-				case Boolean:
-					s.Attributes[fullPath].BooleanValues[v.(bool)]++
-				default:
-					continue
+		if only != "" {
+			switch getType(value) {
+			case String, Numeric, Boolean:
+				s.Attributes[fullPath].Values[value]++
+			case Array:
+				for _, v := range value.([]interface{}) {
+					s.Attributes[fullPath].Values[v]++
 				}
 			}
 		}

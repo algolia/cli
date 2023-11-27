@@ -15,12 +15,6 @@ func Test_ValidateOperation(t *testing.T) {
 		wantErrMsg string
 	}{
 		{
-			name:       "no operation",
-			operation:  "",
-			wantErr:    true,
-			wantErrMsg: "missing operation",
-		},
-		{
 			name:       "invalid operation",
 			operation:  "invalid",
 			wantErr:    true,
@@ -81,6 +75,17 @@ func Test_Object_UnmarshalJSON(t *testing.T) {
 			wantObj: Object{"objectID": "foo"},
 		},
 		{
+			name: "nested object (not an operation)",
+			data: []byte(`{
+				"objectID": "foo",
+				"bar": {
+					"foo": "bar"
+				}
+			}`),
+			wantErr: false,
+			wantObj: Object{"objectID": "foo", "bar": map[string]interface{}{"foo": "bar"}},
+		},
+		{
 			name: "invalid operation type",
 			data: []byte(`{
 				"objectID": "foo",
@@ -90,17 +95,6 @@ func Test_Object_UnmarshalJSON(t *testing.T) {
 			}`),
 			wantErr:    true,
 			wantErrMsg: "invalid operation \"invalid\" (valid operations are Increment, Decrement, Add, AddUnique, IncrementSet and IncrementFrom)",
-		},
-		{
-			name: "missing operation",
-			data: []byte(`{
-				"objectID": "foo",
-				"bar": {
-					"foo": "bar"
-				}
-			}`),
-			wantErr:    true,
-			wantErrMsg: "missing operation",
 		},
 		{
 			name: "valid operation",
