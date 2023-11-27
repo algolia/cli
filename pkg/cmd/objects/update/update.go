@@ -46,7 +46,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-errors]",
+		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-error]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "Update objects from a file to the specified index",
@@ -66,7 +66,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 			$ algolia objects update MOVIES -F objects.ndjson --wait
 
 			# Update objects from the "objects.ndjson" file to the "MOVIES" index and continue updating objects even if some objects are invalid
-			$ algolia objects update MOVIES -F objects.ndjson --continue-on-errors
+			$ algolia objects update MOVIES -F objects.ndjson --continue-on-error
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
