@@ -47,7 +47,7 @@ type Stats struct {
 }
 
 // ComputeStats computes the stats for the given index.
-func ComputeStats(i iterator.Iterator, s search.Settings, limit int, only string) (*Stats, error) {
+func ComputeStats(i iterator.Iterator, s search.Settings, limit int, only string, counter chan int) (*Stats, error) {
 	settingsMap := settingsAsMap(s)
 	stats := &Stats{
 		Attributes: make(map[string]*AttributeStats),
@@ -72,6 +72,7 @@ func ComputeStats(i iterator.Iterator, s search.Settings, limit int, only string
 		}
 
 		stats.TotalRecords++
+		counter <- 1
 		stats = computeObjectStats(stats, "", object, only)
 	}
 

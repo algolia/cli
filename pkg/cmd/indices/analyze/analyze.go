@@ -51,7 +51,7 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 
 			Per default, the command will only analyze the first 1000 records. You can use the "--no-limit" flag to analyze all the records (this might take a while, depending on the number of records in your index).
 
-			The default output is a table, but you can use the "--output/-o" flag to change the output format. Additional attributes details are available when using a non-table format (e.g. JSON).
+			You can also use the "--only" flag to only analyze a specific attribute. In this case, the command will display the frequency of the values for this attribute.
 		`),
 		Example: heredoc.Doc(`
 			# Display records statistics for the "MOVIES" index for the first 1000 records
@@ -117,7 +117,18 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		count = res.NbHits
 	}
 
-	io.StartProgressIndicatorWithLabel(fmt.Sprintf("Analyzing %d objects", count))
+	io.StartProgressIndicatorWithLabel(fmt.Sprintf("Analyzing %d/%d objects", limit, count))
+
+	// Chan to receive the object count
+	counter := make(chan int)
+	go func() {
+		var total int
+		for c := range counter {
+			total += c
+			io.UpdateProgressIndicatorLabel(fmt.Sprintf("Analyzing %d/%d objects", total, count))
+		}
+		close(counter)
+	}()
 
 	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.BrowseParams))
 	if err != nil {
@@ -131,7 +142,7 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		return err
 	}
 
-	stats, err := analyze.ComputeStats(res, settings, limit, opts.Only)
+	stats, err := analyze.ComputeStats(res, settings, limit, opts.Only, counter)
 	if err != nil {
 		io.StopProgressIndicator()
 		return err
@@ -163,8 +174,7 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 	}
 
 	if opts.Only != "" {
-		printSingleAttributeStats(stats, opts)
-		return nil
+		return printSingleAttributeStats(stats, opts)
 	}
 
 	return printStats(stats, opts)
