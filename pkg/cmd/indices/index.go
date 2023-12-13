@@ -3,6 +3,7 @@ package indices
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/indices/analyze"
 	"github.com/algolia/cli/pkg/cmd/indices/clear"
 	"github.com/algolia/cli/pkg/cmd/indices/config"
 	"github.com/algolia/cli/pkg/cmd/indices/copy"
@@ -26,6 +27,7 @@ func NewIndicesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(copy.NewCopyCmd(f, nil))
 	cmd.AddCommand(move.NewMoveCmd(f, nil))
 	cmd.AddCommand(config.NewConfigCmd(f))
+	cmd.AddCommand(analyze.NewAnalyzeCmd(f))
 
 	return cmd
 }
