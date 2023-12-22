@@ -46,7 +46,10 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:               "delete <index> [--object-ids <object-ids> | --filters  <filters>...] [--confirm] [--wait]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete objects from an index",
+		Annotations: map[string]string{
+			"acls": "deleteObject",
+		},
+		Short: "Delete objects from an index",
 		Long: heredoc.Doc(`
 			This command deletes the objects from the specified index.
 

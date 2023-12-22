@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/internal/update"
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/art"
 	"github.com/algolia/cli/pkg/cmd/crawler"
@@ -81,7 +82,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
+	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
+	_ = cmd.Flags().MarkDeprecated("admin-api-key", "use --api-key instead")
 	cmd.PersistentFlags().StringSliceVar(&f.Config.Profile().SearchHosts, "search-hosts", nil, "The list of search hosts as CSV")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
@@ -136,10 +139,15 @@ func Execute() exitCode {
 	// Pre-command auth check and telemetry setup.
 	authError := errors.New("authError")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		if cmdutil.IsAuthCheckEnabled(cmd) {
-			if err := cmdutil.CheckAuth(cfg); err != nil {
+		if auth.IsAuthCheckEnabled(cmd) {
+			if err := auth.CheckAuth(cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
 				fmt.Fprintln(stderr, "Please run `algolia profile add` to configure your first profile.")
+				return authError
+			}
+
+			if err := auth.CheckACLs(cmd, cmdFactory); err != nil {
+				fmt.Fprint(stderr, err)
 				return authError
 			}
 		}

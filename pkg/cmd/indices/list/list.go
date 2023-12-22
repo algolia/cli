@@ -45,6 +45,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
+			"acls":        "listIndexes",
 		},
 	}
 

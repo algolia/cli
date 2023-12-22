@@ -43,6 +43,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
+		Annotations: map[string]string{
+			"acls": "settings,editSettings",
+		},
 		Short: "Delete dictionary entries",
 		Long: heredoc.Docf(`
 			This command deletes entries from the specified dictionary.

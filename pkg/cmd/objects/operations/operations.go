@@ -46,7 +46,10 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 		Use:     "operations -F <file> [--wait] [--continue-on-errors]",
 		Args:    validators.NoArgs(),
 		Aliases: []string{"operation", "batch"},
-		Short:   "Perform several indexing operations",
+		Annotations: map[string]string{
+			"acls": "addObject,deleteObject,deleteIndex",
+		},
+		Short: "Perform several indexing operations",
 		Long: heredoc.Doc(`
 			Perform several indexing operations
 

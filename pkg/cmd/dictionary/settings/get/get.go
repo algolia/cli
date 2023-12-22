@@ -28,8 +28,11 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
-		Use:   "get",
-		Args:  cobra.NoArgs,
+		Use:  "get",
+		Args: cobra.NoArgs,
+		Annotations: map[string]string{
+			"acls": "settings",
+		},
 		Short: "Get the dictionary settings",
 		Long: heredoc.Doc(`
 			Retrieve the dictionary override settings for plurals, stop words, and compound words.

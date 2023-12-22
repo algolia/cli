@@ -49,7 +49,10 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-error]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Update objects from a file to the specified index",
+		Annotations: map[string]string{
+			"acls": "addObject",
+		},
+		Short: "Update objects from a file to the specified index",
 		Long: heredoc.Doc(`
 			Update objects from a file to the specified index.
 			

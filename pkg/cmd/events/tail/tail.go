@@ -50,8 +50,11 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
-		Use:   "tail",
-		Args:  validators.NoArgs(),
+		Use:  "tail",
+		Args: validators.NoArgs(),
+		Annotations: map[string]string{
+			"acls": "analytics",
+		},
 		Short: "Tail events",
 		Long: heredoc.Doc(`
 			Tail events from your Algolia application.

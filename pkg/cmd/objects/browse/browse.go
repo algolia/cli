@@ -41,6 +41,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
+			"acls":        "browse",
 		},
 		Short: "Browse the index objects",
 		Long: heredoc.Doc(`

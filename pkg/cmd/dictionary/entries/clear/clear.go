@@ -51,6 +51,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
+		Annotations: map[string]string{
+			"acls": "settings,editSettings",
+		},
 		Short: "Clear dictionary entries",
 		Long: heredoc.Docf(`
 			This command deletes all entries from the specified %s dictionaries.

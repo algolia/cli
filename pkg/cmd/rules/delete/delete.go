@@ -44,7 +44,10 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:               "delete <index> --rule-ids <rule-ids> --confirm",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete rules from an index",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Delete rules from an index",
 		Long: heredoc.Doc(`
 			This command deletes the rules from the specified index.
 		`),

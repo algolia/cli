@@ -29,7 +29,10 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "export <index> [--scope <scope>...] [--directory]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Export an index configuration (settings, synonyms, rules) to a file",
+		Annotations: map[string]string{
+			"acls": "settings",
+		},
+		Short: "Export an index configuration (settings, synonyms, rules) to a file",
 		Long: heredoc.Doc(`
 			Export an index configuration (settings, synonyms, rules) to a file.
 		`),

@@ -46,7 +46,10 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 		Use:               "copy <source-index> <destination-index>",
 		Args:              validators.ExactArgs(2),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Make a copy of an index",
+		Annotations: map[string]string{
+			"acls": "settings,editSettings,browse,addObject",
+		},
+		Short: "Make a copy of an index",
 		Long: heredoc.Doc(`
 			Make a copy of an index, including its records, settings, synonyms, and rules except for the "enableReRanking" setting.
 		`),

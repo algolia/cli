@@ -42,7 +42,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import synonyms to the index",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Import synonyms to the index",
 		Long: heredoc.Doc(`
 			Import synonyms to the provided index.
 			The file must contains one single JSON synonym per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).

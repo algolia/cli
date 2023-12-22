@@ -55,6 +55,9 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
+		Annotations: map[string]string{
+			"acls": "settings",
+		},
 		Short: "Browse dictionary entries",
 		Long: heredoc.Docf(`
 			This command retrieves all entries from the specified %s dictionaries.

@@ -41,6 +41,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "List all the rules of an index",
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
+			"acls":        "settings",
 		},
 		Example: heredoc.Doc(`
 			# List all the rules of the "MOVIES" index

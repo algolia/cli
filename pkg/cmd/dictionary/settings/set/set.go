@@ -32,8 +32,11 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
-		Use:   "set --disable-standard-entries <languages...>  --enable-standard-entries <languages...> [--reset-standard-entries]",
-		Args:  cobra.NoArgs,
+		Use:  "set --disable-standard-entries <languages...>  --enable-standard-entries <languages...> [--reset-standard-entries]",
+		Args: cobra.NoArgs,
+		Annotations: map[string]string{
+			"acls": "settings,editSettings",
+		},
 		Short: "Set dictionary settings",
 		Long: heredoc.Doc(`
 			Set the dictionary settings.

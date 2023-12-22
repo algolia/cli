@@ -13,7 +13,8 @@ type Profile struct {
 	Name string
 
 	ApplicationID string   `mapstructure:"application_id"`
-	AdminAPIKey   string   `mapstructure:"admin_api_key"`
+	APIKey        string   `mapstructure:"api_key"`
+	AdminAPIKey   string   `mapstructure:"admin_api_key"` // Legacy
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
 	Default bool `mapstructure:"default"`
@@ -55,6 +56,30 @@ func (p *Profile) GetApplicationID() (string, error) {
 	return "", ErrApplicationIDNotConfigured
 }
 
+func (p *Profile) GetAPIKey() (string, error) {
+	if os.Getenv("ALGOLIA_API_KEY") != "" {
+		return os.Getenv("ALGOLIA_API_KEY"), nil
+	}
+
+	if p.APIKey != "" {
+		return p.APIKey, nil
+	}
+
+	if p.Name == "" {
+		p.LoadDefault()
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		apiKey := viper.GetString(p.GetFieldName("api_key"))
+		if apiKey != "" {
+			return apiKey, nil
+		}
+	}
+
+	// Fallback on legacy admin API key
+	return p.GetAdminAPIKey()
+}
+
 func (p *Profile) GetAdminAPIKey() (string, error) {
 	if os.Getenv("ALGOLIA_ADMIN_API_KEY") != "" {
 		return os.Getenv("ALGOLIA_ADMIN_API_KEY"), nil
@@ -75,7 +100,7 @@ func (p *Profile) GetAdminAPIKey() (string, error) {
 		}
 	}
 
-	return "", ErrAdminAPIKeyNotConfigured
+	return "", ErrAPIKeyNotConfigured
 }
 
 func (p *Profile) GetSearchHosts() []string {
@@ -146,7 +171,7 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 func (p *Profile) Add() error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(p.GetFieldName("application_id"), p.ApplicationID)
-	runtimeViper.Set(p.GetFieldName("admin_api_key"), p.AdminAPIKey)
+	runtimeViper.Set(p.GetFieldName("api_key"), p.APIKey)
 
 	err := p.write(runtimeViper)
 	if err != nil {

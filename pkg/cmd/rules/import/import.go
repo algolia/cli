@@ -46,7 +46,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import rules to the specified index",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Import rules to the specified index",
 		Long: heredoc.Doc(`
 			Import rules to the specified index.
 			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).

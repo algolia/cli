@@ -40,7 +40,10 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:               "delete <index>",
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete one or multiple indices",
+		Annotations: map[string]string{
+			"acls": "deleteIndex",
+		},
+		Short: "Delete one or multiple indices",
 		Long: heredoc.Doc(`
 			Delete one or multiples indices.
 			This command permanently removes one or multiple indices from your application, and removes their metadata and configured settings.
