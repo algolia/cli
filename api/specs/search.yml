@@ -81,32 +81,6 @@ components:
       description: >-
         Indicates whether to replace all synonyms in the index with the ones
         sent with this request.
-    Type:
-      in: query
-      name: type
-      description: >-
-        Search for specific [types of
-        synonyms](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/adding-synonyms/#the-different-types-of-synonyms).
-      schema:
-        $ref: '#/components/schemas/SynonymType'
-    PageDefault0:
-      in: query
-      name: page
-      description: >
-        Returns the requested page number (the first page is 0). Page size is
-        set by `hitsPerPage`. When null, there's no pagination.
-      schema:
-        type: integer
-        nullable: true
-        minimum: 0
-        default: 0
-    HitsPerPage:
-      in: query
-      name: hitsPerPage
-      description: Maximum number of hits per page.
-      schema:
-        type: integer
-        default: 100
     KeyString:
       in: path
       name: key
@@ -152,6 +126,13 @@ components:
         minimum: 0
         nullable: true
         default: null
+    HitsPerPage:
+      in: query
+      name: hitsPerPage
+      description: Maximum number of hits per page.
+      schema:
+        type: integer
+        default: 100
     UserIDInHeader:
       name: X-Algolia-User-ID
       description: userID to assign.
@@ -395,6 +376,15 @@ components:
           - 2.0104
       x-categories:
         - Geo-Search
+    userToken:
+      type: string
+      description: >-
+        Associates a [user
+        token](https://www.algolia.com/doc/guides/sending-events/concepts/usertoken/)
+        with the current search.
+      example: '123456'
+      x-categories:
+        - Personalization
     baseSearchParamsWithoutQuery:
       type: object
       additionalProperties: false
@@ -546,14 +536,7 @@ components:
           x-categories:
             - Personalization
         userToken:
-          type: string
-          description: >-
-            Associates a [user
-            token](https://www.algolia.com/doc/guides/sending-events/concepts/usertoken/)
-            with the current search.
-          example: '123456'
-          x-categories:
-            - Personalization
+          $ref: '#/components/schemas/userToken'
         getRankingInfo:
           type: boolean
           description: >-
@@ -1258,6 +1241,10 @@ components:
       oneOf:
         - $ref: '#/components/schemas/searchParamsString'
         - $ref: '#/components/schemas/searchParamsObject'
+    exhaustiveFacetsCount:
+      type: boolean
+      description: See the `facetsCount` field of the `exhaustive` object in the response.
+      deprecated: true
     nbHits:
       type: integer
       description: Number of hits the search query matched.
@@ -1266,6 +1253,10 @@ components:
       type: integer
       description: Number of pages of results for the current query.
       example: 1
+    processingTimeMS:
+      type: integer
+      description: Time the server took to process the request, in milliseconds.
+      example: 20
     RedirectRuleIndexMetadata:
       type: object
       properties:
@@ -1382,11 +1373,7 @@ components:
                 alternatives exist for the query). This field will not be
                 included when typo-tolerance is entirely disabled.
         exhaustiveFacetsCount:
-          type: boolean
-          description: >-
-            See the `facetsCount` field of the `exhaustive` object in the
-            response.
-          deprecated: true
+          $ref: '#/components/schemas/exhaustiveFacetsCount'
         exhaustiveNbHits:
           type: boolean
           description: See the `nbHits` field of the `exhaustive` object in the response.
@@ -1463,9 +1450,7 @@ components:
             query string that will be searched.
           example: george clo
         processingTimeMS:
-          type: integer
-          description: Time the server took to process the request, in milliseconds.
-          example: 20
+          $ref: '#/components/schemas/processingTimeMS'
         processingTimingsMS:
           type: object
           description: >-
@@ -1538,12 +1523,21 @@ components:
         - value
         - matchLevel
         - matchedWords
+    highlightResultOptionMap:
+      type: object
+      description: Show highlighted section and words matched on a query.
+      additionalProperties:
+        $ref: '#/components/schemas/highlightResultOption'
+    highlightResultOptionArray:
+      type: array
+      description: Show highlighted section and words matched on a query.
+      items:
+        $ref: '#/components/schemas/highlightResultOption'
     highlightResult:
       oneOf:
         - $ref: '#/components/schemas/highlightResultOption'
-        - type: array
-          items:
-            $ref: '#/components/schemas/highlightResultOption'
+        - $ref: '#/components/schemas/highlightResultOptionMap'
+        - $ref: '#/components/schemas/highlightResultOptionArray'
     highlightResultMap:
       type: object
       description: Show highlighted section and words matched on a query.
@@ -1563,12 +1557,25 @@ components:
       required:
         - value
         - matchLevel
+    snippetResultOptionMap:
+      type: object
+      description: >-
+        Snippeted attributes show parts of the matched attributes. Only returned
+        when attributesToSnippet is non-empty.
+      additionalProperties:
+        $ref: '#/components/schemas/snippetResultOption'
+    snippetResultOptionArray:
+      type: array
+      description: >-
+        Snippeted attributes show parts of the matched attributes. Only returned
+        when attributesToSnippet is non-empty.
+      items:
+        $ref: '#/components/schemas/snippetResultOption'
     snippetResult:
       oneOf:
         - $ref: '#/components/schemas/snippetResultOption'
-        - type: array
-          items:
-            $ref: '#/components/schemas/snippetResultOption'
+        - $ref: '#/components/schemas/snippetResultOptionMap'
+        - $ref: '#/components/schemas/snippetResultOptionArray'
     snippetResultMap:
       type: object
       description: >-
@@ -1786,6 +1793,7 @@ components:
       additionalProperties: false
       required:
         - facetHits
+        - exhaustiveFacetsCount
       x-discriminator-fields:
         - facetHits
       properties:
@@ -1813,6 +1821,10 @@ components:
                   Like for a regular search query, the [counts may not be
                   exhaustive](https://support.algolia.com/hc/en-us/articles/4406975248145-Why-are-my-facet-and-hit-counts-not-accurate-).
                 type: integer
+        exhaustiveFacetsCount:
+          $ref: '#/components/schemas/exhaustiveFacetsCount'
+        processingTimeMS:
+          $ref: '#/components/schemas/processingTimeMS'
     searchResult:
       oneOf:
         - $ref: '#/components/schemas/searchResponse'
@@ -3230,7 +3242,7 @@ x-tagGroups:
 paths:
   /1{path}:
     get:
-      operationId: get
+      operationId: customGet
       summary: Send requests to the Algolia REST API.
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
@@ -3254,7 +3266,7 @@ paths:
       tags:
         - search
     post:
-      operationId: post
+      operationId: customPost
       requestBody:
         description: Parameters to send with the custom request.
         content:
@@ -3284,7 +3296,7 @@ paths:
       tags:
         - search
     put:
-      operationId: put
+      operationId: customPut
       requestBody:
         description: Parameters to send with the custom request.
         content:
@@ -3314,7 +3326,7 @@ paths:
       tags:
         - search
     delete:
-      operationId: del
+      operationId: customDelete
       summary: Send requests to the Algolia REST API.
       description: This method allow you to send requests to the Algolia REST API.
       parameters:
@@ -3344,6 +3356,8 @@ paths:
       operationId: searchSingleIndex
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - search
       summary: Search an index.
       description: Return records that match the query.
       parameters:
@@ -3376,6 +3390,8 @@ paths:
       x-use-read-transporter: true
       x-cacheable: true
       x-legacy-signature: true
+      x-acl:
+        - search
       summary: Search multiple indices.
       description: Send multiple search queries to one or more indices.
       requestBody:
@@ -3429,6 +3445,8 @@ paths:
       operationId: searchForFacetValues
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - search
       summary: Search for facet values.
       description: >
         [Search for a facet's
@@ -3481,6 +3499,8 @@ paths:
       tags:
         - search
       operationId: browse
+      x-acl:
+        - browse
       summary: Get all records from an index.
       description: >
         Retrieve up to 1,000 records per call.
@@ -3517,6 +3537,8 @@ paths:
       tags:
         - search
       operationId: saveObject
+      x-acl:
+        - addObject
       description: >
         Add a record (object) to an index or replace it.
 
@@ -3539,8 +3561,8 @@ paths:
             schema:
               type: object
       responses:
-        '200':
-          description: OK
+        '201':
+          description: Created
           content:
             application/json:
               schema:
@@ -3571,6 +3593,8 @@ paths:
       tags:
         - search
       operationId: deleteIndex
+      x-acl:
+        - deleteIndex
       summary: Delete index.
       description: Delete an existing index.
       parameters:
@@ -3591,6 +3615,8 @@ paths:
       tags:
         - search
       operationId: getObject
+      x-acl:
+        - search
       summary: Get a record.
       description: >-
         To get more than one record, use the [`objects`
@@ -3637,6 +3663,8 @@ paths:
       tags:
         - search
       operationId: addOrUpdateObject
+      x-acl:
+        - addObject
       summary: Add or update a record (using objectID).
       description: >
         If you use an existing `objectID`, the existing record will be replaced
@@ -3674,6 +3702,8 @@ paths:
       tags:
         - search
       operationId: deleteObject
+      x-acl:
+        - deleteObject
       summary: Delete a record.
       description: >-
         To delete a set of records matching a query, use the [`deleteByQuery`
@@ -3697,6 +3727,8 @@ paths:
       tags:
         - search
       operationId: deleteBy
+      x-acl:
+        - deleteIndex
       summary: Delete all records matching a query.
       description: >
         This operation doesn't support all the query options, only its filters
@@ -3727,6 +3759,8 @@ paths:
       tags:
         - search
       operationId: clearObjects
+      x-acl:
+        - deleteIndex
       summary: Delete all records from an index.
       description: >-
         Delete the records but leave settings and index-specific API keys
@@ -3749,6 +3783,8 @@ paths:
       tags:
         - search
       operationId: partialUpdateObject
+      x-acl:
+        - addObject
       summary: Update record attributes.
       x-codegen-request-body-name: attributesToUpdate
       description: >
@@ -3947,6 +3983,8 @@ paths:
       operationId: getObjects
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - search
       summary: Get multiple records.
       description: >
         Retrieve one or more records, potentially from different indices, in a
@@ -4027,6 +4065,8 @@ paths:
       tags:
         - search
       operationId: getSettings
+      x-acl:
+        - search
       description: >-
         Return an object containing an index's [configuration
         settings](https://www.algolia.com/doc/api-reference/settings-api-parameters/).
@@ -4052,6 +4092,8 @@ paths:
       tags:
         - search
       operationId: setSettings
+      x-acl:
+        - editSettings
       description: >-
         Update the specified [index
         settings](https://www.algolia.com/doc/api-reference/settings-api-parameters/).
@@ -4082,6 +4124,8 @@ paths:
       tags:
         - search
       operationId: getSynonym
+      x-acl:
+        - settings
       summary: Get a synonym object.
       description: >-
         Get a syonym by its `objectID`. To find the object IDs for your
@@ -4109,6 +4153,8 @@ paths:
       tags:
         - search
       operationId: saveSynonym
+      x-acl:
+        - editSettings
       summary: Save a synonym.
       description: >
         Add a
@@ -4164,6 +4210,8 @@ paths:
       tags:
         - search
       operationId: deleteSynonym
+      x-acl:
+        - editSettings
       summary: Delete a synonym.
       description: >-
         Delete a synonym by its `objectID`. To find the object IDs of your
@@ -4189,6 +4237,8 @@ paths:
       tags:
         - search
       operationId: saveSynonyms
+      x-acl:
+        - editSettings
       summary: Save a batch of synonyms.
       description: Create or update multiple synonyms.
       parameters:
@@ -4216,7 +4266,9 @@ paths:
     post:
       tags:
         - search
-      operationId: clearAllSynonyms
+      operationId: clearSynonyms
+      x-acl:
+        - editSettings
       summary: Delete all synonyms.
       description: Delete all synonyms in the index.
       parameters:
@@ -4240,15 +4292,14 @@ paths:
       operationId: searchSynonyms
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - settings
       summary: Search for synonyms.
       description: >-
         Search for synonyms in your index. You can control and filter the search
         with parameters. To get all synonyms, send an empty request body.
       parameters:
         - $ref: '#/components/parameters/IndexName'
-        - $ref: '#/components/parameters/Type'
-        - $ref: '#/components/parameters/PageDefault0'
-        - $ref: '#/components/parameters/HitsPerPage'
       requestBody:
         description: Body of the `searchSynonyms` operation.
         content:
@@ -4260,6 +4311,12 @@ paths:
               properties:
                 query:
                   $ref: '#/components/schemas/query'
+                type:
+                  $ref: '#/components/schemas/SynonymType'
+                page:
+                  $ref: '#/components/schemas/page'
+                hitsPerPage:
+                  $ref: '#/components/schemas/hitsPerPage'
       responses:
         '200':
           description: OK
@@ -4280,6 +4337,8 @@ paths:
       tags:
         - search
       operationId: listApiKeys
+      x-acl:
+        - admin
       summary: List API keys.
       description: >-
         List all API keys associated with your Algolia application, including
@@ -4313,6 +4372,8 @@ paths:
       tags:
         - search
       operationId: addApiKey
+      x-acl:
+        - admin
       summary: Add API key.
       description: |
         Add a new API key with specific permissions and restrictions.
@@ -4372,6 +4433,8 @@ paths:
       tags:
         - search
       operationId: updateApiKey
+      x-acl:
+        - admin
       summary: Update an API key.
       description: |
         Replace the permissions of an existing API key.
@@ -4414,6 +4477,8 @@ paths:
       tags:
         - search
       operationId: deleteApiKey
+      x-acl:
+        - admin
       summary: Delete API key.
       description: |
         Delete an existing API key.
@@ -4447,6 +4512,8 @@ paths:
       tags:
         - search
       operationId: restoreApiKey
+      x-acl:
+        - admin
       summary: Restore API key.
       description: |
         Restore a deleted API key, along with its associated permissions.
@@ -4473,6 +4540,8 @@ paths:
       tags:
         - search
       operationId: getRule
+      x-acl:
+        - settings
       summary: Get a rule.
       description: >-
         Get a rule by its `objectID`. To find the `objectID` for rules, use the
@@ -4499,6 +4568,8 @@ paths:
       tags:
         - search
       operationId: saveRule
+      x-acl:
+        - editSettings
       summary: Create or update a rule.
       description: >-
         To create or update more than one rule, use the [`batch`
@@ -4532,6 +4603,8 @@ paths:
       tags:
         - search
       operationId: deleteRule
+      x-acl:
+        - editSettings
       summary: Delete a rule.
       description: >-
         Delete a rule by its `objectID`. To find the `objectID` for rules, use
@@ -4556,6 +4629,8 @@ paths:
       tags:
         - search
       operationId: saveRules
+      x-acl:
+        - editSettings
       summary: Save a batch of rules.
       description: Create or update multiple rules.
       x-codegen-request-body-name: rules
@@ -4588,6 +4663,8 @@ paths:
       tags:
         - search
       operationId: clearRules
+      x-acl:
+        - editSettings
       summary: Delete all rules.
       description: Delete all rules in the index.
       parameters:
@@ -4611,6 +4688,8 @@ paths:
       operationId: searchRules
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - settings
       summary: Search for rules.
       description: >-
         Search for rules in your index. You can control the search with
@@ -4697,6 +4776,8 @@ paths:
       tags:
         - search
       operationId: batchDictionaryEntries
+      x-acl:
+        - editSettings
       description: Add or remove a batch of dictionary entries.
       summary: Batch dictionary entries.
       parameters:
@@ -4753,6 +4834,8 @@ paths:
       operationId: searchDictionaryEntries
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - settings
       description: >-
         Search for standard and
         [custom](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/how-to/customize-stop-words/)
@@ -4802,6 +4885,8 @@ paths:
       tags:
         - search
       operationId: getDictionarySettings
+      x-acl:
+        - settings
       description: >-
         Get the languages for which [stop words are turned
         off](#tag/Dictionaries/operation/setDictionarySettings).
@@ -4832,6 +4917,8 @@ paths:
       tags:
         - search
       operationId: setDictionarySettings
+      x-acl:
+        - editSettings
       description: Set stop word settings for a specific language.
       summary: Set stop word settings.
       requestBody:
@@ -4866,6 +4953,8 @@ paths:
       tags:
         - search
       operationId: getDictionaryLanguages
+      x-acl:
+        - settings
       description: >-
         Lists Algolia's [supported
         languages](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/supported-languages/)
@@ -4899,6 +4988,8 @@ paths:
       tags:
         - search
       operationId: assignUserId
+      x-acl:
+        - admin
       summary: Assign or move a user ID.
       description: >
         Assign or move a user ID to a cluster.
@@ -4936,6 +5027,8 @@ paths:
       tags:
         - search
       operationId: listUserIds
+      x-acl:
+        - admin
       summary: List userIDs.
       description: >
         List the userIDs assigned to a multi-cluster application.
@@ -4975,6 +5068,8 @@ paths:
       tags:
         - search
       operationId: batchAssignUserIds
+      x-acl:
+        - admin
       summary: Batch assign userIDs.
       description: |
         Assign multiple user IDs to a cluster.
@@ -5021,6 +5116,8 @@ paths:
       tags:
         - search
       operationId: getTopUserIds
+      x-acl:
+        - admin
       summary: Get top userID.
       description: >
         Get the IDs of the 10 users with the highest number of records per
@@ -5065,6 +5162,8 @@ paths:
       tags:
         - search
       operationId: getUserId
+      x-acl:
+        - admin
       summary: Get userID.
       description: >
         Returns the userID data stored in the mapping.
@@ -5092,6 +5191,8 @@ paths:
       tags:
         - search
       operationId: removeUserId
+      x-acl:
+        - admin
       summary: Remove userID.
       description: Remove a userID and its associated data from the multi-clusters.
       parameters:
@@ -5123,6 +5224,8 @@ paths:
       tags:
         - search
       operationId: listClusters
+      x-acl:
+        - admin
       summary: List clusters.
       description: List the available clusters in a multi-cluster setup.
       responses:
@@ -5160,6 +5263,8 @@ paths:
       operationId: searchUserIds
       x-use-read-transporter: true
       x-cacheable: true
+      x-acl:
+        - admin
       summary: Search for a user ID.
       description: >
         Since it can take up to a few seconds to get the data from the different
@@ -5169,7 +5274,7 @@ paths:
         as the mapping. Instead, it's built every 12 hours, at the same time as
         the update of user ID usage. For example, if you add or move a user ID,
         the search will show an old value until the next time the mapping is
-        rebuilt (every 12 hours). 
+        rebuilt (every 12 hours).
       requestBody:
         required: true
         content:
@@ -5227,9 +5332,9 @@ paths:
                           type: object
                           properties:
                             userID:
-                              $ref: '#/components/schemas/highlightResultMap'
+                              $ref: '#/components/schemas/highlightResult'
                             clusterName:
-                              $ref: '#/components/schemas/highlightResultMap'
+                              $ref: '#/components/schemas/highlightResult'
                           required:
                             - userID
                             - clusterName
@@ -5267,6 +5372,8 @@ paths:
       tags:
         - search
       operationId: hasPendingMappings
+      x-acl:
+        - admin
       summary: Get migration and user mapping status.
       description: >
         To determine when the time-consuming process of creating a large batch
@@ -5319,6 +5426,8 @@ paths:
       tags:
         - search
       operationId: getSources
+      x-acl:
+        - admin
       description: Get all allowed sources (IP addresses).
       summary: Get all allowed IP addresses.
       responses:
@@ -5340,6 +5449,8 @@ paths:
       tags:
         - search
       operationId: replaceSources
+      x-acl:
+        - admin
       description: Replace all allowed sources.
       summary: Replace all sources.
       requestBody:
@@ -5376,6 +5487,8 @@ paths:
       tags:
         - search
       operationId: appendSource
+      x-acl:
+        - admin
       description: Add a source to the list of allowed sources.
       summary: Add a source.
       requestBody:
@@ -5401,6 +5514,8 @@ paths:
       tags:
         - search
       operationId: deleteSource
+      x-acl:
+        - admin
       description: Remove a source from the list of allowed sources.
       summary: Remove a source.
       parameters:
@@ -5438,6 +5553,8 @@ paths:
       tags:
         - search
       operationId: getLogs
+      x-acl:
+        - logs
       description: >
         The request must be authenticated by an API key with the [`logs`
         ACL](https://www.algolia.com/doc/guides/security/api-keys/#access-control-list-acl).
@@ -5639,6 +5756,8 @@ paths:
       tags:
         - search
       operationId: getTask
+      x-acl:
+        - addObject
       description: >-
         Some operations, such as copying an index, will respond with a `taskID`
         value. Use this value here to check the status of that task.
@@ -5680,6 +5799,8 @@ paths:
       tags:
         - search
       operationId: operationIndex
+      x-acl:
+        - addObject
       summary: Copy, move, or rename an index.
       description: >-
         This `operation`, _copy_ or _move_, will copy or move a source index's
@@ -5754,6 +5875,8 @@ paths:
       tags:
         - search
       operationId: listIndices
+      x-acl:
+        - listIndexes
       summary: List indices.
       description: List indices in an Algolia application.
       parameters:
