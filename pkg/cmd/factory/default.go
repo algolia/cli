@@ -34,7 +34,7 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client,
 		if err != nil {
 			return nil, err
 		}
-		APIKey, err := f.Config.Profile().GetAdminAPIKey()
+		APIKey, err := f.Config.Profile().GetAPIKey()
 		if err != nil {
 			return nil, err
 		}

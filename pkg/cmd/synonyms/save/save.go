@@ -42,8 +42,11 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Save a synonym to the given index",
-		Aliases:           []string{"create", "edit"},
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short:   "Save a synonym to the given index",
+		Aliases: []string{"create", "edit"},
 		Long: heredoc.Doc(`
 			This command save a synonym to the specified index.
 			If the synonym doesn't exist yet, a new one is created.

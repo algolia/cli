@@ -40,6 +40,21 @@ func Contains(s []string, e string) bool {
 	return false
 }
 
+// Differences return the elements in `a` that aren't in `b`
+func Differences(a, b []string) []string {
+	mb := make(map[string]bool)
+	for _, x := range b {
+		mb[x] = true
+	}
+	var diff []string
+	for _, x := range a {
+		if _, ok := mb[x]; !ok {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
+
 // ToKebabCase converts a string to kebab case
 func ToKebabCase(str string) string {
 	var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")

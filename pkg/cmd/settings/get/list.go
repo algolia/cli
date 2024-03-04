@@ -38,6 +38,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Get the settings of the specified index.",
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
+			"acls":        "settings",
 		},
 		Example: heredoc.Doc(`
 			# Store the settings of an index in a file

@@ -7,6 +7,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -110,7 +111,7 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().BoolP("list", "l", false, "List all supported shortcuts")
 
-	cmdutil.DisableAuthCheck(cmd)
+	auth.DisableAuthCheck(cmd)
 
 	return cmd
 }

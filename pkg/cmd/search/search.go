@@ -43,6 +43,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		Long:              `Search for objects in your index.`,
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
+			"acls":        "search",
 		},
 		Example: heredoc.Doc(`
 			# Search for objects in the "MOVIES" index matching the query "toy story"

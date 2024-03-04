@@ -44,7 +44,10 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "analyze <index>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Display records statistics for the specified index",
+		Annotations: map[string]string{
+			"acls": "browse,settings",
+		},
+		Short: "Display records statistics for the specified index",
 		Long: heredoc.Doc(`
 			This command displays records statistics - frequency of the attributes and their types - for the specified index.
 			This can be useful to help you identify individual records (or attributes) within an index that do not conform to the rest of the dataset (e.g. numeric attributes that have null values).

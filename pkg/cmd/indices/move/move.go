@@ -43,7 +43,10 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 		Use:               "move <source-index> <destination-index>",
 		Args:              validators.ExactArgs(2),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Move an index",
+		Annotations: map[string]string{
+			"acls": "addObject",
+		},
+		Short: "Move an index",
 		Long: heredoc.Doc(`
 			Move the full content (objects, synonyms, rules, settings) of the given source index into the destination one, effectively deleting the source index.
 		`),

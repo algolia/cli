@@ -38,6 +38,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:   "delete <api-key>",
 		Short: "Delete API key",
 		Args:  validators.ExactArgs(1),
+		Annotations: map[string]string{
+			"acls": "admin",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.APIKey = args[0]
 			if !confirm {

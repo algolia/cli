@@ -50,7 +50,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Use:       "import <dictionary> -F <file> [--wait] [--continue-on-errors]",
 		Args:      validators.ExactArgs(1),
 		ValidArgs: shared.DictionaryNames(),
-		Short:     "Import dictionary entries from a file to the specified index",
+		Annotations: map[string]string{
+			"acls": "settings,editSettings",
+		},
+		Short: "Import dictionary entries from a file to the specified index",
 		Long: heredoc.Doc(`
 			Import dictionary entries from a file to the specified index.
 			

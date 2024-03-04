@@ -34,8 +34,11 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
-		Use:   "list",
-		Args:  validators.NoArgs(),
+		Use:  "list",
+		Args: validators.NoArgs(),
+		Annotations: map[string]string{
+			"acls": "admin",
+		},
 		Short: "List API keys",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {
