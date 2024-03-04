@@ -84,7 +84,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
-	_ = cmd.Flags().MarkDeprecated("admin-api-key", "use --api-key instead")
+	_ = cmd.PersistentFlags().MarkDeprecated("admin-api-key", "use --api-key instead")
 	cmd.PersistentFlags().StringSliceVar(&f.Config.Profile().SearchHosts, "search-hosts", nil, "The list of search hosts as CSV")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
