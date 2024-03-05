@@ -71,7 +71,7 @@ func runListCmd(opts *AddOptions) error {
 		client := search.NewClient(profile.ApplicationID, profile.AdminAPIKey)
 		res, err := client.ListIndices()
 		if err != nil {
-			return err
+			return fmt.Errorf("could not retrieve indices for profile %q (AppID %q): %w", profile.Name, profile.ApplicationID, err)
 		}
 
 		table.AddField(profile.Name, nil, nil)
