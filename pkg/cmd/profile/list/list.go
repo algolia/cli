@@ -68,7 +68,7 @@ func runListCmd(opts *AddOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching configured profiles")
 	for _, profile := range profiles {
-		client := search.NewClient(profile.ApplicationID, profile.AdminAPIKey)
+		client := search.NewClient(profile.ApplicationID, profile.APIKey)
 		res, err := client.ListIndices()
 		if err != nil {
 			return err
