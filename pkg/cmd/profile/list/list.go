@@ -68,15 +68,17 @@ func runListCmd(opts *AddOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching configured profiles")
 	for _, profile := range profiles {
+		table.AddField(profile.Name, nil, nil)
+		table.AddField(profile.ApplicationID, nil, nil)
+
 		client := search.NewClient(profile.ApplicationID, profile.APIKey)
 		res, err := client.ListIndices()
 		if err != nil {
-			return err
+			table.AddField(err.Error(), nil, nil)
+		} else {
+			table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
 		}
 
-		table.AddField(profile.Name, nil, nil)
-		table.AddField(profile.ApplicationID, nil, nil)
-		table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
 		if profile.Default {
 			table.AddField(cs.SuccessIcon(), nil, nil)
 		} else {
