@@ -48,7 +48,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia rules browse MOVIES
 
 			# List all the rules of the "MOVIES" index and save them to a 'rules.ndjson' file
-			$ algolia rules browse MOVIES --json > rules.ndjson
+			$ algolia rules browse MOVIES -o json > rules.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
