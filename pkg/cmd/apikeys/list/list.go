@@ -9,6 +9,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/apikeys/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -54,20 +55,6 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	return cmd
 }
 
-// JSONKey is the same as search.Key without omitting values
-type JSONKey struct {
-	ACL                    []string              `json:"acl"`
-	CreatedAt              time.Time             `json:"createdAt"`
-	Description            string                `json:"description"`
-	Indexes                []string              `json:"indexes"`
-	MaxQueriesPerIPPerHour int                   `json:"maxQueriesPerIPPerHour"`
-	MaxHitsPerQuery        int                   `json:"maxHitsPerQuery"`
-	Referers               []string              `json:"referers"`
-	QueryParameters        search.KeyQueryParams `json:"queryParameters"`
-	Validity               time.Duration         `json:"validity"`
-	Value                  string                `json:"value"`
-}
-
 // runListCmd executes the list command
 func runListCmd(opts *ListOptions) error {
 	client, err := opts.SearchClient()
@@ -88,7 +75,7 @@ func runListCmd(opts *ListOptions) error {
 			return err
 		}
 		for _, key := range res.Keys {
-			keyResult := JSONKey{
+			keyResult := shared.JSONKey{
 				ACL:                    key.ACL,
 				CreatedAt:              key.CreatedAt,
 				Description:            key.Description,
