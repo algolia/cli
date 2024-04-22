@@ -146,7 +146,7 @@ func getFlags(params map[string]*openapi3.Schema) *SpecFlags {
 		Flags: make(map[string]*SpecFlag),
 	}
 	for name, param := range params {
-		flags.Flags[name] = getFlag(param)
+		flags.Flags[name] = getFlag(name, param)
 	}
 	return flags
 }
@@ -166,7 +166,7 @@ func GetGoType(param *openapi3.Schema) string {
 }
 
 // getFlag returns the flag for the given parameter.
-func getFlag(param *openapi3.Schema) *SpecFlag {
+func getFlag(name string, param *openapi3.Schema) *SpecFlag {
 	subType := ""
 	if param.Type == "array" {
 		subType = param.Items.Value.Type
@@ -183,7 +183,7 @@ func getFlag(param *openapi3.Schema) *SpecFlag {
 		Def:        param.Default,
 		Type:       param.Type,
 		GoType:     GetGoType(param),
-		Usage:      getDescription(param),
+		Usage:      getDescription(name, param),
 		SubType:    subType,
 		Categories: categories,
 	}
@@ -198,16 +198,16 @@ func getFlag(param *openapi3.Schema) *SpecFlag {
 }
 
 // getDescription returns the description for the given parameter.
-func getDescription(param *openapi3.Schema) string {
-	// Escape backticks
-	param.Description = strings.ReplaceAll(param.Description, "`", "`+\"`\"+`")
+// It's basically the link to the parameter description in the Algolia API documentation, followed by the possible values if the parameter is an enum.
+func getDescription(name string, param *openapi3.Schema) string {
+	link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
 
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
 		for i, e := range param.Enum {
 			choices[i] = e.(string)
 		}
-		return fmt.Sprintf("%s One of: (%v).", param.Description, strings.Join(choices, ", "))
+		return fmt.Sprintf("%s One of: (%v).", link, strings.Join(choices, ", "))
 	}
-	return param.Description
+	return link
 }
