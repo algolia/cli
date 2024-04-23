@@ -19,7 +19,6 @@ var BrowseParamsObject = []string{
 	"aroundPrecision",
 	"aroundRadius",
 	"attributeCriteriaComputedByMinProximity",
-	"attributesForFaceting",
 	"attributesToHighlight",
 	"attributesToRetrieve",
 	"attributesToSnippet",
@@ -35,7 +34,6 @@ var BrowseParamsObject = []string{
 	"enableReRanking",
 	"enableRules",
 	"exactOnSingleWordQuery",
-	"explain",
 	"facetFilters",
 	"facetingAfterDistinct",
 	"facets",
@@ -176,7 +174,6 @@ var SearchParamsObject = []string{
 	"aroundPrecision",
 	"aroundRadius",
 	"attributeCriteriaComputedByMinProximity",
-	"attributesForFaceting",
 	"attributesToHighlight",
 	"attributesToRetrieve",
 	"attributesToSnippet",
@@ -191,7 +188,6 @@ var SearchParamsObject = []string{
 	"enableReRanking",
 	"enableRules",
 	"exactOnSingleWordQuery",
-	"explain",
 	"facetFilters",
 	"facetingAfterDistinct",
 	"facets",
@@ -270,8 +266,6 @@ func AddBrowseParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity/`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
-	cmd.Flags().StringSlice("attributesForFaceting", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributesForFaceting/`))
-	cmd.Flags().SetAnnotation("attributesForFaceting", "Categories", []string{"Faceting"})
 	cmd.Flags().StringSlice("attributesToHighlight", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributesToHighlight/`))
 	cmd.Flags().SetAnnotation("attributesToHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("attributesToRetrieve", []string{"*"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributesToRetrieve/`))
@@ -302,8 +296,6 @@ func AddBrowseParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("enableRules", "Categories", []string{"Rules"})
 	cmd.Flags().String("exactOnSingleWordQuery", "attribute", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/exactOnSingleWordQuery/ One of: (attribute, none, word).`))
 	cmd.Flags().SetAnnotation("exactOnSingleWordQuery", "Categories", []string{"Query strategy"})
-	cmd.Flags().StringSlice("explain", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/explain/`))
-	cmd.Flags().SetAnnotation("explain", "Categories", []string{"Advanced"})
 	facetFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/facetFilters/`))
 	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})
@@ -370,7 +362,7 @@ func AddBrowseParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("queryType", "Categories", []string{"Query strategy"})
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "string"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"array", "string", "null"}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/reRankingApplyFilter/`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
@@ -384,7 +376,7 @@ func AddBrowseParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("renderingContent", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("replaceSynonymsInHighlight", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/replaceSynonymsInHighlight/`))
 	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
-	cmd.Flags().StringSlice("responseFields", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
+	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/restrictHighlightAndSnippetArrays/`))
 	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
@@ -526,7 +518,7 @@ func AddIndexSettingsFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("queryType", "Categories", []string{"Query strategy"})
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "string"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"array", "string", "null"}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/reRankingApplyFilter/`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
@@ -542,7 +534,7 @@ func AddIndexSettingsFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("replicas", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/replicas/`))
 	cmd.Flags().SetAnnotation("replicas", "Categories", []string{"Ranking"})
-	cmd.Flags().StringSlice("responseFields", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
+	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/restrictHighlightAndSnippetArrays/`))
 	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
@@ -591,8 +583,6 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity/`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
-	cmd.Flags().StringSlice("attributesForFaceting", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributesForFaceting/`))
-	cmd.Flags().SetAnnotation("attributesForFaceting", "Categories", []string{"Faceting"})
 	cmd.Flags().StringSlice("attributesToHighlight", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributesToHighlight/`))
 	cmd.Flags().SetAnnotation("attributesToHighlight", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("attributesToRetrieve", []string{"*"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/attributesToRetrieve/`))
@@ -622,8 +612,6 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("enableRules", "Categories", []string{"Rules"})
 	cmd.Flags().String("exactOnSingleWordQuery", "attribute", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/exactOnSingleWordQuery/ One of: (attribute, none, word).`))
 	cmd.Flags().SetAnnotation("exactOnSingleWordQuery", "Categories", []string{"Query strategy"})
-	cmd.Flags().StringSlice("explain", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/explain/`))
-	cmd.Flags().SetAnnotation("explain", "Categories", []string{"Advanced"})
 	facetFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/facetFilters/`))
 	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})
@@ -690,7 +678,7 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("queryType", "Categories", []string{"Query strategy"})
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "string"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"array", "string", "null"}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/reRankingApplyFilter/`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
@@ -704,7 +692,7 @@ func AddSearchParamsObjectFlags(cmd *cobra.Command) {
 	cmd.Flags().SetAnnotation("renderingContent", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("replaceSynonymsInHighlight", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/replaceSynonymsInHighlight/`))
 	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
-	cmd.Flags().StringSlice("responseFields", []string{}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
+	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`https://www.algolia.com/doc/api-reference/api-parameters/restrictHighlightAndSnippetArrays/`))
 	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
