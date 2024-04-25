@@ -212,19 +212,17 @@ func shortDescription(description string) string {
 	s := strings.Split(description, ":\n")
 	// Handle sentences ending with a period
 	s = strings.Split(s[0], ".\n")
-
-	// Replace Markdown links
-	s[0] = ReplaceLinks(s[0])
-	// Remove backticks
+	s[0] = replaceMarkdownLinks(s[0])
 	s[0] = strings.ReplaceAll(s[0], "`", "")
-	// End with period
+
 	if !strings.HasSuffix(s[0], ".") {
 		s[0] += "."
 	}
+
 	return strings.TrimSpace(s[0])
 }
 
-func ReplaceLinks(text string) string {
+func replaceMarkdownLinks(text string) string {
 	re := regexp.MustCompile("\\[([^\\[\\]]*)\\]\\([^\\(\\)]*\\)")
 	matches := re.FindAllStringSubmatch(text, -1)
 
@@ -236,8 +234,8 @@ func ReplaceLinks(text string) string {
 	return text
 }
 
-// getDescription returns the description for the given parameter.
-// It's basically the link to the parameter description in the Algolia API documentation, followed by the possible values if the parameter is an enum.
+// getDescription returns the short description for the given parameter.
+// It's the first sentence of the parameter description followed by possible values if it's an enum.
 func getDescription(name string, param *openapi3.Schema) string {
 	description := shortDescription(param.Description)
 
