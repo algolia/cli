@@ -209,16 +209,19 @@ func getFlag(name string, param *openapi3.Schema) *SpecFlag {
 // shortDescription returns the first sentence of the parameter description.
 func shortDescription(description string) string {
 	// Handle sentences ending with a colon
-	s := strings.SplitAfter(description, ":\n")
-	s[0] = strings.Replace(s[0], ":\n", ".", 1)
-
+	s := strings.Split(description, ":\n")
 	// Handle sentences ending with a period
-	s = strings.SplitAfter(s[0], ".\n")
+	s = strings.Split(s[0], ".\n")
 
 	// Replace Markdown links
-	s[0] = ReplaceLinks(strings.TrimSpace(s[0]))
-
-	return strings.ReplaceAll(s[0], "`", "")
+	s[0] = ReplaceLinks(s[0])
+	// Remove backticks
+	s[0] = strings.ReplaceAll(s[0], "`", "")
+	// End with period
+	if !strings.HasSuffix(s[0], ".") {
+		s[0] += "."
+	}
+	return strings.TrimSpace(s[0])
 }
 
 func ReplaceLinks(text string) string {
