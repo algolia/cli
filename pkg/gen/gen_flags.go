@@ -222,8 +222,7 @@ func shortDescription(description string) string {
 }
 
 func ReplaceLinks(text string) string {
-	pattern := "\\[([^\\[\\]]*)\\]\\([^\\(\\)]*\\)"
-	re := regexp.MustCompile(pattern)
+	re := regexp.MustCompile("\\[([^\\[\\]]*)\\]\\([^\\(\\)]*\\)")
 	matches := re.FindAllStringSubmatch(text, -1)
 
 	for _, match := range matches {
@@ -238,7 +237,6 @@ func ReplaceLinks(text string) string {
 // It's basically the link to the parameter description in the Algolia API documentation, followed by the possible values if the parameter is an enum.
 func getDescription(name string, param *openapi3.Schema) string {
 	description := shortDescription(param.Description)
-	// link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
 
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
