@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/format"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -44,7 +45,12 @@ func main() {
 	// This is the script that generates the `flags.go` file from the
 	// OpenAPI spec file.
 
-	specNames := []string{"searchParamsObject", "browseParamsObject", "indexSettings", "deleteByParams"}
+	specNames := []string{
+		"searchParamsObject",
+		"browseParamsObject",
+		"indexSettings",
+		"deleteByParams",
+	}
 	templateData, err := getTemplateData(specNames)
 	if err != nil {
 		panic(err)
@@ -153,7 +159,7 @@ func getFlags(params map[string]*openapi3.Schema) *SpecFlags {
 
 // GetGoType returns the Go type for the given OpenAPI 3.0 schema.
 func GetGoType(param *openapi3.Schema) string {
-	var SpecTypeGoType = map[string]string{
+	SpecTypeGoType := map[string]string{
 		"string":  "string",
 		"integer": "int",
 		"number":  "float64",
@@ -176,7 +182,10 @@ func getFlag(name string, param *openapi3.Schema) *SpecFlag {
 
 	var categories []string
 	if param.ExtensionProps.Extensions["x-categories"] != nil {
-		json.Unmarshal(param.ExtensionProps.Extensions["x-categories"].(json.RawMessage), &categories)
+		json.Unmarshal(
+			param.ExtensionProps.Extensions["x-categories"].(json.RawMessage),
+			&categories,
+		)
 	}
 
 	flag := &SpecFlag{
@@ -197,17 +206,46 @@ func getFlag(name string, param *openapi3.Schema) *SpecFlag {
 	return flag
 }
 
+// shortDescription returns the first sentence of the parameter description.
+func shortDescription(description string) string {
+	// Handle sentences ending with a colon
+	s := strings.SplitAfter(description, ":\n")
+	s[0] = strings.Replace(s[0], ":\n", ".", 1)
+
+	// Handle sentences ending with a period
+	s = strings.SplitAfter(s[0], ".\n")
+
+	// Replace Markdown links
+	s[0] = ReplaceLinks(strings.TrimSpace(s[0]))
+
+	return strings.ReplaceAll(s[0], "`", "")
+}
+
+func ReplaceLinks(text string) string {
+	pattern := "\\[([^\\[\\]]*)\\]\\([^\\(\\)]*\\)"
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	for _, match := range matches {
+		linkText := match[1]
+		text = strings.Replace(text, match[0], linkText, 1)
+	}
+
+	return text
+}
+
 // getDescription returns the description for the given parameter.
 // It's basically the link to the parameter description in the Algolia API documentation, followed by the possible values if the parameter is an enum.
 func getDescription(name string, param *openapi3.Schema) string {
-	link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
+	description := shortDescription(param.Description)
+	// link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
 
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
 		for i, e := range param.Enum {
 			choices[i] = e.(string)
 		}
-		return fmt.Sprintf("%s One of: (%v).", link, strings.Join(choices, ", "))
+		return fmt.Sprintf("%s One of: %v.", description, strings.Join(choices, ", "))
 	}
-	return link
+	return description
 }
