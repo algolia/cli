@@ -235,16 +235,30 @@ func replaceMarkdownLinks(text string) string {
 }
 
 // getDescription returns the short description for the given parameter.
-// It's the first sentence of the parameter description followed by possible values if it's an enum.
+// It's the first sentence of the parameter description followed by possible values if it's an enum,
+// followed by a link to the API param reference page
 func getDescription(name string, param *openapi3.Schema) string {
+	withLink := true
+	// These params don't have an API reference page
+	if name == "semanticSearch" || name == "cursor" || name == "reRankingApplyFilter" {
+		withLink = false
+	}
+
 	description := shortDescription(param.Description)
 
+	// Add choices if param is an enum
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
 		for i, e := range param.Enum {
 			choices[i] = e.(string)
 		}
-		return fmt.Sprintf("%s One of: %v.", description, strings.Join(choices, ", "))
+		description = fmt.Sprintf("%s One of: %v.", description, strings.Join(choices, ", "))
+	}
+
+	// Add link to the API param reference page
+	if withLink {
+		link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
+		description = fmt.Sprintf("%s\nSee: %s", description, link)
 	}
 	return description
 }
