@@ -48,6 +48,13 @@ func ErrorResponse() Responder {
 	}
 }
 
+func ErrorResponseWithBody(body interface{}) Responder {
+	return func(req *http.Request) (*http.Response, error) {
+		b, _ := json.Marshal(body)
+		return httpResponse(400, req, bytes.NewBuffer(b)), nil
+	}
+}
+
 func httpResponse(status int, req *http.Request, body io.Reader) *http.Response {
 	return &http.Response{
 		StatusCode: status,

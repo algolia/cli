@@ -65,10 +65,15 @@ func (c *Client) request(res interface{}, method string, path string, body inter
 			for _, e := range errResp.Err.Errors {
 				errs = append(errs, e.Message)
 			}
-			return fmt.Errorf("%s: %s", errResp.Err.Message, errs)
+			return fmt.Errorf("[%s] %s", errResp.Err.Code, errs)
 		}
 
-		return errors.New(errResp.Err.Message)
+		// Message might be empty
+		if errResp.Err.Message == "" {
+			return errors.New(errResp.Err.Code)
+		} else {
+			return fmt.Errorf("[%s] %s", errResp.Err.Code, errResp.Err.Message)
+		}
 	}
 
 	if res != nil {
