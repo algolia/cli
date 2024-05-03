@@ -113,6 +113,7 @@ func Test_runCrawlCmd(t *testing.T) {
 		id      string
 		urls    []string
 		isTTY   bool
+		wantErr string
 		wantOut string
 	}{
 		{
@@ -139,19 +140,32 @@ func Test_runCrawlCmd(t *testing.T) {
 			isTTY:   true,
 			wantOut: "✓ Successfully requested crawl for 2 URLs on crawler my-crawler\n",
 		},
+		{
+			name:    "TTY, error (message+code)",
+			cli:     "my-crawler --urls http://example.com",
+			id:      "my-crawler",
+			urls:    []string{"http://example.com"},
+			isTTY:   true,
+			wantErr: "X Crawler API error: [not-found] Crawler not-found not found",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "api/1/crawlers/"+tt.id+"/urls/crawl"), httpmock.JSONResponse(crawler.TaskIDResponse{TaskID: "taskID"}))
+			if tt.wantErr == "" {
+				r.Register(httpmock.REST("POST", "api/1/crawlers/"+tt.id+"/urls/crawl"), httpmock.JSONResponse(crawler.TaskIDResponse{TaskID: "taskID"}))
+			} else {
+				r.Register(httpmock.REST("POST", "api/1/crawlers/"+tt.id+"/urls/crawl"), httpmock.ErrorResponseWithBody(crawler.ErrResponse{Err: crawler.Err{Code: "not-found", Message: "Crawler not-found not found"}}))
+			}
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewCrawlCmd(f, nil)
 			out, err := test.Execute(cmd, tt.cli, out)
 			if err != nil {
-				t.Fatal(err)
+				assert.Equal(t, tt.wantErr, err.Error())
+				return
 			}
 
 			assert.Equal(t, tt.wantOut, out.String())

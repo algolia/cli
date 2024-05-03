@@ -90,7 +90,7 @@ func runCrawlCmd(opts *CrawlOptions) error {
 	_, err = client.CrawlURLs(opts.ID, opts.URLs, opts.Save, opts.SaveSpecified)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
-		return err
+		return fmt.Errorf("%s Crawler API error: %w", cs.FailureIcon(), err)
 	}
 
 	if opts.IO.IsStdoutTTY() {
