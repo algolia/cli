@@ -47,30 +47,30 @@ type Crawler struct {
 
 // Config is a Crawler configuration.
 type Config struct {
-	AppID       string   `json:"appId"`
-	APIKey      string   `json:"apiKey"`
-	IndexPrefix string   `json:"indexPrefix"`
-	Schedule    string   `json:"schedule"`
-	StartUrls   []string `json:"startUrls"`
-	Sitemaps    []string `json:"sitemaps"`
+	AppID       string   `json:"appId,omitempty"`
+	APIKey      string   `json:"apiKey,omitempty"`
+	IndexPrefix string   `json:"indexPrefix,omitempty"`
+	Schedule    string   `json:"schedule,omitempty"`
+	StartUrls   []string `json:"startUrls,omitempty"`
+	Sitemaps    []string `json:"sitemaps,omitempty"`
 
 	ExclusionPatterns []string `json:"exclusionPatterns,omitempty"`
 	IgnoreQueryParams []string `json:"ignoreQueryParams,omitempty"`
-	RenderJavaScript  bool     `json:"renderJavaScript"`
-	RateLimit         int      `json:"rateLimit"`
+	RenderJavaScript  bool     `json:"renderJavaScript,omitempty"`
+	RateLimit         int      `json:"rateLimit,omitempty"`
 	ExtraUrls         []string `json:"extraUrls,omitempty"`
-	MaxDepth          int      `json:"maxDepth"`
-	MaxURLs           int      `json:"maxUrls"`
+	MaxDepth          int      `json:"maxDepth,omitempty"`
+	MaxURLs           int      `json:"maxUrls,omitempty"`
 
-	IgnoreRobotsTxtRules bool `json:"ignoreRobotsTxtRules"`
-	IgnoreNoIndex        bool `json:"ignoreNoIndex"`
-	IgnoreNoFollowTo     bool `json:"ignoreNoFollowTo"`
-	IgnoreCanonicalTo    bool `json:"ignoreCanonicalTo"`
+	IgnoreRobotsTxtRules bool `json:"ignoreRobotsTxtRules,omitempty"`
+	IgnoreNoIndex        bool `json:"ignoreNoIndex,omitempty"`
+	IgnoreNoFollowTo     bool `json:"ignoreNoFollowTo,omitempty"`
+	IgnoreCanonicalTo    bool `json:"ignoreCanonicalTo,omitempty"`
 
-	SaveBackup           bool                        `json:"saveBackup"`
-	InitialIndexSettings map[string]*search.Settings `json:"initialIndexSettings"`
+	SaveBackup           bool                        `json:"saveBackup,omitempty"`
+	InitialIndexSettings map[string]*search.Settings `json:"initialIndexSettings,omitempty"`
 
-	Actions []*Action `json:"actions"`
+	Actions []*Action `json:"actions,omitempty"`
 }
 
 // Action is a Crawler configuration action.
