@@ -417,8 +417,8 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/queryType/`))
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Determines the order in which Algolia returns your results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "string", "null"}...)
-	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`Restrict Dynamic Re-Ranking to records that match these filters.`))
+	reRankingApplyFilter := NewJSONVar([]string{"", "null"}...)
+	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`.`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Relevancy threshold below which less relevant results aren't included in the results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
@@ -640,8 +640,8 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/queryType/`))
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Determines the order in which Algolia returns your results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "string", "null"}...)
-	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`Restrict Dynamic Re-Ranking to records that match these filters.`))
+	reRankingApplyFilter := NewJSONVar([]string{"", "null"}...)
+	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`.`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Relevancy threshold below which less relevant results aren't included in the results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
@@ -870,8 +870,8 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/queryType/`))
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Determines the order in which Algolia returns your results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"array", "string", "null"}...)
-	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`Restrict Dynamic Re-Ranking to records that match these filters.`))
+	reRankingApplyFilter := NewJSONVar([]string{"", "null"}...)
+	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`.`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Relevancy threshold below which less relevant results aren't included in the results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
 	cmd.Flags().SetAnnotation("relevancyStrictness", "Categories", []string{"Ranking"})
