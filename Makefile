@@ -44,7 +44,7 @@ endif
 	git -C $(DOCS_FOLDER) checkout -B feat/cli-'$(GITHUB_REF:refs/tags/v%=%)'
 	git -C $(DOCS_FOLDER) commit -m 'feat: update cli commands data for $(GITHUB_REF:refs/tags/v%=%) version' || true
 	git -C $(DOCS_FOLDER) push --set-upstream origin feat/cli-'$(GITHUB_REF:refs/tags/v%=%)'
-	cd $(DOCS_FOLDER); gh pr create -f -b "Changelog: https://github.com/algolia/cli/releases/tag/$(GITHUB_REF:refs/tags/v%=%)"
+	cd $(DOCS_FOLDER); gh pr create -f -b "Changelog: https://github.com/algolia/cli/releases/tag/$(GITHUB_REF:refs/tags/%=%)"
 
 ## Create a new PR (or update the existing one) to update the API specs
 api-specs-pr:
