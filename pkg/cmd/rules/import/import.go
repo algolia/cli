@@ -65,7 +65,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 			$ algolia rules browse SERIES | algolia rules import MOVIES -F -
 
 			# Import rules from the "rules.ndjson" file to the "MOVIES" index and don't forward them to the index replicas
-			$ algolia import MOVIES -F rules.ndjson -f=false
+			$ algolia rules import MOVIES -F rules.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
