@@ -59,11 +59,11 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 			This command deletes all entries from the specified %s dictionaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
-			# Delete all entries from the "stopword" dictionary
-			$ algolia dictionary entries clear stopword
+			# Delete all entries from the "stopwords" dictionary
+			$ algolia dictionary entries clear stopwords
 
-			# Delete all entries from the "stopword" and "plural" dictionaries
-			$ algolia dictionary entries clear stopword plural
+			# Delete all entries from the "stopwords" and "plurals" dictionaries
+			$ algolia dictionary entries clear stopwords plurals
 
 			# Delete all entries from all dictionaries
 			$ algolia dictionary entries clear --all
