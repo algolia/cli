@@ -2,6 +2,7 @@ package delete
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
@@ -66,7 +67,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -80,7 +83,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVarP(&opts.IncludeReplicas, "includeReplicas", "r", false, "delete replica indices too")
+	cmd.Flags().
+		BoolVarP(&opts.IncludeReplicas, "includeReplicas", "r", false, "delete replica indices too")
 
 	return cmd
 }
@@ -117,13 +121,17 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 		if opts.IncludeReplicas {
 			settings, err := index.GetSettings()
-
 			if err != nil {
 				return fmt.Errorf("can't get settings of index %q: %w", indexName, err)
 			}
 
 			replicas := settings.Replicas
 			for _, replicaName := range replicas.Get() {
+				pattern := regexp.MustCompile(`^virtual\((.*)\)$`)
+				matches := pattern.FindStringSubmatch(replicaName)
+				if len(matches) > 1 {
+					replicaName = matches[1]
+				}
 				replica := client.InitIndex(replicaName)
 				indices = append(indices, replica)
 			}
@@ -151,7 +159,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 
 		if err != nil {
-			opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Deleting replica index ", index.GetName()))
+			opts.IO.StartProgressIndicatorWithLabel(
+				fmt.Sprint("Deleting replica index ", index.GetName()),
+			)
 			err := deleteReplicaIndex(client, index)
 			opts.IO.StopProgressIndicator()
 			if err != nil {
@@ -162,7 +172,12 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Deleted indices %s\n", cs.SuccessIcon(), strings.Join(opts.Indices, ", "))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Deleted indices %s\n",
+			cs.SuccessIcon(),
+			strings.Join(opts.Indices, ", "),
+		)
 	}
 
 	return nil
@@ -178,7 +193,12 @@ func deleteReplicaIndex(client *search.Client, replicaIndex *search.Index) error
 
 	err = detachReplicaIndex(replicaName, primaryName, client)
 	if err != nil {
-		return fmt.Errorf("can't unlink replica index %s from primary index %s: %w", replicaName, primaryName, err)
+		return fmt.Errorf(
+			"can't unlink replica index %s from primary index %s: %w",
+			replicaName,
+			primaryName,
+			err,
+		)
 	}
 
 	_, err = replicaIndex.Delete()
@@ -193,7 +213,6 @@ func deleteReplicaIndex(client *search.Client, replicaIndex *search.Index) error
 func findPrimaryIndex(replicaIndex *search.Index) (string, error) {
 	replicaName := replicaIndex.GetName()
 	settings, err := replicaIndex.GetSettings()
-
 	if err != nil {
 		return "", fmt.Errorf("can't get settings of replica index %q: %w", replicaName, err)
 	}
@@ -210,12 +229,15 @@ func findPrimaryIndex(replicaIndex *search.Index) (string, error) {
 func detachReplicaIndex(replicaName string, primaryName string, client *search.Client) error {
 	primaryIndex := client.InitIndex(primaryName)
 	settings, err := primaryIndex.GetSettings()
-
 	if err != nil {
 		return fmt.Errorf("can't get settings of primary index %q: %w", primaryName, err)
 	}
 
 	replicas := settings.Replicas.Get()
+	isVirtual := isVirtualReplica(replicas, replicaName)
+	if isVirtual {
+		replicaName = fmt.Sprintf("virtual(%s)", replicaName)
+	}
 	indexOfReplica := findIndex(replicas, replicaName)
 
 	// Delete the replica at position `indexOfReplica` from the array
@@ -226,7 +248,6 @@ func detachReplicaIndex(replicaName string, primaryName string, client *search.C
 			Replicas: opt.Replicas(replicas...),
 		},
 	)
-
 	if err != nil {
 		return fmt.Errorf("can't update settings of index %q: %w", primaryName, err)
 	}
@@ -244,4 +265,17 @@ func findIndex(arr []string, target string) int {
 		}
 	}
 	return -1
+}
+
+func isVirtualReplica(replicas []string, replicaName string) bool {
+	pattern := regexp.MustCompile(fmt.Sprintf(`^virtual\(%s\)$`, replicaName))
+
+	for _, i := range replicas {
+		matches := pattern.MatchString(i)
+		if matches {
+			return true
+		}
+	}
+
+	return false
 }
