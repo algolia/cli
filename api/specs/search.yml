@@ -3177,6 +3177,7 @@ paths:
   /generateSecuredApiKey:
     get:
       x-helper: true
+      x-asynchronous-helper: false
       tags:
         - search
       operationId: generateSecuredApiKey
@@ -3214,7 +3215,7 @@ paths:
         key, or be more restrictive.
       parameters:
         - in: query
-          name: apiKey
+          name: parentApiKey
           description: >-
             API key from which the secured API key will inherit its
             restrictions.
@@ -3226,7 +3227,7 @@ paths:
           description: Restrictions to add to the API key.
           required: true
           schema:
-            $ref: '#/components/schemas/securedAPIKeyRestrictions'
+            $ref: '#/components/schemas/securedApiKeyRestrictions'
       responses:
         '200':
           description: OK
@@ -3353,6 +3354,128 @@ paths:
           required: false
           schema:
             type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /saveObjects:
+    post:
+      x-helper: true
+      tags:
+        - search
+      operationId: saveObjects
+      summary: Saves the given array of objects in the given index
+      description: >
+        Helper: Saves the given array of objects in the given index. The
+        `chunkedBatch` helper is used under the hood, which creates a `batch`
+        requests with at most 1000 objects in it.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to delete `objectIDs` from.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objectIDs
+          description: The objectIDs to delete.
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /deleteObjects:
+    post:
+      x-helper: true
+      tags:
+        - search
+      operationId: deleteObjects
+      summary: Deletes every records for the given objectIDs
+      description: >
+        Helper: Deletes every records for the given objectIDs. The
+        `chunkedBatch` helper is used under the hood, which creates a `batch`
+        requests with at most 1000 objectIDs in it.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to delete `objectIDs` from.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objectIDs
+          description: The objectIDs to delete.
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /partialUpdateObjects:
+    post:
+      x-helper: true
+      tags:
+        - search
+      operationId: partialUpdateObjects
+      summary: >-
+        Replaces object content of all the given objects according to their
+        respective `objectID` field
+      description: >
+        Helper: Replaces object content of all the given objects according to
+        their respective `objectID` field. The `chunkedBatch` helper is used
+        under the hood, which creates a `batch` requests with at most 1000
+        objects in it.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to delete `objectIDs` from.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objectIDs
+          description: The objectIDs to delete.
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: createIfNotExists
+          description: >-
+            To be provided if non-existing objects are passed, otherwise, the
+            call will fail.
+          required: false
+          schema:
+            type: boolean
       responses:
         '200':
           description: OK
@@ -4532,6 +4655,11 @@ components:
         - count
         - alpha
         - hidden
+    hide:
+      description: Hide facet values.
+      type: array
+      items:
+        type: string
     value:
       type: object
       additionalProperties: false
@@ -4540,6 +4668,8 @@ components:
           $ref: '#/components/schemas/order'
         sortRemainingBy:
           $ref: '#/components/schemas/sortRemainingBy'
+        hide:
+          $ref: '#/components/schemas/hide'
     values:
       description: Order of facet values. One object for each facet.
       type: object
@@ -4555,6 +4685,13 @@ components:
           $ref: '#/components/schemas/facets'
         values:
           $ref: '#/components/schemas/values'
+    redirectURL:
+      description: The redirect rule container.
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
     renderingContent:
       description: >
         Extra data that can be used in the search UI.
@@ -4569,6 +4706,8 @@ components:
       properties:
         facetOrdering:
           $ref: '#/components/schemas/facetOrdering'
+        redirect:
+          $ref: '#/components/schemas/redirectURL'
       x-categories:
         - Advanced
     reRankingApplyFilter:
@@ -5287,13 +5426,14 @@ components:
         - dest
         - source
     userData:
+      type: object
       example:
         settingID: f2a7b51e3503acc6a39b3784ffb84300
         pluginVersion: 1.6.0
       description: |
         An object with custom data.
 
-        You can store up to 32&nbsp;kB as custom data.
+        You can store up to 32kB as custom data.
       default: {}
       x-categories:
         - Advanced
@@ -5476,7 +5616,8 @@ components:
           type: object
           description: >
             [Redirect results to a
-            URL](https://www.algolia.com/doc/guides/managing-results/rules/merchandising-and-promoting/how-to/redirects/).
+            URL](https://www.algolia.com/doc/guides/managing-results/rules/merchandising-and-promoting/how-to/redirects/),
+            this this parameter is for internal use only.
           properties:
             index:
               type: array
@@ -7339,6 +7480,13 @@ components:
           example:
             - T02_push
             - T2replica
+        virtual:
+          type: boolean
+          description: >-
+            Only present if the index is a [virtual
+            replica](https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/how-to/sort-an-index-alphabetically/#virtual-replicas).
+          x-categories:
+            - Ranking
       required:
         - name
         - createdAt
@@ -7370,7 +7518,7 @@ components:
         - add
         - delete
         - update
-    securedAPIKeyRestrictions:
+    securedApiKeyRestrictions:
       type: object
       additionalProperties: false
       properties:
