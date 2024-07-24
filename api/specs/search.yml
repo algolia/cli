@@ -570,10 +570,39 @@ paths:
 
         - Records are ranked by attributes and custom ranking.
 
-        - Deduplication (`distinct`) is turned off.
-
         - There's no ranking for: typo-tolerance, number of matched words,
         proximity, geo distance.
+
+
+        Browse requests automatically apply these settings:
+
+
+        - `advancedSyntax`: `false`
+
+        - `attributesToHighlight`: `[]`
+
+        - `attributesToSnippet`: `[]`
+
+        - `distinct`: `false`
+
+        - `enablePersonalization`: `false`
+
+        - `enableRules`: `false`
+
+        - `facets`: `[]`
+
+        - `getRankingInfo`: `false`
+
+        - `ignorePlurals`: `false`
+
+        - `optionalFilters`: `[]`
+
+        - `typoTolerance`: `true` or `false` (`min` and `strict` is evaluated to
+        `true`)
+
+
+        If you send these parameters with your browse requests, they'll be
+        ignored.
       parameters:
         - $ref: '#/components/parameters/IndexName'
       requestBody:
@@ -3146,17 +3175,17 @@ paths:
       description: Waits for an API key to be added, updated, or deleted.
       parameters:
         - in: query
-          name: operation
-          description: Whether the API key was created, updated, or deleted.
-          required: true
-          schema:
-            $ref: '#/components/schemas/apiKeyOperation'
-        - in: query
           name: key
           description: API key to wait for.
           required: true
           schema:
             type: string
+        - in: query
+          name: operation
+          description: Whether the API key was created, updated, or deleted.
+          required: true
+          schema:
+            $ref: '#/components/schemas/apiKeyOperation'
         - in: query
           name: apiKey
           description: >-
@@ -3177,6 +3206,7 @@ paths:
   /generateSecuredApiKey:
     get:
       x-helper: true
+      x-asynchronous-helper: false
       tags:
         - search
       operationId: generateSecuredApiKey
@@ -3214,7 +3244,7 @@ paths:
         key, or be more restrictive.
       parameters:
         - in: query
-          name: apiKey
+          name: parentApiKey
           description: >-
             API key from which the secured API key will inherit its
             restrictions.
@@ -3226,7 +3256,7 @@ paths:
           description: Restrictions to add to the API key.
           required: true
           schema:
-            $ref: '#/components/schemas/securedAPIKeyRestrictions'
+            $ref: '#/components/schemas/securedApiKeyRestrictions'
       responses:
         '200':
           description: OK
@@ -3353,6 +3383,146 @@ paths:
           required: false
           schema:
             type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /saveObjects:
+    get:
+      x-helper: true
+      tags:
+        - search
+      operationId: saveObjects
+      summary: Saves the given array of objects in the given index
+      description: >
+        Helper: Saves the given array of objects in the given index. The
+        `chunkedBatch` helper is used under the hood, which creates a `batch`
+        requests with at most 1000 objects in it.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to save `objects` into.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: The objects to save in the index.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /deleteObjects:
+    post:
+      x-helper: true
+      tags:
+        - search
+      operationId: deleteObjects
+      summary: Deletes every records for the given objectIDs
+      description: >
+        Helper: Deletes every records for the given objectIDs. The
+        `chunkedBatch` helper is used under the hood, which creates a `batch`
+        requests with at most 1000 objectIDs in it.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to delete `objectIDs` from.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objectIDs
+          description: The objectIDs to delete.
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /partialUpdateObjects:
+    post:
+      x-helper: true
+      tags:
+        - search
+      operationId: partialUpdateObjects
+      summary: >-
+        Replaces object content of all the given objects according to their
+        respective `objectID` field
+      description: >
+        Helper: Replaces object content of all the given objects according to
+        their respective `objectID` field. The `chunkedBatch` helper is used
+        under the hood, which creates a `batch` requests with at most 1000
+        objects in it.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` where to update `objects`.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: The objects to update.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: createIfNotExists
+          description: >-
+            To be provided if non-existing objects are passed, otherwise, the
+            call will fail.
+          required: false
+          schema:
+            type: boolean
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
       responses:
         '200':
           description: OK
@@ -4532,6 +4702,11 @@ components:
         - count
         - alpha
         - hidden
+    hide:
+      description: Hide facet values.
+      type: array
+      items:
+        type: string
     value:
       type: object
       additionalProperties: false
@@ -4540,6 +4715,8 @@ components:
           $ref: '#/components/schemas/order'
         sortRemainingBy:
           $ref: '#/components/schemas/sortRemainingBy'
+        hide:
+          $ref: '#/components/schemas/hide'
     values:
       description: Order of facet values. One object for each facet.
       type: object
@@ -4555,6 +4732,13 @@ components:
           $ref: '#/components/schemas/facets'
         values:
           $ref: '#/components/schemas/values'
+    redirectURL:
+      description: The redirect rule container.
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
     renderingContent:
       description: >
         Extra data that can be used in the search UI.
@@ -4569,6 +4753,8 @@ components:
       properties:
         facetOrdering:
           $ref: '#/components/schemas/facetOrdering'
+        redirect:
+          $ref: '#/components/schemas/redirectURL'
       x-categories:
         - Advanced
     reRankingApplyFilter:
@@ -5245,14 +5431,6 @@ components:
       oneOf:
         - $ref: '#/components/schemas/searchParamsString'
         - $ref: '#/components/schemas/searchParamsObject'
-    nbHits:
-      type: integer
-      description: Number of results (hits).
-      example: 20
-    nbPages:
-      type: integer
-      description: Number of pages of results.
-      example: 1
     processingTimeMS:
       type: integer
       description: Time the server took to process the request, in milliseconds.
@@ -5287,13 +5465,14 @@ components:
         - dest
         - source
     userData:
+      type: object
       example:
         settingID: f2a7b51e3503acc6a39b3784ffb84300
         pluginVersion: 1.6.0
       description: |
         An object with custom data.
 
-        You can store up to 32&nbsp;kB as custom data.
+        You can store up to 32kB as custom data.
       default: {}
       x-categories:
         - Advanced
@@ -5301,10 +5480,6 @@ components:
       type: object
       additionalProperties: true
       required:
-        - nbHits
-        - page
-        - nbPages
-        - hitsPerPage
         - processingTimeMS
       properties:
         abTestID:
@@ -5427,8 +5602,6 @@ components:
                 type: number
                 format: double
                 description: Sum of all values in the results.
-        hitsPerPage:
-          $ref: '#/components/schemas/hitsPerPage'
         index:
           type: string
           example: indexName
@@ -5442,16 +5615,10 @@ components:
         message:
           type: string
           description: Warnings about the query.
-        nbHits:
-          $ref: '#/components/schemas/nbHits'
-        nbPages:
-          $ref: '#/components/schemas/nbPages'
         nbSortedHits:
           type: integer
           description: Number of hits selected and sorted by the relevant sort algorithm.
           example: 20
-        page:
-          $ref: '#/components/schemas/page'
         parsedQuery:
           type: string
           description: >-
@@ -5476,7 +5643,8 @@ components:
           type: object
           description: >
             [Redirect results to a
-            URL](https://www.algolia.com/doc/guides/managing-results/rules/merchandising-and-promoting/how-to/redirects/).
+            URL](https://www.algolia.com/doc/guides/managing-results/rules/merchandising-and-promoting/how-to/redirects/),
+            this this parameter is for internal use only.
           properties:
             index:
               type: array
@@ -5500,6 +5668,31 @@ components:
             Unique identifier for the query. This is used for [click
             analytics](https://www.algolia.com/doc/guides/analytics/click-analytics/).
           example: a00dbc80a8d13c4565a442e7e2dca80a
+    nbHits:
+      type: integer
+      description: Number of results (hits).
+      example: 20
+    nbPages:
+      type: integer
+      description: Number of pages of results.
+      example: 1
+    SearchPagination:
+      type: object
+      additionalProperties: false
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        nbHits:
+          $ref: '#/components/schemas/nbHits'
+        nbPages:
+          $ref: '#/components/schemas/nbPages'
+        hitsPerPage:
+          $ref: '#/components/schemas/hitsPerPage'
+      required:
+        - page
+        - nbHits
+        - nbPages
+        - hitsPerPage
     objectID:
       type: string
       description: Unique record identifier.
@@ -5740,6 +5933,7 @@ components:
       additionalProperties: true
       allOf:
         - $ref: '#/components/schemas/baseSearchResponse'
+        - $ref: '#/components/schemas/SearchPagination'
         - $ref: '#/components/schemas/searchHits'
     indexName:
       type: string
@@ -5894,9 +6088,22 @@ components:
       oneOf:
         - $ref: '#/components/schemas/searchParamsString'
         - $ref: '#/components/schemas/browseParamsObject'
+    BrowsePagination:
+      type: object
+      additionalProperties: false
+      properties:
+        page:
+          $ref: '#/components/schemas/page'
+        nbHits:
+          $ref: '#/components/schemas/nbHits'
+        nbPages:
+          $ref: '#/components/schemas/nbPages'
+        hitsPerPage:
+          $ref: '#/components/schemas/hitsPerPage'
     browseResponse:
       allOf:
         - $ref: '#/components/schemas/baseSearchResponse'
+        - $ref: '#/components/schemas/BrowsePagination'
         - $ref: '#/components/schemas/searchHits'
         - $ref: '#/components/schemas/cursor'
     createdAt:
@@ -7339,6 +7546,13 @@ components:
           example:
             - T02_push
             - T2replica
+        virtual:
+          type: boolean
+          description: >-
+            Only present if the index is a [virtual
+            replica](https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/how-to/sort-an-index-alphabetically/#virtual-replicas).
+          x-categories:
+            - Ranking
       required:
         - name
         - createdAt
@@ -7370,7 +7584,7 @@ components:
         - add
         - delete
         - update
-    securedAPIKeyRestrictions:
+    securedApiKeyRestrictions:
       type: object
       additionalProperties: false
       properties:
