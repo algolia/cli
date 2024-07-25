@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -20,7 +19,7 @@ import (
 type ImportOptions struct {
 	Config                         config.IConfig
 	IO                             *iostreams.IOStreams
-	SearchClient                   func() (*search.Client, error)
+	SearchClient                   func() (*search.APIClient, error)
 	Index                          string
 	AutoGenerateObjectIDIfNotExist bool
 
@@ -33,7 +32,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 
 	var file string
@@ -41,7 +40,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
@@ -72,10 +71,12 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Automatically generate object ID if not exist")
+	cmd.Flags().
+		BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Automatically generate object ID if not exist")
 	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 	return cmd
 }
@@ -86,17 +87,13 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Index)
-
 	// Move the following code to another module?
 	var (
 		batchSize  = opts.BatchSize
-		batch      = make([]interface{}, 0, batchSize)
+		batch      = make([]map[string]any, 0, batchSize)
 		count      = 0
 		totalCount = 0
 	)
-
-	options := []interface{}{opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist)}
 
 	opts.IO.StartProgressIndicatorWithLabel("Importing records")
 	elapsed := time.Now()
@@ -106,29 +103,32 @@ func runImportCmd(opts *ImportOptions) error {
 			continue
 		}
 
-		var obj interface{}
-		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			err := fmt.Errorf("failed to parse JSON object on line %d: %s", count, err)
 			return err
 		}
 
-		batch = append(batch, obj)
+		batch = append(batch, record)
 		count++
 
+		// Technically, SaveObjects already batches, but this manual setup prevents having to read and parse everything first, and only then index it.
 		if count == batchSize {
-			if _, err := indice.SaveObjects(batch, options...); err != nil {
+			if _, err := client.SaveObjects(opts.Index, batch, search.WithBatchSize(batchSize)); err != nil {
 				return err
 			}
-			batch = make([]interface{}, 0, batchSize)
+			batch = make([]map[string]any, 0, batchSize)
 			totalCount += count
-			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d objects in %v", totalCount, time.Since(elapsed)))
+			opts.IO.UpdateProgressIndicatorLabel(
+				fmt.Sprintf("Imported %d objects in %v", totalCount, time.Since(elapsed)),
+			)
 			count = 0
 		}
 	}
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveObjects(batch, options...); err != nil {
+		if _, err := client.SaveObjects(opts.Index, batch, search.WithBatchSize(batchSize)); err != nil {
 			return err
 		}
 	}
@@ -141,7 +141,14 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s objects to %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index, time.Since(elapsed))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully imported %s objects to %s in %v\n",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(totalCount)),
+			opts.Index,
+			time.Since(elapsed),
+		)
 	}
 
 	return nil
