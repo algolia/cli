@@ -2,9 +2,11 @@ package list
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -19,7 +21,7 @@ type ListOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -29,7 +31,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ListOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -61,7 +63,7 @@ func runListCmd(opts *ListOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching indices")
-	res, err := client.ListIndices()
+	res, err := client.ListIndices(client.NewApiListIndicesRequest())
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -93,14 +95,23 @@ func runListCmd(opts *ListOptions) error {
 		table.EndRow()
 	}
 
+	layout := time.RFC3339
+
 	for _, index := range res.Items {
+		updatedAt, _ := time.Parse(layout, index.UpdatedAt)
+		createdAt, _ := time.Parse(layout, index.CreatedAt)
+
 		table.AddField(index.Name, nil, nil)
-		table.AddField(humanize.Comma(index.Entries), nil, nil)
+		table.AddField(humanize.Comma(int64(index.Entries)), nil, nil)
 		table.AddField(humanize.Bytes(uint64(index.DataSize)), nil, nil)
-		table.AddField(humanize.Time(index.UpdatedAt), nil, nil)
-		table.AddField(humanize.Time(index.CreatedAt), nil, nil)
-		table.AddField(index.LastBuildTime.String(), nil, nil)
-		table.AddField(index.Primary, nil, nil)
+		table.AddField(humanize.Time(updatedAt), nil, nil)
+		table.AddField(humanize.Time(createdAt), nil, nil)
+		table.AddField(strconv.Itoa(int(index.LastBuildTimeS)), nil, nil)
+		if index.Primary != nil {
+			table.AddField(*index.Primary, nil, nil)
+		} else {
+			table.AddField("", nil, nil)
+		}
 		table.AddField(fmt.Sprintf("%v", index.Replicas), nil, nil)
 		table.EndRow()
 	}
