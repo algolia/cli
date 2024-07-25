@@ -2,8 +2,11 @@ package factory
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,14 +21,40 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	}
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
+	f.V4_SearchClient = v4_searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 
 	return f
 }
 
-func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
+func ioStreams(_ *cmdutil.Factory) *iostreams.IOStreams {
 	io := iostreams.System()
 	return io
+}
+
+func v4_searchClient(f *cmdutil.Factory, appVersion string) func() (*v4.APIClient, error) {
+	return func() (*v4.APIClient, error) {
+		appID, err := f.Config.Profile().GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := f.Config.Profile().GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+		clientCfg := v4.SearchConfiguration{
+			Configuration: transport.Configuration{
+				AppID:  appID,
+				ApiKey: apiKey,
+				UserAgent: fmt.Sprintf(
+					"Algolia CLI (%s); Algolia for Go (4.0.0-beta.24); Go (%s); Search (4.0.0-beta.24)",
+					appVersion,
+					runtime.Version(),
+				),
+			},
+		}
+		return v4.NewClientWithConfig(clientCfg)
+	}
 }
 
 func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client, error) {
