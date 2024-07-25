@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -25,7 +24,7 @@ type UpdateOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index             string
 	CreateIfNotExists bool
@@ -42,20 +41,20 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	opts := &UpdateOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 
 	cmd := &cobra.Command{
 		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-error]",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
 		Short: "Update objects from a file to the specified index",
 		Long: heredoc.Doc(`
 			Update objects from a file to the specified index.
-			
+
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
@@ -88,13 +87,17 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Read objects to update from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "Read objects to update from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new object with the objectID and the attributes defined in the object")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+	cmd.Flags().
+		BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new object with the objectID and the attributes defined in the object")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
 
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating objects even if some objects are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating objects even if some objects are invalid.")
 
 	return cmd
 }
@@ -106,10 +109,9 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	cs := opts.IO.ColorScheme()
-	index := client.InitIndex(opts.Index)
 
 	var (
-		objects      []interface{}
+		records      []map[string]any
 		currentLine  = 0
 		totalObjects = 0
 	)
@@ -119,6 +121,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	elapsed := time.Now()
 
 	var errors []string
+	// TODO: we could implement the same manual batching logic as for `objects import` to make it already update while still reading long files
 	for opts.Scanner.Scan() {
 		currentLine++
 		line := opts.Scanner.Text()
@@ -127,16 +130,18 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		}
 
 		totalObjects++
-		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File))
+		opts.IO.UpdateProgressIndicatorLabel(
+			fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File),
+		)
 
-		var obj Object
-		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+		var record Object
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			err := fmt.Errorf("line %d: %s", currentLine, err)
 			errors = append(errors, err.Error())
 			continue
 		}
 
-		objects = append(objects, obj)
+		records = append(records, record)
 	}
 
 	opts.IO.StopProgressIndicator()
@@ -151,7 +156,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	`, cs.FailureIcon(), utils.Pluralize(len(errors), "error"), totalObjects, text.Indent(strings.Join(errors, "\n"), "  "))
 
 	// No objects found
-	if len(objects) == 0 {
+	if len(records) == 0 {
 		if len(errors) > 0 {
 			return fmt.Errorf(errorMsg)
 		}
@@ -175,8 +180,18 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	// Update the objects
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating %s objects on %s", cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index)))
-	res, err := index.PartialUpdateObjects(objects, opt.CreateIfNotExists(opts.CreateIfNotExists))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Updating %s objects on %s",
+			cs.Bold(fmt.Sprint(len(records))),
+			cs.Bold(opts.Index),
+		),
+	)
+	responses, err := client.PartialUpdateObjects(
+		opts.Index,
+		records,
+		search.WithCreateIfNotExists(opts.CreateIfNotExists),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -185,13 +200,23 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	// Wait for the operation to complete if requested
 	if opts.Wait {
 		opts.IO.UpdateProgressIndicatorLabel("Waiting for operation to complete")
-		if err := res.Wait(); err != nil {
-			opts.IO.StopProgressIndicator()
-			return err
+		for _, res := range responses {
+			_, err := client.WaitForTask(opts.Index, res.TaskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully updated %s objects on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully updated %s objects on %s in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(records))),
+		cs.Bold(opts.Index),
+		time.Since(elapsed),
+	)
 	return err
 }
