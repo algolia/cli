@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,10 +18,10 @@ type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index    string
-	Settings search.Settings
+	Settings search.IndexSettings
 }
 
 // NewImportCmd creates and returns an import command for settings
@@ -29,7 +29,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 
 	var settingsFile string
@@ -37,7 +37,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -60,7 +60,8 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&settingsFile, "file", "F", "", "Read settings from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&settingsFile, "file", "F", "", "Read settings from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
 	return cmd
@@ -73,7 +74,7 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Importing settings to index ", opts.Index))
-	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings)
+	_, err = client.SetSettings(client.NewApiSetSettingsRequest(opts.Index, &opts.Settings))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
