@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -21,7 +21,7 @@ type ListOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -31,7 +31,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 	opts := &ListOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -63,7 +63,7 @@ func runListCmd(opts *ListOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching API Keys")
-	res, err := client.ListAPIKeys()
+	res, err := client.ListApiKeys()
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -75,17 +75,17 @@ func runListCmd(opts *ListOptions) error {
 			return err
 		}
 		for _, key := range res.Keys {
-			keyResult := shared.JSONKey{
-				ACL:                    key.ACL,
+			keyResult := shared.V4Key{
+				ACL:                    key.Acl,
 				CreatedAt:              key.CreatedAt,
-				Description:            key.Description,
+				Description:            *key.Description,
 				Indexes:                key.Indexes,
 				MaxQueriesPerIPPerHour: key.MaxQueriesPerIPPerHour,
 				MaxHitsPerQuery:        key.MaxHitsPerQuery,
 				Referers:               key.Referers,
 				QueryParameters:        key.QueryParameters,
 				Validity:               key.Validity,
-				Value:                  key.Value,
+				Value:                  *key.Value,
 			}
 
 			if err := p.Print(opts.IO, keyResult); err != nil {
@@ -111,25 +111,36 @@ func runListCmd(opts *ListOptions) error {
 
 	// Sort API Keys by createdAt
 	sort.Slice(res.Keys, func(i, j int) bool {
-		return res.Keys[i].CreatedAt.After(res.Keys[j].CreatedAt)
+		return res.Keys[i].CreatedAt > res.Keys[j].CreatedAt
 	})
 
 	for _, key := range res.Keys {
-		table.AddField(key.Value, nil, nil)
-		table.AddField(key.Description, nil, nil)
-		table.AddField(fmt.Sprintf("%v", key.ACL), nil, nil)
+		validity := time.Duration(*key.Validity) * time.Second
+		createdAt := time.Unix(key.CreatedAt, 0)
+
+		table.AddField(*key.Value, nil, nil)
+		table.AddField(*key.Description, nil, nil)
+		table.AddField(fmt.Sprintf("%v", key.Acl), nil, nil)
 		table.AddField(fmt.Sprintf("%v", key.Indexes), nil, nil)
 		table.AddField(func() string {
-			if key.Validity == 0 {
+			if *key.Validity == 0 {
 				return "Never expire"
 			} else {
-				return humanize.Time(time.Now().Add(key.Validity))
+				return humanize.Time(time.Now().Add(validity))
 			}
 		}(), nil, nil)
-		table.AddField(humanize.Comma(int64(key.MaxHitsPerQuery)), nil, nil)
-		table.AddField(humanize.Comma(int64(key.MaxQueriesPerIPPerHour)), nil, nil)
+		if key.MaxHitsPerQuery != nil {
+			table.AddField(humanize.Comma(int64(*key.MaxHitsPerQuery)), nil, nil)
+		} else {
+			table.AddField("0", nil, nil)
+		}
+		if key.MaxQueriesPerIPPerHour != nil {
+			table.AddField(humanize.Comma(int64(*key.MaxQueriesPerIPPerHour)), nil, nil)
+		} else {
+			table.AddField("0", nil, nil)
+		}
 		table.AddField(fmt.Sprintf("%v", key.Referers), nil, nil)
-		table.AddField(humanize.Time(key.CreatedAt), nil, nil)
+		table.AddField(humanize.Time(createdAt), nil, nil)
 		table.EndRow()
 	}
 	return table.Render()
