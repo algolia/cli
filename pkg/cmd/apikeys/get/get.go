@@ -78,7 +78,7 @@ func runGetCmd(opts *GetOptions) error {
 		return err
 	}
 
-	keyResult := shared.V4Key{
+	keyResult := shared.JSONKey{
 		ACL:                    key.Acl,
 		CreatedAt:              key.CreatedAt,
 		Description:            *key.Description,

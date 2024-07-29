@@ -75,7 +75,7 @@ func runListCmd(opts *ListOptions) error {
 			return err
 		}
 		for _, key := range res.Keys {
-			keyResult := shared.V4Key{
+			keyResult := shared.JSONKey{
 				ACL:                    key.Acl,
 				CreatedAt:              key.CreatedAt,
 				Description:            *key.Description,
