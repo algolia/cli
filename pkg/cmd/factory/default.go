@@ -47,7 +47,7 @@ func v4_searchClient(f *cmdutil.Factory, appVersion string) func() (*v4.APIClien
 				AppID:  appID,
 				ApiKey: apiKey,
 				UserAgent: fmt.Sprintf(
-					"Algolia CLI (%s); Algolia for Go (4.0.0-beta.24); Go (%s); Search (4.0.0-beta.24)",
+					"Algolia CLI (%s); Algolia for Go (4.0.0-beta.25); Go (%s); Search (4.0.0-beta.25)",
 					appVersion,
 					runtime.Version(),
 				),

@@ -6,8 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -21,12 +20,13 @@ type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice             string
+	Index              string
 	ForwardToReplicas  bool
 	ClearExistingRules bool
 	Scanner            *bufio.Scanner
+	BatchSize          int
 
 	DoConfirm bool
 }
@@ -36,7 +36,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 
 	var confirm bool
@@ -45,7 +45,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -68,11 +68,13 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 			$ algolia rules import MOVIES -F rules.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			if !confirm && opts.ClearExistingRules {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -93,11 +95,15 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read rules to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&file, "file", "F", "", "Read rules to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the rules to the index replicas")
-	cmd.Flags().BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Clear existing rules before importing new ones")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the rules to the index replicas")
+	cmd.Flags().
+		BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Clear existing rules before importing new ones")
+	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 
 	return cmd
 }
@@ -105,7 +111,13 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 func runImportCmd(opts *ImportOptions) error {
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to replace all the existing rules on %q?", opts.Indice), &confirmed)
+		err := prompt.Confirm(
+			fmt.Sprintf(
+				"Are you sure you want to replace all the existing rules on %q?",
+				opts.Index,
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -117,16 +129,6 @@ func runImportCmd(opts *ImportOptions) error {
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
-	}
-
-	indice := client.InitIndex(opts.Indice)
-	defaultBatchOptions := []interface{}{
-		opt.ForwardToReplicas(opts.ForwardToReplicas),
-	}
-	// Only clear existing rules on the first batch
-	batchOptions := []interface{}{
-		opt.ForwardToReplicas(opts.ForwardToReplicas),
-		opt.ClearExistingRules(opts.ClearExistingRules),
 	}
 
 	// Move the following code to another module?
@@ -153,11 +155,20 @@ func runImportCmd(opts *ImportOptions) error {
 		batch = append(batch, rule)
 		count++
 
+		// If requested, only clear existing rules for the first batch (otherwise we'll keep deleting added rules)
+		clearExistingRules := false
+		if count == 1 {
+			clearExistingRules = opts.ClearExistingRules
+		}
+
+		// Technically, SaveRules already batches, but this manual setup prevents having to read and parse everything first, and only then index it.
 		if count == batchSize {
-			if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
+			if _, err := client.SaveRules(
+				client.NewApiSaveRulesRequest(opts.Index, batch).
+					WithClearExistingRules(clearExistingRules).
+					WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
 				return err
 			}
-			batchOptions = defaultBatchOptions
 			batch = make([]search.Rule, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d rules", totalCount))
@@ -167,13 +178,13 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
+		if _, err := client.SaveRules(client.NewApiSaveRulesRequest(opts.Index, batch).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
 			return err
 		}
 	}
 	// Clear rules if 0 rules are imported and the clear existing is set
 	if totalCount == 0 && opts.ClearExistingRules {
-		if _, err := indice.ClearRules(); err != nil {
+		if _, err := client.ClearRules(client.NewApiClearRulesRequest(opts.Index)); err != nil {
 			return err
 		}
 	}
@@ -186,7 +197,13 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s rules to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Indice)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully imported %s rules to %s\n",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(totalCount)),
+			opts.Index,
+		)
 	}
 
 	return nil
