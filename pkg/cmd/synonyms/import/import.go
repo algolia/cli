@@ -6,8 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -20,12 +19,13 @@ type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index                   string
 	ForwardToReplicas       bool
 	ReplaceExistingSynonyms bool
 	Scanner                 *bufio.Scanner
+	BatchSize               int
 }
 
 // NewImportCmd creates and returns an import command for indice synonyms
@@ -33,7 +33,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 
 	var file string
@@ -41,7 +41,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -83,11 +83,15 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read synonyms to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&file, "file", "F", "", "Read synonyms to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
-	cmd.Flags().BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
+	cmd.Flags().
+		BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
+	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 
 	return cmd
 }
@@ -98,20 +102,10 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Index)
-	defaultBatchOptions := []interface{}{
-		opt.ForwardToReplicas(opts.ForwardToReplicas),
-	}
-	// Only clear existing rules on the first batch
-	batchOptions := []interface{}{
-		opt.ForwardToReplicas(opts.ForwardToReplicas),
-		opt.ReplaceExistingSynonyms(opts.ReplaceExistingSynonyms),
-	}
-
 	// Move the following code to another module?
 	var (
 		batchSize  = 1000
-		batch      = make([]search.Synonym, 0, batchSize)
+		batch      = make([]search.SynonymHit, 0, batchSize)
 		count      = 0
 		totalCount = 0
 	)
@@ -123,71 +117,29 @@ func runImportCmd(opts *ImportOptions) error {
 			continue
 		}
 
-		lineB := []byte(line)
-		var rawSynonym map[string]interface{}
-
-		// Unmarshal as map[string]interface{} to get the type of the synonym
-		if err := json.Unmarshal(lineB, &rawSynonym); err != nil {
-			err := fmt.Errorf("failed to parse JSON synonym on line %d: %s", count, err)
+		var synonym search.SynonymHit
+		err := json.Unmarshal([]byte(line), &synonym)
+		if err != nil {
 			return err
 		}
-		typeString := rawSynonym["type"].(string)
-
-		// This is really ugly, but algoliasearch package doesn't provide a way to
-		// unmarshal a synonym from a JSON string.
-		switch search.SynonymType(typeString) {
-		case search.RegularSynonymType:
-			var syn search.RegularSynonym
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.OneWaySynonymType:
-			var syn search.OneWaySynonym
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.AltCorrection1Type:
-			var syn search.AltCorrection1
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.AltCorrection2Type:
-			var syn search.AltCorrection2
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.PlaceholderType:
-			var syn search.Placeholder
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		default:
-			return fmt.Errorf("cannot unmarshal synonym: unknown type %s", typeString)
-		}
-
+		batch = append(batch, synonym)
 		count++
 
+		// If requested, only clear synonyms for the first batch (otherwise we'll keep deleting added synonyms)
+		replaceSynonyms := false
+		if count == 1 {
+			replaceSynonyms = opts.ReplaceExistingSynonyms
+		}
+
 		if count == batchSize {
-			if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
+			if _, err := client.SaveSynonyms(
+				client.NewApiSaveSynonymsRequest(opts.Index, batch).
+					WithReplaceExistingSynonyms(replaceSynonyms).
+					WithForwardToReplicas(opts.ForwardToReplicas),
+				search.WithBatchSize(batchSize)); err != nil {
 				return err
 			}
-			batchOptions = defaultBatchOptions
-			batch = make([]search.Synonym, 0, batchSize)
+			batch = make([]search.SynonymHit, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d synonyms", totalCount))
 			count = 0
@@ -196,13 +148,19 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
+		if _, err := client.SaveSynonyms(
+			client.NewApiSaveSynonymsRequest(opts.Index, batch).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+			search.WithBatchSize(batchSize)); err != nil {
 			return err
 		}
 	}
 
 	if totalCount == 0 && opts.ReplaceExistingSynonyms {
-		if _, err := indice.ClearSynonyms(); err != nil {
+		if _, err := client.ClearSynonyms(
+			client.
+				NewApiClearSynonymsRequest(opts.Index).
+				WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
 			return err
 		}
 	}
@@ -215,7 +173,13 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s synonyms to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully imported %s synonyms to %s\n",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(totalCount)),
+			opts.Index,
+		)
 	}
 
 	return nil
