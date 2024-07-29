@@ -67,8 +67,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 				return err
 			}
 
-			// synonym, err := shared.FlagsToSynonym(*flags)
-      synonym, err := shared.V4_FlagsToSynonym(*flags)
+			synonym, err := shared.FlagsToSynonym(*flags)
 			if err != nil {
 				return err
 			}
