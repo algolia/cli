@@ -2,10 +2,9 @@ package create
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -20,13 +19,13 @@ type CreateOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	ACL         []string
 	Description string
 	Indices     []string
 	Referers    []string
-	Validity    time.Duration
+	Validity    int32
 }
 
 // NewCreateCmd returns a new instance of CreateCmd
@@ -34,7 +33,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	opts := &CreateOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "create",
@@ -84,7 +83,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		For example, %[1]sdev_*%[1]s matches all indices starting with %[1]sdev_%[1]s and %[1]s*_dev%[1]s matches all indices ending with %[1]s_dev%[1]s.
 	`, "`"))
 
-	cmd.Flags().DurationVarP(&opts.Validity, "validity", "u", 0, heredoc.Doc(`
+	cmd.Flags().Int32VarP(&opts.Validity, "validity", "u", 0, heredoc.Doc(`
 		How long this API key is valid, in seconds.
 		A value of 0 means the API key doesn’t expire.`,
 	))
@@ -99,21 +98,27 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Used for informative purposes only. It has no impact on the functionality of the API key.`,
 	))
 
-	_ = cmd.RegisterFlagCompletionFunc("indices", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client, err := f.SearchClient()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		indicesRes, err := client.ListIndices()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		allowedIndices := make([]string, 0, len(indicesRes.Items))
-		for _, index := range indicesRes.Items {
-			allowedIndices = append(allowedIndices, fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(index.Entries)))
-		}
-		return allowedIndices, cobra.ShellCompDirectiveNoFileComp
-	})
+	_ = cmd.RegisterFlagCompletionFunc(
+		"indices",
+		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			client, err := f.SearchClient()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			indicesRes, err := client.ListIndices()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			allowedIndices := make([]string, 0, len(indicesRes.Items))
+			for _, index := range indicesRes.Items {
+				allowedIndices = append(
+					allowedIndices,
+					fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(index.Entries)),
+				)
+			}
+			return allowedIndices, cobra.ShellCompDirectiveNoFileComp
+		},
+	)
 
 	_ = cmd.RegisterFlagCompletionFunc("acl",
 		cmdutil.StringSliceCompletionFunc(map[string]string{
@@ -137,19 +142,24 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 // runCreateCmd executes the create command
 func runCreateCmd(opts *CreateOptions) error {
-	key := search.Key{
-		ACL:         opts.ACL,
+	var acl []search.Acl
+	for _, a := range opts.ACL {
+		acl = append(acl, search.Acl(a))
+	}
+
+	key := search.ApiKey{
+		Acl:         acl,
 		Indexes:     opts.Indices,
-		Validity:    opts.Validity,
+		Validity:    &opts.Validity,
 		Referers:    opts.Referers,
-		Description: opts.Description,
+		Description: &opts.Description,
 	}
 
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
 	}
-	res, err := client.AddAPIKey(key)
+	res, err := client.AddApiKey(client.NewApiAddApiKeyRequest(&key))
 	if err != nil {
 		return err
 	}
