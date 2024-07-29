@@ -1,9 +1,13 @@
 package search
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
+	"unicode"
+
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	algoliaSearch "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,9 +21,9 @@ type SearchOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*algoliaSearch.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice string
+	Index string
 
 	SearchParams map[string]interface{}
 
@@ -31,7 +35,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SearchOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
@@ -39,7 +43,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "search <index>",
 		Short:             "Search the given index",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -62,7 +66,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia search MOVIES --query "toy story" --output="jsonpath={$.Hits}" > movies.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
@@ -73,7 +77,9 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.SetUsageFunc(cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}))
+	cmd.SetUsageFunc(
+		cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}),
+	)
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 
@@ -87,8 +93,9 @@ func runSearchCmd(opts *SearchOptions) error {
 	if err != nil {
 		return err
 	}
-
-	indice := client.InitIndex(opts.Indice)
+	searchParams := search.NewEmptySearchParamsObject()
+	// Convert `v3` options to `v4`
+	MapToStruct(opts.SearchParams, searchParams)
 
 	p, err := opts.PrintFlags.ToPrinter()
 	if err != nil {
@@ -97,14 +104,13 @@ func runSearchCmd(opts *SearchOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Searching")
 
-	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.SearchParams["query"].(string)
-	if !ok {
-		query = ""
-	} else {
-		delete(opts.SearchParams, "query")
-	}
-	res, err := indice.Search(query, opt.ExtraOptions(opts.SearchParams))
+	res, err := client.SearchSingleIndex(
+		client.NewApiSearchSingleIndexRequest(opts.Index).WithSearchParams(
+			&search.SearchParams{
+				SearchParamsObject: searchParams,
+			},
+		),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -113,4 +119,46 @@ func runSearchCmd(opts *SearchOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	return p.Print(opts.IO, res)
+}
+
+// Capitalize makes the first letter of a word uppercase
+func Capitalize(word string) string {
+	if len(word) == 0 {
+		return word
+	}
+	firstRune := []rune(word)[0]
+	rest := []rune(word)[1:]
+	return string(unicode.ToUpper(firstRune)) + string(rest)
+}
+
+// MapToStruct converts a map into a struct
+func MapToStruct(m map[string]any, s interface{}) error {
+	val := reflect.ValueOf(s).Elem()
+
+	for k, v := range m {
+		// cmdline options are lowercase (`--query`),
+		// but struct fields are capital (`Query`)
+		field := val.FieldByName(Capitalize(k))
+		if !field.IsValid() {
+			return errors.New(fmt.Sprintf("No such parameter: %s for browse\n.", k))
+		}
+
+		if !field.CanSet() {
+			return errors.New(fmt.Sprintf("Can't set field: %s\n", field))
+		}
+
+		fieldValue := reflect.ValueOf(v)
+
+		if field.Type().Kind() == reflect.Ptr &&
+			fieldValue.Type().ConvertibleTo(field.Type().Elem()) {
+			newValue := reflect.New(fieldValue.Type()).Elem()
+			newValue.Set(fieldValue)
+			field.Set(newValue.Addr())
+		} else if fieldValue.Type().ConvertibleTo(field.Type()) {
+			field.Set(fieldValue.Convert(field.Type()))
+		} else {
+			return errors.New(fmt.Sprintf("Can't convert type of %s to %s\n", fieldValue.Type(), field.Type()))
+		}
+	}
+	return nil
 }
