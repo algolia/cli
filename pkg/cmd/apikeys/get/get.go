@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/apikeys/shared"
@@ -19,7 +19,7 @@ type GetOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	APIKey string
 
@@ -31,7 +31,7 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 	opts := &GetOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
@@ -68,7 +68,7 @@ func runGetCmd(opts *GetOptions) error {
 		return err
 	}
 
-	key, err := client.GetAPIKey(opts.APIKey)
+	key, err := client.GetApiKey(client.NewApiGetApiKeyRequest(opts.APIKey))
 	if err != nil {
 		return fmt.Errorf("API key %q does not exist", opts.APIKey)
 	}
@@ -77,17 +77,18 @@ func runGetCmd(opts *GetOptions) error {
 	if err != nil {
 		return err
 	}
-	keyResult := shared.JSONKey{
-		ACL:                    key.ACL,
+
+	keyResult := shared.V4Key{
+		ACL:                    key.Acl,
 		CreatedAt:              key.CreatedAt,
-		Description:            key.Description,
+		Description:            *key.Description,
 		Indexes:                key.Indexes,
 		MaxQueriesPerIPPerHour: key.MaxQueriesPerIPPerHour,
 		MaxHitsPerQuery:        key.MaxHitsPerQuery,
 		Referers:               key.Referers,
 		QueryParameters:        key.QueryParameters,
 		Validity:               key.Validity,
-		Value:                  key.Value,
+		Value:                  *key.Value,
 	}
 
 	if err := p.Print(opts.IO, keyResult); err != nil {
