@@ -6,9 +6,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -56,7 +56,9 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 			opts.Interactive = !(nameProvided && appIDProvided && APIKeyProvided)
 
 			if opts.Interactive && !opts.IO.CanPrompt() {
-				return cmdutil.FlagErrorf("`--name`, `--app-id` and `--api-key` required when not running interactively")
+				return cmdutil.FlagErrorf(
+					"`--name`, `--app-id` and `--api-key` required when not running interactively",
+				)
 			}
 
 			if !opts.Interactive {
@@ -80,9 +82,12 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 	}
 
 	cmd.Flags().StringVarP(&opts.Profile.Name, "name", "n", "", heredoc.Doc(`Name of the profile.`))
-	cmd.Flags().StringVar(&opts.Profile.ApplicationID, "app-id", "", heredoc.Doc(`ID of the application.`))
-	cmd.Flags().StringVar(&opts.Profile.APIKey, "api-key", "", heredoc.Doc(`API Key of the application.`))
-	cmd.Flags().BoolVarP(&opts.Profile.Default, "default", "d", false, heredoc.Doc(`Set the profile as the default one.`))
+	cmd.Flags().
+		StringVar(&opts.Profile.ApplicationID, "app-id", "", heredoc.Doc(`ID of the application.`))
+	cmd.Flags().
+		StringVar(&opts.Profile.APIKey, "api-key", "", heredoc.Doc(`API Key of the application.`))
+	cmd.Flags().
+		BoolVarP(&opts.Profile.Default, "default", "d", false, heredoc.Doc(`Set the profile as the default one.`))
 
 	return cmd
 }
@@ -104,7 +109,10 @@ func runAddCmd(opts *AddOptions) error {
 					Message: "Name:",
 					Default: opts.Profile.Name,
 				},
-				Validate: survey.ComposeValidators(survey.Required, validators.ProfileNameExists(opts.config)),
+				Validate: survey.ComposeValidators(
+					survey.Required,
+					validators.ProfileNameExists(opts.config),
+				),
 			},
 			{
 				Name: "applicationID",
@@ -112,7 +120,10 @@ func runAddCmd(opts *AddOptions) error {
 					Message: "Application ID:",
 					Default: opts.Profile.ApplicationID,
 				},
-				Validate: survey.ComposeValidators(survey.Required, validators.ApplicationIDExists(opts.config)),
+				Validate: survey.ComposeValidators(
+					survey.Required,
+					validators.ApplicationIDExists(opts.config),
+				),
 			},
 			{
 				Name: "APIKey",
@@ -136,31 +147,40 @@ func runAddCmd(opts *AddOptions) error {
 		}
 	}
 
-	client := search.NewClient(opts.Profile.ApplicationID, opts.Profile.APIKey)
+	client, _ := search.NewClient(opts.Profile.ApplicationID, opts.Profile.APIKey)
 	var isAdminAPIKey bool
 
 	// Check if the provided API Key is an admin API Key
-	_, err := client.ListAPIKeys()
+	_, err := client.ListApiKeys()
 	if err == nil {
 		isAdminAPIKey = true
 	}
 
 	// Check the ACLs of the provided API Key
-	apiKey, err := search.NewClient(opts.Profile.ApplicationID, opts.Profile.APIKey).GetAPIKey(opts.Profile.APIKey)
+	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(opts.Profile.APIKey))
 	if err != nil {
 		return errors.New("invalid application credentials")
 	}
-	if len(apiKey.ACL) == 0 {
+	if len(apiKey.Acl) == 0 {
 		return errors.New("the provided API key has no ACLs")
+	}
+
+	var acl []string
+	for _, a := range apiKey.Acl {
+		acl = append(acl, string(a))
 	}
 
 	// We should have at least the ACLs for a write key, otherwise warns the user, but still allows to add the profile.
 	// If it's an admin API Key, we don't need to check ACLs, but we still warn the user.
 	var warning string
 	if !isAdminAPIKey {
-		missingACLs := utils.Differences(auth.WriteAPIKeyDefaultACLs, apiKey.ACL)
+		missingACLs := utils.Differences(auth.WriteAPIKeyDefaultACLs, acl)
 		if len(missingACLs) > 0 {
-			warning = fmt.Sprintf("%s The provided API key might be missing some ACLs: %s", opts.IO.ColorScheme().WarningIcon(), missingACLs)
+			warning = fmt.Sprintf(
+				"%s The provided API key might be missing some ACLs: %s",
+				opts.IO.ColorScheme().WarningIcon(),
+				missingACLs,
+			)
 			warning += "\n  See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information."
 			warning += "\n  You can still add the profile, but some commands might not be available."
 		}
@@ -202,7 +222,11 @@ func runAddCmd(opts *AddOptions) error {
 
 		if opts.Profile.Default {
 			if defaultProfile != nil {
-				extra = fmt.Sprintf(". Default profile changed from '%s' to '%s'.", cs.Bold(defaultProfile.Name), cs.Bold(opts.Profile.Name))
+				extra = fmt.Sprintf(
+					". Default profile changed from '%s' to '%s'.",
+					cs.Bold(defaultProfile.Name),
+					cs.Bold(opts.Profile.Name),
+				)
 			} else {
 				extra = " and set as default."
 			}
