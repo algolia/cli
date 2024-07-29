@@ -97,7 +97,7 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
-	_, err = client.BrowseObjects(
+	err = client.BrowseObjects(
 		opts.Index,
 		*browseParams,
 		search.WithAggregator(func(res any, _ error) {
