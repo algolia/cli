@@ -166,7 +166,8 @@ func runImportCmd(opts *ImportOptions) error {
 			if _, err := client.SaveRules(
 				client.NewApiSaveRulesRequest(opts.Index, batch).
 					WithClearExistingRules(clearExistingRules).
-					WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+					WithForwardToReplicas(opts.ForwardToReplicas),
+				search.WithBatchSize(batchSize)); err != nil {
 				return err
 			}
 			batch = make([]search.Rule, 0, batchSize)
@@ -178,13 +179,19 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := client.SaveRules(client.NewApiSaveRulesRequest(opts.Index, batch).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+		if _, err := client.SaveRules(
+			client.NewApiSaveRulesRequest(opts.Index, batch).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+			search.WithBatchSize(batchSize)); err != nil {
 			return err
 		}
 	}
 	// Clear rules if 0 rules are imported and the clear existing is set
 	if totalCount == 0 && opts.ClearExistingRules {
-		if _, err := client.ClearRules(client.NewApiClearRulesRequest(opts.Index)); err != nil {
+		if _, err := client.ClearRules(
+			client.
+				NewApiClearRulesRequest(opts.Index).
+				WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
 			return err
 		}
 	}
