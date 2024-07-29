@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 type SynonymFlags struct {
@@ -45,7 +46,9 @@ func (e *SynonymType) Set(v string) error {
 		*e = SynonymType(v)
 		return nil
 	default:
-		return fmt.Errorf(`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`)
+		return fmt.Errorf(
+			`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`,
+		)
 	}
 }
 
@@ -83,6 +86,47 @@ func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
 		return search.NewRegularSynonym(
 			flags.SynonymID,
 			flags.Synonyms...,
+		), nil
+	}
+
+	return nil, fmt.Errorf("invalid synonym type")
+}
+
+func V4_FlagsToSynonym(flags SynonymFlags) (*v4.SynonymHit, error) {
+	switch flags.SynonymType {
+	case OneWay:
+		return v4.NewSynonymHit(
+			flags.SynonymID,
+			v4.SYNONYM_TYPE_ONEWAYSYNONYM,
+			v4.WithSynonymHitInput(flags.SynonymInput),
+			v4.WithSynonymHitSynonyms(flags.Synonyms),
+		), nil
+	case AltCorrection1:
+		return v4.NewSynonymHit(
+			flags.SynonymID,
+			v4.SYNONYM_TYPE_ALTCORRECTION1,
+			v4.WithSynonymHitWord(flags.SynonymWord),
+			v4.WithSynonymHitCorrections(flags.SynonymCorrections),
+		), nil
+	case AltCorrection2:
+		return v4.NewSynonymHit(
+			flags.SynonymID,
+			v4.SYNONYM_TYPE_ALTCORRECTION2,
+			v4.WithSynonymHitWord(flags.SynonymWord),
+			v4.WithSynonymHitCorrections(flags.SynonymCorrections),
+		), nil
+	case Placeholder:
+		return v4.NewSynonymHit(
+			flags.SynonymID,
+			v4.SYNONYM_TYPE_PLACEHOLDER,
+			v4.WithSynonymHitPlaceholder(flags.SynonymPlaceholder),
+			v4.WithSynonymHitReplacements(flags.SynonymReplacements),
+		), nil
+	case "", Regular:
+		return v4.NewSynonymHit(
+			flags.SynonymID,
+			v4.SYNONYM_TYPE_SYNONYM,
+			v4.WithSynonymHitSynonyms(flags.Synonyms),
 		), nil
 	}
 
