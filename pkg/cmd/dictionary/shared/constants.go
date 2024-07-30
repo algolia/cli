@@ -2,12 +2,15 @@ package shared
 
 import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 // EntryType represents the type of an entry in a dictionary.
 // It can be either a custom entry or a standard entry.
-type EntryType string
-type DictionaryType int
+type (
+	EntryType      string
+	DictionaryType int
+)
 
 // DictionaryEntry can be plural, compound or stopword entry.
 type DictionaryEntry struct {
@@ -34,6 +37,13 @@ var (
 			string(search.Stopwords),
 			string(search.Compounds),
 			string(search.Plurals),
+		}
+	}
+	V4_DictionaryNames = func() []string {
+		return []string{
+			string(v4.DICTIONARY_TYPE_STOPWORDS),
+			string(v4.DICTIONARY_TYPE_COMPOUNDS),
+			string(v4.DICTIONARY_TYPE_PLURALS),
 		}
 	}
 )
