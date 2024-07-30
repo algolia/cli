@@ -19,7 +19,6 @@ type BrowseOptions struct {
 
 	Index        string
 	BrowseParams map[string]interface{}
-	Retries      int
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -71,9 +70,6 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().
-		IntVarP(&opts.Retries, "retries", "r", 1000, "Max. number of browse requests. Each request retrieves up to 1,000 records.")
-
 	cmd.SetUsageFunc(cmdutil.UsageFuncWithInheritedFlagsOnly(f.IOStreams, cmd))
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
@@ -105,7 +101,6 @@ func runBrowseCmd(opts *BrowseOptions) error {
 				p.Print(opts.IO, hit)
 			}
 		}),
-		search.WithMaxRetries(opts.Retries),
 	)
 	if err != nil {
 		return err
