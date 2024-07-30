@@ -85,7 +85,6 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	}
 
 	browseParams := search.NewEmptyBrowseParamsObject()
-	// Convert `v3` options to `v4`
 	cmdutil.MapToStruct(opts.BrowseParams, browseParams)
 
 	p, err := opts.PrintFlags.ToPrinter()

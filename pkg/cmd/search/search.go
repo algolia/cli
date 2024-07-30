@@ -89,7 +89,6 @@ func runSearchCmd(opts *SearchOptions) error {
 		return err
 	}
 	searchParams := search.NewEmptySearchParamsObject()
-	// Convert `v3` options to `v4`
 	cmdutil.MapToStruct(opts.SearchParams, searchParams)
 
 	p, err := opts.PrintFlags.ToPrinter()
