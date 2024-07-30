@@ -26,16 +26,6 @@ type BrowseOptions struct {
 	PrintFlags *cmdutil.PrintFlags
 }
 
-// DictionaryEntry can be plural, compound or stopword entry.
-type DictionaryEntry struct {
-	Type          shared.EntryType
-	Word          string   `json:"word,omitempty"`
-	Words         []string `json:"words,omitempty"`
-	Decomposition string   `json:"decomposition,omitempty"`
-	ObjectID      string
-	Language      string
-}
-
 // NewBrowseCmd creates and returns a browse command for dictionaries' entries.
 func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Command {
 	cs := f.IOStreams.ColorScheme()
@@ -49,9 +39,9 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:       "browse {<dictionary>... | --all} [--include-defaults]",
 		Args:      cobra.OnlyValidArgs,
-		ValidArgs: shared.V4_DictionaryNames(),
+		ValidArgs: shared.DictionaryNames(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return shared.V4_DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Annotations: map[string]string{
 			"acls": "settings",

@@ -44,9 +44,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:       "clear {<dictionary>... | --all} [--confirm]",
 		Args:      cobra.OnlyValidArgs,
-		ValidArgs: shared.V4_DictionaryNames(),
+		ValidArgs: shared.DictionaryNames(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return shared.V4_DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Annotations: map[string]string{
 			"acls": "settings,editSettings",
