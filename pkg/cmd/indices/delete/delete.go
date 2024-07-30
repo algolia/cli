@@ -2,12 +2,10 @@ package delete
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -20,7 +18,7 @@ type DeleteOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Indices         []string
 	DoConfirm       bool
@@ -32,7 +30,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 	}
 
 	var confirm bool
@@ -40,7 +38,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:               "delete <index>",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "deleteIndex",
 		},
@@ -97,10 +95,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		msg := "Are you sure you want to delete the indices %q?"
+		msg := "Are you sure you want to delete the indices %q"
 		if opts.IncludeReplicas {
-			msg = "Are you sure you want to delete the indices %q including their replicas?"
+			msg += " including their replicas"
 		}
+		msg += "?"
 		err := prompt.Confirm(fmt.Sprintf(msg, strings.Join(opts.Indices, ", ")), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
@@ -110,62 +109,32 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	indices := make([]*search.Index, 0, len(opts.Indices))
-	for _, indexName := range opts.Indices {
-		index := client.InitIndex(indexName)
-		exists, err := index.Exists()
-		if err != nil || !exists {
-			return fmt.Errorf("index %q does not exist", indexName)
-		}
-		indices = append(indices, index)
-
-		if opts.IncludeReplicas {
-			settings, err := index.GetSettings()
-			if err != nil {
-				return fmt.Errorf("can't get settings of index %q: %w", indexName, err)
-			}
-
-			replicas := settings.Replicas
-			for _, replicaName := range replicas.Get() {
-				pattern := regexp.MustCompile(`^virtual\((.*)\)$`)
-				matches := pattern.FindStringSubmatch(replicaName)
-				if len(matches) > 1 {
-					replicaName = matches[1]
-				}
-				replica := client.InitIndex(replicaName)
-				indices = append(indices, replica)
-			}
-		}
-	}
-
-	for _, index := range indices {
-		var mustWait bool
-
-		if opts.IncludeReplicas {
-			settings, err := index.GetSettings()
-			if err != nil {
-				return fmt.Errorf("failed to get settings of index %q: %w", index.GetName(), err)
-			}
-			if len(settings.Replicas.Get()) > 0 {
-				mustWait = true
-			}
-		}
-
-		res, err := index.Delete()
-
-		// Otherwise, the replica indices might not be 'fully detached' yet.
-		if mustWait {
-			_ = res.Wait()
-		}
-
+	for _, index := range opts.Indices {
+		settings, err := client.GetSettings(client.NewApiGetSettingsRequest(index))
 		if err != nil {
-			opts.IO.StartProgressIndicatorWithLabel(
-				fmt.Sprint("Deleting replica index ", index.GetName()),
+			return err
+		}
+		deletedRes, err := client.DeleteIndex(client.NewApiDeleteIndexRequest(index))
+		if err != nil {
+			return fmt.Errorf("failed to delete index %s: %w", index, err)
+		}
+		if opts.IncludeReplicas {
+			// So that the replicas are fully detached
+			client.WaitForTask(index, deletedRes.TaskID)
+
+			// Construct batch request for deleting replicas of this index
+			var requests []search.MultipleBatchRequest
+			for _, index := range settings.GetReplicas() {
+				requests = append(
+					requests,
+					*search.NewMultipleBatchRequest(search.ACTION_DELETE, map[string]any{"indexName": index}, index),
+				)
+			}
+			_, err := client.MultipleBatch(
+				client.NewApiMultipleBatchRequest(search.NewBatchParams(requests)),
 			)
-			err := deleteReplicaIndex(client, index)
-			opts.IO.StopProgressIndicator()
 			if err != nil {
-				return fmt.Errorf("failed to delete index %q: %w", index.GetName(), err)
+				return err
 			}
 		}
 	}
@@ -181,101 +150,4 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	return nil
-}
-
-// Delete a replica index.
-func deleteReplicaIndex(client *search.Client, replicaIndex *search.Index) error {
-	replicaName := replicaIndex.GetName()
-	primaryName, err := findPrimaryIndex(replicaIndex)
-	if err != nil {
-		return fmt.Errorf("can't find primary index for %q: %w", replicaName, err)
-	}
-
-	err = detachReplicaIndex(replicaName, primaryName, client)
-	if err != nil {
-		return fmt.Errorf(
-			"can't unlink replica index %s from primary index %s: %w",
-			replicaName,
-			primaryName,
-			err,
-		)
-	}
-
-	_, err = replicaIndex.Delete()
-	if err != nil {
-		return fmt.Errorf("can't delete replica index %q: %w", replicaName, err)
-	}
-
-	return nil
-}
-
-// Find the primary index of a replica index
-func findPrimaryIndex(replicaIndex *search.Index) (string, error) {
-	replicaName := replicaIndex.GetName()
-	settings, err := replicaIndex.GetSettings()
-	if err != nil {
-		return "", fmt.Errorf("can't get settings of replica index %q: %w", replicaName, err)
-	}
-
-	primary := settings.Primary
-	if primary == nil {
-		return "", fmt.Errorf("index %s doesn't have a primary", replicaName)
-	}
-
-	return primary.Get(), nil
-}
-
-// Remove replica from `replicas` settings of the primary index
-func detachReplicaIndex(replicaName string, primaryName string, client *search.Client) error {
-	primaryIndex := client.InitIndex(primaryName)
-	settings, err := primaryIndex.GetSettings()
-	if err != nil {
-		return fmt.Errorf("can't get settings of primary index %q: %w", primaryName, err)
-	}
-
-	replicas := settings.Replicas.Get()
-	isVirtual := isVirtualReplica(replicas, replicaName)
-	if isVirtual {
-		replicaName = fmt.Sprintf("virtual(%s)", replicaName)
-	}
-	indexOfReplica := findIndex(replicas, replicaName)
-
-	// Delete the replica at position `indexOfReplica` from the array
-	replicas = append(replicas[:indexOfReplica], replicas[indexOfReplica+1:]...)
-
-	res, err := primaryIndex.SetSettings(
-		search.Settings{
-			Replicas: opt.Replicas(replicas...),
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("can't update settings of index %q: %w", primaryName, err)
-	}
-
-	// Wait until the settings are updated, else a subsequent `delete` will fail.
-	_ = res.Wait()
-	return nil
-}
-
-// Find the index of the string `target` in the array `arr`
-func findIndex(arr []string, target string) int {
-	for i, v := range arr {
-		if v == target {
-			return i
-		}
-	}
-	return -1
-}
-
-func isVirtualReplica(replicas []string, replicaName string) bool {
-	pattern := regexp.MustCompile(fmt.Sprintf(`^virtual\(%s\)$`, replicaName))
-
-	for _, i := range replicas {
-		matches := pattern.MatchString(i)
-		if matches {
-			return true
-		}
-	}
-
-	return false
 }
