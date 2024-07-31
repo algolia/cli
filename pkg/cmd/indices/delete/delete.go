@@ -95,9 +95,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		msg := "Are you sure you want to delete the indices %q"
+		msg := "Are you sure you want to delete"
+		if len(opts.Indices) == 1 {
+			msg += " the index %q"
+		} else {
+			msg += " the indices %q"
+		}
 		if opts.IncludeReplicas {
-			msg += " including their replicas"
+			msg += " and their replicas"
 		}
 		msg += "?"
 		err := prompt.Confirm(fmt.Sprintf(msg, strings.Join(opts.Indices, ", ")), &confirmed)
@@ -109,9 +114,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
+	var deletedIndices []string
 	for _, index := range opts.Indices {
 		settings, err := client.GetSettings(client.NewApiGetSettingsRequest(index))
 		if err != nil {
+			er, ok := err.(*search.APIError)
+			if ok && er.Status == 404 {
+				return fmt.Errorf("Index '%s' does not exist\n", index)
+			}
 			return err
 		}
 		// Is it a replica index?
@@ -130,7 +140,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			if err != nil {
 				return err
 			}
-			// Wait until the setting change has been made
+			// Wait until the settings change has been made
 			_, err = client.WaitForTask(primary, res.TaskID)
 			if err != nil {
 				return err
@@ -141,13 +151,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		if err != nil {
 			return fmt.Errorf("failed to delete index %s: %w", index, err)
 		}
-		if opts.IncludeReplicas {
-			// So that the replicas are fully detached
-			client.WaitForTask(index, deletedRes.TaskID)
 
+		deletedIndices = append(deletedIndices, index)
+		if opts.IncludeReplicas && settings.HasReplicas() {
+			client.WaitForTask(index, deletedRes.TaskID)
 			// Construct batch request for deleting replicas of this index
 			var requests []search.MultipleBatchRequest
-			for _, index := range settings.GetReplicas() {
+			replicas := settings.GetReplicas()
+			for _, index := range replicas {
 				requests = append(
 					requests,
 					*search.NewMultipleBatchRequest(search.ACTION_DELETE, map[string]any{"indexName": index}, index),
@@ -159,27 +170,32 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			if err != nil {
 				return err
 			}
+			deletedIndices = append(deletedIndices, replicas...)
 		}
+	}
+	whatWasDeleted := "index"
+	if len(deletedIndices) > 1 {
+		whatWasDeleted = "indices"
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
 		fmt.Fprintf(
 			opts.IO.Out,
-			"%s Deleted indices %s\n",
+			"%s Deleted %s %s\n",
 			cs.SuccessIcon(),
-			strings.Join(opts.Indices, ", "),
+			whatWasDeleted,
+			strings.Join(deletedIndices, ", "),
 		)
 	}
-
 	return nil
 }
 
 // removeElement removes one element from a slice
-func removeElement[T comparable](slice []T, element T) []T {
+func removeElement(slice []string, element string) []string {
 	index := -1
 	for i, v := range slice {
-		if v == element {
+		if v == element || v == virtual(element) {
 			index = i
 			break
 		}
@@ -191,4 +207,9 @@ func removeElement[T comparable](slice []T, element T) []T {
 	}
 
 	return append(slice[:index], slice[index+1:]...)
+}
+
+// virtual wraps a string in the `virtual` modifier
+func virtual(s string) string {
+	return "virtual(" + s + ")"
 }
