@@ -114,6 +114,29 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		if err != nil {
 			return err
 		}
+		// Is it a replica index?
+		if primary := settings.GetPrimary(); len(primary) > 0 {
+			primarySettings, err := client.GetSettings(client.NewApiGetSettingsRequest(primary))
+			oneRemoved := removeElement(primarySettings.GetReplicas(), index)
+			// Detach replica index from primary index (keeping other replicas)
+			res, err := client.SetSettings(
+				client.NewApiSetSettingsRequest(
+					primary,
+					&search.IndexSettings{
+						Replicas: oneRemoved,
+					},
+				),
+			)
+			if err != nil {
+				return err
+			}
+			// Wait until the setting change has been made
+			_, err = client.WaitForTask(primary, res.TaskID)
+			if err != nil {
+				return err
+			}
+		}
+
 		deletedRes, err := client.DeleteIndex(client.NewApiDeleteIndexRequest(index))
 		if err != nil {
 			return fmt.Errorf("failed to delete index %s: %w", index, err)
@@ -150,4 +173,22 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	return nil
+}
+
+// removeElement removes one element from a slice
+func removeElement[T comparable](slice []T, element T) []T {
+	index := -1
+	for i, v := range slice {
+		if v == element {
+			index = i
+			break
+		}
+	}
+
+	if index == -1 {
+		// Element not found, return the original slice
+		return slice
+	}
+
+	return append(slice[:index], slice[index+1:]...)
 }
