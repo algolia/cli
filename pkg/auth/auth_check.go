@@ -12,22 +12,20 @@ import (
 	"github.com/algolia/cli/pkg/utils"
 )
 
-var (
-	WriteAPIKeyDefaultACLs = []string{
-		"search",
-		"browse",
-		"seeUnretrievableAttributes",
-		"listIndexes",
-		"analytics",
-		"logs",
-		"addObject",
-		"deleteObject",
-		"deleteIndex",
-		"settings",
-		"editSettings",
-		"recommendation",
-	}
-)
+var WriteAPIKeyDefaultACLs = []string{
+	"search",
+	"browse",
+	"seeUnretrievableAttributes",
+	"listIndexes",
+	"analytics",
+	"logs",
+	"addObject",
+	"deleteObject",
+	"deleteIndex",
+	"settings",
+	"editSettings",
+	"recommendation",
+}
 
 // errMissingACLs return an error with the missing ACLs
 func errMissingACLs(missing []string) error {
@@ -38,7 +36,9 @@ func errMissingACLs(missing []string) error {
 }
 
 // errAdminAPIKeyRequired is returned when the command requires an admin API Key
-var errAdminAPIKeyRequired = errors.New("This command requires an admin API Key. Please use the `--api-key` flag to provide a valid admin API Key.\n")
+var errAdminAPIKeyRequired = errors.New(
+	"This command requires an admin API Key. Please use the `--api-key` flag to provide a valid admin API Key.\n",
+)
 
 func DisableAuthCheck(cmd *cobra.Command) {
 	if cmd.Annotations == nil {
@@ -77,11 +77,11 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 	neededACLs := strings.Split(aclsAsString, ",")
 
-	client, err := f.SearchClient()
+	client, err := f.V4_SearchClient()
 	if err != nil {
 		return err
 	}
-	_, err = client.ListAPIKeys()
+	_, err = client.ListApiKeys()
 	if err == nil {
 		return nil // Admin API Key, no need to check ACLs
 	}
@@ -92,12 +92,21 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 
 	// Check the ACLs of the provided API Key
-	apiKey, err := client.GetAPIKey(f.Config.Profile().GetAPIKey())
+	keyToUse, err := f.Config.Profile().GetAPIKey()
+	if err != nil {
+		return err
+	}
+	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(keyToUse))
 	if err != nil {
 		return err
 	}
 
-	missingACLs := utils.Differences(neededACLs, apiKey.ACL)
+	var acl []string
+	for _, a := range apiKey.Acl {
+		acl = append(acl, string(a))
+	}
+
+	missingACLs := utils.Differences(neededACLs, acl)
 	if len(missingACLs) > 0 {
 		return errMissingACLs(missingACLs)
 	}

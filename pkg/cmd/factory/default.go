@@ -2,7 +2,6 @@ package factory
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
@@ -42,15 +41,17 @@ func v4_searchClient(f *cmdutil.Factory, appVersion string) func() (*v4.APIClien
 		if err != nil {
 			return nil, err
 		}
+		defaultClient, err := v4.NewClient(appID, apiKey)
+		if err != nil {
+			return nil, err
+		}
+		defaultUserAgent := defaultClient.GetConfiguration().Configuration.UserAgent
+
 		clientCfg := v4.SearchConfiguration{
 			Configuration: transport.Configuration{
-				AppID:  appID,
-				ApiKey: apiKey,
-				UserAgent: fmt.Sprintf(
-					"Algolia CLI (%s); Algolia for Go (4.0.0-beta.25); Go (%s); Search (4.0.0-beta.25)",
-					appVersion,
-					runtime.Version(),
-				),
+				AppID:     appID,
+				ApiKey:    apiKey,
+				UserAgent: fmt.Sprintf("Algolia CLI (%s); %s", appVersion, defaultUserAgent),
 			},
 		}
 		return v4.NewClientWithConfig(clientCfg)

@@ -5,10 +5,12 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -49,7 +51,12 @@ func (s OutputStub) Run() error {
 	return nil
 }
 
-func NewFactory(isTTY bool, r *httpmock.Registry, cfg config.IConfig, in string) (*cmdutil.Factory, *CmdInOut) {
+func NewFactory(
+	isTTY bool,
+	r *httpmock.Registry,
+	cfg config.IConfig,
+	in string,
+) (*cmdutil.Factory, *CmdInOut) {
 	io, stdin, stdout, stderr := iostreams.Test()
 	io.SetStdoutTTY(isTTY)
 	io.SetStdinTTY(isTTY)
@@ -68,6 +75,13 @@ func NewFactory(isTTY bool, r *httpmock.Registry, cfg config.IConfig, in string)
 			return search.NewClientWithConfig(search.Configuration{
 				Requester: r,
 			}), nil
+		}
+		f.V4_SearchClient = func() (*v4.APIClient, error) {
+			return v4.NewClientWithConfig(v4.SearchConfiguration{
+				Configuration: transport.Configuration{
+					Requester: r,
+				},
+			})
 		}
 		f.CrawlerClient = func() (*crawler.Client, error) {
 			return crawler.NewClientWithHTTPClient("id", "key", &http.Client{
