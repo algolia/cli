@@ -1,29 +1,27 @@
 package tail
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/insights"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
 	"github.com/algolia/cli/pkg/validators"
-
-	_insights "github.com/algolia/algoliasearch-client-go/v3/algolia/insights"
-	region "github.com/algolia/algoliasearch-client-go/v3/algolia/region"
-	"github.com/algolia/cli/api/insights"
 )
 
 const (
 	// DefaultRegion is the default region to use.
-	DefaultRegion = region.US
+	DefaultRegion = insights.US
 
 	// Interval is the interval between each request to fetch events.
 	Interval = 3 * time.Second
@@ -34,7 +32,7 @@ type TailOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Region string
 
@@ -46,7 +44,7 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 	opts := &TailOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4_SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -81,10 +79,11 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Region, "region", "r", string(DefaultRegion), "Region where your analytics data is stored and processed.")
+	cmd.Flags().
+		StringVarP(&opts.Region, "region", "r", string(DefaultRegion), "Region where your analytics data is stored and processed.")
 	_ = cmd.RegisterFlagCompletionFunc("region", cmdutil.StringCompletionFunc(map[string]string{
-		string(region.US): "United States",
-		string(region.DE): "Germany (Europe)",
+		string(insights.US): "United States",
+		string(insights.DE): "Germany (Europe)",
 	}))
 
 	opts.PrintFlags.AddFlags(cmd)
@@ -97,18 +96,15 @@ func runTailCmd(opts *TailOptions) error {
 	if err != nil {
 		return err
 	}
-	apiKey, err := opts.Config.Profile().GetAdminAPIKey()
+	apiKey, err := opts.Config.Profile().GetAPIKey()
 	if err != nil {
 		return err
 	}
 
-	// We don't use the base insights client because it doesn't support fetching events.
-	config := _insights.Configuration{
-		AppID:  appID,
-		APIKey: apiKey,
-		Region: region.Region(opts.Region),
+	insightsClient, err := insights.NewClient(appID, apiKey, insights.Region(opts.Region))
+	if err != nil {
+		return err
 	}
-	insightsClient := insights.NewClientWithConfig(config)
 
 	var p printers.Printer
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
@@ -122,27 +118,36 @@ func runTailCmd(opts *TailOptions) error {
 
 	c := time.Tick(Interval)
 	for t := range c {
-		utc := t.UTC()
-		events, err := insightsClient.FetchEvents(utc.Add(-1*time.Second), utc, 1000)
+		endDate := t.UTC()
+		startDate := endDate.Add(-1 * time.Second)
+		layout := "2006-01-02T15:04:05.000Z"
+		res, err := insightsClient.CustomGet(
+			insightsClient.NewApiCustomGetRequest("1/events").
+				WithParameters(map[string]any{"startDate": startDate.Format(layout), "endDate": endDate.Format(layout), "limit": 1000}),
+		)
 		if err != nil {
 			if strings.Contains(err.Error(), "The log processing region does not match") {
 				cs := opts.IO.ColorScheme()
 				errDetails := heredoc.Docf(`
 					%s The Analytics storage region of your application does not match the region you specified (%s).
-					Please specify the correct region using the --region (-r) flag.
+					Select the correct region with the --region (-r) flag.
 					You can view the Analytics storage region of your application in the Algolia dashboard: https://www.algolia.com/infra/analytics
 				`, cs.FailureIcon(), opts.Region)
 				return errors.New(errDetails)
 			}
 		}
 
-		for _, event := range events.Events {
+		var fetchEventsResponse FetchEventsResponse
+		resAsJson, err := json.Marshal(res)
+		err = json.Unmarshal(resAsJson, &fetchEventsResponse)
+
+		for _, eventWrapper := range fetchEventsResponse.Events {
 			if p != nil {
-				if err := p.Print(opts.IO, event); err != nil {
+				if err := p.Print(opts.IO, eventWrapper); err != nil {
 					return err
 				}
 			} else {
-				if err := printEvent(opts.IO, event); err != nil {
+				if err := printEvent(opts.IO, eventWrapper); err != nil {
 					return err
 				}
 			}
@@ -152,11 +157,12 @@ func runTailCmd(opts *TailOptions) error {
 	return nil
 }
 
-func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) error {
+func printEvent(io *iostreams.IOStreams, event EventWrapper) error {
 	cs := io.ColorScheme()
 
 	timeLayout := "2006-01-02 15:04:05"
-	formatedTime := event.Event.Timestamp.Format(timeLayout)
+	eventTime := time.Unix(event.Event.Timestamp, 0)
+	formatedTime := eventTime.Format(timeLayout)
 	formatedTime = cs.Gray(formatedTime)
 
 	colorizedStatus := cs.Green(fmt.Sprint(event.Status))
@@ -164,6 +170,15 @@ func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) error {
 		colorizedStatus = cs.Red(fmt.Sprint(event.Status))
 	}
 
-	_, err := fmt.Fprintf(io.Out, "%s [%s] %s %s [%s] %s\n", cs.Bold(formatedTime), colorizedStatus, event.Event.EventType, cs.Bold(event.Event.Index), event.Event.EventName, event.Event.UserToken)
+	_, err := fmt.Fprintf(
+		io.Out,
+		"%s [%s] %s %s [%s] %s\n",
+		cs.Bold(formatedTime),
+		colorizedStatus,
+		event.Event.EventType,
+		cs.Bold(event.Event.Index),
+		event.Event.EventName,
+		event.Event.UserToken,
+	)
 	return err
 }
