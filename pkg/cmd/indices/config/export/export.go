@@ -27,7 +27,7 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "export <index> [--scope <scope>...] [--directory]",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "settings",
 		},

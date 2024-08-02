@@ -42,7 +42,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:               "delete <index> --rule-ids <rule-ids> --confirm",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},

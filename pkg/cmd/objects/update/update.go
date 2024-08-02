@@ -47,7 +47,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:               "update <index> -F <file> [--create-if-not-exists] [--wait] [--continue-on-error]",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4_IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
