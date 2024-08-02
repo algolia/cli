@@ -17,6 +17,10 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
+func Pointer[T any](v T) *T {
+	return &v
+}
+
 type CmdInOut struct {
 	InBuf  *bytes.Buffer
 	OutBuf *bytes.Buffer
@@ -73,6 +77,8 @@ func NewFactory(
 		f.SearchClient = func() (*search.APIClient, error) {
 			return search.NewClientWithConfig(search.SearchConfiguration{
 				Configuration: transport.Configuration{
+					AppID:     "appID",
+					ApiKey:    "key",
 					Requester: r,
 				},
 			})

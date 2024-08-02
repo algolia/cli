@@ -2,9 +2,8 @@ package create
 
 import (
 	"testing"
-	"time"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,8 +15,6 @@ import (
 )
 
 func TestNewCreateCmd(t *testing.T) {
-	oneHour, _ := time.ParseDuration("1h")
-
 	tests := []struct {
 		name      string
 		tty       bool
@@ -35,7 +32,7 @@ func TestNewCreateCmd(t *testing.T) {
 				Indices:     []string{"foo", "bar"},
 				Description: "description",
 				Referers:    []string{"http://foo.com"},
-				Validity:    oneHour,
+				Validity:    3600,
 			},
 		},
 	}
@@ -105,7 +102,10 @@ func Test_runCreateCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/keys"), httpmock.JSONResponse(search.CreateKeyRes{Key: "foo"}))
+			r.Register(
+				httpmock.REST("POST", "1/keys"),
+				httpmock.JSONResponse(search.AddApiKeyResponse{Key: "foo"}),
+			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewCreateCmd(f, nil)

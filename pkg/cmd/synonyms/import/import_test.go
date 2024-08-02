@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,11 @@ import (
 
 func TestNewImportCmd(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "synonyms.ndjson")
-	_ = ioutil.WriteFile(file, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0o600)
+	_ = ioutil.WriteFile(
+		file,
+		[]byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"),
+		0o600,
+	)
 
 	tests := []struct {
 		name      string
@@ -106,12 +110,18 @@ func TestNewImportCmd(t *testing.T) {
 
 func Test_runExportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "synonyms.json")
-	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0o600)
+	err := ioutil.WriteFile(
+		tmpFile,
+		[]byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	var largeBatchBuilder strings.Builder
 	for i := 0; i < 1001; i += 1 {
-		largeBatchBuilder.Write([]byte("{\"objectID\":\"test\",\"type\":\"synonym\",\"synonyms\":[\"test\"]}\n"))
+		largeBatchBuilder.Write(
+			[]byte("{\"objectID\":\"test\",\"type\":\"synonym\",\"synonyms\":[\"test\"]}\n"),
+		)
 	}
 
 	tests := []struct {
@@ -128,7 +138,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   `{"objectID":"test", "type": "synonym", "synonyms": ["test"]}`,
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -136,7 +149,10 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -152,7 +168,10 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s' -f", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -161,7 +180,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   "",
 			wantOut: "✓ Successfully imported 0 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/clear"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/clear"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -178,11 +200,13 @@ func Test_runExportCmd(t *testing.T) {
 			wantOut: "✓ Successfully imported 1001 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) && req.URL.Query().Get("replaceExistingSynonyms") == "true"
-				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
+						req.URL.Query().Get("replaceExistingSynonyms") == "true"
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) && req.URL.Query().Get("replaceExistingSynonyms") == ""
-				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
+						req.URL.Query().Get("replaceExistingSynonyms") == ""
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
 			},
 		},
 	}

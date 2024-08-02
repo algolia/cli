@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				RuleIDs: []string{
 					"1",
 				},
@@ -50,7 +50,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				Indice:    "foo",
+				Index:     "foo",
 				RuleIDs: []string{
 					"1",
 				},
@@ -64,7 +64,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				RuleIDs: []string{
 					"1",
 					"2",
@@ -79,7 +79,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				RuleIDs: []string{
 					"1",
 					"2",
@@ -121,7 +121,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.RuleIDs, opts.RuleIDs)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
@@ -175,8 +175,14 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.ruleIDs {
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/rules/%s", tt.indice, id)), httpmock.JSONResponse(search.SearchRulesRes{}))
-				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/rules/%s", tt.indice, id)), httpmock.JSONResponse(search.DeleteTaskRes{}))
+				r.Register(
+					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/rules/%s", tt.indice, id)),
+					httpmock.JSONResponse(search.SearchRulesResponse{}),
+				)
+				r.Register(
+					httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/rules/%s", tt.indice, id)),
+					httpmock.JSONResponse(search.DeletedAtResponse{}),
+				)
 			}
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

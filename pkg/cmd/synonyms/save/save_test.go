@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,11 +29,8 @@ func TestNewSaveCmd(t *testing.T) {
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: SaveOptions{
-				Indice: "legends",
-				Synonym: search.NewRegularSynonym(
-					"1",
-					"jordan", "mj",
-				),
+				Index:             "legends",
+				Synonym:           *search.NewSynonymHit("1", search.SYNONYM_TYPE_SYNONYM, search.WithSynonymHitSynonyms([]string{"jordan", "mj"})),
 				ForwardToReplicas: false,
 			},
 		},
@@ -43,11 +40,8 @@ func TestNewSaveCmd(t *testing.T) {
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: SaveOptions{
-				Indice: "legends",
-				Synonym: search.NewRegularSynonym(
-					"1",
-					"jordan", "mj",
-				),
+				Index:             "legends",
+				Synonym:           *search.NewSynonymHit("1", search.SYNONYM_TYPE_SYNONYM, search.WithSynonymHitSynonyms([]string{"jordan", "mj"})),
 				ForwardToReplicas: false,
 			},
 		},
@@ -86,7 +80,7 @@ func TestNewSaveCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.Synonym, opts.Synonym)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 		})
@@ -163,7 +157,13 @@ func Test_runSaveCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("PUT", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, tt.synonymID)), httpmock.JSONResponse(search.RegularSynonym{}))
+			r.Register(
+				httpmock.REST(
+					"PUT",
+					fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, tt.synonymID),
+				),
+				httpmock.JSONResponse(search.NewEmptySynonymHit()),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
