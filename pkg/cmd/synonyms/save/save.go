@@ -32,7 +32,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	opts := &SaveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	flags := &shared.SynonymFlags{}

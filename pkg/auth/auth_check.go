@@ -77,7 +77,7 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 	neededACLs := strings.Split(aclsAsString, ",")
 
-	client, err := f.V4_SearchClient()
+	client, err := f.SearchClient()
 	if err != nil {
 		return err
 	}

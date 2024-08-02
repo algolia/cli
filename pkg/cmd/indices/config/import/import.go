@@ -19,7 +19,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	var confirm bool

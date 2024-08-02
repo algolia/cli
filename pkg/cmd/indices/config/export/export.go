@@ -21,7 +21,7 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	cmd := &cobra.Command{

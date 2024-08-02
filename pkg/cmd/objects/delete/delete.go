@@ -38,7 +38,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 		DeleteBy:     false,
 	}
 

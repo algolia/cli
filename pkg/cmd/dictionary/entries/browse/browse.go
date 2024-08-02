@@ -33,7 +33,7 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 	opts := &BrowseOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{

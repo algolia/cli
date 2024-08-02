@@ -33,7 +33,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	opts := &CreateOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "create",

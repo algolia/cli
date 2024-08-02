@@ -41,7 +41,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	opts := &UpdateOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	cmd := &cobra.Command{

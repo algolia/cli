@@ -5,8 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
@@ -71,13 +70,8 @@ func NewFactory(
 	}
 
 	if r != nil {
-		f.SearchClient = func() (*search.Client, error) {
-			return search.NewClientWithConfig(search.Configuration{
-				Requester: r,
-			}), nil
-		}
-		f.V4_SearchClient = func() (*v4.APIClient, error) {
-			return v4.NewClientWithConfig(v4.SearchConfiguration{
+		f.SearchClient = func() (*search.APIClient, error) {
+			return search.NewClientWithConfig(search.SearchConfiguration{
 				Configuration: transport.Configuration{
 					Requester: r,
 				},

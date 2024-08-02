@@ -24,7 +24,7 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 	opts := &GetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{

@@ -39,7 +39,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	opts := &ClearOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:       "clear {<dictionary>... | --all} [--confirm]",

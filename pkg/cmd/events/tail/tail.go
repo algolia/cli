@@ -44,7 +44,7 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 	opts := &TailOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4_SearchClient,
+		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
