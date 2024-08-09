@@ -777,11 +777,8 @@ paths:
           content:
             application/json:
               schema:
-                title: getObjectResponse
                 type: object
                 description: The requested record.
-                additionalProperties:
-                  $ref: '#/components/schemas/attribute'
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -989,52 +986,13 @@ paths:
         name.
       parameters:
         - $ref: '#/components/parameters/IndexName'
+      x-codegen-request-body-name: batchWriteParams
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              title: batchWriteParams
-              description: Batch parameters.
-              type: object
-              additionalProperties: false
-              properties:
-                requests:
-                  type: array
-                  items:
-                    title: batchRequest
-                    type: object
-                    additionalProperties: false
-                    properties:
-                      action:
-                        $ref: '#/components/schemas/action'
-                      body:
-                        type: object
-                        description: Operation arguments (varies with specified `action`).
-                        example:
-                          name: Betty Jane McCamey
-                          company: Vita Foods Inc.
-                          email: betty@mccamey.com
-                    required:
-                      - action
-                      - body
-              required:
-                - requests
-            examples:
-              batch:
-                summary: Batch indexing request
-                value:
-                  requests:
-                    - action: addObject
-                      body:
-                        name: Betty Jane McCamey
-                        company: Vita Foods Inc.
-                        email: betty@mccamey.com
-                    - action: addObject
-                      body:
-                        name: Gayla geimer
-                        company: Ortman McCain Co.
-                        email: gayla@geimer.com
+              $ref: '#/components/schemas/batchWriteParams'
+        required: true
       responses:
         '200':
           description: OK
@@ -1091,7 +1049,6 @@ paths:
                         $ref: '#/components/schemas/indexName'
                     required:
                       - action
-                      - body
                       - indexName
               required:
                 - requests
@@ -1168,8 +1125,8 @@ paths:
                 requests:
                   type: array
                   items:
-                    description: Request body for retrieving records.
                     title: getObjectsRequest
+                    description: Request body for retrieving records.
                     type: object
                     additionalProperties: false
                     required:
@@ -1243,7 +1200,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/indexSettings'
+                $ref: '#/components/schemas/settingsResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '402':
@@ -1887,8 +1844,8 @@ paths:
         content:
           application/json:
             schema:
-              type: object
               title: searchRulesParams
+              type: object
               description: Rules search parameters.
               additionalProperties: false
               properties:
@@ -2911,8 +2868,8 @@ paths:
                           type: array
                           description: Queries performed for the given request.
                           items:
-                            type: object
                             title: logQuery
+                            type: object
                             properties:
                               index_name:
                                 type: string
@@ -3687,7 +3644,7 @@ components:
       default: ''
     searchParamsString:
       type: object
-      title: Search parameters as query string
+      description: Search parameters as query string.
       additionalProperties: false
       x-discriminator-fields:
         - params
@@ -3936,6 +3893,7 @@ components:
       title: range objects
       type: array
       items:
+        title: range
         type: object
         description: >-
           Range object with lower and upper values in meters to define custom
@@ -5116,7 +5074,8 @@ components:
         decompoundQuery:
           type: boolean
           description: >
-            Whether to split compound words into their building blocks.
+            Whether to split compound words in the query into their building
+            blocks.
 
 
             For more information, see [Word
@@ -5124,6 +5083,12 @@ components:
 
             Word segmentation is supported for these languages: German, Dutch,
             Finnish, Swedish, and Norwegian.
+
+            Decompounding doesn't work for words with [non-spacing mark Unicode
+            characters](https://www.charactercodes.net/category/non-spacing_mark).
+
+            For example, `Gartenstühle` won't be decompounded if the `ü`
+            consists of `u` (U+0075) and `◌̈` (U+0308).
           default: true
           x-categories:
             - Languages
@@ -5451,6 +5416,7 @@ components:
           type: boolean
           description: Redirect rule status.
         data:
+          title: redirectRuleIndexData
           type: object
           description: Redirect rule data.
           required:
@@ -5502,8 +5468,8 @@ components:
           type: string
           description: Distance from a central coordinate provided by `aroundLatLng`.
         exhaustive:
-          type: object
           title: exhaustive
+          type: object
           description: >-
             Whether certain properties of the search response are calculated
             exhaustive (exact) or approximated.
@@ -5583,8 +5549,8 @@ components:
           type: object
           description: Statistics for numerical facets.
           additionalProperties:
-            type: object
             title: facetStats
+            type: object
             properties:
               min:
                 type: number
@@ -5697,6 +5663,12 @@ components:
       type: string
       description: Unique record identifier.
       example: test-record-123
+    highlightResultMap:
+      type: object
+      description: Surround words that match the query with HTML tags for highlighting.
+      additionalProperties:
+        x-additionalPropertiesName: attribute
+        $ref: '#/components/schemas/highlightResult'
     highlightedValue:
       type: string
       description: Highlighted attribute value, including HTML tags.
@@ -5744,15 +5716,16 @@ components:
         $ref: '#/components/schemas/highlightResultOption'
     highlightResult:
       oneOf:
+        - $ref: '#/components/schemas/highlightResultMap'
         - $ref: '#/components/schemas/highlightResultOption'
         - $ref: '#/components/schemas/highlightResultOptionMap'
         - $ref: '#/components/schemas/highlightResultOptionArray'
-    highlightResultMap:
+    snippetResultMap:
       type: object
-      description: Surround words that match the query with HTML tags for highlighting.
+      description: Snippets that show the context around a matching search query.
       additionalProperties:
         x-additionalPropertiesName: attribute
-        $ref: '#/components/schemas/highlightResult'
+        $ref: '#/components/schemas/snippetResult'
     snippetResultOption:
       type: object
       description: Snippets that show the context around a matching search query.
@@ -5778,15 +5751,10 @@ components:
         $ref: '#/components/schemas/snippetResultOption'
     snippetResult:
       oneOf:
+        - $ref: '#/components/schemas/snippetResultMap'
         - $ref: '#/components/schemas/snippetResultOption'
         - $ref: '#/components/schemas/snippetResultOptionMap'
         - $ref: '#/components/schemas/snippetResultOptionArray'
-    snippetResultMap:
-      type: object
-      description: Snippets that show the context around a matching search query.
-      additionalProperties:
-        x-additionalPropertiesName: attribute
-        $ref: '#/components/schemas/snippetResult'
     matchedGeoLocation:
       type: object
       properties:
@@ -5880,7 +5848,7 @@ components:
         - geoDistance
         - nbExactWords
         - userScore
-    _distinctSeqID:
+    distinctSeqID:
       type: integer
     hit:
       type: object
@@ -5904,7 +5872,7 @@ components:
         _rankingInfo:
           $ref: '#/components/schemas/rankingInfo'
         _distinctSeqID:
-          $ref: '#/components/schemas/_distinctSeqID'
+          $ref: '#/components/schemas/distinctSeqID'
     searchHits:
       type: object
       additionalProperties: true
@@ -6033,8 +6001,8 @@ components:
           type: array
           description: Matching facet values.
           items:
-            type: object
             title: facetHits
+            type: object
             additionalProperties: false
             required:
               - value
@@ -6125,9 +6093,6 @@ components:
       type: string
       example: '2023-06-27T14:42:38.831Z'
       description: Date and time when the object was deleted, in RFC 3339 format.
-    attribute:
-      type: string
-      description: Value of the attribute to update.
     updatedAt:
       type: string
       example: '2023-07-04T12:49:15Z'
@@ -6164,6 +6129,9 @@ components:
           $ref: '#/components/schemas/taskID'
         updatedAt:
           $ref: '#/components/schemas/updatedAt'
+    attribute:
+      type: string
+      description: Value of the attribute to update.
     builtInOperationType:
       type: string
       enum:
@@ -6175,6 +6143,14 @@ components:
         - IncrementFrom
         - IncrementSet
       description: How to change the attribute.
+    builtInOperationValue:
+      oneOf:
+        - type: string
+          description: >-
+            A string to append or remove for the `Add`, `Remove`, and
+            `AddUnique` operations.
+        - type: integer
+          description: A number to add, remove, or append, depending on the operation.
     builtInOperation:
       type: object
       description: Update to perform on the attribute.
@@ -6183,10 +6159,7 @@ components:
         _operation:
           $ref: '#/components/schemas/builtInOperationType'
         value:
-          type: string
-          description: >-
-            Value that corresponds to the operation, for example an `Increment`
-            or `Decrement` step, or an `Add` or `Remove` value.
+          $ref: '#/components/schemas/builtInOperationValue'
       required:
         - _operation
         - value
@@ -6205,6 +6178,48 @@ components:
         - delete
         - clear
       description: Type of indexing operation.
+    batchWriteParams:
+      title: batchWriteParams
+      description: Batch parameters.
+      type: object
+      additionalProperties: false
+      properties:
+        requests:
+          type: array
+          items:
+            title: batchRequest
+            type: object
+            additionalProperties: false
+            properties:
+              action:
+                $ref: '#/components/schemas/action'
+              body:
+                type: object
+                description: Operation arguments (varies with specified `action`).
+                example:
+                  name: Betty Jane McCamey
+                  company: Vita Foods Inc.
+                  email: betty@mccamey.com
+            required:
+              - action
+              - body
+      required:
+        - requests
+      example:
+        batch:
+          summary: Batch indexing request
+          value:
+            requests:
+              - action: addObject
+                body:
+                  name: Betty Jane McCamey
+                  company: Vita Foods Inc.
+                  email: betty@mccamey.com
+              - action: addObject
+                body:
+                  name: Gayla geimer
+                  company: Ortman McCain Co.
+                  email: gayla@geimer.com
     objectIDs:
       type: array
       items:
@@ -6226,7 +6241,6 @@ components:
         - objectIDs
     baseIndexSettings:
       type: object
-      title: Index settings.
       additionalProperties: false
       properties:
         attributesForFaceting:
@@ -6421,6 +6435,12 @@ components:
 
             Dutch (`nl`), German (`de`), Finnish (`fi`), Danish (`da`), Swedish
             (`sv`), and Norwegian (`no`).
+
+            Decompounding doesn't work for words with [non-spacing mark Unicode
+            characters](https://www.charactercodes.net/category/non-spacing_mark).
+
+            For example, `Gartenstühle` won't be decompounded if the `ü`
+            consists of `u` (U+0075) and `◌̈` (U+0308).
           default: {}
           x-categories:
             - Languages
@@ -6619,6 +6639,19 @@ components:
       allOf:
         - $ref: '#/components/schemas/baseIndexSettings'
         - $ref: '#/components/schemas/indexSettingsAsSearchParams'
+    WithPrimary:
+      type: object
+      additionalProperties: false
+      properties:
+        primary:
+          type: string
+          description: >
+            Replica indices only: the name of the primary index for this
+            replica.
+    settingsResponse:
+      allOf:
+        - $ref: '#/components/schemas/indexSettings'
+        - $ref: '#/components/schemas/WithPrimary'
     SynonymType:
       type: string
       description: Synonym type.
@@ -7287,13 +7320,20 @@ components:
         - disabled
       default: enabled
       description: Whether a dictionary entry is active.
+    dictionaryEntryType:
+      type: string
+      enum:
+        - custom
+        - standard
+      description: >-
+        Whether a dictionary entry is provided by Algolia (standard), or has
+        been added by you (custom).
     dictionaryEntry:
       type: object
       description: Dictionary entry.
       additionalProperties: true
       required:
         - objectID
-        - language
       properties:
         objectID:
           type: string
@@ -7328,6 +7368,8 @@ components:
             type: string
         state:
           $ref: '#/components/schemas/dictionaryEntryState'
+        type:
+          $ref: '#/components/schemas/dictionaryEntryType'
     searchDictionaryEntriesResponse:
       type: object
       additionalProperties: false
