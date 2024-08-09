@@ -293,7 +293,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/clickAnalytics/`))
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Attributes to use as custom ranking.
 See: https://www.algolia.com/doc/api-reference/api-parameters/customRanking/`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
-	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words into their building blocks.
+	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words in the query into their building blocks.
 See: https://www.algolia.com/doc/api-reference/api-parameters/decompoundQuery/`))
 	cmd.Flags().SetAnnotation("decompoundQuery", "Categories", []string{"Languages"})
 	cmd.Flags().StringSlice("disableExactOnAttributes", []string{}, heredoc.Doc(`Searchable attributes for which you want to turn off the Exact ranking criterion.
@@ -551,7 +551,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/customNormalizatio
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Attributes to use as custom ranking.
 See: https://www.algolia.com/doc/api-reference/api-parameters/customRanking/`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
-	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words into their building blocks.
+	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words in the query into their building blocks.
 See: https://www.algolia.com/doc/api-reference/api-parameters/decompoundQuery/`))
 	cmd.Flags().SetAnnotation("decompoundQuery", "Categories", []string{"Languages"})
 	decompoundedAttributes := NewJSONVar([]string{}...)
@@ -746,7 +746,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/clickAnalytics/`))
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Attributes to use as custom ranking.
 See: https://www.algolia.com/doc/api-reference/api-parameters/customRanking/`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
-	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words into their building blocks.
+	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words in the query into their building blocks.
 See: https://www.algolia.com/doc/api-reference/api-parameters/decompoundQuery/`))
 	cmd.Flags().SetAnnotation("decompoundQuery", "Categories", []string{"Languages"})
 	cmd.Flags().StringSlice("disableExactOnAttributes", []string{}, heredoc.Doc(`Searchable attributes for which you want to turn off the Exact ranking criterion.
