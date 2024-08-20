@@ -48,10 +48,8 @@ github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 h1:+vx7roKuyA63n
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDeC1lPdgDeDbhX8XFpy1jqjK0IBG8W5K+xYqA0w=
 github.com/algolia/algoliasearch-client-go/v3 v3.30.0 h1:sZvynLYzLrDok2uqQoN3JmUkRUbs4HvLmdf1uvGFXL8=
 github.com/algolia/algoliasearch-client-go/v3 v3.30.0/go.mod h1:i7tLoP7TYDmHX3Q7vkIOL4syVse/k5VJ+k0i8WqFiJk=
-github.com/algolia/algoliasearch-client-go/v4 v4.0.0-beta.25 h1:1IDEWyG4iznPzzcE2KKxfnGZmZi+gcg5Bho3HsH+Tec=
-github.com/algolia/algoliasearch-client-go/v4 v4.0.0-beta.25/go.mod h1:To7CLzL9F7aKR3uYJ/XF+DuTx8GXZ5oL6tnZNo9J2ME=
-github.com/algolia/algoliasearch-client-go/v4 v4.0.0-beta.26 h1:Pp5DlachNM1TbX6D27QQQD9u7MzFouobgx51m9rH9zo=
-github.com/algolia/algoliasearch-client-go/v4 v4.0.0-beta.26/go.mod h1:To7CLzL9F7aKR3uYJ/XF+DuTx8GXZ5oL6tnZNo9J2ME=
+github.com/algolia/algoliasearch-client-go/v4 v4.0.0 h1:RSM9Dh2hC61/rdtvn//c6YBw8HYzIOeCtX5NEWo6uO8=
+github.com/algolia/algoliasearch-client-go/v4 v4.0.0/go.mod h1:To7CLzL9F7aKR3uYJ/XF+DuTx8GXZ5oL6tnZNo9J2ME=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/briandowns/spinner v1.19.0 h1:s8aq38H+Qju89yhp89b4iIiMzMm8YN3p6vGpwyh/a8E=
