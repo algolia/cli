@@ -31,7 +31,7 @@ func MakePath(path string) error {
 }
 
 // Contains check if a slice contains a given string
-func Contains(s []string, e string) bool {
+func Contains[T comparable](s []T, e T) bool {
 	for _, a := range s {
 		if a == e {
 			return true
@@ -91,21 +91,25 @@ func IsCI() bool {
 
 // Convert slice of string to a readable string
 // eg: ["one", "two", "three"] -> "one, two and three"
-func SliceToReadableString(str []string) string {
-	if len(str) == 0 {
+func SliceToReadableString[T any](s []T) string {
+	if len(s) == 0 {
 		return ""
 	}
-	if len(str) == 1 {
-		return str[0]
+	if len(s) == 1 {
+		return fmt.Sprintf("%v", s[0])
 	}
-	if len(str) == 2 {
-		return fmt.Sprintf("%s and %s", str[0], str[1])
+	if len(s) == 2 {
+		return fmt.Sprintf("%v and %v", s[0], s[1])
 	}
 	readableStr := ""
-	if len(str) > 2 {
+	if len(s) > 2 {
+		strs := make([]string, len(s))
+		for i, v := range s {
+			strs[i] = fmt.Sprintf("%v", v)
+		}
 		return fmt.Sprintf("%s%s",
-			strings.Join(str[:len(str)-1], ", "),
-			fmt.Sprintf(" and %s", str[len(str)-1]))
+			strings.Join(strs[:len(strs)-1], ", "),
+			fmt.Sprintf(" and %v", strs[len(strs)-1]))
 	}
 
 	return readableStr
