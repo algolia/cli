@@ -22,6 +22,7 @@ import (
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
+	"github.com/algolia/cli/pkg/cmd/applications"
 	"github.com/algolia/cli/pkg/cmd/art"
 	authCmds "github.com/algolia/cli/pkg/cmd/auth"
 	"github.com/algolia/cli/pkg/cmd/crawler"
@@ -110,6 +111,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
 	cmd.AddCommand(events.NewEventsCmd(f))
 	cmd.AddCommand(crawler.NewCrawlersCmd(f))
+
+	// Provisionning related commands
+	cmd.AddCommand(applications.NewApplicationsCmd(f))
 
 	// ??? related commands
 	cmd.AddCommand(art.NewArtCmd(f))

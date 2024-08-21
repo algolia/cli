@@ -1,6 +1,8 @@
 package login
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/MakeNowJust/heredoc"
@@ -10,11 +12,13 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
+// LoginOptions holds the options for the login command
 type LoginOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 }
 
+// NewLoginCmd creates and returns a login command
 func NewLoginCmd(f *cmdutil.Factory, runF func(*LoginOptions) error) *cobra.Command {
 	opts := &LoginOptions{
 		IO:     f.IOStreams,
@@ -40,8 +44,20 @@ func NewLoginCmd(f *cmdutil.Factory, runF func(*LoginOptions) error) *cobra.Comm
 	return cmd
 }
 
+// runLoginCmd executes the login command
 func runLoginCmd(opts *LoginOptions) error {
-	authflow.AuthFlow("https://www.algolia.com", opts.IO, "Logging in...", nil)
+	cs := opts.IO.ColorScheme()
+	token, refreshToken, err := authflow.AuthFlow(opts.IO, "Logging in...")
+	if err != nil {
+		return err
+	}
+
+	err = opts.Config.Auth().Login(token, refreshToken)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(opts.IO.Out, "%s Successfully logged in\n", cs.SuccessIcon())
 
 	return nil
 }

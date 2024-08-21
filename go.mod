@@ -27,7 +27,7 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.13.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.9.0
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c
 	golang.org/x/term v0.13.0
 	gopkg.in/segmentio/analytics-go.v3 v3.1.0
@@ -36,8 +36,13 @@ require (
 )
 
 require (
+	github.com/alessio/shellescape v1.4.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cli/browser v1.3.0 // indirect
+	github.com/danieljoos/wincred v1.2.0 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/google/jsonapi v1.0.0 // indirect
+	github.com/zalando/go-keyring v0.2.5 // indirect
 )
 
 require (

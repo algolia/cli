@@ -25,6 +25,14 @@ type Flow struct {
 	server   *localServer
 	clientID string
 	state    string
+	params   BrowserParams
+}
+
+// RefreshOptions specifies parameters to refresh the access token.
+type RefreshOptions struct {
+	ClientID     string
+	ClientSecret string
+	RefreshToken string
 }
 
 // InitFlow creates a new Flow instance by detecting a locally available port number.
@@ -59,15 +67,15 @@ func (flow *Flow) BrowserURL(baseURL string, params BrowserParams) (string, erro
 		return "", err
 	}
 
-	ru.Host = fmt.Sprintf("%s:%d", ru.Hostname(), flow.server.Port())
-	flow.server.CallbackPath = ru.Path
+	flow.server.CallbackPath = "/callback"
 	flow.clientID = params.ClientID
+	flow.params = params
 
 	q := url.Values{}
 	q.Set("client_id", params.ClientID)
 	q.Set("redirect_uri", ru.String())
 	q.Set("scope", strings.Join(params.Scopes, " "))
-	q.Set("grant_type", "authorization_code")
+	q.Set("response_type", "code")
 	q.Set("state", flow.state)
 	if params.LoginHandle != "" {
 		q.Set("login", params.LoginHandle)
@@ -115,6 +123,24 @@ func (flow *Flow) Wait(ctx context.Context, c httpClient, tokenURL string, opts 
 			"client_secret": {opts.ClientSecret},
 			"code":          {code.Code},
 			"state":         {flow.state},
+			"grant_type":    {"authorization_code"},
+			"redirect_uri":  {flow.params.RedirectURI},
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.AccessToken()
+}
+
+// RefreshAccessToken refreshes the access token.
+func RefreshAccessToken(c httpClient, tokenURL string, opts RefreshOptions) (*api.AccessToken, error) {
+	resp, err := api.PostForm(c, tokenURL,
+		url.Values{
+			"client_id":     {opts.ClientID},
+			"client_secret": {opts.ClientSecret},
+			"refresh_token": {opts.RefreshToken},
+			"grant_type":    {"refresh_token"},
 		})
 	if err != nil {
 		return nil, err

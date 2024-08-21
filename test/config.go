@@ -70,6 +70,10 @@ func (c *ConfigStub) SetDefaultProfile(name string) error {
 	return nil
 }
 
+func (c *ConfigStub) Auth() config.IAuthConfig {
+	return &config.AuthConfig{}
+}
+
 func NewConfigStubWithProfiles(p []*config.Profile) *ConfigStub {
 	return &ConfigStub{
 		CurrentProfile: *p[0],

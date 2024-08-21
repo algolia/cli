@@ -11,6 +11,13 @@ import (
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/zalando/go-keyring"
+)
+
+const (
+	keyRingServiceName     = "algolia-cli"
+	keyRingTokenKey        = "token"
+	keyRingRefreshTokenKey = "refresh-token"
 )
 
 type IConfig interface {
@@ -27,6 +34,16 @@ type IConfig interface {
 
 	Profile() *Profile
 	Default() *Profile
+
+	Auth() IAuthConfig
+}
+
+type IAuthConfig interface {
+	Login(token, refreshToken string) error
+	Logout() error
+
+	Token() (string, error)
+	RefreshToken() (string, error)
 }
 
 // Config handles all overall configuration for the CLI
@@ -204,4 +221,63 @@ func (c *Config) write(runtimeViper *viper.Viper) error {
 	}
 
 	return nil
+}
+
+// Auth returns the auth configuration
+func (c *Config) Auth() IAuthConfig {
+	return &AuthConfig{cfg: c}
+}
+
+type AuthConfig struct {
+	cfg *Config
+}
+
+// Login saves both the token and the refresh token in the keyring
+func (a *AuthConfig) Login(token, refreshToken string) error {
+	err := keyring.Set(keyRingServiceName, keyRingTokenKey, token)
+	if err != nil {
+		return err
+	}
+
+	err = keyring.Set(keyRingServiceName, keyRingRefreshTokenKey, refreshToken)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Logout deletes the token and the refresh token from the keyring
+func (a *AuthConfig) Logout() error {
+	err := keyring.Delete(keyRingServiceName, keyRingTokenKey)
+	if err != nil {
+		return err
+	}
+
+	err = keyring.Delete(keyRingServiceName, keyRingRefreshTokenKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Token returns the token from the keyring
+func (a *AuthConfig) Token() (string, error) {
+	token, err := keyring.Get(keyRingServiceName, "token")
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+// RefreshToken returns the refresh token from the keyring
+func (a *AuthConfig) RefreshToken() (string, error) {
+	token, err := keyring.Get(keyRingServiceName, "refresh-token")
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
 }
