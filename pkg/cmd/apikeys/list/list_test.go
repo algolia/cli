@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/algolia/cli/pkg/httpmock"
@@ -36,15 +36,15 @@ func Test_runListCmd(t *testing.T) {
 			r := httpmock.Registry{}
 			r.Register(
 				httpmock.REST("GET", "1/keys"),
-				httpmock.JSONResponse(search.ListAPIKeysRes{
-					Keys: []search.Key{
+				httpmock.JSONResponse(search.ListApiKeysResponse{
+					Keys: []search.GetApiKeyResponse{
 						{
-							Value:                  "foo",
-							Description:            "test",
-							ACL:                    []string{"*"},
-							Validity:               0,
-							MaxHitsPerQuery:        0,
-							MaxQueriesPerIPPerHour: 0,
+							Value:                  test.Pointer("foo"),
+							Description:            test.Pointer("test"),
+							Acl:                    []search.Acl{"*"},
+							Validity:               test.Pointer(int32(0)),
+							MaxHitsPerQuery:        test.Pointer(int32(0)),
+							MaxQueriesPerIPPerHour: test.Pointer(int32(0)),
 							Referers:               []string{},
 							CreatedAt:              time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 						},

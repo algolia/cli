@@ -3,14 +3,14 @@ package update
 import (
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_ValidateOperation(t *testing.T) {
 	tests := []struct {
 		name       string
-		operation  string
+		operation  search.BuiltInOperationType
 		wantErr    bool
 		wantErrMsg string
 	}{
@@ -22,14 +22,16 @@ func Test_ValidateOperation(t *testing.T) {
 		},
 	}
 
-	for _, ops := range []string{"Increment", "Decrement", "Add", "AddUnique", "IncrementSet", "IncrementFrom"} {
+	for _, ops := range []search.BuiltInOperationType{
+		search.BUILT_IN_OPERATION_TYPE_ADD, search.BUILT_IN_OPERATION_TYPE_DECREMENT, search.BUILT_IN_OPERATION_TYPE_ADD_UNIQUE, search.BUILT_IN_OPERATION_TYPE_REMOVE, search.BUILT_IN_OPERATION_TYPE_INCREMENT, search.BUILT_IN_OPERATION_TYPE_INCREMENT_SET, search.BUILT_IN_OPERATION_TYPE_INCREMENT_FROM,
+	} {
 		tests = append(tests, struct {
 			name       string
-			operation  string
+			operation  search.BuiltInOperationType
 			wantErr    bool
 			wantErrMsg string
 		}{
-			name:      ops,
+			name:      string(ops),
 			operation: ops,
 			wantErr:   false,
 		})
@@ -37,7 +39,7 @@ func Test_ValidateOperation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateOperation(search.PartialUpdateOperation{Operation: tt.operation})
+			err := ValidateOperation(search.BuiltInOperation{Operation: tt.operation})
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Equal(t, tt.wantErrMsg, err.Error())
@@ -105,7 +107,10 @@ func Test_Object_UnmarshalJSON(t *testing.T) {
 				}
 			}`),
 			wantErr: false,
-			wantObj: Object{"objectID": "foo", "bar": search.PartialUpdateOperation{Operation: "Increment"}},
+			wantObj: Object{
+				"objectID": "foo",
+				"bar":      search.BuiltInOperation{Operation: "Increment"},
+			},
 		},
 	}
 

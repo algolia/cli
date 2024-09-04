@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -24,7 +24,7 @@ type OperationsOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Wait bool
 
@@ -51,7 +51,7 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 		},
 		Short: "Perform several indexing operations",
 		Long: heredoc.Doc(`
-			Perform several indexing operations
+			Perform several indexing operations.
 
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 			Each JSON object must be a valid indexing operation, as documented in the REST API documentation: https://www.algolia.com/doc/rest-api/search/#batch-write-operations-multiple-indices
@@ -75,11 +75,14 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "The file to read the indexing operations from (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "The file to read the indexing operations from (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the indexing operation(s) to complete before returning.")
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue processing operations even if some operations are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the indexing operation(s) to complete before returning.")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue processing operations even if some operations are invalid.")
 
 	return cmd
 }
@@ -93,7 +96,7 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	cs := opts.IO.ColorScheme()
 
 	var (
-		operations      []search.BatchOperationIndexed
+		batchRequests   []search.MultipleBatchRequest
 		currentLine     = 0
 		totalOperations = 0
 	)
@@ -111,21 +114,25 @@ func runOperationsCmd(opts *OperationsOptions) error {
 		}
 
 		totalOperations++
-		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read %s from %s", utils.Pluralize(totalOperations, "operation"), opts.File))
+		opts.IO.UpdateProgressIndicatorLabel(
+			fmt.Sprintf(
+				"Read %s from %s",
+				utils.Pluralize(totalOperations, "operation"),
+				opts.File,
+			),
+		)
 
-		var batchOperation search.BatchOperationIndexed
-		if err := json.Unmarshal([]byte(line), &batchOperation); err != nil {
+		var batchRequest search.MultipleBatchRequest
+		if err := json.Unmarshal([]byte(line), &batchRequest); err != nil {
 			err := fmt.Errorf("line %d: %s", currentLine, err)
 			errors = append(errors, err.Error())
 			continue
 		}
-		err = ValidateBatchOperation(batchOperation)
 		if err != nil {
 			errors = append(errors, err.Error())
 			continue
 		}
-
-		operations = append(operations, batchOperation)
+		batchRequests = append(batchRequests, batchRequest)
 	}
 
 	opts.IO.StopProgressIndicator()
@@ -140,7 +147,7 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	`, cs.FailureIcon(), utils.Pluralize(len(errors), "error"), totalOperations, text.Indent(strings.Join(errors, "\n"), "  "))
 
 	// No operations found
-	if len(operations) == 0 {
+	if len(batchRequests) == 0 {
 		if len(errors) > 0 {
 			return fmt.Errorf(errorMsg)
 		}
@@ -164,8 +171,12 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	}
 
 	// Process operations
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(operations)))))
-	res, err := client.MultipleBatch(operations)
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(batchRequests)))),
+	)
+	res, err := client.MultipleBatch(
+		client.NewApiMultipleBatchRequest(search.NewBatchParams(batchRequests)),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -174,44 +185,22 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	// Wait for the operation to complete if requested
 	if opts.Wait {
 		opts.IO.UpdateProgressIndicatorLabel("Waiting for the operations to complete")
-		if err := res.Wait(); err != nil {
-			opts.IO.StopProgressIndicator()
-			return err
+		for index, taskID := range res.TaskID {
+			_, err := client.WaitForTask(index, taskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully processed %s operations in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(operations))), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully processed %s operations in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(batchRequests))),
+		time.Since(elapsed),
+	)
 	return err
-}
-
-// ValidateBatchOperation checks that the batch operation is valid
-func ValidateBatchOperation(p search.BatchOperationIndexed) error {
-	allowedActions := []string{
-		string(search.AddObject), string(search.UpdateObject), string(search.PartialUpdateObject),
-		string(search.PartialUpdateObjectNoCreate), string(search.DeleteObject),
-	}
-	extra := fmt.Sprintf("valid actions are %s", utils.SliceToReadableString(allowedActions))
-
-	if p.Action == "" {
-		return fmt.Errorf("missing action")
-	}
-	if !utils.Contains(allowedActions, string(p.Action)) {
-		return fmt.Errorf("invalid action \"%s\" (%s)", p.Action, extra)
-	}
-	if p.IndexName == "" {
-		return fmt.Errorf("missing index name for action \"%s\"", p.Action)
-	}
-	if p.Action == search.DeleteObject {
-		switch body := p.Body.(type) {
-		case map[string]interface{}:
-			if body["objectID"] == nil || body["objectID"] == "" {
-				return fmt.Errorf("missing objectID for action %s", search.DeleteObject)
-			}
-		default:
-			return fmt.Errorf("missing objectID for action %s", search.DeleteObject)
-		}
-	}
-
-	return nil
 }

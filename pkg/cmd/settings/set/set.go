@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -19,9 +18,9 @@ type SetOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Settings          search.Settings
+	Settings          search.IndexSettings
 	ForwardToReplicas bool
 
 	Index string
@@ -68,7 +67,8 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
 
 	cmdutil.AddIndexSettingsFlags(cmd)
 
@@ -81,8 +81,13 @@ func runSetCmd(opts *SetOptions) error {
 		return err
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Setting settings for index %s", opts.Index))
-	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings, opt.ForwardToReplicas(opts.ForwardToReplicas))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Setting settings for index %s", opts.Index),
+	)
+	_, err = client.SetSettings(
+		client.NewApiSetSettingsRequest(opts.Index, &opts.Settings).
+			WithForwardToReplicas(opts.ForwardToReplicas),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

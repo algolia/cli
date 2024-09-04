@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +44,7 @@ func TestNewImportCmd(t *testing.T) {
 			name: "file specified",
 			cli:  fmt.Sprintf("index -F %s", file),
 			wantsOpts: ImportOptions{
-				Indice:             "index",
+				Index:              "index",
 				ForwardToReplicas:  true,
 				ClearExistingRules: false,
 			},
@@ -53,7 +53,7 @@ func TestNewImportCmd(t *testing.T) {
 			name: "forward to replicas",
 			cli:  fmt.Sprintf("index -F %s -f=false", file),
 			wantsOpts: ImportOptions{
-				Indice:             "index",
+				Index:              "index",
 				ForwardToReplicas:  false,
 				ClearExistingRules: false,
 			},
@@ -69,7 +69,7 @@ func TestNewImportCmd(t *testing.T) {
 			tty:  false,
 			cli:  fmt.Sprintf("index -F %s -c --confirm", file),
 			wantsOpts: ImportOptions{
-				Indice:             "index",
+				Index:              "index",
 				ForwardToReplicas:  true,
 				ClearExistingRules: true,
 			},
@@ -104,7 +104,7 @@ func TestNewImportCmd(t *testing.T) {
 			}
 			require.NoError(t, err)
 
-			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 			assert.Equal(t, tt.wantsOpts.ClearExistingRules, opts.ClearExistingRules)
 		})
@@ -135,7 +135,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   `{"objectID":"test"}`,
 			wantOut: "✓ Successfully imported 1 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/rules/batch"),
+					httpmock.JSONResponse(search.UpdateTaskRes{}),
+				)
 			},
 		},
 		{
@@ -143,7 +146,10 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/rules/batch"),
+					httpmock.JSONResponse(search.UpdateTaskRes{}),
+				)
 			},
 		},
 		{
@@ -159,7 +165,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   ``,
 			wantOut: "✓ Successfully imported 0 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/clear"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/rules/clear"),
+					httpmock.JSONResponse(search.UpdateTaskRes{}),
+				)
 			},
 		},
 		{
@@ -176,10 +185,12 @@ func Test_runExportCmd(t *testing.T) {
 			wantOut: "✓ Successfully imported 1001 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) && req.URL.Query().Get("clearExistingRules") == "true"
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) &&
+						req.URL.Query().Get("clearExistingRules") == "true"
 				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) && req.URL.Query().Get("clearExistingRules") == ""
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) &&
+						req.URL.Query().Get("clearExistingRules") == ""
 				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
 			},
 		},

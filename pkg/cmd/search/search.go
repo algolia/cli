@@ -2,8 +2,7 @@ package search
 
 import (
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	algoliaSearch "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,9 +16,9 @@ type SearchOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*algoliaSearch.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice string
+	Index string
 
 	SearchParams map[string]interface{}
 
@@ -62,7 +61,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia search MOVIES --query "toy story" --output="jsonpath={$.Hits}" > movies.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
@@ -73,7 +72,9 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.SetUsageFunc(cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}))
+	cmd.SetUsageFunc(
+		cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}),
+	)
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 
@@ -87,8 +88,8 @@ func runSearchCmd(opts *SearchOptions) error {
 	if err != nil {
 		return err
 	}
-
-	indice := client.InitIndex(opts.Indice)
+	searchParams := search.NewEmptySearchParamsObject()
+	cmdutil.MapToStruct(opts.SearchParams, searchParams)
 
 	p, err := opts.PrintFlags.ToPrinter()
 	if err != nil {
@@ -97,14 +98,13 @@ func runSearchCmd(opts *SearchOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Searching")
 
-	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.SearchParams["query"].(string)
-	if !ok {
-		query = ""
-	} else {
-		delete(opts.SearchParams, "query")
-	}
-	res, err := indice.Search(query, opt.ExtraOptions(opts.SearchParams))
+	res, err := client.SearchSingleIndex(
+		client.NewApiSearchSingleIndexRequest(opts.Index).WithSearchParams(
+			&search.SearchParams{
+				SearchParamsObject: searchParams,
+			},
+		),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err

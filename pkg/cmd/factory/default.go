@@ -3,7 +3,8 @@ package factory
 import (
 	"fmt"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -23,29 +24,35 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	return f
 }
 
-func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
+func ioStreams(_ *cmdutil.Factory) *iostreams.IOStreams {
 	io := iostreams.System()
 	return io
 }
 
-func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client, error) {
-	return func() (*search.Client, error) {
+func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClient, error) {
+	return func() (*search.APIClient, error) {
 		appID, err := f.Config.Profile().GetApplicationID()
 		if err != nil {
 			return nil, err
 		}
-		APIKey, err := f.Config.Profile().GetAPIKey()
+		apiKey, err := f.Config.Profile().GetAPIKey()
 		if err != nil {
 			return nil, err
 		}
-
-		clientCfg := search.Configuration{
-			AppID:          appID,
-			APIKey:         APIKey,
-			ExtraUserAgent: fmt.Sprintf("Algolia CLI (%s)", appVersion),
-			Hosts:          f.Config.Profile().GetSearchHosts(),
+		defaultClient, err := search.NewClient(appID, apiKey)
+		if err != nil {
+			return nil, err
 		}
-		return search.NewClientWithConfig(clientCfg), nil
+		defaultUserAgent := defaultClient.GetConfiguration().Configuration.UserAgent
+
+		clientCfg := search.SearchConfiguration{
+			Configuration: transport.Configuration{
+				AppID:     appID,
+				ApiKey:    apiKey,
+				UserAgent: fmt.Sprintf("Algolia CLI (%s); %s", appVersion, defaultUserAgent),
+			},
+		}
+		return search.NewClientWithConfig(clientCfg)
 	}
 }
 

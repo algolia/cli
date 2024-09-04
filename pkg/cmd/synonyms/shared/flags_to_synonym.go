@@ -3,7 +3,7 @@ package shared
 import (
 	"fmt"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 type SynonymFlags struct {
@@ -45,7 +45,9 @@ func (e *SynonymType) Set(v string) error {
 		*e = SynonymType(v)
 		return nil
 	default:
-		return fmt.Errorf(`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`)
+		return fmt.Errorf(
+			`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`,
+		)
 	}
 }
 
@@ -53,36 +55,41 @@ func (e *SynonymType) Type() string {
 	return "SynonymType"
 }
 
-func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
+func FlagsToSynonym(flags SynonymFlags) (*search.SynonymHit, error) {
 	switch flags.SynonymType {
 	case OneWay:
-		return search.NewOneWaySynonym(
+		return search.NewSynonymHit(
 			flags.SynonymID,
-			flags.SynonymInput,
-			flags.Synonyms...,
+			search.SYNONYM_TYPE_ONEWAYSYNONYM,
+			search.WithSynonymHitInput(flags.SynonymInput),
+			search.WithSynonymHitSynonyms(flags.Synonyms),
 		), nil
 	case AltCorrection1:
-		return search.NewAltCorrection1(
+		return search.NewSynonymHit(
 			flags.SynonymID,
-			flags.SynonymWord,
-			flags.SynonymCorrections...,
+			search.SYNONYM_TYPE_ALTCORRECTION1,
+			search.WithSynonymHitWord(flags.SynonymWord),
+			search.WithSynonymHitCorrections(flags.SynonymCorrections),
 		), nil
 	case AltCorrection2:
-		return search.NewAltCorrection2(
+		return search.NewSynonymHit(
 			flags.SynonymID,
-			flags.SynonymWord,
-			flags.SynonymCorrections...,
+			search.SYNONYM_TYPE_ALTCORRECTION2,
+			search.WithSynonymHitWord(flags.SynonymWord),
+			search.WithSynonymHitCorrections(flags.SynonymCorrections),
 		), nil
 	case Placeholder:
-		return search.NewPlaceholder(
+		return search.NewSynonymHit(
 			flags.SynonymID,
-			flags.SynonymPlaceholder,
-			flags.SynonymReplacements...,
+			search.SYNONYM_TYPE_PLACEHOLDER,
+			search.WithSynonymHitPlaceholder(flags.SynonymPlaceholder),
+			search.WithSynonymHitReplacements(flags.SynonymReplacements),
 		), nil
 	case "", Regular:
-		return search.NewRegularSynonym(
+		return search.NewSynonymHit(
 			flags.SynonymID,
-			flags.Synonyms...,
+			search.SYNONYM_TYPE_SYNONYM,
+			search.WithSynonymHitSynonyms(flags.Synonyms),
 		), nil
 	}
 

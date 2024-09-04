@@ -3,7 +3,7 @@ package get
 import (
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/algolia/cli/pkg/httpmock"
@@ -33,7 +33,7 @@ func Test_runGetCmd(t *testing.T) {
 			if tt.key == "foo" {
 				r.Register(
 					httpmock.REST("GET", "1/keys/foo"),
-					httpmock.JSONResponse(search.Key{
+					httpmock.JSONResponse(search.GetApiKeyResponse{
 						Value:                  "foo",
 						Description:            "test",
 						ACL:                    []string{"*"},

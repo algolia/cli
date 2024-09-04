@@ -1,11 +1,8 @@
 package browse
 
 import (
-	"io"
-
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,9 +15,9 @@ type BrowseOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice       string
+	Index        string
 	BrowseParams map[string]interface{}
 
 	PrintFlags *cmdutil.PrintFlags
@@ -61,7 +58,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia objects browse MOVIES > movies.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			browseParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.BrowseParamsObject...)
 			if err != nil {
@@ -87,36 +84,25 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
-
-	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.BrowseParams["query"].(string)
-	if !ok {
-		query = ""
-	} else {
-		delete(opts.BrowseParams, "query")
-	}
-	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.BrowseParams))
-	if err != nil {
-		return err
-	}
+	browseParams := search.NewEmptyBrowseParamsObject()
+	cmdutil.MapToStruct(opts.BrowseParams, browseParams)
 
 	p, err := opts.PrintFlags.ToPrinter()
 	if err != nil {
 		return err
 	}
 
-	for {
-		iObject, err := res.Next()
-		if err != nil {
-			if err == io.EOF {
-				return nil
+	err = client.BrowseObjects(
+		opts.Index,
+		*browseParams,
+		search.WithAggregator(func(res any, _ error) {
+			for _, hit := range res.(*search.BrowseResponse).Hits {
+				p.Print(opts.IO, hit)
 			}
-			return err
-		}
-		if err = p.Print(opts.IO, iObject); err != nil {
-			return err
-		}
-
+		}),
+	)
+	if err != nil {
+		return err
 	}
+	return nil
 }

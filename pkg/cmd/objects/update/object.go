@@ -5,14 +5,15 @@ import (
 	"fmt"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/mitchellh/mapstructure"
+
+	"github.com/algolia/cli/pkg/utils"
 )
 
-// Object is a map[string]interface{} that can be unmarshalled from a JSON object
+// Object is a map[string]any that can be unmarshalled from a JSON object
 // The object must have an objectID field
 // Each field could be either an `search.PartialUpdateOperation` or a any value
-type Object map[string]interface{}
+type Object map[string]any
 
 // Valid operations
 const (

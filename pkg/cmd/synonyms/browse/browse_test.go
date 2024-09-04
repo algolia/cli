@@ -3,7 +3,7 @@ package browse
 import (
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/algolia/cli/pkg/httpmock"
@@ -14,19 +14,22 @@ func Test_runBrowseCmd(t *testing.T) {
 	tests := []struct {
 		name    string
 		cli     string
-		hits    []map[string]interface{}
+		hits    []search.SynonymHit
 		wantOut string
 	}{
 		{
 			name:    "single synonym",
 			cli:     "foo",
-			hits:    []map[string]interface{}{{"objectID": "foo", "type": "synonym"}},
+			hits:    []search.SynonymHit{{ObjectID: "foo", Type: search.SYNONYM_TYPE_SYNONYM}},
 			wantOut: "{\"objectID\":\"foo\",\"type\":\"synonym\",\"synonyms\":null}\n",
 		},
 		{
-			name:    "multiple synonyms",
-			cli:     "foo",
-			hits:    []map[string]interface{}{{"objectID": "foo", "type": "synonym"}, {"objectID": "bar", "type": "synonym"}},
+			name: "multiple synonyms",
+			cli:  "foo",
+			hits: []search.SynonymHit{
+				{ObjectID: "foo", Type: search.SYNONYM_TYPE_SYNONYM},
+				{ObjectID: "bar", Type: search.SYNONYM_TYPE_SYNONYM},
+			},
 			wantOut: "{\"objectID\":\"foo\",\"type\":\"synonym\",\"synonyms\":null}\n{\"objectID\":\"bar\",\"type\":\"synonym\",\"synonyms\":null}\n",
 		},
 	}
@@ -34,9 +37,12 @@ func Test_runBrowseCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/search"), httpmock.JSONResponse(search.SearchSynonymsRes{
-				Hits: tt.hits,
-			}))
+			r.Register(
+				httpmock.REST("POST", "1/indexes/foo/synonyms/search"),
+				httpmock.JSONResponse(search.SearchSynonymsResponse{
+					Hits: tt.hits,
+				}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, "")

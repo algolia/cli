@@ -3,14 +3,14 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 
 	"github.com/algolia/cli/pkg/ask"
 	"github.com/algolia/cli/pkg/config"
@@ -23,18 +23,18 @@ type ExportOptions struct {
 	IO     *iostreams.IOStreams
 
 	ExistingIndices []string
-	Indice          string
+	Index           string
 	Scope           []string
 	Directory       string
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 }
 
 func ValidateExportConfigFlags(opts ExportOptions) error {
 	cs := opts.IO.ColorScheme()
 
-	if !utils.Contains(opts.ExistingIndices, opts.Indice) {
-		return fmt.Errorf("%s Indice '%s' doesn't exist", cs.FailureIcon(), opts.Indice)
+	if !utils.Contains(opts.ExistingIndices, opts.Index) {
+		return fmt.Errorf("%s Indice '%s' doesn't exist", cs.FailureIcon(), opts.Index)
 	}
 	return nil
 }
@@ -68,18 +68,24 @@ func GetConfigFileName(path string, indiceName string, appId string) string {
 		rootPath = path + "/"
 	}
 
-	return fmt.Sprintf("%sexport-%s-%s-%s.json", rootPath, indiceName, appId, strconv.FormatInt(time.Now().UTC().Unix(), 10))
+	return fmt.Sprintf(
+		"%sexport-%s-%s-%s.json",
+		rootPath,
+		indiceName,
+		appId,
+		strconv.FormatInt(time.Now().UTC().Unix(), 10),
+	)
 }
 
 type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	ImportConfig ImportConfigJson
 
-	Indice                string
+	Index                 string
 	FilePath              string
 	Scope                 []string
 	ClearExistingSynonyms bool
@@ -93,15 +99,9 @@ type ImportOptions struct {
 }
 
 type ImportConfigJson struct {
-	Settings *search.Settings `json:"settings,omitempty"`
-	Rules    []search.Rule    `json:"rules,omitempty"`
-	Synonyms []Synonym        `json:"synonyms,omitempty"`
-}
-
-type Synonym struct {
-	Type                                string
-	ObjectID, Word, Input, Placeholder  string
-	Corrections, Synonyms, Replacements []string
+	Settings *search.IndexSettings `json:"settings,omitempty"`
+	Rules    []search.Rule         `json:"rules,omitempty"`
+	Synonyms []search.SynonymHit   `json:"synonyms,omitempty"`
 }
 
 func ValidateImportConfigFlags(opts *ImportOptions) error {
@@ -123,10 +123,16 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 	}
 	// Scope and replace/clear existing options
 	if opts.ClearExistingRules && !utils.Contains(opts.Scope, "rules") {
-		return fmt.Errorf("%s Cannot clear existing rules if rules are not in scope", cs.FailureIcon())
+		return fmt.Errorf(
+			"%s Cannot clear existing rules if rules are not in scope",
+			cs.FailureIcon(),
+		)
 	}
 	if opts.ClearExistingSynonyms && !utils.Contains(opts.Scope, "synonyms") {
-		return fmt.Errorf("%s Cannot clear existing synonyms if synonyms are not in scope", cs.FailureIcon())
+		return fmt.Errorf(
+			"%s Cannot clear existing synonyms if synonyms are not in scope",
+			cs.FailureIcon(),
+		)
 	}
 	// Scope and config
 	if (utils.Contains(opts.Scope, "settings") && opts.ImportConfig.Settings != nil) ||
@@ -134,7 +140,11 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 		(utils.Contains(opts.Scope, "synonyms") && len(opts.ImportConfig.Synonyms) > 0) {
 		return nil
 	}
-	return fmt.Errorf("%s No %s found in config file", cs.FailureIcon(), utils.SliceToReadableString(opts.Scope))
+	return fmt.Errorf(
+		"%s No %s found in config file",
+		cs.FailureIcon(),
+		utils.SliceToReadableString(opts.Scope),
+	)
 }
 
 func AskImportConfig(opts *ImportOptions) error {
@@ -239,13 +249,21 @@ func readConfigFromFile(cs *iostreams.ColorScheme, filePath string) (*ImportConf
 		return nil, fmt.Errorf("%s An error occurred when opening file: %w", cs.FailureIcon(), err)
 	}
 	defer jsonFile.Close()
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occurred when reading JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf(
+			"%s An error occurred when reading JSON file: %w",
+			cs.FailureIcon(),
+			err,
+		)
 	}
 	err = json.Unmarshal(byteValue, &config)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occurred when parsing JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf(
+			"%s An error occurred when parsing JSON file: %w",
+			cs.FailureIcon(),
+			err,
+		)
 	}
 
 	return config, nil

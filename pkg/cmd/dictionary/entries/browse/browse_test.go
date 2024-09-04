@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/algolia/cli/pkg/httpmock"
@@ -15,7 +15,7 @@ func Test_runBrowseCmd(t *testing.T) {
 	tests := []struct {
 		name         string
 		cli          string
-		dictionaries []search.DictionaryName
+		dictionaries []search.DictionaryType
 		entries      bool
 		isTTY        bool
 		wantOut      string
@@ -23,8 +23,8 @@ func Test_runBrowseCmd(t *testing.T) {
 		{
 			name: "one dictionary",
 			cli:  "plurals",
-			dictionaries: []search.DictionaryName{
-				search.Plurals,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_PLURALS,
 			},
 			entries: true,
 			isTTY:   false,
@@ -33,9 +33,9 @@ func Test_runBrowseCmd(t *testing.T) {
 		{
 			name: "multiple dictionaries",
 			cli:  "plurals compounds",
-			dictionaries: []search.DictionaryName{
-				search.Plurals,
-				search.Compounds,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_PLURALS,
+				search.DICTIONARY_TYPE_COMPOUNDS,
 			},
 			entries: true,
 			isTTY:   false,
@@ -44,10 +44,10 @@ func Test_runBrowseCmd(t *testing.T) {
 		{
 			name: "all dictionaries",
 			cli:  "--all",
-			dictionaries: []search.DictionaryName{
-				search.Stopwords,
-				search.Plurals,
-				search.Compounds,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_STOPWORDS,
+				search.DICTIONARY_TYPE_PLURALS,
+				search.DICTIONARY_TYPE_COMPOUNDS,
 			},
 			entries: true,
 			isTTY:   false,
@@ -56,10 +56,10 @@ func Test_runBrowseCmd(t *testing.T) {
 		{
 			name: "one dictionary with default stopwords",
 			cli:  "--all --include-defaults",
-			dictionaries: []search.DictionaryName{
-				search.Stopwords,
-				search.Plurals,
-				search.Compounds,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_STOPWORDS,
+				search.DICTIONARY_TYPE_PLURALS,
+				search.DICTIONARY_TYPE_COMPOUNDS,
 			},
 			entries: true,
 			isTTY:   false,
@@ -68,8 +68,8 @@ func Test_runBrowseCmd(t *testing.T) {
 		{
 			name: "no entries",
 			cli:  "plurals",
-			dictionaries: []search.DictionaryName{
-				search.Plurals,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_PLURALS,
 			},
 			entries: false,
 			isTTY:   false,
@@ -81,9 +81,9 @@ func Test_runBrowseCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, d := range tt.dictionaries {
-				var entries []DictionaryEntry
+				var entries []search.DictionaryEntry
 				if tt.entries {
-					entries = append(entries, DictionaryEntry{Type: "custom"})
+					entries = append(entries, search.DictionaryEntry{Type: "custom"})
 				}
 				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)), httpmock.JSONResponse(search.SearchDictionariesRes{
 					Hits: entries,

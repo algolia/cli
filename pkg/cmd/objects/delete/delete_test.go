@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				ObjectIDs: []string{
 					"1",
 				},
@@ -49,7 +49,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				Indice:    "foo",
+				Index:     "foo",
 				ObjectIDs: []string{
 					"1",
 				},
@@ -62,7 +62,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				ObjectIDs: []string{
 					"1",
 					"2",
@@ -103,7 +103,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.ObjectIDs, opts.ObjectIDs)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
@@ -116,7 +116,7 @@ func Test_runDeleteCmd(t *testing.T) {
 		cli              string
 		indice           string
 		objectIDs        []string
-		nbHits           int
+		nbHits           int32
 		exhaustiveNbHits bool
 		isTTY            bool
 		wantOut          string
@@ -187,18 +187,30 @@ func Test_runDeleteCmd(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.objectIDs {
 				// Checking that the object exists
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)), httpmock.JSONResponse(search.QueryRes{}))
+				r.Register(
+					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)),
+					httpmock.JSONResponse(search.GetObjectsResponse{}),
+				)
 			}
 			if tt.nbHits > 0 {
 				// Searching for the objects to delete (if filters are used)
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.indice)), httpmock.JSONResponse(search.QueryRes{
-					NbHits:           tt.nbHits,
-					ExhaustiveNbHits: tt.exhaustiveNbHits,
-				}))
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.indice)),
+					httpmock.JSONResponse(search.BrowseResponse{
+						NbHits:           &tt.nbHits,
+						ExhaustiveNbHits: &tt.exhaustiveNbHits,
+					}),
+				)
 				// Deleting the objects
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.indice)),
+					httpmock.JSONResponse(search.DeletedAtResponse{}),
+				)
 			}
-			r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
+			r.Register(
+				httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)),
+				httpmock.JSONResponse(search.BatchResponse{}),
+			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewDeleteCmd(f, nil)
