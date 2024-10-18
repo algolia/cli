@@ -251,7 +251,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntaxFeat
 	cmd.Flags().Bool("allowTyposOnNumericTokens", true, heredoc.Doc(`Whether to allow typos on numbers in the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumericTokens/`))
 	cmd.Flags().SetAnnotation("allowTyposOnNumericTokens", "Categories", []string{"Typos"})
-	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Alternatives of query words that should be considered as exact matches by the Exact ranking criterion.
+	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact/`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
 	cmd.Flags().Bool("analytics", true, heredoc.Doc(`Whether this search will be included in Analytics.
@@ -293,7 +293,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/clickAnalytics/`))
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Attributes to use as custom ranking.
 See: https://www.algolia.com/doc/api-reference/api-parameters/customRanking/`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
-	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words into their building blocks.
+	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words in the query into their building blocks.
 See: https://www.algolia.com/doc/api-reference/api-parameters/decompoundQuery/`))
 	cmd.Flags().SetAnnotation("decompoundQuery", "Categories", []string{"Languages"})
 	cmd.Flags().StringSlice("disableExactOnAttributes", []string{}, heredoc.Doc(`Searchable attributes for which you want to turn off the Exact ranking criterion.
@@ -346,7 +346,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/highlightPreTag/`)
 	cmd.Flags().Int("hitsPerPage", 20, heredoc.Doc(`Number of hits per page.
 See: https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage/`))
 	cmd.Flags().SetAnnotation("hitsPerPage", "Categories", []string{"Pagination"})
-	ignorePlurals := NewJSONVar([]string{"array", "boolean"}...)
+	ignorePlurals := NewJSONVar([]string{"array", "string", "boolean"}...)
 	cmd.Flags().Var(ignorePlurals, "ignorePlurals", heredoc.Doc(`Treat singular, plurals, and other forms of declensions as equivalent.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ignorePlurals/`))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
@@ -518,7 +518,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/allowCompressionOf
 	cmd.Flags().Bool("allowTyposOnNumericTokens", true, heredoc.Doc(`Whether to allow typos on numbers in the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumericTokens/`))
 	cmd.Flags().SetAnnotation("allowTyposOnNumericTokens", "Categories", []string{"Typos"})
-	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Alternatives of query words that should be considered as exact matches by the Exact ranking criterion.
+	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact/`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
@@ -551,7 +551,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/customNormalizatio
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Attributes to use as custom ranking.
 See: https://www.algolia.com/doc/api-reference/api-parameters/customRanking/`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
-	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words into their building blocks.
+	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words in the query into their building blocks.
 See: https://www.algolia.com/doc/api-reference/api-parameters/decompoundQuery/`))
 	cmd.Flags().SetAnnotation("decompoundQuery", "Categories", []string{"Languages"})
 	decompoundedAttributes := NewJSONVar([]string{}...)
@@ -567,7 +567,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/disablePrefixOnAtt
 	cmd.Flags().StringSlice("disableTypoToleranceOnAttributes", []string{}, heredoc.Doc(`Attributes for which you want to turn off typo tolerance.
 See: https://www.algolia.com/doc/api-reference/api-parameters/disableTypoToleranceOnAttributes/`))
 	cmd.Flags().SetAnnotation("disableTypoToleranceOnAttributes", "Categories", []string{"Typos"})
-	cmd.Flags().StringSlice("disableTypoToleranceOnWords", []string{}, heredoc.Doc(`Words for which you want to turn off typo tolerance.
+	cmd.Flags().StringSlice("disableTypoToleranceOnWords", []string{}, heredoc.Doc(`Creates a list of words which require exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/disableTypoToleranceOnWords/`))
 	cmd.Flags().SetAnnotation("disableTypoToleranceOnWords", "Categories", []string{"Typos"})
 	distinct := NewJSONVar([]string{"boolean", "integer"}...)
@@ -595,7 +595,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/highlightPreTag/`)
 	cmd.Flags().Int("hitsPerPage", 20, heredoc.Doc(`Number of hits per page.
 See: https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage/`))
 	cmd.Flags().SetAnnotation("hitsPerPage", "Categories", []string{"Pagination"})
-	ignorePlurals := NewJSONVar([]string{"array", "boolean"}...)
+	ignorePlurals := NewJSONVar([]string{"array", "string", "boolean"}...)
 	cmd.Flags().Var(ignorePlurals, "ignorePlurals", heredoc.Doc(`Treat singular, plurals, and other forms of declensions as equivalent.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ignorePlurals/`))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
@@ -673,7 +673,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/searchableAttribut
 	cmd.Flags().SetAnnotation("searchableAttributes", "Categories", []string{"Attributes"})
 	semanticSearch := NewJSONVar([]string{}...)
 	cmd.Flags().Var(semanticSearch, "semanticSearch", heredoc.Doc(`Settings for the semantic search part of NeuralSearch.`))
-	cmd.Flags().String("separatorsToIndex", "", heredoc.Doc(`Controls which separators are indexed.
+	cmd.Flags().String("separatorsToIndex", "", heredoc.Doc(`Control which non-alphanumeric characters are indexed.
 See: https://www.algolia.com/doc/api-reference/api-parameters/separatorsToIndex/`))
 	cmd.Flags().SetAnnotation("separatorsToIndex", "Categories", []string{"Typos"})
 	cmd.Flags().String("snippetEllipsisText", "…", heredoc.Doc(`String used as an ellipsis indicator when a snippet is truncated.
@@ -705,7 +705,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntaxFeat
 	cmd.Flags().Bool("allowTyposOnNumericTokens", true, heredoc.Doc(`Whether to allow typos on numbers in the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumericTokens/`))
 	cmd.Flags().SetAnnotation("allowTyposOnNumericTokens", "Categories", []string{"Typos"})
-	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Alternatives of query words that should be considered as exact matches by the Exact ranking criterion.
+	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact/`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
 	cmd.Flags().Bool("analytics", true, heredoc.Doc(`Whether this search will be included in Analytics.
@@ -746,7 +746,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/clickAnalytics/`))
 	cmd.Flags().StringSlice("customRanking", []string{}, heredoc.Doc(`Attributes to use as custom ranking.
 See: https://www.algolia.com/doc/api-reference/api-parameters/customRanking/`))
 	cmd.Flags().SetAnnotation("customRanking", "Categories", []string{"Ranking"})
-	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words into their building blocks.
+	cmd.Flags().Bool("decompoundQuery", true, heredoc.Doc(`Whether to split compound words in the query into their building blocks.
 See: https://www.algolia.com/doc/api-reference/api-parameters/decompoundQuery/`))
 	cmd.Flags().SetAnnotation("decompoundQuery", "Categories", []string{"Languages"})
 	cmd.Flags().StringSlice("disableExactOnAttributes", []string{}, heredoc.Doc(`Searchable attributes for which you want to turn off the Exact ranking criterion.
@@ -799,7 +799,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/highlightPreTag/`)
 	cmd.Flags().Int("hitsPerPage", 20, heredoc.Doc(`Number of hits per page.
 See: https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage/`))
 	cmd.Flags().SetAnnotation("hitsPerPage", "Categories", []string{"Pagination"})
-	ignorePlurals := NewJSONVar([]string{"array", "boolean"}...)
+	ignorePlurals := NewJSONVar([]string{"array", "string", "boolean"}...)
 	cmd.Flags().Var(ignorePlurals, "ignorePlurals", heredoc.Doc(`Treat singular, plurals, and other forms of declensions as equivalent.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ignorePlurals/`))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
