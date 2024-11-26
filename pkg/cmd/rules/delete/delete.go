@@ -47,7 +47,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
-		Short: "Delete rules from an index",
+		Short: "Delete an indices' rules.",
 		Long: heredoc.Doc(`
 			This command deletes the rules from the specified index.
 		`),
@@ -77,9 +77,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd.Flags().StringSliceVarP(&opts.RuleIDs, "rule-ids", "", nil, "Rule IDs to delete")
 	_ = cmd.MarkFlagRequired("rule-ids")
-	cmd.Flags().BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Forward the delete request to the replicas")
+	cmd.Flags().BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Whether changes are applied to replica indices.")
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete rule confirmation prompt")
 
 	return cmd
 }

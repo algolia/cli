@@ -44,10 +44,13 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Annotations: map[string]string{
 			"acls": "deleteIndex",
 		},
-		Short: "Delete one or multiple indices",
+		Short: "Deletes the specified index and all its settings.",
 		Long: heredoc.Doc(`
-			Delete one or multiples indices.
-			This command permanently removes one or multiple indices from your application, and removes their metadata and configured settings.
+			Delete an index.
+			Deleting an index does not delete its analytics data.
+			If you try to delete a non-existing index, the operation is ignored without warning.
+			If the index you want to delete has replica indices, the replicas become independent indices.
+			If the index you want to delete is a replica index, you must first unlink it from its primary index before you can delete it.
 		`),
 		Example: heredoc.Doc(`
 			# Delete the index named "MOVIES"
@@ -82,7 +85,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete index confirmation prompt")
 	cmd.Flags().
 		BoolVarP(&opts.IncludeReplicas, "includeReplicas", "r", false, "delete replica indices too")
 

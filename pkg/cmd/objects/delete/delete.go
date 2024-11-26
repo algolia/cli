@@ -95,8 +95,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd.Flags().StringSliceVarP(&opts.ObjectIDs, "object-ids", "", nil, "Object IDs to delete")
 	cmdutil.AddDeleteByParamsFlags(cmd)
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVar(&opts.Wait, "wait", false, "wait for all the operations to complete before returning")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete object confirmation prompt")
+	cmd.Flags().BoolVar(&opts.Wait, "wait", false, "Wait for all the operations to complete before returning")
 
 	return cmd
 }

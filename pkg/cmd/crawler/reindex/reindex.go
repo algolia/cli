@@ -33,7 +33,7 @@ func NewReindexCmd(f *cmdutil.Factory, runF func(*ReindexOptions) error) *cobra.
 		Use:               "reindex <crawler_id>...",
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: cmdutil.CrawlerIDs(opts.CrawlerClient),
-		Short:             "Reindex one or multiple crawlers",
+		Short:             "Reindexs the specified crawlers",
 		Long: heredoc.Doc(`
 			Request the specified crawler to start (or restart) crawling.
 		`),

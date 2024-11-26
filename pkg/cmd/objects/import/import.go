@@ -72,10 +72,10 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&file, "file", "F", "", "Import records from a `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Automatically generate object ID if not exist")
+	cmd.Flags().BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Add objectID fields and values to imported records if they aren't present.")
 	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 	return cmd
 }

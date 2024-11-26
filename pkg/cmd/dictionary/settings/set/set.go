@@ -41,16 +41,16 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		Long: heredoc.Doc(`
 			Set the dictionary settings.
 
-			For now, the only setting available is to enable/disable the standard entries for the stopwords dictionary.
+			You can turn the standard stop words dictionary on or off.
 		`),
 		Example: heredoc.Doc(`
-			# Disable standard entries for English and French
+			# Tuen off standard entries for English and French
 			$ algolia dictionary settings set --disable-standard-entries en,fr
 
-			# Enable standard entries for English and French languages
+			# Enable standard entries for English and French
 			$ algolia dictionary settings set --enable-standard-entries en,fr
 
-			# Disable standard entries for English and French languages and enable standard entries for Spanish language.
+			# Turn off standard entries for English and French and enable standard entries for Spanish.
 			$ algolia dictionary settings set --disable-standard-entries en,fr --enable-standard-entries es
 
 			# Reset standard entries to their default values
@@ -62,16 +62,16 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 				return cmdutil.FlagErrorf("Either --disable-standard-entries and/or --enable-standard-entries or --reset-standard-entries must be set")
 			}
 
-			// Check that the user is not resetting standard entries and trying to disable or enable standard entries at the same time
+			// Check that the user isn't resetting standard entries and trying to turn standard entries on or off at the same time
 			if opts.ResetStandardEntries && (len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0) {
-				return cmdutil.FlagErrorf("You cannot reset standard entries and disable or enable standard entries at the same time")
+				return cmdutil.FlagErrorf("You can't reset standard entries and turn them on or off at the same time")
 			}
 
-			// Check if the user is trying to disable and enable standard entries for the same languages at the same time
+			// Check if the user is trying to turn standard entries on or off for the same languages at the same time
 			for _, disableLanguage := range opts.DisableStandardEntries {
 				for _, enableLanguage := range opts.EnableStandardEntries {
 					if disableLanguage == enableLanguage {
-						return cmdutil.FlagErrorf("You cannot disable and enable standard entries for the same language: %s", disableLanguage)
+						return cmdutil.FlagErrorf("You can't turn standard entries on or off for the same language: %s", disableLanguage)
 					}
 				}
 			}
@@ -84,8 +84,8 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.DisableStandardEntries, "disable-standard-entries", "d", []string{}, "Disable standard entries for the given languages")
-	cmd.Flags().StringSliceVarP(&opts.EnableStandardEntries, "enable-standard-entries", "e", []string{}, "Enable standard entries for the given languages")
+	cmd.Flags().StringSliceVarP(&opts.DisableStandardEntries, "disable-standard-entries", "d", []string{}, "Turn off standard entries for these languages")
+	cmd.Flags().StringSliceVarP(&opts.EnableStandardEntries, "enable-standard-entries", "e", []string{}, "Turn on standard entries for these languages")
 	cmd.Flags().BoolVarP(&opts.ResetStandardEntries, "reset-standard-entries", "r", false, "Reset standard entries to their default values")
 
 	SupportedLanguages := make(map[string]string, len(LanguagesWithStopwordsSupport))

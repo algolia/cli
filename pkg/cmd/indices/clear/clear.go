@@ -41,9 +41,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		Annotations: map[string]string{
 			"acls": "deleteIndex",
 		},
-		Short: "Clear the specified index",
+		Short: "Remove all records from the specified index but don't delete the index.",
 		Long: heredoc.Doc(`
-			Clear the objects of an index without affecting its settings.
+			Remove an indices record without affecting its settings.
 		`),
 		Example: heredoc.Doc(`
 			# Clear the index named "MOVIES"
@@ -67,7 +67,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the clear index confirmation prompt")
 
 	return cmd
 }
