@@ -17,3 +17,6 @@ vendor/
 
 # local build
 algolia
+
+# Ignore docs directory
+docs/

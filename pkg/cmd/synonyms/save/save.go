@@ -91,7 +91,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 	// Common
 	cmd.Flags().StringVarP(&flags.SynonymID, "id", "i", "", "Synonym ID to save")
-	cmd.Flags().StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type. One of: altCorrection1, altCorrection2, oneWaySynonym, placeholder, synonym.")
+	cmd.Flags().StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type. One of altCorrection1, altCorrection2, oneWaySynonym, placeholder, synonym.")
 	_ = cmd.RegisterFlagCompletionFunc("type",
 		cmdutil.StringCompletionFunc(map[string]string{
 			shared.Regular:        "(default) Used when you want a word or phrase to find its synonyms or the other way around.",
@@ -106,7 +106,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	// One-way synonym
 	cmd.Flags().StringVarP(&flags.SynonymInput, "input", "n", "", "Word or phrases to appear in query strings (one-way synonyms only).")
 	// Placeholder synonym
-	cmd.Flags().StringVarP(&flags.SynonymPlaceholder, "placeholder", "l", "", "Placeholder synonym token to be put inside records.")
+	cmd.Flags().StringVarP(&flags.SynonymPlaceholder, "placeholder", "l", "", "Placeholder token to represent a synonym within records.")
 	cmd.Flags().StringSliceVarP(&flags.SynonymReplacements, "replacements", "r", nil, "Query words that will match the placeholder synonym token.")
 	// Alternative correction synonym
 	cmd.Flags().StringVarP(&flags.SynonymWord, "word", "w", "", "Word or phrase to appear in query strings (for altcorrection1 and altcorrection2).")

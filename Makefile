@@ -14,7 +14,7 @@ VARIATION ?= old
 ifeq ($(VARIATION),old)
 DOCS_FOLDER = docs
 DOCS_GENERATED_PATH = app_data/cli/commands
-DOCS_REPO_URL = https://github.com/algolia/doc.git
+DOCS_REPO_URL = git@github.com:algolia/doc.git
 DOCS_BRANCH = master
 DOCS_EXTENSION = yml
 else ifeq ($(VARIATION),new)

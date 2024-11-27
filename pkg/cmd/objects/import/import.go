@@ -45,19 +45,19 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
-		Short: "Import objects to the specified index",
+		Short: "Import records into an index",
 		Long: heredoc.Doc(`
-			Import objects to the specified index from a file / the standard input.
-			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			Import records into the specified index from a file or the standard input.
+			The file must contain one JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import objects from the "data.ndjson" file to the "MOVIES" index
+			# Import records from the "data.ndjson" file into the "MOVIES" index
 			$ algolia objects import MOVIES -F data.ndjson
 
-			# Import objects from the standard input to the "MOVIES" index
+			# Import records from the standard input into the "MOVIES" index
 			$ cat data.ndjson | algolia objects import MOVIES -F -
 
-			# Browse the objects in the "SERIES" index and import them to the "MOVIES" index
+			# Browse records in the "SERIES" index and import them into the "MOVIES" index
 			$ algolia objects browse SERIES | algolia objects import MOVIES -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

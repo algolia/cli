@@ -49,20 +49,20 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Annotations: map[string]string{
 			"acls": "deleteObject",
 		},
-		Short: "Delete objects from an index",
+		Short: "Remove records from an index",
 		Long: heredoc.Doc(`
-			This command deletes the objects from the specified index.
+			This command deletes records from the specified index.
 
-			You can either directly specify the objects to delete by theirs IDs and/or use the filters related flags to delete the matching objects.
+			You can specify the records to delete with their objectIDs or use the filter-related flags.
 		`),
 		Example: heredoc.Doc(`
-			# Delete one single object with the ID "1" from the "MOVIES" index
+			# Delete a record with the objectID "1" from the "MOVIES" index
 			$ algolia objects delete MOVIES --object-ids 1
 
-			# Delete multiple objects with the IDs "1" and "2" from the "MOVIES" index
+			# Delete records with the objectIDs "1" and "2" from the "MOVIES" index
 			$ algolia objects delete MOVIES --object-ids 1,2
 
-			# Delete all objects matching the filters "type:Scripted" from the "MOVIES" index
+			# Delete all records matching the filters "type:Scripted" from the "MOVIES" index
 			$ algolia objects delete MOVIES --filters "type:Scripted" --confirm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -92,10 +92,10 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.ObjectIDs, "object-ids", "", nil, "Object IDs to delete")
+	cmd.Flags().StringSliceVarP(&opts.ObjectIDs, "object-ids", "", nil, "objectIDs to delete")
 	cmdutil.AddDeleteByParamsFlags(cmd)
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete object confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete record confirmation prompt")
 	cmd.Flags().BoolVar(&opts.Wait, "wait", false, "Wait for all the operations to complete before returning")
 
 	return cmd

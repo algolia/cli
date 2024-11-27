@@ -95,7 +95,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	`, "`"))
 
 	cmd.Flags().StringVarP(&opts.Description, "description", "d", "", heredoc.Doc(`
-		Description of an API key to help you identify its uses.`,
+		Describe an API key to help you identify its uses.`,
 	))
 
 	_ = cmd.RegisterFlagCompletionFunc("indices", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
