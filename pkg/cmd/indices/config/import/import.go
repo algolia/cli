@@ -124,7 +124,7 @@ func runImportCmd(opts *config.ImportOptions) error {
 			return err
 		}
 		_, err = indice.SaveSynonyms(
-      synonyms,
+			synonyms,
 			opt.ForwardToReplicas(opts.ForwardSynonymsToReplicas),
 			opt.ReplaceExistingSynonyms(opts.ClearExistingSynonyms),
 		)
@@ -134,7 +134,7 @@ func runImportCmd(opts *config.ImportOptions) error {
 	}
 	if len(opts.ImportConfig.Rules) > 0 && utils.Contains(opts.Scope, "rules") {
 		_, err = indice.SaveRules(
-      opts.ImportConfig.Rules,
+			opts.ImportConfig.Rules,
 			opt.ForwardToReplicas(opts.ForwardRulesToReplicas),
 			opt.ClearExistingRules(opts.ClearExistingRules),
 		)
