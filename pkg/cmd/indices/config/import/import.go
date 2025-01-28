@@ -123,22 +123,21 @@ func runImportCmd(opts *config.ImportOptions) error {
 		if err != nil {
 			return err
 		}
-		_, err = indice.SaveSynonyms(synonyms,
-			[]interface{}{
-				opt.ForwardToReplicas(opts.ForwardSynonymsToReplicas),
-				opt.ReplaceExistingSynonyms(opts.ClearExistingSynonyms),
-			},
+		_, err = indice.SaveSynonyms(
+      synonyms,
+			opt.ForwardToReplicas(opts.ForwardSynonymsToReplicas),
+			opt.ReplaceExistingSynonyms(opts.ClearExistingSynonyms),
 		)
 		if err != nil {
 			return fmt.Errorf("%s An error occurred when saving synonyms: %w", cs.FailureIcon(), err)
 		}
 	}
 	if len(opts.ImportConfig.Rules) > 0 && utils.Contains(opts.Scope, "rules") {
-		_, err = indice.SaveRules(opts.ImportConfig.Rules,
-			[]interface{}{
-				opt.ForwardToReplicas(opts.ForwardRulesToReplicas),
-				opt.ClearExistingRules(opts.ClearExistingRules),
-			})
+		_, err = indice.SaveRules(
+      opts.ImportConfig.Rules,
+			opt.ForwardToReplicas(opts.ForwardRulesToReplicas),
+			opt.ClearExistingRules(opts.ClearExistingRules),
+		)
 		if err != nil {
 			return fmt.Errorf("%s An error occurred when saving rules: %w", cs.FailureIcon(), err)
 		}
