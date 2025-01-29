@@ -30,9 +30,9 @@ jobs:
         env:
           CHOCOLATEY_VERSION: 1.2.0
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2.8.0
+        uses: goreleaser/goreleaser-action@v6
         with:
-          version: "~1.13.1"
+          version: "~> v2"
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
