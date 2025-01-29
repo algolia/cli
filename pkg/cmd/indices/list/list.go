@@ -31,7 +31,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ListOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -104,15 +104,11 @@ func runListCmd(opts *ListOptions) error {
 		}
 		updatedAt, err := parseTime(index.UpdatedAt)
 		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", index.UpdatedAt)
+			return fmt.Errorf("can't parse %s into a time struct.", index.UpdatedAt)
 		}
 		createdAt, err := parseTime(index.CreatedAt)
 		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", index.CreatedAt)
-		}
-		// Prevent integer overflow
-		if index.DataSize < 0 {
-			index.DataSize = 0
+			return fmt.Errorf("can't parse %s into a time struct.", index.CreatedAt)
 		}
 		table.AddField(index.Name, nil, nil)
 		table.AddField(humanize.Comma(int64(index.Entries)), nil, nil)
