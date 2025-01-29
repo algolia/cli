@@ -1,4 +1,4 @@
-package importRecords
+package importrecords
 
 import (
 	"bufio"

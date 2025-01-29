@@ -39,7 +39,7 @@ func Test_CheckACLs(t *testing.T) {
 			adminKey:       false,
 			ACLs:           []string{},
 			wantErr:        true,
-			wantErrMessage: "This command requires an admin API Key. Please use the `--api-key` flag to provide a valid admin API Key.\n",
+			wantErrMessage: "this command requires an admin API key. Use the `--api-key` flag with a valid admin API key",
 		},
 		{
 			name: "need admin key, admin key",
@@ -63,10 +63,9 @@ func Test_CheckACLs(t *testing.T) {
 			adminKey: false,
 			ACLs:     []string{},
 			wantErr:  true,
-			wantErrMessage: `Missing API Key ACL(s): search
-Either edit your profile or use the ` + "`--api-key`" + ` flag to provide an API Key with the missing ACLs.
-See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information.
-`,
+			wantErrMessage: `Missing API key ACL(s): search
+Edit your profile or use the ` + "`--api-key`" + ` flag to provide an API key with the missing ACLs.
+See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information`,
 		},
 		{
 			name: "need ACLs, has ACLs",

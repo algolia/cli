@@ -83,11 +83,14 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Read entries to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "Read entries to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue importing entries even if some entries are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue importing entries even if some entries are invalid.")
 
 	return cmd
 }
@@ -155,7 +158,7 @@ func runImportCmd(opts *ImportOptions) error {
 	// No entries found
 	if len(entries) == 0 {
 		if len(errors) > 0 {
-			return fmt.Errorf(errorMsg)
+			return fmt.Errorf("%s", errorMsg)
 		}
 		return fmt.Errorf("%s No entries found in the file", cs.FailureIcon())
 	}
@@ -177,7 +180,13 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	// Import entries
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating %s entries on %s", cs.Bold(fmt.Sprint(len(entries))), cs.Bold(opts.DictionaryName)))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Updating %s entries on %s",
+			cs.Bold(fmt.Sprint(len(entries))),
+			cs.Bold(opts.DictionaryName),
+		),
+	)
 
 	res, err := client.SaveDictionaryEntries(search.DictionaryName(opts.DictionaryName), entries)
 	if err != nil {
@@ -195,7 +204,14 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s entries on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(entries))), cs.Bold(opts.DictionaryName), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully imported %s entries on %s in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(entries))),
+		cs.Bold(opts.DictionaryName),
+		time.Since(elapsed),
+	)
 	return err
 }
 
@@ -213,12 +229,20 @@ func ValidateDictionaryEntry(entry shared.DictionaryEntry, currentLine int) erro
 	return nil
 }
 
-func createDictionaryEntry(dictionaryName string, entry shared.DictionaryEntry) (search.DictionaryEntry, error) {
+func createDictionaryEntry(
+	dictionaryName string,
+	entry shared.DictionaryEntry,
+) (search.DictionaryEntry, error) {
 	switch dictionaryName {
 	case string(search.Plurals):
 		return search.NewPlural(entry.ObjectID, entry.Language, entry.Words), nil
 	case string(search.Compounds):
-		return search.NewCompound(entry.ObjectID, entry.Language, entry.Word, entry.Decomposition), nil
+		return search.NewCompound(
+			entry.ObjectID,
+			entry.Language,
+			entry.Word,
+			entry.Decomposition,
+		), nil
 	case string(search.Stopwords):
 		return search.NewStopword(entry.ObjectID, entry.Language, entry.Word, entry.State), nil
 	}

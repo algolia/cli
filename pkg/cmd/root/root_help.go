@@ -12,7 +12,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
-func Test_printError(t *testing.T) {
+func TestPrintError(t *testing.T) {
 	cmd := &cobra.Command{}
 
 	type args struct {

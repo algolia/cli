@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -68,7 +68,13 @@ func GetConfigFileName(path string, indiceName string, appId string) string {
 		rootPath = path + "/"
 	}
 
-	return fmt.Sprintf("%sexport-%s-%s-%s.json", rootPath, indiceName, appId, strconv.FormatInt(time.Now().UTC().Unix(), 10))
+	return fmt.Sprintf(
+		"%sexport-%s-%s-%s.json",
+		rootPath,
+		indiceName,
+		appId,
+		strconv.FormatInt(time.Now().UTC().Unix(), 10),
+	)
 }
 
 type ImportOptions struct {
@@ -123,10 +129,16 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 	}
 	// Scope and replace/clear existing options
 	if opts.ClearExistingRules && !utils.Contains(opts.Scope, "rules") {
-		return fmt.Errorf("%s Cannot clear existing rules if rules are not in scope", cs.FailureIcon())
+		return fmt.Errorf(
+			"%s Cannot clear existing rules if rules are not in scope",
+			cs.FailureIcon(),
+		)
 	}
 	if opts.ClearExistingSynonyms && !utils.Contains(opts.Scope, "synonyms") {
-		return fmt.Errorf("%s Cannot clear existing synonyms if synonyms are not in scope", cs.FailureIcon())
+		return fmt.Errorf(
+			"%s Cannot clear existing synonyms if synonyms are not in scope",
+			cs.FailureIcon(),
+		)
 	}
 	// Scope and config
 	if (utils.Contains(opts.Scope, "settings") && opts.ImportConfig.Settings != nil) ||
@@ -134,7 +146,11 @@ func ValidateImportConfigFlags(opts *ImportOptions) error {
 		(utils.Contains(opts.Scope, "synonyms") && len(opts.ImportConfig.Synonyms) > 0) {
 		return nil
 	}
-	return fmt.Errorf("%s No %s found in config file", cs.FailureIcon(), utils.SliceToReadableString(opts.Scope))
+	return fmt.Errorf(
+		"%s No %s found in config file",
+		cs.FailureIcon(),
+		utils.SliceToReadableString(opts.Scope),
+	)
 }
 
 func AskImportConfig(opts *ImportOptions) error {
@@ -239,13 +255,21 @@ func readConfigFromFile(cs *iostreams.ColorScheme, filePath string) (*ImportConf
 		return nil, fmt.Errorf("%s An error occurred when opening file: %w", cs.FailureIcon(), err)
 	}
 	defer jsonFile.Close()
-	byteValue, err := ioutil.ReadAll(jsonFile)
+	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occurred when reading JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf(
+			"%s An error occurred when reading JSON file: %w",
+			cs.FailureIcon(),
+			err,
+		)
 	}
 	err = json.Unmarshal(byteValue, &config)
 	if err != nil {
-		return nil, fmt.Errorf("%s An error occurred when parsing JSON file: %w", cs.FailureIcon(), err)
+		return nil, fmt.Errorf(
+			"%s An error occurred when parsing JSON file: %w",
+			cs.FailureIcon(),
+			err,
+		)
 	}
 
 	return config, nil

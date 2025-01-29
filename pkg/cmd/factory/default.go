@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,12 +20,13 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	}
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
+	f.V4SearchClient = v4searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 
 	return f
 }
 
-func ioStreams(f *cmdutil.Factory) *iostreams.IOStreams {
+func ioStreams(_ *cmdutil.Factory) *iostreams.IOStreams {
 	io := iostreams.System()
 	return io
 }
@@ -46,6 +49,34 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client,
 			Hosts:          f.Config.Profile().GetSearchHosts(),
 		}
 		return search.NewClientWithConfig(clientCfg), nil
+	}
+}
+
+func v4searchClient(f *cmdutil.Factory, appVersion string) func() (*v4.APIClient, error) {
+	return func() (*v4.APIClient, error) {
+		appID, err := f.Config.Profile().GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := f.Config.Profile().GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		defaultClient, _ := v4.NewClient(appID, apiKey)
+		defaultUserAgent := defaultClient.GetConfiguration().UserAgent
+
+		// TODO: Doesn't support custom `search_hosts` yet.
+		// To support it, it's best to transform the GetSearchHosts() function
+		clientConf := v4.SearchConfiguration{
+			Configuration: transport.Configuration{
+				AppID:     appID,
+				ApiKey:    apiKey,
+				UserAgent: defaultUserAgent + fmt.Sprintf("Algolia CLI (%s)", appVersion),
+			},
+		}
+
+		return v4.NewClientWithConfig(clientConf)
 	}
 }
 

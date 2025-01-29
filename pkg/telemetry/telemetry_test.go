@@ -13,7 +13,7 @@ import (
 func TestEventMetadataWithGet(t *testing.T) {
 	ctx := context.Background()
 	event := &CLIAnalyticsEventMetadata{
-		UserId:                   "user-id",
+		UserID:                   "user-id",
 		InvocationID:             "invocation-id",
 		OS:                       "os",
 		CLIVersion:               "cli-version",

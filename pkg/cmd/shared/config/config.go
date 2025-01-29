@@ -61,13 +61,21 @@ type ExportConfigJson struct {
 	Synonyms []search.Synonym `json:"synonyms,omitempty"`
 }
 
-func GetIndiceConfig(indice *search.Index, scope []string, cs *iostreams.ColorScheme) (*ExportConfigJson, error) {
+func GetIndiceConfig(
+	indice *search.Index,
+	scope []string,
+	cs *iostreams.ColorScheme,
+) (*ExportConfigJson, error) {
 	var configJson ExportConfigJson
 
 	if utils.Contains(scope, "synonyms") {
 		rawSynonyms, err := GetSynonyms(indice)
 		if err != nil {
-			return nil, fmt.Errorf("%s An error occurred when retrieving synonyms: %w", cs.FailureIcon(), err)
+			return nil, fmt.Errorf(
+				"%s An error occurred when retrieving synonyms: %w",
+				cs.FailureIcon(),
+				err,
+			)
 		}
 		configJson.Synonyms = rawSynonyms
 	}
@@ -75,7 +83,11 @@ func GetIndiceConfig(indice *search.Index, scope []string, cs *iostreams.ColorSc
 	if utils.Contains(scope, "rules") {
 		rawRules, err := GetRules(indice)
 		if err != nil {
-			return nil, fmt.Errorf("%s An error occurred when retrieving rules: %w", cs.FailureIcon(), err)
+			return nil, fmt.Errorf(
+				"%s An error occurred when retrieving rules: %w",
+				cs.FailureIcon(),
+				err,
+			)
 		}
 		configJson.Rules = rawRules
 	}
@@ -83,7 +95,11 @@ func GetIndiceConfig(indice *search.Index, scope []string, cs *iostreams.ColorSc
 	if utils.Contains(scope, "settings") {
 		rawSettings, err := indice.GetSettings()
 		if err != nil {
-			return nil, fmt.Errorf("%s An error occurred when retrieving settings: %w", cs.FailureIcon(), err)
+			return nil, fmt.Errorf(
+				"%s An error occurred when retrieving settings: %w",
+				cs.FailureIcon(),
+				err,
+			)
 		}
 		configJson.Settings = &rawSettings
 	}

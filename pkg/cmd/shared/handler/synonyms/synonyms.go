@@ -69,7 +69,7 @@ func AskSynonym(flags *shared.SynonymFlags, cmd *cobra.Command) error {
 		replacementsProvided: cmd.Flags().Changed("repalcements"),
 	}
 
-	err := AskSynonymIdQuestion(flags, flagsProvided)
+	err := AskSynonymIDQuestion(flags, flagsProvided)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func AskSynonym(flags *shared.SynonymFlags, cmd *cobra.Command) error {
 	}
 }
 
-func AskSynonymIdQuestion(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
+func AskSynonymIDQuestion(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
 	if flagsProvided.idProvided {
 		return nil
 	}

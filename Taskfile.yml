@@ -1,0 +1,114 @@
+version: 3
+output: prefixed
+vars:
+  # The URL to the "old" Algolia docs repo
+  docs_remote: https://github.com/algolia/doc.git
+  # The temporary folder for the generated YML files
+  docs_local: docs
+  cli_ref_path: app_data/cli/commands
+  yml_folder: tmp
+tasks:
+  build:
+    desc: Build the binary
+    deps: [generate]
+    cmd: go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version={{ .VERSION }}" -o algolia cmd/algolia/main.go
+    vars:
+      VERSION: main
+  test:
+    desc: Run unit tests
+    run: always
+    cmd: go test ./...
+  lint:
+    desc: Lint code
+    cmd: golangci-lint run
+  format:
+    desc: Format code
+    cmds:
+      - gofumpt -w pkg cmd test internal api
+      - golines -w pkg cmd test internal api
+  ci:
+    desc: Run everything
+    aliases:
+      - default
+    deps:
+      - build
+      - test
+      - lint
+  api-specs-pr:
+    desc: Create a new PR or update existing one for updating the Search API spec
+    summary: |
+      This task downloads the latest Search API OpenAPI spec from the api-clients-automation repo,
+      generates the flags, and makes a new PR to the CLI GitHub repo.
+    deps: [download-spec-file, generate]
+    preconditions:
+      - git status --porcelain
+    cmds:
+      - |
+        original="$(git branch --show-current)"
+        git checkout -B {{ .branch }}
+        git add .
+        git commit --message "chore: update search api spec"
+        git push --force --set-upstream origin {{ .branch }}
+        gh pr list --base main --head {{ .branch }} | grep -q . || gh pr create --title '{{ .pr-title }}' --description '{{ .pr-description }}'
+        git switch "${original}"
+    vars:
+      branch: feat/api-specs
+      pr-title: "chore: Update Search API spec"
+      pr-description: "Update Search API spec"
+    env:
+      GIT_COMMITTER_NAME: algolia-ci
+      GIT_AUTHOR_NAME: algolia-ci
+      GIT_COMMITTER_EMAIL: noreply@algolia.com
+      GIT_AUTHOR_EMAIL: noreply@algolia.com
+  download-spec-file:
+    desc: Download the latest Search API spec from GitHub
+    internal: true
+    cmd: curl -fsSL -o {{ .destination }} {{ .source }}
+    vars:
+      source: https://raw.githubusercontent.com/algolia/api-clients-automation/main/specs/bundled/search.yml
+      destination: ./api/specs/search.yml
+  generate:
+    desc: Generate command flags
+    internal: true
+    cmds:
+      - go generate ./...
+  update-docs:
+    desc: Update the CLI command reference in the Algolia docs
+    deps:
+      - clone-docs
+      - generate-command-reference
+    cmds:
+      - task: update-command-reference
+      - task: cleanup
+  clone-docs:
+    desc: Clone the Algolia docs
+    internal: true
+    cmd: git clone --depth=1 {{ .docs_remote }} {{ .docs_local }}
+  generate-command-reference:
+    desc: Generate updated YML files for the CLI command reference
+    internal: true
+    cmd: go run ./cmd/docs --app_data-path {{ .yml_folder }}
+  update-command-reference:
+    desc: Add the updated YML files to the docs
+    summary: |
+      This task clones the Algolia docs repo,
+      adds the updated CLI reference yml files to it,
+      and pushes a new PR to the GitHub repo.
+    internal: true
+    cmds:
+      - |
+        git -C {{ .docs_local }} checkout -B chore/cli-$(git rev-parse --short HEAD)
+        git -C {{ .docs_local }} rm "{{ .cli_ref_path }}/*.yml"
+        mkdir -p {{ .docs_local }}/{{ .cli_ref_path }}
+        mv {{ .yml_folder }}/*.yml {{ .docs_local }}/{{ .cli_ref_path }}/
+        git -C {{ .docs_local }} add "{{ .cli_ref_path }}/*.yml"
+        git -C {{ .docs_local }} commit --message 'chore: Update CLI command reference'
+    env:
+      GIT_COMMITTER_NAME: algolia-ci
+      GIT_AUTHOR_NAME: algolia-ci
+      GIT_COMMITTER_EMAIL: noreply@algolia.com
+      GIT_AUTHOR_EMAIL: noreply@algolia.com
+  cleanup:
+    desc: Cleanup the docs files
+    internal: true
+    cmd: rm -rf {{ .docs_local }} {{ .yml_folder }} || true

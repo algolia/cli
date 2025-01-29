@@ -75,11 +75,14 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "The file to read the indexing operations from (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "The file to read the indexing operations from (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the indexing operation(s) to complete before returning.")
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue processing operations even if some operations are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the indexing operation(s) to complete before returning.")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue processing operations even if some operations are invalid.")
 
 	return cmd
 }
@@ -111,7 +114,13 @@ func runOperationsCmd(opts *OperationsOptions) error {
 		}
 
 		totalOperations++
-		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read %s from %s", utils.Pluralize(totalOperations, "operation"), opts.File))
+		opts.IO.UpdateProgressIndicatorLabel(
+			fmt.Sprintf(
+				"Read %s from %s",
+				utils.Pluralize(totalOperations, "operation"),
+				opts.File,
+			),
+		)
 
 		var batchOperation search.BatchOperationIndexed
 		if err := json.Unmarshal([]byte(line), &batchOperation); err != nil {
@@ -142,7 +151,7 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	// No operations found
 	if len(operations) == 0 {
 		if len(errors) > 0 {
-			return fmt.Errorf(errorMsg)
+			return fmt.Errorf("%s", errorMsg)
 		}
 		return fmt.Errorf("%s No operations found in the file", cs.FailureIcon())
 	}
@@ -164,7 +173,9 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	}
 
 	// Process operations
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(operations)))))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(operations)))),
+	)
 	res, err := client.MultipleBatch(operations)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
@@ -181,7 +192,13 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully processed %s operations in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(operations))), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully processed %s operations in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(operations))),
+		time.Since(elapsed),
+	)
 	return err
 }
 

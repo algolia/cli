@@ -1,4 +1,4 @@
-package importSynonyms
+package importsynonyms
 
 import (
 	"bufio"

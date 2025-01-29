@@ -1,4 +1,4 @@
-package importRules
+package importrules
 
 import (
 	"fmt"
