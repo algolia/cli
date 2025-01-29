@@ -33,10 +33,10 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 		Use:               "run <crawler_id>",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.CrawlerIDs(opts.CrawlerClient),
-		Short:             "Run a crawler",
+		Short:             "Start or resume a crawler",
 		Long: heredoc.Doc(`
-			Unpause the specified crawler. If a crawl was previously ongoing, it will be resumed.
-			Otherwise, the crawler will go into the active state and wait for the next schedule.
+			Unpause the specified crawler.
+			Previously ongoing crawls will be resumed. Otherwise, the crawler waits for its next scheduled run.
 		`),
 		Example: heredoc.Doc(`
 			# Run the crawler with the ID "my-crawler"

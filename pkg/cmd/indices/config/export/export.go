@@ -37,13 +37,13 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 			Export an index configuration (settings, synonyms, rules) to a file.
 		`),
 		Example: heredoc.Doc(`
-			# Export the config of the index 'MOVIES' to a .json in the current folder
+			# Export the config of the index 'MOVIES' to a .json filr in the current folder
 			$ algolia index config export MOVIES
 
-			# Export the synonyms and rules of the index 'MOVIES' to a .json in the current folder
+			# Export the synonyms and rules of the index 'MOVIES' to a .json file in the current folder
 			$ algolia index config export MOVIES --scope synonyms,rules
 
-			# Export the config of the index 'MOVIES' to a .json into 'exports' folder
+			# Export the config of the index 'MOVIES' to a .json file in the 'exports' folder
 			$ algolia index config export MOVIES --directory exports
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

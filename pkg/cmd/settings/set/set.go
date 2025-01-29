@@ -40,7 +40,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
-		Short: "Set the settings of the specified index.",
+		Short: "Specify index settings.",
 		Example: heredoc.Doc(`
 			# Set the typo tolerance to false on the MOVIES index
 			$ algolia settings set MOVIES --typoTolerance="false"
@@ -68,7 +68,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Whether changes are applied to replica indices.")
 
 	cmdutil.AddIndexSettingsFlags(cmd)
 

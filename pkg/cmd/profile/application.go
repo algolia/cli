@@ -16,7 +16,7 @@ func NewProfileCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "profile",
 		Aliases: []string{"profiles"},
-		Short:   "Manage your profiles",
+		Short:   "Manage your Algolia CLI profiles",
 	}
 
 	auth.DisableAuthCheck(cmd)
