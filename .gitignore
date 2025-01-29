@@ -17,3 +17,6 @@ vendor/
 
 # local build
 algolia
+
+# Environment variables
+*.env
