@@ -6,8 +6,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -21,7 +20,7 @@ type CopyOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	SourceIndex      string
 	DestinationIndex string
@@ -37,7 +36,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	opts := &CopyOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	var confirm bool
@@ -45,7 +44,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:               "copy <source-index> <destination-index>",
 		Args:              validators.ExactArgs(2),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "settings,editSettings,browse,addObject",
 		},
@@ -75,7 +74,9 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -89,7 +90,8 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "scope to copy (default: all)")
+	cmd.Flags().
+		StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "scope to copy (default: all)")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	_ = cmd.RegisterFlagCompletionFunc("scope",
@@ -109,13 +111,22 @@ func runCopyCmd(opts *CopyOptions) error {
 	}
 
 	var scopesDesc string
+	var scopes []search.ScopeType
 	if len(opts.Scope) > 0 {
 		scopesDesc = strings.Join(opts.Scope, ",")
+		for _, s := range opts.Scope {
+			scopes = append(scopes, search.ScopeType(s))
+		}
 	} else {
 		scopesDesc = "records, settings, synonyms, and rules"
 	}
 
-	message := fmt.Sprintf("Are you sure you want to copy %s from %s to %s?", scopesDesc, opts.SourceIndex, opts.DestinationIndex)
+	message := fmt.Sprintf(
+		"Are you sure you want to copy %s from %s to %s?",
+		scopesDesc,
+		opts.SourceIndex,
+		opts.DestinationIndex,
+	)
 
 	if opts.DoConfirm {
 		var confirmed bool
@@ -133,25 +144,46 @@ func runCopyCmd(opts *CopyOptions) error {
 		}
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Copying %s from %s to %s", scopesDesc, opts.SourceIndex, opts.DestinationIndex))
-	_, err = client.CopyIndex(opts.SourceIndex, opts.DestinationIndex, opt.Scopes(opts.Scope...))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Copying %s from %s to %s",
+			scopesDesc,
+			opts.SourceIndex,
+			opts.DestinationIndex,
+		),
+	)
+	res, err := client.OperationIndex(
+		client.NewApiOperationIndexRequest(
+			opts.SourceIndex,
+			search.
+				NewEmptyOperationIndexParams().
+				SetDestination(opts.DestinationIndex).
+				SetOperation(search.OPERATION_TYPE_COPY).
+				SetScope(scopes)))
 	if err != nil {
 		return err
 	}
 
-	// Wait() is broken right now on copy index
-	// if opts.Wait {
-	// 	opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
-	// 	err = client.WaitTask(res.TaskID)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// }
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for task")
+		_, err = client.WaitForTask(opts.DestinationIndex, res.TaskID)
+		if err != nil {
+			return err
+		}
+	}
+
 	opts.IO.StopProgressIndicator()
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Copied %s from %s to %s\n", cs.SuccessIcon(), scopesDesc, opts.SourceIndex, opts.DestinationIndex)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Copied %s from %s to %s\n",
+			cs.SuccessIcon(),
+			scopesDesc,
+			opts.SourceIndex,
+			opts.DestinationIndex,
+		)
 	}
 
 	return nil

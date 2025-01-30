@@ -3,15 +3,15 @@ package copy
 import (
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewCopyCmd(t *testing.T) {
@@ -42,7 +42,7 @@ func TestNewCopyCmd(t *testing.T) {
 			},
 		},
 		{
-			name:     "specifying scopes",
+			name:     "with scope: settings",
 			cli:      "foo bar --scope settings",
 			tty:      true,
 			wantsErr: false,
@@ -51,6 +51,45 @@ func TestNewCopyCmd(t *testing.T) {
 				SourceIndex:      "foo",
 				DestinationIndex: "bar",
 				Scope:            []string{"settings"},
+				Wait:             true,
+			},
+		},
+		{
+			name:     "with scope: synonyms",
+			cli:      "foo bar --scope synonyms",
+			tty:      true,
+			wantsErr: false,
+			wantsOpts: CopyOptions{
+				DoConfirm:        true,
+				SourceIndex:      "foo",
+				DestinationIndex: "bar",
+				Scope:            []string{"synonyms"},
+				Wait:             true,
+			},
+		},
+		{
+			name:     "with scope: rules",
+			cli:      "foo bar --scope rules",
+			tty:      true,
+			wantsErr: false,
+			wantsOpts: CopyOptions{
+				DoConfirm:        true,
+				SourceIndex:      "foo",
+				DestinationIndex: "bar",
+				Scope:            []string{"rules"},
+				Wait:             true,
+			},
+		},
+		{
+			name:     "with multiple scope",
+			cli:      "foo bar --scope 'rules,synonyms,settings'",
+			tty:      true,
+			wantsErr: false,
+			wantsOpts: CopyOptions{
+				DoConfirm:        true,
+				SourceIndex:      "foo",
+				DestinationIndex: "bar",
+				Scope:            []string{"rules", "synonyms", "settings"},
 				Wait:             true,
 			},
 		},
@@ -134,7 +173,10 @@ func Test_runCreateCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/operation"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			r.Register(
+				httpmock.REST("POST", "1/indexes/foo/operation"),
+				httpmock.JSONResponse(search.UpdatedAtResponse{}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
