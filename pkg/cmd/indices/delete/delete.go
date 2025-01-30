@@ -95,22 +95,22 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	// For nicer output
-	indexSingularOrPlural := "index"
+	word := "index"
 	if len(opts.Indices) > 1 {
-		indexSingularOrPlural = "indices"
+		word = "indices"
 	}
 
 	if opts.DoConfirm {
 		var confirmed bool
 		msg := fmt.Sprintf(
 			"Are you sure you want to delete the %s %q?",
-			indexSingularOrPlural,
+			word,
 			strings.Join(opts.Indices, ", "),
 		)
 		if opts.IncludeReplicas {
 			msg = fmt.Sprintf(
 				"Are you sure you want to delete the %s %q including their replicas?",
-				indexSingularOrPlural,
+				word,
 				strings.Join(opts.Indices, ", "),
 			)
 		}
@@ -185,7 +185,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			opts.IO.Out,
 			"%s Deleted %s %s\n",
 			cs.SuccessIcon(),
-			indexSingularOrPlural,
+			word,
 			strings.Join(opts.Indices, ", "),
 		)
 	}
