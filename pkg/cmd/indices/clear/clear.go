@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,10 +18,11 @@ type ClearOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index     string
 	DoConfirm bool
+	Wait      bool
 }
 
 // NewClearCmd creates and returns a clear command for indices
@@ -29,7 +30,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	opts := &ClearOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	var confirm bool
@@ -37,7 +38,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:               "clear <index>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "deleteIndex",
 		},
@@ -54,7 +55,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -68,6 +71,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -75,7 +79,10 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 func runClearCmd(opts *ClearOptions) error {
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to clear the index %q?", opts.Index), &confirmed)
+		err := prompt.Confirm(
+			fmt.Sprintf("Are you sure you want to clear the index %q?", opts.Index),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -89,9 +96,25 @@ func runClearCmd(opts *ClearOptions) error {
 		return err
 	}
 
-	if _, err := client.InitIndex(opts.Index).ClearObjects(); err != nil {
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Deleting all records from index %s", opts.Index),
+	)
+	res, err := client.ClearObjects(client.NewApiClearObjectsRequest(opts.Index))
+	if err != nil {
+		opts.IO.StopProgressIndicator()
 		return err
 	}
+
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
+	}
+
+	opts.IO.StopProgressIndicator()
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

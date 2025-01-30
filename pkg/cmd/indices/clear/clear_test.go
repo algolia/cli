@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewClearCmd(t *testing.T) {
@@ -107,7 +107,10 @@ func Test_runCreateCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/clear", tt.index)), httpmock.JSONResponse(search.CreateKeyRes{Key: "foo"}))
+			r.Register(
+				httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/clear", tt.index)),
+				httpmock.JSONResponse(search.UpdatedAtResponse{}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
