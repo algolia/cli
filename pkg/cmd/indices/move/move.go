@@ -5,7 +5,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -19,7 +19,7 @@ type MoveOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	SourceIndex      string
 	DestinationIndex string
@@ -34,7 +34,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 	opts := &MoveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	var confirm bool
@@ -42,7 +42,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:               "move <source-index> <destination-index>",
 		Args:              validators.ExactArgs(2),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
@@ -60,7 +60,9 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -86,7 +88,11 @@ func runMoveCmd(opts *MoveOptions) error {
 	}
 
 	cs := opts.IO.ColorScheme()
-	message := fmt.Sprintf("Are you sure you want to move %s to %s?", cs.Bold(opts.SourceIndex), cs.Bold(opts.DestinationIndex))
+	message := fmt.Sprintf(
+		"Are you sure you want to move %s to %s?",
+		cs.Bold(opts.SourceIndex),
+		cs.Bold(opts.DestinationIndex),
+	)
 
 	if opts.DoConfirm {
 		var confirmed bool
@@ -103,8 +109,17 @@ func runMoveCmd(opts *MoveOptions) error {
 		}
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Moving %s to %s", cs.Bold(opts.SourceIndex), cs.Bold(opts.DestinationIndex)))
-	res, err := client.MoveIndex(opts.SourceIndex, opts.DestinationIndex)
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Moving %s to %s", cs.Bold(opts.SourceIndex), cs.Bold(opts.DestinationIndex)),
+	)
+	res, err := client.OperationIndex(
+		client.NewApiOperationIndexRequest(
+			opts.SourceIndex,
+			search.NewEmptyOperationIndexParams().
+				SetDestination(opts.DestinationIndex).
+				SetOperation(search.OPERATION_TYPE_MOVE),
+		),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -112,7 +127,7 @@ func runMoveCmd(opts *MoveOptions) error {
 
 	if opts.Wait {
 		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
-		err = client.InitIndex(opts.DestinationIndex).WaitTask(res.TaskID)
+		_, err := client.WaitForTask(opts.DestinationIndex, res.TaskID)
 		if err != nil {
 			opts.IO.StopProgressIndicator()
 			return err
@@ -122,7 +137,13 @@ func runMoveCmd(opts *MoveOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Moved %s to %s\n", cs.SuccessIcon(), cs.Bold(opts.SourceIndex), cs.Bold(opts.DestinationIndex))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Moved %s to %s\n",
+			cs.SuccessIcon(),
+			cs.Bold(opts.SourceIndex),
+			cs.Bold(opts.DestinationIndex),
+		)
 	}
 
 	return nil
