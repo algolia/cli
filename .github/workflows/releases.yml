@@ -1,25 +1,22 @@
 name: goreleaser
-
 on:
   push:
     tags:
       - "v*"
-
 permissions:
-  contents: write  # publishing releases
-
+  contents: write # publishing releases
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.19
+          go-version: 1.23
       - name: Install chocolatey
         run: |
           mkdir -p /opt/chocolatey
@@ -38,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
       - name: Docs checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: algolia/doc
           path: docs
@@ -53,4 +50,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
         run: |
           make docs-pr
-          make VARIATON=new docs-pr

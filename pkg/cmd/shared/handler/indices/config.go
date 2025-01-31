@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 
 	"github.com/algolia/cli/pkg/ask"
 	"github.com/algolia/cli/pkg/config"
@@ -22,19 +22,19 @@ type ExportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	ExistingIndices []string
-	Indice          string
-	Scope           []string
-	Directory       string
+	Indices   []string
+	Index     string
+	Scope     []string
+	Directory string
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 }
 
 func ValidateExportConfigFlags(opts ExportOptions) error {
 	cs := opts.IO.ColorScheme()
 
-	if !utils.Contains(opts.ExistingIndices, opts.Indice) {
-		return fmt.Errorf("%s Indice '%s' doesn't exist", cs.FailureIcon(), opts.Indice)
+	if !utils.Contains(opts.Indices, opts.Index) {
+		return fmt.Errorf("%s Index '%s' doesn't exist", cs.FailureIcon(), opts.Index)
 	}
 	return nil
 }
@@ -62,7 +62,7 @@ func AskExportConfig(opts *ExportOptions) error {
 
 // Matching Algolia Dashboard file naming
 // https://github.com/algolia/AlgoliaWeb/blob/develop/_client/src/routes/explorer/components/Explorer/IndexExportSettingsModal.tsx#L88
-func GetConfigFileName(path string, indiceName string, appId string) string {
+func GetConfigFileName(path string, indexName string, appId string) string {
 	rootPath := ""
 	if path != "" {
 		rootPath = path + "/"
@@ -71,7 +71,7 @@ func GetConfigFileName(path string, indiceName string, appId string) string {
 	return fmt.Sprintf(
 		"%sexport-%s-%s-%s.json",
 		rootPath,
-		indiceName,
+		indexName,
 		appId,
 		strconv.FormatInt(time.Now().UTC().Unix(), 10),
 	)
@@ -81,11 +81,11 @@ type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	ImportConfig ImportConfigJson
 
-	Indice                string
+	Index                 string
 	FilePath              string
 	Scope                 []string
 	ClearExistingSynonyms bool
@@ -99,15 +99,9 @@ type ImportOptions struct {
 }
 
 type ImportConfigJson struct {
-	Settings *search.Settings `json:"settings,omitempty"`
-	Rules    []search.Rule    `json:"rules,omitempty"`
-	Synonyms []Synonym        `json:"synonyms,omitempty"`
-}
-
-type Synonym struct {
-	Type                                string
-	ObjectID, Word, Input, Placeholder  string
-	Corrections, Synonyms, Replacements []string
+	Settings *search.IndexSettings `json:"settings,omitempty"`
+	Rules    []search.Rule         `json:"rules,omitempty"`
+	Synonyms []search.SynonymHit   `json:"synonyms,omitempty"`
 }
 
 func ValidateImportConfigFlags(opts *ImportOptions) error {
