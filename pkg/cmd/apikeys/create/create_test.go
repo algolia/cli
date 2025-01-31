@@ -4,15 +4,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewCreateCmd(t *testing.T) {
@@ -107,7 +107,7 @@ func Test_runCreateCmd(t *testing.T) {
 			r := httpmock.Registry{}
 			r.Register(
 				httpmock.REST("POST", "1/keys"),
-				httpmock.JSONResponse(search.CreateKeyRes{Key: "foo"}),
+				httpmock.JSONResponse(search.AddApiKeyResponse{Key: "foo"}),
 			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

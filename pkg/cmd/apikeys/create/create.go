@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -20,7 +20,7 @@ type CreateOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	ACL         []string
 	Description string
@@ -34,7 +34,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	opts := &CreateOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "create",
@@ -143,19 +143,24 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 // runCreateCmd executes the create command
 func runCreateCmd(opts *CreateOptions) error {
-	key := search.Key{
-		ACL:         opts.ACL,
+	var acls []search.Acl
+	for _, a := range opts.ACL {
+		acls = append(acls, search.Acl(a))
+	}
+	validity := int32(opts.Validity.Seconds())
+	key := search.ApiKey{
+		Acl:         acls,
 		Indexes:     opts.Indices,
-		Validity:    opts.Validity,
+		Validity:    &validity,
 		Referers:    opts.Referers,
-		Description: opts.Description,
+		Description: &opts.Description,
 	}
 
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
 	}
-	res, err := client.AddAPIKey(key)
+	res, err := client.AddApiKey(client.NewApiAddApiKeyRequest(&key))
 	if err != nil {
 		return err
 	}
