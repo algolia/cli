@@ -2,6 +2,7 @@ package iostreams
 
 import (
 	"errors"
+
 	"golang.org/x/term"
 )
 

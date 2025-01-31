@@ -52,7 +52,11 @@ func (p *GoTemplatePrinter) Print(ios *iostreams.IOStreams, data interface{}) er
 		// It is way easier to debug this stuff when it shows up in
 		// stdout instead of just stdin. So in addition to returning
 		// a nice error, also print useful stuff with the writer.
-		fmt.Fprintf(ios.ErrOut, "Error executing template: %v. Printing more information for debugging the template:\n", err)
+		fmt.Fprintf(
+			ios.ErrOut,
+			"Error executing template: %v. Printing more information for debugging the template:\n",
+			err,
+		)
 		fmt.Fprintf(ios.ErrOut, "\ttemplate was:\n\t\t%v\n", p.rawTemplate)
 		fmt.Fprintf(ios.ErrOut, "\traw data was:\n\t\t%v\n", string(dataM))
 		fmt.Fprintf(ios.ErrOut, "\tobject given to template engine was:\n\t\t%+v\n\n", out)

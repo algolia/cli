@@ -47,9 +47,9 @@ func (p *Profile) GetApplicationID() (string, error) {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		appId := viper.GetString(p.GetFieldName("application_id"))
-		if appId != "" {
-			return appId, nil
+		appID := viper.GetString(p.GetFieldName("application_id"))
+		if appID != "" {
+			return appID, nil
 		}
 	}
 

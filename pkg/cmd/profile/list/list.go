@@ -6,7 +6,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -77,8 +77,11 @@ func runListCmd(opts *ListOptions) error {
 			apiKey = profile.AdminAPIKey // Legacy
 		}
 
-		client := search.NewClient(profile.ApplicationID, apiKey)
-		res, err := client.ListIndices()
+		client, err := search.NewClient(profile.ApplicationID, apiKey)
+		if err != nil {
+			table.AddField(err.Error(), nil, nil)
+		}
+		res, err := client.ListIndices(client.NewApiListIndicesRequest())
 		if err != nil {
 			table.AddField(err.Error(), nil, nil)
 		} else {
