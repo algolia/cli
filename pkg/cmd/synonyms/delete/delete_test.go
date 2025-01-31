@@ -175,8 +175,14 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.synonymIDs {
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, id)), httpmock.JSONResponse(search.OneWaySynonym{}))
-				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, id)), httpmock.JSONResponse(search.DeleteTaskRes{}))
+				r.Register(
+					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, id)),
+					httpmock.JSONResponse(search.OneWaySynonym{}),
+				)
+				r.Register(
+					httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, id)),
+					httpmock.JSONResponse(search.DeleteTaskRes{}),
+				)
 			}
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

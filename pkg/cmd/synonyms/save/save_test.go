@@ -163,7 +163,13 @@ func Test_runSaveCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("PUT", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, tt.synonymID)), httpmock.JSONResponse(search.RegularSynonym{}))
+			r.Register(
+				httpmock.REST(
+					"PUT",
+					fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, tt.synonymID),
+				),
+				httpmock.JSONResponse(search.RegularSynonym{}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

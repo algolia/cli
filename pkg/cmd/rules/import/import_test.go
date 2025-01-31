@@ -135,7 +135,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   `{"objectID":"test"}`,
 			wantOut: "✓ Successfully imported 1 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/rules/batch"),
+					httpmock.JSONResponse(search.UpdateTaskRes{}),
+				)
 			},
 		},
 		{
@@ -143,7 +146,10 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/rules/batch"),
+					httpmock.JSONResponse(search.UpdateTaskRes{}),
+				)
 			},
 		},
 		{
@@ -159,7 +165,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   ``,
 			wantOut: "✓ Successfully imported 0 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/rules/clear"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/rules/clear"),
+					httpmock.JSONResponse(search.UpdateTaskRes{}),
+				)
 			},
 		},
 		{
@@ -176,10 +185,12 @@ func Test_runExportCmd(t *testing.T) {
 			wantOut: "✓ Successfully imported 1001 rules to foo\n",
 			setup: func(r *httpmock.Registry) {
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) && req.URL.Query().Get("clearExistingRules") == "true"
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) &&
+						req.URL.Query().Get("clearExistingRules") == "true"
 				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) && req.URL.Query().Get("clearExistingRules") == ""
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) &&
+						req.URL.Query().Get("clearExistingRules") == ""
 				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
 			},
 		},

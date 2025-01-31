@@ -99,21 +99,27 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		Used for informative purposes only. It has no impact on the functionality of the API key.`,
 	))
 
-	_ = cmd.RegisterFlagCompletionFunc("indices", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		client, err := f.SearchClient()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		indicesRes, err := client.ListIndices()
-		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		allowedIndices := make([]string, 0, len(indicesRes.Items))
-		for _, index := range indicesRes.Items {
-			allowedIndices = append(allowedIndices, fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(index.Entries)))
-		}
-		return allowedIndices, cobra.ShellCompDirectiveNoFileComp
-	})
+	_ = cmd.RegisterFlagCompletionFunc(
+		"indices",
+		func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			client, err := f.SearchClient()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			indicesRes, err := client.ListIndices()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			allowedIndices := make([]string, 0, len(indicesRes.Items))
+			for _, index := range indicesRes.Items {
+				allowedIndices = append(
+					allowedIndices,
+					fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(index.Entries)),
+				)
+			}
+			return allowedIndices, cobra.ShellCompDirectiveNoFileComp
+		},
+	)
 
 	_ = cmd.RegisterFlagCompletionFunc("acl",
 		cmdutil.StringSliceCompletionFunc(map[string]string{

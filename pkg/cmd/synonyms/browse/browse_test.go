@@ -24,9 +24,12 @@ func Test_runBrowseCmd(t *testing.T) {
 			wantOut: "{\"objectID\":\"foo\",\"type\":\"synonym\",\"synonyms\":null}\n",
 		},
 		{
-			name:    "multiple synonyms",
-			cli:     "foo",
-			hits:    []map[string]interface{}{{"objectID": "foo", "type": "synonym"}, {"objectID": "bar", "type": "synonym"}},
+			name: "multiple synonyms",
+			cli:  "foo",
+			hits: []map[string]interface{}{
+				{"objectID": "foo", "type": "synonym"},
+				{"objectID": "bar", "type": "synonym"},
+			},
 			wantOut: "{\"objectID\":\"foo\",\"type\":\"synonym\",\"synonyms\":null}\n{\"objectID\":\"bar\",\"type\":\"synonym\",\"synonyms\":null}\n",
 		},
 	}
@@ -34,9 +37,12 @@ func Test_runBrowseCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/search"), httpmock.JSONResponse(search.SearchSynonymsRes{
-				Hits: tt.hits,
-			}))
+			r.Register(
+				httpmock.REST("POST", "1/indexes/foo/synonyms/search"),
+				httpmock.JSONResponse(search.SearchSynonymsRes{
+					Hits: tt.hits,
+				}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, "")

@@ -48,11 +48,11 @@ func (c *Config) InitConfig() {
 		c.File = configFile
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(configFile)
-		viper.SetConfigPermissions(os.FileMode(0600))
+		viper.SetConfigPermissions(os.FileMode(0o600))
 
 		// Try to change permissions manually, because we used to create files
 		// with default permissions (0644)
-		err := os.Chmod(configFile, os.FileMode(0600))
+		err := os.Chmod(configFile, os.FileMode(0o600))
 		if err != nil && !os.IsNotExist(err) {
 			log.Fatalf("%s", err)
 		}

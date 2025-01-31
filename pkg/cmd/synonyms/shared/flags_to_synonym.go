@@ -45,7 +45,9 @@ func (e *SynonymType) Set(v string) error {
 		*e = SynonymType(v)
 		return nil
 	default:
-		return fmt.Errorf(`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`)
+		return fmt.Errorf(
+			`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`,
+		)
 	}
 }
 

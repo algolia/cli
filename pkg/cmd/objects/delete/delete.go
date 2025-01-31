@@ -79,7 +79,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -96,7 +98,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmdutil.AddDeleteByParamsFlags(cmd)
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVar(&opts.Wait, "wait", false, "wait for all the operations to complete before returning")
+	cmd.Flags().
+		BoolVar(&opts.Wait, "wait", false, "wait for all the operations to complete before returning")
 
 	return cmd
 }
@@ -147,7 +150,12 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return nil
 	}
 
-	objectNbMessage := fmt.Sprintf("%s %s from %s", exactOrApproximate, utils.Pluralize(nbObjectsToDelete, "object"), opts.Indice)
+	objectNbMessage := fmt.Sprintf(
+		"%s %s from %s",
+		exactOrApproximate,
+		utils.Pluralize(nbObjectsToDelete, "object"),
+		opts.Indice,
+	)
 
 	if opts.DoConfirm {
 		var confirmed bool

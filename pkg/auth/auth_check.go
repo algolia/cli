@@ -29,16 +29,15 @@ var WriteAPIKeyDefaultACLs = []string{
 
 // errMissingACLs return an error with the missing ACLs
 func errMissingACLs(missing []string) error {
-	err := fmt.Sprintf("Missing API key ACL(s): %s\n", strings.Join(missing, ", "))
-	err += "Edit your profile or use the `--api-key` flag to provide an API key with the missing ACLs.\n"
-	err += "See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information"
-
+	err := fmt.Sprintf("Missing API Key ACL(s): %s\n", strings.Join(missing, ", "))
+	err += "Either edit your profile or use the `--api-key` flag to provide an API Key with the missing ACLs.\n"
+	err += "See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information.\n"
 	return errors.New(err)
 }
 
 // errAdminAPIKeyRequired is returned when the command requires an admin API Key
 var errAdminAPIKeyRequired = errors.New(
-	"this command requires an admin API key. Use the `--api-key` flag with a valid admin API key",
+	"This command requires an admin API Key. Please use the `--api-key` flag to provide a valid admin API Key.\n",
 )
 
 func DisableAuthCheck(cmd *cobra.Command) {
@@ -82,7 +81,7 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.ListApiKeys()
+	_, err = client.ListAPIKeys()
 	if err == nil {
 		return nil // Admin API Key, no need to check ACLs
 	}
@@ -93,21 +92,12 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 
 	// Check the ACLs of the provided API Key
-	key, err := f.Config.Profile().GetAPIKey()
-	if err != nil {
-		return err
-	}
-	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(key))
+	apiKey, err := client.GetAPIKey(f.Config.Profile().GetAPIKey())
 	if err != nil {
 		return err
 	}
 
-	var hasAcls []string
-	for _, acl := range apiKey.Acl {
-		hasAcls = append(hasAcls, string(acl))
-	}
-
-	missingACLs := utils.Differences(neededACLs, hasAcls)
+	missingACLs := utils.Differences(neededACLs, apiKey.ACL)
 	if len(missingACLs) > 0 {
 		return errMissingACLs(missingACLs)
 	}

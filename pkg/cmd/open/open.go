@@ -15,49 +15,49 @@ import (
 	"github.com/algolia/cli/pkg/printers"
 )
 
-type OpenURL struct {
+type OpenUrl struct {
 	Default   string
-	WithAppID string
+	WithAppId string
 }
 
-var openURLMap = map[string]OpenURL{
+var openUrlMap = map[string]OpenUrl{
 	"api":      {Default: "https://www.algolia.com/doc/api-reference/rest-api/"},
 	"codex":    {Default: "https://www.algolia.com/developers/code-exchange/"},
 	"cli-docs": {Default: "https://algolia.com/doc/tools/cli/get-started/overview/"},
 	"cli-repo": {Default: "https://github.com/algolia/cli"},
 	"dashboard": {
 		Default:   "https://www.algolia.com/dashboard",
-		WithAppID: "https://www.algolia.com/apps/%s/dashboard",
+		WithAppId: "https://www.algolia.com/apps/%s/dashboard",
 	},
 	"devhub":    {Default: "https://www.algolia.com/developers/"},
 	"docs":      {Default: "https://algolia.com/doc/"},
 	"languages": {Default: "https://alg.li/supported-languages"},
 	"status": {
 		Default:   "https://status.algolia.com/",
-		WithAppID: "https://www.algolia.com/apps/%s/monitoring/status",
+		WithAppId: "https://www.algolia.com/apps/%s/monitoring/status",
 	},
 }
 
 func openNames() []string {
-	keys := make([]string, 0, len(openURLMap))
-	for k := range openURLMap {
+	keys := make([]string, 0, len(openUrlMap))
+	for k := range openUrlMap {
 		keys = append(keys, k)
 	}
 
 	return keys
 }
 
-func getNameURLMap(applicationID string) map[string]string {
-	nameURLMap := make(map[string]string)
+func getNameUrlMap(applicationID string) map[string]string {
+	nameUrlMap := make(map[string]string)
 	for _, openName := range openNames() {
-		url := openURLMap[openName].Default
-		if applicationID != "" && openURLMap[openName].WithAppID != "" {
-			url = fmt.Sprintf(openURLMap[openName].WithAppID, applicationID)
+		url := openUrlMap[openName].Default
+		if applicationID != "" && openUrlMap[openName].WithAppId != "" {
+			url = fmt.Sprintf(openUrlMap[openName].WithAppId, applicationID)
 		}
-		nameURLMap[openName] = url
+		nameUrlMap[openName] = url
 	}
 
-	return nameURLMap
+	return nameUrlMap
 }
 
 // OpenOptions represents the options for the open command
@@ -125,7 +125,7 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 func runOpenCmd(opts *OpenOptions) error {
 	profile := opts.config.Profile()
 	applicationID, _ := profile.GetApplicationID()
-	nameURLMap := getNameURLMap(applicationID)
+	nameUrlMap := getNameUrlMap(applicationID)
 
 	if opts.List || opts.Shortcut == "" {
 		fmt.Println("open quickly opens Algolia pages. To use, run 'algolia open <shortcut>'.")
@@ -142,7 +142,7 @@ func runOpenCmd(opts *OpenOptions) error {
 			table.EndRow()
 		}
 
-		for shortcutName, url := range nameURLMap {
+		for shortcutName, url := range nameUrlMap {
 			table.AddField(shortcutName, nil, nil)
 			table.AddField(url, nil, nil)
 			table.EndRow()
@@ -152,7 +152,7 @@ func runOpenCmd(opts *OpenOptions) error {
 	}
 
 	var err error
-	if url, ok := nameURLMap[opts.Shortcut]; ok {
+	if url, ok := nameUrlMap[opts.Shortcut]; ok {
 		err = open.Browser(url)
 		if err != nil {
 			return err

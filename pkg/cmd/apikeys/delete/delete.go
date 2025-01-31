@@ -45,7 +45,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			opts.APIKey = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -77,7 +79,10 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the following API key: %s?", opts.APIKey), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf("Delete the following API key: %s?", opts.APIKey),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -93,7 +98,12 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s API key successfully deleted: %s\n", cs.SuccessIcon(), opts.APIKey)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s API key successfully deleted: %s\n",
+			cs.SuccessIcon(),
+			opts.APIKey,
+		)
 	}
 	return nil
 }

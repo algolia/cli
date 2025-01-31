@@ -105,7 +105,10 @@ func Test_Object_UnmarshalJSON(t *testing.T) {
 				}
 			}`),
 			wantErr: false,
-			wantObj: Object{"objectID": "foo", "bar": search.PartialUpdateOperation{Operation: "Increment"}},
+			wantObj: Object{
+				"objectID": "foo",
+				"bar":      search.PartialUpdateOperation{Operation: "Increment"},
+			},
 		},
 	}
 

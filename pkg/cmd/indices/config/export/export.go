@@ -113,7 +113,7 @@ func runExportCmd(opts *config.ExportOptions) error {
 	}
 
 	filePath := config.GetConfigFileName(opts.Directory, opts.Indice, indice.GetAppID())
-	err = os.WriteFile(filePath, configJsonIndented, 0644)
+	err = os.WriteFile(filePath, configJsonIndented, 0o644)
 	if err != nil {
 		return fmt.Errorf("%s An error occurred when saving the file: %w", cs.FailureIcon(), err)
 	}

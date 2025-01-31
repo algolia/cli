@@ -62,7 +62,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			opts.Dictionary = search.DictionaryName(args[0])
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -92,7 +94,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionary), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf(
+				"Delete the %s from %s?",
+				pluralizeEntry(len(opts.ObjectIDs)),
+				opts.Dictionary,
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -108,7 +117,13 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionary)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully deleted %s from %s\n",
+			cs.SuccessIcon(),
+			pluralizeEntry(len(opts.ObjectIDs)),
+			opts.Dictionary,
+		)
 	}
 
 	return nil

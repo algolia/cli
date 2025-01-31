@@ -15,9 +15,8 @@ import (
 )
 
 func Test_runExportCmd(t *testing.T) {
-
 	tmpFile := filepath.Join(t.TempDir(), "settings.json")
-	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -42,7 +41,10 @@ func Test_runExportCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("PUT", "1/indexes/foo/settings"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			r.Register(
+				httpmock.REST("PUT", "1/indexes/foo/settings"),
+				httpmock.JSONResponse(search.UpdateTaskRes{}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, tt.stdin)

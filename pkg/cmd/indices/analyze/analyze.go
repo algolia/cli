@@ -82,8 +82,10 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.NoLimit, "no-limit", "n", false, "If set, the command will not limit the number of objects to analyze. Otherwise, the default limit is 1000 objects.")
-	cmd.Flags().StringVarP(&opts.Only, "only", "", "", "If set, the command will only analyze the specified attribute. Chosen attribute values statistics will be shown in the output.")
+	cmd.Flags().
+		BoolVarP(&opts.NoLimit, "no-limit", "n", false, "If set, the command will not limit the number of objects to analyze. Otherwise, the default limit is 1000 objects.")
+	cmd.Flags().
+		StringVarP(&opts.Only, "only", "", "", "If set, the command will only analyze the specified attribute. Chosen attribute values statistics will be shown in the output.")
 
 	cmdutil.AddBrowseParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)
@@ -222,7 +224,7 @@ func printStats(stats *analyze.Stats, opts *StatsOptions) error {
 	for _, key := range sorted {
 		// Print colorized output depending on the percentage
 		// If <1%: red, if <5%: yellow
-		var color = func(s string) string { return s }
+		color := func(s string) string { return s }
 		if stats.Attributes[key].Percentage < 1 {
 			color = cs.Red
 		} else if stats.Attributes[key].Percentage < 5 {
@@ -265,7 +267,11 @@ func printSingleAttributeStats(stats *analyze.Stats, opts *StatsOptions) error {
 		for _, v := range sorted {
 			table.AddField(fmt.Sprintf("%v", v), nil, nil)
 			table.AddField(fmt.Sprintf("%d", value.Values[v]), nil, nil)
-			table.AddField(fmt.Sprintf("%.2f%%", float64(value.Values[v])*100/float64(stats.TotalRecords)), nil, nil)
+			table.AddField(
+				fmt.Sprintf("%.2f%%", float64(value.Values[v])*100/float64(stats.TotalRecords)),
+				nil,
+				nil,
+			)
 			table.EndRow()
 		}
 	}

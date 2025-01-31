@@ -21,7 +21,8 @@ func Test_FlagsToSynonym(t *testing.T) {
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
 				SynonymID: "23",
-				Synonyms:  []string{"mj", "goat"}},
+				Synonyms:  []string{"mj", "goat"},
+			},
 			synonymType: "search.RegularSynonym",
 		},
 		{
@@ -30,7 +31,8 @@ func Test_FlagsToSynonym(t *testing.T) {
 			synonymFlags: SynonymFlags{
 				SynonymType: Regular,
 				SynonymID:   "23",
-				Synonyms:    []string{"mj", "goat"}},
+				Synonyms:    []string{"mj", "goat"},
+			},
 			synonymType: "search.RegularSynonym",
 		},
 		// One way type

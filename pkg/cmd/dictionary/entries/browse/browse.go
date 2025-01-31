@@ -77,11 +77,17 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.All && len(args) > 0 || !opts.All && len(args) == 0 {
-				return cmdutil.FlagErrorf("Either specify dictionaries' names or use --all to browse all dictionaries")
+				return cmdutil.FlagErrorf(
+					"Either specify dictionaries' names or use --all to browse all dictionaries",
+				)
 			}
 
 			if opts.All {
-				opts.Dictionaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
+				opts.Dictionaries = []search.DictionaryName{
+					search.Stopwords,
+					search.Plurals,
+					search.Compounds,
+				}
 			} else {
 				opts.Dictionaries = make([]search.DictionaryName, len(args))
 				for i, dictionary := range args {
@@ -94,7 +100,8 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "browse all dictionaries")
-	cmd.Flags().BoolVarP(&opts.IncludeDefaultStopwords, "include-defaults", "d", false, "include default stopwords")
+	cmd.Flags().
+		BoolVarP(&opts.IncludeDefaultStopwords, "include-defaults", "d", false, "include default stopwords")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -122,7 +129,12 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 		// implement infinite pagination
 		for pageCount < maxPages {
-			res, err := client.SearchDictionaryEntries(dictionary, "", opt.HitsPerPage(1000), opt.Page(pageCount))
+			res, err := client.SearchDictionaryEntries(
+				dictionary,
+				"",
+				opt.HitsPerPage(1000),
+				opt.Page(pageCount),
+			)
 			if err != nil {
 				return err
 			}
@@ -131,13 +143,19 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 			data, err := json.Marshal(res.Hits)
 			if err != nil {
-				return fmt.Errorf("cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v", err)
+				return fmt.Errorf(
+					"cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v",
+					err,
+				)
 			}
 
 			var entries []DictionaryEntry
 			err = json.Unmarshal(data, &entries)
 			if err != nil {
-				return fmt.Errorf("cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
+				return fmt.Errorf(
+					"cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v",
+					err,
+				)
 			}
 
 			if len(entries) != 0 {

@@ -61,7 +61,11 @@ func TestGetConfirmMessage(t *testing.T) {
 			io, _, _, _ := iostreams.Test()
 			tt.cs = io.ColorScheme()
 
-			assert.Equal(t, tt.wantsOutput, GetConfirmMessage(tt.cs, tt.scope, tt.clearExistingRules, tt.clearExistingSynonyms))
+			assert.Equal(
+				t,
+				tt.wantsOutput,
+				GetConfirmMessage(tt.cs, tt.scope, tt.clearExistingRules, tt.clearExistingSynonyms),
+			)
 		})
 	}
 }

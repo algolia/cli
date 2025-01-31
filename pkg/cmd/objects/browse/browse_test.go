@@ -34,9 +34,12 @@ func Test_runBrowseCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("POST", "1/indexes/foo/browse"), httpmock.JSONResponse(search.QueryRes{
-				Hits: tt.hits,
-			}))
+			r.Register(
+				httpmock.REST("POST", "1/indexes/foo/browse"),
+				httpmock.JSONResponse(search.QueryRes{
+					Hits: tt.hits,
+				}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, "")

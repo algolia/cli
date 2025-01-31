@@ -17,7 +17,13 @@ import (
 
 func Test_runImportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "entries.json")
-	err := os.WriteFile(tmpFile, []byte(`{"language":"en","word":"test","state":"enabled","objectID":"test","type":"custom"}`), 0600)
+	err := os.WriteFile(
+		tmpFile,
+		[]byte(
+			`{"language":"en","word":"test","state":"enabled","objectID":"test","type":"custom"}`,
+		),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -80,7 +86,10 @@ func Test_runImportCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "1/dictionaries/stopwords/batch"), httpmock.JSONResponse(search.MultipleBatchRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/dictionaries/stopwords/batch"),
+					httpmock.JSONResponse(search.MultipleBatchRes{}),
+				)
 			}
 			defer r.Verify(t)
 

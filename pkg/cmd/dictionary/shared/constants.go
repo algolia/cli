@@ -6,8 +6,10 @@ import (
 
 // EntryType represents the type of an entry in a dictionary.
 // It can be either a custom entry or a standard entry.
-type EntryType string
-type DictionaryType int
+type (
+	EntryType      string
+	DictionaryType int
+)
 
 // DictionaryEntry can be plural, compound or stopword entry.
 type DictionaryEntry struct {
@@ -27,13 +29,11 @@ const (
 	StandardEntryType EntryType = "standard"
 )
 
-var (
-	// DictionaryNames returns the list of available dictionaries.
-	DictionaryNames = func() []string {
-		return []string{
-			string(search.Stopwords),
-			string(search.Compounds),
-			string(search.Plurals),
-		}
+// DictionaryNames returns the list of available dictionaries.
+var DictionaryNames = func() []string {
+	return []string{
+		string(search.Stopwords),
+		string(search.Compounds),
+		string(search.Plurals),
 	}
-)
+}

@@ -62,7 +62,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			opts.Indice = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -77,7 +79,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd.Flags().StringSliceVarP(&opts.RuleIDs, "rule-ids", "", nil, "Rule IDs to delete")
 	_ = cmd.MarkFlagRequired("rule-ids")
-	cmd.Flags().BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Forward the delete request to the replicas")
+	cmd.Flags().
+		BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Forward the delete request to the replicas")
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
 
@@ -104,7 +107,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", utils.Pluralize(len(opts.RuleIDs), "rule"), opts.Indice), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf(
+				"Delete the %s from %s?",
+				utils.Pluralize(len(opts.RuleIDs), "rule"),
+				opts.Indice,
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -123,7 +133,13 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), utils.Pluralize(len(opts.RuleIDs), "rule"), opts.Indice)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully deleted %s from %s\n",
+			cs.SuccessIcon(),
+			utils.Pluralize(len(opts.RuleIDs), "rule"),
+			opts.Indice,
+		)
 	}
 
 	return nil

@@ -78,14 +78,18 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	})
 	cmd.SetFlagErrorFunc(rootFlagErrorFunc)
 
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
+	cmd.PersistentFlags().
+		StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
+	cmd.PersistentFlags().
+		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
+	cmd.PersistentFlags().
+		StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
 	_ = cmd.PersistentFlags().MarkDeprecated("admin-api-key", "use --api-key instead")
-	cmd.PersistentFlags().StringSliceVar(&f.Config.Profile().SearchHosts, "search-hosts", nil, "The list of search hosts as CSV")
+	cmd.PersistentFlags().
+		StringSliceVar(&f.Config.Profile().SearchHosts, "search-hosts", nil, "The list of search hosts as CSV")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
@@ -142,7 +146,10 @@ func Execute() exitCode {
 		if auth.IsAuthCheckEnabled(cmd) {
 			if err := auth.CheckAuth(cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
-				fmt.Fprintln(stderr, "Please run `algolia profile add` to configure your first profile.")
+				fmt.Fprintln(
+					stderr,
+					"Please run `algolia profile add` to configure your first profile.",
+				)
 				return authError
 			}
 
@@ -234,7 +241,12 @@ func Execute() exitCode {
 }
 
 // createContext creates a context with telemetry.
-func createContext(cmd *cobra.Command, stderr io.Writer, hasDebug bool, hasTelemetry bool) (context.Context, error) {
+func createContext(
+	cmd *cobra.Command,
+	stderr io.Writer,
+	hasDebug bool,
+	hasTelemetry bool,
+) (context.Context, error) {
 	ctx := context.Background()
 	telemetryMetadata := telemetry.NewEventMetadata()
 	updatedCtx := telemetry.WithEventMetadata(ctx, telemetryMetadata)
@@ -306,6 +318,11 @@ func isUnderHomebrew(ghBinary string) bool {
 		return false
 	}
 
-	brewBinPrefix := filepath.Join(strings.TrimSpace(string(brewPrefixBytes)), "bin") + string(filepath.Separator)
+	brewBinPrefix := filepath.Join(
+		strings.TrimSpace(string(brewPrefixBytes)),
+		"bin",
+	) + string(
+		filepath.Separator,
+	)
 	return strings.HasPrefix(ghBinary, brewBinPrefix)
 }

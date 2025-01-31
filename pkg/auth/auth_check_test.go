@@ -113,5 +113,4 @@ See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restriction
 			}
 		})
 	}
-
 }

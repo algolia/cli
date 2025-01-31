@@ -81,7 +81,8 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Region, "region", "r", string(DefaultRegion), "Region where your analytics data is stored and processed.")
+	cmd.Flags().
+		StringVarP(&opts.Region, "region", "r", string(DefaultRegion), "Region where your analytics data is stored and processed.")
 	_ = cmd.RegisterFlagCompletionFunc("region", cmdutil.StringCompletionFunc(map[string]string{
 		string(region.US): "United States",
 		string(region.DE): "Germany (Europe)",
@@ -164,6 +165,15 @@ func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) error {
 		colorizedStatus = cs.Red(fmt.Sprint(event.Status))
 	}
 
-	_, err := fmt.Fprintf(io.Out, "%s [%s] %s %s [%s] %s\n", cs.Bold(formatedTime), colorizedStatus, event.Event.EventType, cs.Bold(event.Event.Index), event.Event.EventName, event.Event.UserToken)
+	_, err := fmt.Fprintf(
+		io.Out,
+		"%s [%s] %s %s [%s] %s\n",
+		cs.Bold(formatedTime),
+		colorizedStatus,
+		event.Event.EventType,
+		cs.Bold(event.Event.Index),
+		event.Event.EventName,
+		event.Event.UserToken,
+	)
 	return err
 }

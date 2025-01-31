@@ -58,20 +58,29 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Check that either --disable-standard-entries and --enable-standard-entries or --reset-standard-entries is set
-			if !opts.ResetStandardEntries && (len(opts.DisableStandardEntries) == 0 && len(opts.EnableStandardEntries) == 0) {
-				return cmdutil.FlagErrorf("Either --disable-standard-entries and/or --enable-standard-entries or --reset-standard-entries must be set")
+			if !opts.ResetStandardEntries &&
+				(len(opts.DisableStandardEntries) == 0 && len(opts.EnableStandardEntries) == 0) {
+				return cmdutil.FlagErrorf(
+					"Either --disable-standard-entries and/or --enable-standard-entries or --reset-standard-entries must be set",
+				)
 			}
 
 			// Check that the user is not resetting standard entries and trying to disable or enable standard entries at the same time
-			if opts.ResetStandardEntries && (len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0) {
-				return cmdutil.FlagErrorf("You cannot reset standard entries and disable or enable standard entries at the same time")
+			if opts.ResetStandardEntries &&
+				(len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0) {
+				return cmdutil.FlagErrorf(
+					"You cannot reset standard entries and disable or enable standard entries at the same time",
+				)
 			}
 
 			// Check if the user is trying to disable and enable standard entries for the same languages at the same time
 			for _, disableLanguage := range opts.DisableStandardEntries {
 				for _, enableLanguage := range opts.EnableStandardEntries {
 					if disableLanguage == enableLanguage {
-						return cmdutil.FlagErrorf("You cannot disable and enable standard entries for the same language: %s", disableLanguage)
+						return cmdutil.FlagErrorf(
+							"You cannot disable and enable standard entries for the same language: %s",
+							disableLanguage,
+						)
 					}
 				}
 			}
@@ -84,16 +93,25 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.DisableStandardEntries, "disable-standard-entries", "d", []string{}, "Disable standard entries for the given languages")
-	cmd.Flags().StringSliceVarP(&opts.EnableStandardEntries, "enable-standard-entries", "e", []string{}, "Enable standard entries for the given languages")
-	cmd.Flags().BoolVarP(&opts.ResetStandardEntries, "reset-standard-entries", "r", false, "Reset standard entries to their default values")
+	cmd.Flags().
+		StringSliceVarP(&opts.DisableStandardEntries, "disable-standard-entries", "d", []string{}, "Disable standard entries for the given languages")
+	cmd.Flags().
+		StringSliceVarP(&opts.EnableStandardEntries, "enable-standard-entries", "e", []string{}, "Enable standard entries for the given languages")
+	cmd.Flags().
+		BoolVarP(&opts.ResetStandardEntries, "reset-standard-entries", "r", false, "Reset standard entries to their default values")
 
 	SupportedLanguages := make(map[string]string, len(LanguagesWithStopwordsSupport))
 	for _, languageCode := range LanguagesWithStopwordsSupport {
 		SupportedLanguages[languageCode] = Languages[languageCode]
 	}
-	_ = cmd.RegisterFlagCompletionFunc("disable-standard-entries", cmdutil.StringCompletionFunc(SupportedLanguages))
-	_ = cmd.RegisterFlagCompletionFunc("enable-standard-entries", cmdutil.StringCompletionFunc(SupportedLanguages))
+	_ = cmd.RegisterFlagCompletionFunc(
+		"disable-standard-entries",
+		cmdutil.StringCompletionFunc(SupportedLanguages),
+	)
+	_ = cmd.RegisterFlagCompletionFunc(
+		"enable-standard-entries",
+		cmdutil.StringCompletionFunc(SupportedLanguages),
+	)
 
 	return cmd
 }
@@ -107,7 +125,9 @@ func runSetCmd(opts *SetOptions) error {
 
 	var disableStandardEntriesOpt *opt.DisableStandardEntriesOption
 	if opts.ResetStandardEntries {
-		disableStandardEntriesOpt = opt.DisableStandardEntries(map[string]map[string]bool{"stopwords": nil})
+		disableStandardEntriesOpt = opt.DisableStandardEntries(
+			map[string]map[string]bool{"stopwords": nil},
+		)
 	}
 
 	if len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0 {

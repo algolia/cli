@@ -70,11 +70,17 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.All && len(args) > 0 || !opts.All && len(args) == 0 {
-				return cmdutil.FlagErrorf("Either specify dictionaries' names or use --all to clear all dictionaries")
+				return cmdutil.FlagErrorf(
+					"Either specify dictionaries' names or use --all to clear all dictionaries",
+				)
 			}
 
 			if opts.All {
-				opts.Dictionaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
+				opts.Dictionaries = []search.DictionaryName{
+					search.Stopwords,
+					search.Plurals,
+					search.Compounds,
+				}
 			} else {
 				opts.Dictionaries = make([]search.DictionaryName, len(args))
 				for i, dictionary := range args {
@@ -84,7 +90,9 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -137,7 +145,14 @@ func runClearCmd(opts *ClearOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Clear %d entries from %s dictionary?", totalEntries, utils.SliceToReadableString(dictionariesNames)), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf(
+				"Clear %d entries from %s dictionary?",
+				totalEntries,
+				utils.SliceToReadableString(dictionariesNames),
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -154,7 +169,13 @@ func runClearCmd(opts *ClearOptions) error {
 	}
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully cleared %d entries from %s dictionary\n", cs.SuccessIcon(), totalEntries, utils.SliceToReadableString(dictionariesNames))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully cleared %d entries from %s dictionary\n",
+			cs.SuccessIcon(),
+			totalEntries,
+			utils.SliceToReadableString(dictionariesNames),
+		)
 	}
 
 	return nil
@@ -167,13 +188,19 @@ func customEntriesNb(client *search.Client, dictionary search.DictionaryName) (i
 	}
 	data, err := json.Marshal(res.Hits)
 	if err != nil {
-		return 0, fmt.Errorf("cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v", err)
+		return 0, fmt.Errorf(
+			"cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v",
+			err,
+		)
 	}
 
 	var entries []DictionaryEntry
 	err = json.Unmarshal(data, &entries)
 	if err != nil {
-		return 0, fmt.Errorf("cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
+		return 0, fmt.Errorf(
+			"cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v",
+			err,
+		)
 	}
 
 	var customEntriesNb int

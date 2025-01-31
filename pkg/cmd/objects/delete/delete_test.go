@@ -187,18 +187,30 @@ func Test_runDeleteCmd(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.objectIDs {
 				// Checking that the object exists
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)), httpmock.JSONResponse(search.QueryRes{}))
+				r.Register(
+					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)),
+					httpmock.JSONResponse(search.QueryRes{}),
+				)
 			}
 			if tt.nbHits > 0 {
 				// Searching for the objects to delete (if filters are used)
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.indice)), httpmock.JSONResponse(search.QueryRes{
-					NbHits:           tt.nbHits,
-					ExhaustiveNbHits: tt.exhaustiveNbHits,
-				}))
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.indice)),
+					httpmock.JSONResponse(search.QueryRes{
+						NbHits:           tt.nbHits,
+						ExhaustiveNbHits: tt.exhaustiveNbHits,
+					}),
+				)
 				// Deleting the objects
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.indice)),
+					httpmock.JSONResponse(search.BatchRes{}),
+				)
 			}
-			r.Register(httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)), httpmock.JSONResponse(search.BatchRes{}))
+			r.Register(
+				httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)),
+				httpmock.JSONResponse(search.BatchRes{}),
+			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewDeleteCmd(f, nil)

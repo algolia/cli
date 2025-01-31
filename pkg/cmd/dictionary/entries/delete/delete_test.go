@@ -158,9 +158,18 @@ func Test_runDeleteCmd(t *testing.T) {
 
 			// test is flaky since there's no guarantee of obtaining the right object using a search by objectID
 			for _, id := range tt.objectIDs {
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/dictionaries/%s/search?query=%s", tt.dictionary, id)), httpmock.JSONResponse(search.SearchDictionariesRes{}))
+				r.Register(
+					httpmock.REST(
+						"GET",
+						fmt.Sprintf("1/dictionaries/%s/search?query=%s", tt.dictionary, id),
+					),
+					httpmock.JSONResponse(search.SearchDictionariesRes{}),
+				)
 			}
-			r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", tt.dictionary)), httpmock.JSONResponse(search.TaskStatusRes{}))
+			r.Register(
+				httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", tt.dictionary)),
+				httpmock.JSONResponse(search.TaskStatusRes{}),
+			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewDeleteCmd(f, nil)

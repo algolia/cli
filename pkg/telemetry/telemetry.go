@@ -17,8 +17,10 @@ import (
 	"github.com/algolia/cli/pkg/version"
 )
 
-const AppName = "cli"
-const telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+const (
+	AppName               = "cli"
+	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+)
 
 type telemetryMetadataKey struct{}
 

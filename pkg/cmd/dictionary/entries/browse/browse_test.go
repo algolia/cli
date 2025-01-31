@@ -85,10 +85,16 @@ func Test_runBrowseCmd(t *testing.T) {
 				if tt.entries {
 					entries = append(entries, DictionaryEntry{Type: "custom"})
 				}
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)), httpmock.JSONResponse(search.SearchDictionariesRes{
-					Hits: entries,
-				}))
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", d)), httpmock.JSONResponse(search.TaskStatusRes{}))
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)),
+					httpmock.JSONResponse(search.SearchDictionariesRes{
+						Hits: entries,
+					}),
+				)
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", d)),
+					httpmock.JSONResponse(search.TaskStatusRes{}),
+				)
 			}
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

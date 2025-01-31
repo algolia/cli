@@ -1,11 +1,11 @@
 package save
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/shared/handler"
@@ -20,11 +20,11 @@ type SaveOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.APIClient, error)
+	SearchClient func() (*search.Client, error)
 
-	Index             string
+	Indice            string
 	ForwardToReplicas bool
-	Synonym           search.SynonymHit
+	Synonym           search.Synonym
 	SuccessMessage    string
 }
 
@@ -33,7 +33,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	opts := &SaveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	flags := &shared.SynonymFlags{}
@@ -41,7 +41,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -56,7 +56,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			$ algolia synonyms save MOVIES --id 1 --synonyms foo,bar
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Index = args[0]
+			opts.Indice = args[0]
 
 			flagsHandler := &handler.SynonymHandler{
 				Flags: flags,
@@ -72,17 +72,10 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			// Map to object
-			tmp, err := json.Marshal(synonym)
-			if err != nil {
-				return err
-			}
-			err = json.Unmarshal(tmp, &opts.Synonym)
-			if err != nil {
-				return err
-			}
+			// Correct flags are passed
+			opts.Synonym = synonym
 
-			err, successMessage := GetSuccessMessage(*flags, opts.Index)
+			err, successMessage := GetSuccessMessage(*flags, opts.Indice)
 			if err != nil {
 				return err
 			}
@@ -138,10 +131,11 @@ func runSaveCmd(opts *SaveOptions) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.SaveSynonym(
-		client.NewApiSaveSynonymRequest(opts.Index, opts.Synonym.ObjectID, &opts.Synonym).
-			WithForwardToReplicas(opts.ForwardToReplicas),
-	)
+
+	indice := client.InitIndex(opts.Indice)
+	forwardToReplicas := opt.ForwardToReplicas(opts.ForwardToReplicas)
+
+	_, err = indice.SaveSynonym(opts.Synonym, forwardToReplicas)
 	if err != nil {
 		err = fmt.Errorf("failed to save synonym: %w", err)
 		return err

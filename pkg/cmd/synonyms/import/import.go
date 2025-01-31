@@ -83,11 +83,14 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read synonyms to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&file, "file", "F", "", "Read synonyms to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
-	cmd.Flags().BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
+	cmd.Flags().
+		BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
 
 	return cmd
 }
@@ -215,7 +218,13 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s synonyms to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully imported %s synonyms to %s\n",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(totalCount)),
+			opts.Index,
+		)
 	}
 
 	return nil

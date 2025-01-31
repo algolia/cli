@@ -49,7 +49,12 @@ func (s OutputStub) Run() error {
 	return nil
 }
 
-func NewFactory(isTTY bool, r *httpmock.Registry, cfg config.IConfig, in string) (*cmdutil.Factory, *CmdInOut) {
+func NewFactory(
+	isTTY bool,
+	r *httpmock.Registry,
+	cfg config.IConfig,
+	in string,
+) (*cmdutil.Factory, *CmdInOut) {
 	io, stdin, stdout, stderr := iostreams.Test()
 	io.SetStdoutTTY(isTTY)
 	io.SetStdinTTY(isTTY)

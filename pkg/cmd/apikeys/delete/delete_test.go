@@ -103,8 +103,14 @@ func Test_runDeleteCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("GET", fmt.Sprintf("1/keys/%s", tt.key)), httpmock.JSONResponse(search.Key{Value: "foo"}))
-			r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/keys/%s", tt.key)), httpmock.JSONResponse(search.DeleteKeyRes{}))
+			r.Register(
+				httpmock.REST("GET", fmt.Sprintf("1/keys/%s", tt.key)),
+				httpmock.JSONResponse(search.Key{Value: "foo"}),
+			)
+			r.Register(
+				httpmock.REST("DELETE", fmt.Sprintf("1/keys/%s", tt.key)),
+				httpmock.JSONResponse(search.DeleteKeyRes{}),
+			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewDeleteCmd(f, nil)

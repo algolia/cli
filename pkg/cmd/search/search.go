@@ -73,7 +73,9 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.SetUsageFunc(cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}))
+	cmd.SetUsageFunc(
+		cmdutil.UsageFuncWithFilteredAndInheritedFlags(f.IOStreams, cmd, []string{"query"}),
+	)
 
 	cmdutil.AddSearchParamsObjectFlags(cmd)
 
