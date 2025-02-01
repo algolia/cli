@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewDeleteCmd(t *testing.T) {
@@ -105,11 +105,11 @@ func Test_runDeleteCmd(t *testing.T) {
 			r := httpmock.Registry{}
 			r.Register(
 				httpmock.REST("GET", fmt.Sprintf("1/keys/%s", tt.key)),
-				httpmock.JSONResponse(search.Key{Value: "foo"}),
+				httpmock.JSONResponse(search.GetApiKeyResponse{Value: "foo"}),
 			)
 			r.Register(
 				httpmock.REST("DELETE", fmt.Sprintf("1/keys/%s", tt.key)),
-				httpmock.JSONResponse(search.DeleteKeyRes{}),
+				httpmock.JSONResponse(search.DeletedAtResponse{}),
 			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

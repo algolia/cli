@@ -3,7 +3,7 @@ package delete
 import (
 	"fmt"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,7 +18,7 @@ type DeleteOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	APIKey    string
 	DoConfirm bool
@@ -29,7 +29,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	var confirm bool
@@ -72,7 +72,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	_, err = client.GetAPIKey(opts.APIKey)
+	_, err = client.GetApiKey(client.NewApiGetApiKeyRequest(opts.APIKey))
 	if err != nil {
 		return fmt.Errorf("API key %q does not exist", opts.APIKey)
 	}
@@ -91,7 +91,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	_, err = client.DeleteAPIKey(opts.APIKey)
+	_, err = client.DeleteApiKey(client.NewApiDeleteApiKeyRequest(opts.APIKey))
 	if err != nil {
 		return err
 	}
