@@ -3,11 +3,11 @@ package set
 import (
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/algolia/cli/pkg/httpmock"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/pkg/httpmock/v4"
+	"github.com/algolia/cli/test/v4"
 )
 
 func Test_runSetCmd(t *testing.T) {
@@ -33,7 +33,7 @@ func Test_runSetCmd(t *testing.T) {
 			r := httpmock.Registry{}
 			r.Register(
 				httpmock.REST("PUT", "1/indexes/foo/settings"),
-				httpmock.JSONResponse(search.UpdateTaskRes{}),
+				httpmock.JSONResponse(search.UpdatedAtResponse{}),
 			)
 			defer r.Verify(t)
 
