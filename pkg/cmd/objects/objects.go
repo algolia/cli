@@ -14,8 +14,9 @@ import (
 // NewObjectsCmd returns a new command for indices objects.
 func NewObjectsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "objects",
-		Short: "Manage your indices' objects",
+		Use:     "objects",
+		Short:   "Manage your indices' objects",
+		Aliases: []string{"records"},
 	}
 
 	cmd.AddCommand(browse.NewBrowseCmd(f))
