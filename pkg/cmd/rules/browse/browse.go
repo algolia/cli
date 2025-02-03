@@ -30,7 +30,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ExportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
@@ -38,7 +38,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "browse <index>",
 		Args:              validators.ExactArgs(1),
 		Aliases:           []string{"list"},
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Short:             "List all the rules of an index",
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -75,7 +75,7 @@ func runListCmd(opts *ExportOptions) error {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("index %s doesn't exist", opts.Index)
+		return fmt.Errorf("Index %s doesn't exist.", opts.Index)
 	}
 
 	p, err := opts.PrintFlags.ToPrinter()
