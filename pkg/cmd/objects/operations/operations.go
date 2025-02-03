@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -24,7 +24,7 @@ type OperationsOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Wait bool
 
@@ -39,7 +39,7 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 	opts := &OperationsOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	cmd := &cobra.Command{
@@ -96,9 +96,8 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	cs := opts.IO.ColorScheme()
 
 	var (
-		operations      []search.BatchOperationIndexed
-		currentLine     = 0
-		totalOperations = 0
+		current    = 0
+		operations = 0
 	)
 
 	// Scan the file
@@ -106,35 +105,30 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	elapsed := time.Now()
 
 	var errors []string
+	var requests []search.MultipleBatchRequest
 	for opts.Scanner.Scan() {
-		currentLine++
+		current++
 		line := opts.Scanner.Text()
 		if line == "" {
 			continue
 		}
 
-		totalOperations++
+		operations++
 		opts.IO.UpdateProgressIndicatorLabel(
 			fmt.Sprintf(
 				"Read %s from %s",
-				utils.Pluralize(totalOperations, "operation"),
+				utils.Pluralize(operations, "operation"),
 				opts.File,
 			),
 		)
 
-		var batchOperation search.BatchOperationIndexed
-		if err := json.Unmarshal([]byte(line), &batchOperation); err != nil {
-			err := fmt.Errorf("line %d: %s", currentLine, err)
+		var request search.MultipleBatchRequest
+		if err := json.Unmarshal([]byte(line), &request); err != nil {
+			err := fmt.Errorf("line %d: %s", current, err)
 			errors = append(errors, err.Error())
 			continue
 		}
-		err = ValidateBatchOperation(batchOperation)
-		if err != nil {
-			errors = append(errors, err.Error())
-			continue
-		}
-
-		operations = append(operations, batchOperation)
+		requests = append(requests, request)
 	}
 
 	opts.IO.StopProgressIndicator()
@@ -146,10 +140,10 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	errorMsg := heredoc.Docf(`
 		%s Found %s (out of %d operations) while parsing the file:
 		%s
-	`, cs.FailureIcon(), utils.Pluralize(len(errors), "error"), totalOperations, text.Indent(strings.Join(errors, "\n"), "  "))
+	`, cs.FailureIcon(), utils.Pluralize(len(errors), "error"), operations, text.Indent(strings.Join(errors, "\n"), "  "))
 
 	// No operations found
-	if len(operations) == 0 {
+	if len(requests) == 0 {
 		if len(errors) > 0 {
 			return fmt.Errorf("%s", errorMsg)
 		}
@@ -174,9 +168,11 @@ func runOperationsCmd(opts *OperationsOptions) error {
 
 	// Process operations
 	opts.IO.StartProgressIndicatorWithLabel(
-		fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(operations)))),
+		fmt.Sprintf("Processing %s operations", cs.Bold(fmt.Sprint(len(requests)))),
 	)
-	res, err := client.MultipleBatch(operations)
+	res, err := client.MultipleBatch(
+		client.NewApiMultipleBatchRequest(search.NewBatchParams(requests)),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -185,9 +181,12 @@ func runOperationsCmd(opts *OperationsOptions) error {
 	// Wait for the operation to complete if requested
 	if opts.Wait {
 		opts.IO.UpdateProgressIndicatorLabel("Waiting for the operations to complete")
-		if err := res.Wait(); err != nil {
-			opts.IO.StopProgressIndicator()
-			return err
+		for _, req := range requests {
+			_, err := client.WaitForTask(req.IndexName, res.TaskID[req.IndexName])
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 	}
 
@@ -196,39 +195,8 @@ func runOperationsCmd(opts *OperationsOptions) error {
 		opts.IO.Out,
 		"%s Successfully processed %s operations in %v\n",
 		cs.SuccessIcon(),
-		cs.Bold(fmt.Sprint(len(operations))),
+		cs.Bold(fmt.Sprint(len(requests))),
 		time.Since(elapsed),
 	)
 	return err
-}
-
-// ValidateBatchOperation checks that the batch operation is valid
-func ValidateBatchOperation(p search.BatchOperationIndexed) error {
-	allowedActions := []string{
-		string(search.AddObject), string(search.UpdateObject), string(search.PartialUpdateObject),
-		string(search.PartialUpdateObjectNoCreate), string(search.DeleteObject),
-	}
-	extra := fmt.Sprintf("valid actions are %s", utils.SliceToReadableString(allowedActions))
-
-	if p.Action == "" {
-		return fmt.Errorf("missing action")
-	}
-	if !utils.Contains(allowedActions, string(p.Action)) {
-		return fmt.Errorf("invalid action \"%s\" (%s)", p.Action, extra)
-	}
-	if p.IndexName == "" {
-		return fmt.Errorf("missing index name for action \"%s\"", p.Action)
-	}
-	if p.Action == search.DeleteObject {
-		switch body := p.Body.(type) {
-		case map[string]interface{}:
-			if body["objectID"] == nil || body["objectID"] == "" {
-				return fmt.Errorf("missing objectID for action %s", search.DeleteObject)
-			}
-		default:
-			return fmt.Errorf("missing objectID for action %s", search.DeleteObject)
-		}
-	}
-
-	return nil
 }
