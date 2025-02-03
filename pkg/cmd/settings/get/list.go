@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,7 +17,7 @@ type GetOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index string
 
@@ -29,7 +29,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &GetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
@@ -44,7 +44,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 			# Store the settings of an index in a file
 			$ algolia settings get MOVIES > movies_settings.json
 		`),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 
@@ -69,7 +69,7 @@ func runListCmd(opts *GetOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Fetching settings for index ", opts.Index))
-	res, err := client.InitIndex(opts.Index).GetSettings()
+	res, err := client.GetSettings(client.NewApiGetSettingsRequest(opts.Index))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
