@@ -68,11 +68,14 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 
 			// Convert map to object
-			paramsObject, err := searchParamsMapToObject(searchParams)
+			tmp, err := json.Marshal(searchParams)
 			if err != nil {
 				return err
 			}
-			opts.SearchParams = paramsObject
+			err = json.Unmarshal(tmp, &opts.SearchParams)
+			if err != nil {
+				return err
+			}
 
 			return runSearchCmd(opts)
 		},
@@ -114,20 +117,4 @@ func runSearchCmd(opts *SearchOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	return p.Print(opts.IO, res)
-}
-
-// searchParamsMapToObject converts the map provided by the flags to an object required by the API client
-func searchParamsMapToObject(
-	input map[string]interface{},
-) (*algoliaSearch.SearchParamsObject, error) {
-	tmp, err := json.Marshal(input)
-	if err != nil {
-		return nil, err
-	}
-	var output algoliaSearch.SearchParamsObject
-	err = json.Unmarshal(tmp, &output)
-	if err != nil {
-		return nil, err
-	}
-	return &output, nil
 }
