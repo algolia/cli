@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewDeleteCmd(t *testing.T) {
@@ -36,7 +36,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				ObjectIDs: []string{
 					"1",
 				},
@@ -49,7 +49,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				Indice:    "foo",
+				Index:     "foo",
 				ObjectIDs: []string{
 					"1",
 				},
@@ -62,7 +62,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				ObjectIDs: []string{
 					"1",
 					"2",
@@ -103,7 +103,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.ObjectIDs, opts.ObjectIDs)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
@@ -111,20 +111,21 @@ func TestNewDeleteCmd(t *testing.T) {
 }
 
 func Test_runDeleteCmd(t *testing.T) {
+	var testNbHits int32 = 2
 	tests := []struct {
 		name             string
 		cli              string
-		indice           string
+		index            string
 		objectIDs        []string
-		nbHits           int
+		nbHits           *int32
 		exhaustiveNbHits bool
 		isTTY            bool
 		wantOut          string
 	}{
 		{
-			name:   "single object-id, no TTY",
-			cli:    "foo --object-ids 1 --confirm",
-			indice: "foo",
+			name:  "single object-id, no TTY",
+			cli:   "foo --object-ids 1 --confirm",
+			index: "foo",
 			objectIDs: []string{
 				"1",
 			},
@@ -132,9 +133,9 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "",
 		},
 		{
-			name:   "single object-id, TTY",
-			cli:    "foo --object-ids 1 --confirm",
-			indice: "foo",
+			name:  "single object-id, TTY",
+			cli:   "foo --object-ids 1 --confirm",
+			index: "foo",
 			objectIDs: []string{
 				"1",
 			},
@@ -142,9 +143,9 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "✓ Successfully deleted exactly 1 object from foo\n",
 		},
 		{
-			name:   "multiple object-ids, TTY",
-			cli:    "foo --object-ids 1,2 --confirm",
-			indice: "foo",
+			name:  "multiple object-ids, TTY",
+			cli:   "foo --object-ids 1,2 --confirm",
+			index: "foo",
 			objectIDs: []string{
 				"1",
 				"2",
@@ -155,18 +156,18 @@ func Test_runDeleteCmd(t *testing.T) {
 		{
 			name:      "filters, TTY",
 			cli:       "foo --filters 'foo:bar' --confirm",
-			indice:    "foo",
+			index:     "foo",
 			objectIDs: []string{},
-			nbHits:    2,
+			nbHits:    &testNbHits,
 			isTTY:     true,
 			wantOut:   "✓ Successfully deleted approximately 2 objects from foo\n",
 		},
 		{
 			name:             "filters, TTY",
 			cli:              "foo --filters 'foo:bar' --confirm",
-			indice:           "foo",
+			index:            "foo",
 			objectIDs:        []string{},
-			nbHits:           2,
+			nbHits:           &testNbHits,
 			exhaustiveNbHits: true,
 			isTTY:            true,
 			wantOut:          "✓ Successfully deleted exactly 2 objects from foo\n",
@@ -174,9 +175,9 @@ func Test_runDeleteCmd(t *testing.T) {
 		{
 			name:      "filters and object-ids, TTY",
 			cli:       "foo --filters 'foo:bar' --object-ids 1,2 --confirm",
-			indice:    "foo",
+			index:     "foo",
 			objectIDs: []string{"1", "2"},
-			nbHits:    2,
+			nbHits:    &testNbHits,
 			isTTY:     true,
 			wantOut:   "✓ Successfully deleted approximately 4 objects from foo\n",
 		},
@@ -188,28 +189,28 @@ func Test_runDeleteCmd(t *testing.T) {
 			for _, id := range tt.objectIDs {
 				// Checking that the object exists
 				r.Register(
-					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.indice, id)),
-					httpmock.JSONResponse(search.QueryRes{}),
+					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/%s", tt.index, id)),
+					httpmock.JSONResponse(search.GetObjectsResponse{}),
 				)
 			}
-			if tt.nbHits > 0 {
+			if tt.nbHits != nil && *tt.nbHits > 0 {
 				// Searching for the objects to delete (if filters are used)
 				r.Register(
-					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.indice)),
-					httpmock.JSONResponse(search.QueryRes{
+					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/query", tt.index)),
+					httpmock.JSONResponse(search.SearchResponse{
 						NbHits:           tt.nbHits,
-						ExhaustiveNbHits: tt.exhaustiveNbHits,
+						ExhaustiveNbHits: &tt.exhaustiveNbHits,
 					}),
 				)
 				// Deleting the objects
 				r.Register(
-					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.indice)),
-					httpmock.JSONResponse(search.BatchRes{}),
+					httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/deleteByQuery", tt.index)),
+					httpmock.JSONResponse(search.BatchResponse{}),
 				)
 			}
 			r.Register(
-				httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.indice)),
-				httpmock.JSONResponse(search.BatchRes{}),
+				httpmock.REST("POST", fmt.Sprintf("1/indexes/%s/batch", tt.index)),
+				httpmock.JSONResponse(search.BatchResponse{}),
 			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
