@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/pkg/httpmock"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/pkg/httpmock/v4"
+	"github.com/algolia/cli/test/v4"
 )
 
 func Test_runImportCmd(t *testing.T) {
@@ -38,6 +38,24 @@ func Test_runImportCmd(t *testing.T) {
 			wantOut: "✓ Successfully imported 1 objects to foo in",
 		},
 		{
+			name:    "empty object",
+			cli:     "foo -F -",
+			stdin:   `{}`,
+			wantErr: "empty object on line 0",
+		},
+		{
+			name:    "missing objectID",
+			cli:     "foo -F -",
+			stdin:   `{"attribute": "foo"}`,
+			wantErr: "missing objectID on line 0",
+		},
+		{
+			name:    "with auto-generated objectID",
+			cli:     "foo --auto-generate-object-id-if-not-exist -F -",
+			stdin:   `{"attribute": "foo"}`,
+			wantOut: "✓ Successfully imported 1 objects to foo in",
+		},
+		{
 			name:    "from stdin with invalid JSON",
 			cli:     "foo -F -",
 			stdin:   `{"objectID", "foo"},`,
@@ -61,7 +79,7 @@ func Test_runImportCmd(t *testing.T) {
 			if tt.wantErr == "" {
 				r.Register(
 					httpmock.REST("POST", "1/indexes/foo/batch"),
-					httpmock.JSONResponse(search.BatchRes{}),
+					httpmock.JSONResponse(search.BatchResponse{}),
 				)
 			}
 			defer r.Verify(t)

@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,17 +17,18 @@ import (
 )
 
 type ImportOptions struct {
-	Config                         config.IConfig
-	IO                             *iostreams.IOStreams
-	SearchClient                   func() (*search.Client, error)
-	Index                          string
-	AutoGenerateObjectIDIfNotExist bool
+	Config       config.IConfig
+	IO           *iostreams.IOStreams
+	SearchClient func() (*search.APIClient, error)
+	Index        string
 
-	Scanner   *bufio.Scanner
-	BatchSize int
+	Scanner       *bufio.Scanner
+	BatchSize     int
+	AutoObjectIDs bool
+	Wait          bool
 }
 
-// NewImportCmd creates and returns an import command for indice object
+// NewImportCmd creates and returns an import command for records
 func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
@@ -76,9 +76,10 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().
-		BoolVar(&opts.AutoGenerateObjectIDIfNotExist, "auto-generate-object-id-if-not-exist", false, "Automatically generate object ID if not exist")
 	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
+	cmd.Flags().
+		BoolVarP(&opts.AutoObjectIDs, "auto-generate-object-id-if-not-exist", "a", false, "Auto-generate objectIDs if they don't exist")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 	return cmd
 }
 
@@ -88,20 +89,8 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Index)
-
-	// Move the following code to another module?
-	var (
-		batchSize  = opts.BatchSize
-		batch      = make([]interface{}, 0, batchSize)
-		count      = 0
-		totalCount = 0
-	)
-
-	options := []interface{}{
-		opt.AutoGenerateObjectIDIfNotExist(opts.AutoGenerateObjectIDIfNotExist),
-	}
-
+	count := 0
+	var records []map[string]any
 	opts.IO.StartProgressIndicatorWithLabel("Importing records")
 	elapsed := time.Now()
 	for opts.Scanner.Scan() {
@@ -109,35 +98,45 @@ func runImportCmd(opts *ImportOptions) error {
 		if line == "" {
 			continue
 		}
-
-		var obj interface{}
-		if err := json.Unmarshal([]byte(line), &obj); err != nil {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			err := fmt.Errorf("failed to parse JSON object on line %d: %s", count, err)
 			return err
 		}
 
-		batch = append(batch, obj)
+		if len(record) == 0 {
+			return fmt.Errorf("empty object on line %d", count)
+		}
+		// The API always automatically generates objectIDs for this operation
+		// The v3 API clients implemented this option, but not v4, so we'll implement it here
+		if !opts.AutoObjectIDs {
+			if _, ok := record["objectID"]; !ok {
+				return fmt.Errorf("missing objectID on line %d", count)
+			}
+		}
+		records = append(records, record)
 		count++
+	}
 
-		if count == batchSize {
-			if _, err := indice.SaveObjects(batch, options...); err != nil {
+	responses, err := client.SaveObjects(opts.Index, records, search.WithBatchSize(opts.BatchSize))
+	if err != nil {
+		return err
+	}
+
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+		for _, res := range responses {
+			_, err := client.WaitForTask(opts.Index, res.TaskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return err
 			}
-			batch = make([]interface{}, 0, batchSize)
-			totalCount += count
-			opts.IO.UpdateProgressIndicatorLabel(
-				fmt.Sprintf("Imported %d objects in %v", totalCount, time.Since(elapsed)),
-			)
-			count = 0
 		}
 	}
 
-	if count > 0 {
-		totalCount += count
-		if _, err := indice.SaveObjects(batch, options...); err != nil {
-			return err
-		}
-	}
+	opts.IO.UpdateProgressIndicatorLabel(
+		fmt.Sprintf("Imported %d objects in %v", len(records), time.Since(elapsed)),
+	)
 
 	opts.IO.StopProgressIndicator()
 
@@ -151,7 +150,7 @@ func runImportCmd(opts *ImportOptions) error {
 			opts.IO.Out,
 			"%s Successfully imported %s objects to %s in %v\n",
 			cs.SuccessIcon(),
-			cs.Bold(fmt.Sprint(totalCount)),
+			cs.Bold(fmt.Sprint(len(records))),
 			opts.Index,
 			time.Since(elapsed),
 		)
