@@ -1,9 +1,10 @@
 package search
 
 import (
+	"encoding/json"
+
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	algoliaSearch "github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	algoliaSearch "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,13 +18,11 @@ type SearchOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*algoliaSearch.Client, error)
+	SearchClient func() (*algoliaSearch.APIClient, error)
 
-	Indice string
-
-	SearchParams map[string]interface{}
-
-	PrintFlags *cmdutil.PrintFlags
+	Index        string
+	SearchParams *algoliaSearch.SearchParamsObject
+	PrintFlags   *cmdutil.PrintFlags
 }
 
 // NewSearchCmd returns a new instance of the search command
@@ -31,7 +30,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SearchOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
@@ -39,7 +38,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "search <index>",
 		Short:             "Search the given index",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -62,12 +61,18 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia search MOVIES --query "toy story" --output="jsonpath={$.Hits}" > movies.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			searchParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.SearchParamsObject...)
 			if err != nil {
 				return err
 			}
-			opts.SearchParams = searchParams
+
+			// Convert map to object
+			paramsObject, err := searchParamsMapToObject(searchParams)
+			if err != nil {
+				return err
+			}
+			opts.SearchParams = paramsObject
 
 			return runSearchCmd(opts)
 		},
@@ -90,8 +95,6 @@ func runSearchCmd(opts *SearchOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
-
 	p, err := opts.PrintFlags.ToPrinter()
 	if err != nil {
 		return err
@@ -99,14 +102,10 @@ func runSearchCmd(opts *SearchOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Searching")
 
-	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.SearchParams["query"].(string)
-	if !ok {
-		query = ""
-	} else {
-		delete(opts.SearchParams, "query")
-	}
-	res, err := indice.Search(query, opt.ExtraOptions(opts.SearchParams))
+	res, err := client.SearchSingleIndex(
+		client.NewApiSearchSingleIndexRequest(opts.Index).
+			WithSearchParams(algoliaSearch.SearchParamsObjectAsSearchParams(opts.SearchParams)),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -115,4 +114,20 @@ func runSearchCmd(opts *SearchOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	return p.Print(opts.IO, res)
+}
+
+// searchParamsMapToObject converts the map provided by the flags to an object required by the API client
+func searchParamsMapToObject(
+	input map[string]interface{},
+) (*algoliaSearch.SearchParamsObject, error) {
+	tmp, err := json.Marshal(input)
+	if err != nil {
+		return nil, err
+	}
+	var output algoliaSearch.SearchParamsObject
+	err = json.Unmarshal(tmp, &output)
+	if err != nil {
+		return nil, err
+	}
+	return &output, nil
 }
