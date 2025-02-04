@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/dictionary/shared"
@@ -19,23 +18,13 @@ type BrowseOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Dictionaries            []search.DictionaryName
+	Dictionaries            []search.DictionaryType
 	All                     bool
 	IncludeDefaultStopwords bool
 
 	PrintFlags *cmdutil.PrintFlags
-}
-
-// DictionaryEntry can be plural, compound or stopword entry.
-type DictionaryEntry struct {
-	Type          shared.EntryType
-	Word          string   `json:"word,omitempty"`
-	Words         []string `json:"words,omitempty"`
-	Decomposition string   `json:"decomposition,omitempty"`
-	ObjectID      string
-	Language      string
 }
 
 // NewBrowseCmd creates and returns a browse command for dictionaries' entries.
@@ -45,15 +34,17 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 	opts := &BrowseOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
+
 	cmd := &cobra.Command{
 		Use:       "browse {<dictionary>... | --all} [--include-defaults]",
 		Args:      cobra.OnlyValidArgs,
-		ValidArgs: shared.DictionaryNames(),
+		Aliases:   []string{"list"},
+		ValidArgs: shared.DictionaryTypes(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryTypes(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Annotations: map[string]string{
 			"acls": "settings",
@@ -83,15 +74,11 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			}
 
 			if opts.All {
-				opts.Dictionaries = []search.DictionaryName{
-					search.Stopwords,
-					search.Plurals,
-					search.Compounds,
-				}
+				opts.Dictionaries = search.AllowedDictionaryTypeEnumValues
 			} else {
-				opts.Dictionaries = make([]search.DictionaryName, len(args))
-				for i, dictionary := range args {
-					opts.Dictionaries[i] = search.DictionaryName(dictionary)
+				opts.Dictionaries = make([]search.DictionaryType, len(args))
+				for i, dict := range args {
+					opts.Dictionaries[i] = search.DictionaryType(dict)
 				}
 			}
 
@@ -124,16 +111,19 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	hasNoEntries := true
 
 	for _, dictionary := range opts.Dictionaries {
-		pageCount := 0
-		maxPages := 1
+		var pageCount int32 = 0
+		var maxPages int32 = 1
 
 		// implement infinite pagination
 		for pageCount < maxPages {
 			res, err := client.SearchDictionaryEntries(
-				dictionary,
-				"",
-				opt.HitsPerPage(1000),
-				opt.Page(pageCount),
+				client.NewApiSearchDictionaryEntriesRequest(
+					dictionary,
+					search.NewEmptySearchDictionaryEntriesParams().
+						SetHitsPerPage(1000).
+						SetPage(pageCount).
+						SetQuery(""),
+				),
 			)
 			if err != nil {
 				return err
@@ -149,7 +139,7 @@ func runBrowseCmd(opts *BrowseOptions) error {
 				)
 			}
 
-			var entries []DictionaryEntry
+			var entries []search.DictionaryEntry
 			err = json.Unmarshal(data, &entries)
 			if err != nil {
 				return fmt.Errorf(
@@ -168,7 +158,7 @@ func runBrowseCmd(opts *BrowseOptions) error {
 					if err = p.Print(opts.IO, entry); err != nil {
 						return err
 					}
-				} else if entry.Type == shared.CustomEntryType {
+				} else if *entry.Type == search.DICTIONARY_ENTRY_TYPE_CUSTOM {
 					// print only custom entries
 					if err = p.Print(opts.IO, entry); err != nil {
 						return err
