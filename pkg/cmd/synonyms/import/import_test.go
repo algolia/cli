@@ -8,15 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewImportCmd(t *testing.T) {
@@ -140,7 +140,7 @@ func Test_runExportCmd(t *testing.T) {
 			setup: func(r *httpmock.Registry) {
 				r.Register(
 					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
-					httpmock.JSONResponse(search.UpdateTaskRes{}),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
 				)
 			},
 		},
@@ -151,7 +151,7 @@ func Test_runExportCmd(t *testing.T) {
 			setup: func(r *httpmock.Registry) {
 				r.Register(
 					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
-					httpmock.JSONResponse(search.UpdateTaskRes{}),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
 				)
 			},
 		},
@@ -170,7 +170,7 @@ func Test_runExportCmd(t *testing.T) {
 			setup: func(r *httpmock.Registry) {
 				r.Register(
 					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
-					httpmock.JSONResponse(search.UpdateTaskRes{}),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
 				)
 			},
 		},
@@ -182,7 +182,7 @@ func Test_runExportCmd(t *testing.T) {
 			setup: func(r *httpmock.Registry) {
 				r.Register(
 					httpmock.REST("POST", "1/indexes/foo/synonyms/clear"),
-					httpmock.JSONResponse(search.UpdateTaskRes{}),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
 				)
 			},
 		},
@@ -202,11 +202,11 @@ func Test_runExportCmd(t *testing.T) {
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
 					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
 						req.URL.Query().Get("replaceExistingSynonyms") == "true"
-				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
 					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
 						req.URL.Query().Get("replaceExistingSynonyms") == ""
-				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
 			},
 		},
 	}
