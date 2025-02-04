@@ -13,7 +13,7 @@ import (
 func NewDictionaryCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "dictionary",
-		Aliases: []string{"dictionaries"},
+		Aliases: []string{"dictionaries", "dict"},
 		Short:   "Manage your Algolia dictionaries",
 		Annotations: map[string]string{
 			"help:see-also": heredoc.Doc(`
