@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewDeleteCmd(t *testing.T) {
@@ -25,18 +25,18 @@ func TestNewDeleteCmd(t *testing.T) {
 	}{
 		{
 			name:     "no --confirm without tty",
-			cli:      "plural --object-ids 1",
+			cli:      "plurals --object-ids 1",
 			tty:      false,
 			wantsErr: true,
 		},
 		{
 			name:     "--confirm without tty",
-			cli:      "plural --object-ids 1 --confirm",
+			cli:      "plurals --object-ids 1 --confirm",
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
-				DoConfirm:  false,
-				Dictionary: "plural",
+				DoConfirm:      false,
+				DictionaryType: search.DICTIONARY_TYPE_PLURALS,
 				ObjectIDs: []string{
 					"1",
 				},
@@ -44,12 +44,12 @@ func TestNewDeleteCmd(t *testing.T) {
 		},
 		{
 			name:     "no --confirm with tty",
-			cli:      "plural --object-ids 1",
+			cli:      "plurals --object-ids 1",
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
-				DoConfirm:  true,
-				Dictionary: "plural",
+				DoConfirm:      true,
+				DictionaryType: search.DICTIONARY_TYPE_PLURALS,
 				ObjectIDs: []string{
 					"1",
 				},
@@ -57,12 +57,12 @@ func TestNewDeleteCmd(t *testing.T) {
 		},
 		{
 			name:     "multiple --object-ids",
-			cli:      "plural --object-ids 1,2 --confirm",
+			cli:      "plurals --object-ids 1,2 --confirm",
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
-				DoConfirm:  false,
-				Dictionary: "plural",
+				DoConfirm:      false,
+				DictionaryType: search.DICTIONARY_TYPE_PLURALS,
 				ObjectIDs: []string{
 					"1",
 					"2",
@@ -103,7 +103,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Dictionary, opts.Dictionary)
+			assert.Equal(t, tt.wantsOpts.DictionaryType, opts.DictionaryType)
 			assert.Equal(t, tt.wantsOpts.ObjectIDs, opts.ObjectIDs)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
@@ -114,15 +114,15 @@ func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
 		name       string
 		cli        string
-		dictionary string
+		dictionary search.DictionaryType
 		objectIDs  []string
 		isTTY      bool
 		wantOut    string
 	}{
 		{
 			name:       "single object-id, no TTY",
-			cli:        "plural --object-ids 1 --confirm",
-			dictionary: "plural",
+			cli:        "plurals --object-ids 1 --confirm",
+			dictionary: search.DICTIONARY_TYPE_PLURALS,
 			objectIDs: []string{
 				"1",
 			},
@@ -131,24 +131,24 @@ func Test_runDeleteCmd(t *testing.T) {
 		},
 		{
 			name:       "single object-id, TTY",
-			cli:        "plural --object-ids 1 --confirm",
-			dictionary: "plural",
+			cli:        "plurals --object-ids 1 --confirm",
+			dictionary: search.DICTIONARY_TYPE_PLURALS,
 			objectIDs: []string{
 				"1",
 			},
 			isTTY:   true,
-			wantOut: "✓ Successfully deleted 1 entry from plural\n",
+			wantOut: "✓ Successfully deleted 1 entry from plurals\n",
 		},
 		{
 			name:       "multiple object-ids, TTY",
-			cli:        "plural --object-ids 1,2 --confirm",
-			dictionary: "plural",
+			cli:        "plurals --object-ids 1,2 --confirm",
+			dictionary: search.DICTIONARY_TYPE_PLURALS,
 			objectIDs: []string{
 				"1",
 				"2",
 			},
 			isTTY:   true,
-			wantOut: "✓ Successfully deleted 2 entries from plural\n",
+			wantOut: "✓ Successfully deleted 2 entries from plurals\n",
 		},
 	}
 
@@ -163,12 +163,12 @@ func Test_runDeleteCmd(t *testing.T) {
 						"GET",
 						fmt.Sprintf("1/dictionaries/%s/search?query=%s", tt.dictionary, id),
 					),
-					httpmock.JSONResponse(search.SearchDictionariesRes{}),
+					httpmock.JSONResponse(search.SearchDictionaryEntriesResponse{}),
 				)
 			}
 			r.Register(
 				httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", tt.dictionary)),
-				httpmock.JSONResponse(search.TaskStatusRes{}),
+				httpmock.JSONResponse(search.UpdatedAtResponse{}),
 			)
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
