@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -22,16 +21,12 @@ type ClearOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Dictionaries []search.DictionaryName
+	Dictionaries []search.DictionaryType
 	All          bool
 
 	DoConfirm bool
-}
-
-type DictionaryEntry struct {
-	Type shared.EntryType
 }
 
 // NewClearCmd creates and returns a clear command for dictionaries' entries.
@@ -42,14 +37,14 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	opts := &ClearOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:       "clear {<dictionary>... | --all} [--confirm]",
 		Args:      cobra.OnlyValidArgs,
-		ValidArgs: shared.DictionaryNames(),
+		ValidArgs: shared.DictionaryTypes(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryTypes(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Annotations: map[string]string{
 			"acls": "settings,editSettings",
@@ -76,15 +71,11 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 			}
 
 			if opts.All {
-				opts.Dictionaries = []search.DictionaryName{
-					search.Stopwords,
-					search.Plurals,
-					search.Compounds,
-				}
+				opts.Dictionaries = search.AllowedDictionaryTypeEnumValues
 			} else {
-				opts.Dictionaries = make([]search.DictionaryName, len(args))
+				opts.Dictionaries = make([]search.DictionaryType, len(args))
 				for i, dictionary := range args {
-					opts.Dictionaries[i] = search.DictionaryName(dictionary)
+					opts.Dictionaries[i] = search.DictionaryType(dictionary)
 				}
 			}
 
@@ -161,8 +152,14 @@ func runClearCmd(opts *ClearOptions) error {
 		}
 	}
 
-	for _, dictionary := range dictionaries {
-		_, err = client.ClearDictionaryEntries(dictionary)
+	for _, dict := range dictionaries {
+		_, err = client.BatchDictionaryEntries(
+			client.NewApiBatchDictionaryEntriesRequest(
+				dict,
+				search.NewEmptyBatchDictionaryEntriesParams().
+					SetClearExistingDictionaryEntries(true),
+			),
+		)
 		if err != nil {
 			return err
 		}
@@ -181,8 +178,13 @@ func runClearCmd(opts *ClearOptions) error {
 	return nil
 }
 
-func customEntriesNb(client *search.Client, dictionary search.DictionaryName) (int, error) {
-	res, err := client.SearchDictionaryEntries(dictionary, "", opt.HitsPerPage(1000))
+func customEntriesNb(client *search.APIClient, dictionary search.DictionaryType) (int, error) {
+	res, err := client.SearchDictionaryEntries(
+		client.NewApiSearchDictionaryEntriesRequest(
+			dictionary,
+			search.NewEmptySearchDictionaryEntriesParams().SetHitsPerPage(1000).SetQuery(""),
+		),
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -194,7 +196,7 @@ func customEntriesNb(client *search.Client, dictionary search.DictionaryName) (i
 		)
 	}
 
-	var entries []DictionaryEntry
+	var entries []search.DictionaryEntry
 	err = json.Unmarshal(data, &entries)
 	if err != nil {
 		return 0, fmt.Errorf(
@@ -205,7 +207,7 @@ func customEntriesNb(client *search.Client, dictionary search.DictionaryName) (i
 
 	var customEntriesNb int
 	for _, entry := range entries {
-		if entry.Type == shared.CustomEntryType {
+		if entry.Type != nil && *entry.Type == search.DICTIONARY_ENTRY_TYPE_CUSTOM {
 			customEntriesNb++
 		}
 	}
