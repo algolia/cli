@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -21,9 +20,9 @@ type DeleteOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice            string
+	Index             string
 	SynonymIDs        []string
 	ForwardToReplicas bool
 
@@ -37,13 +36,13 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	cmd := &cobra.Command{
 		Use:               "delete <index> --synonyms <synonym-ids> --confirm",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -59,7 +58,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			$ algolia synonyms delete MOVIES --synonym-ids 1,2
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
@@ -93,11 +92,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
-
 	// Tests if the synonyms exists.
 	for _, synonymID := range opts.SynonymIDs {
-		if _, err := indice.GetSynonym(synonymID); err != nil {
+		if _, err := client.GetSynonym(client.NewApiGetSynonymRequest(opts.Index, synonymID)); err != nil {
 			// The original error is not helpful, so we print a more helpful message
 			extra := "Operation aborted, no deletion action taken"
 			if strings.Contains(err.Error(), "Synonym set does not exist") {
@@ -113,7 +110,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			fmt.Sprintf(
 				"Delete the %s from %s?",
 				utils.Pluralize(len(opts.SynonymIDs), "synonym"),
-				opts.Indice,
+				opts.Index,
 			),
 			&confirmed,
 		)
@@ -126,7 +123,10 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	for _, synonymID := range opts.SynonymIDs {
-		_, err = indice.DeleteSynonym(synonymID, opt.ForwardToReplicas(opts.ForwardToReplicas))
+		_, err = client.DeleteSynonym(
+			client.NewApiDeleteSynonymRequest(opts.Index, synonymID).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
 		if err != nil {
 			err = fmt.Errorf("failed to delete synonym %s: %w", synonymID, err)
 			return err
@@ -140,7 +140,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			"%s Successfully deleted %s from %s\n",
 			cs.SuccessIcon(),
 			utils.Pluralize(len(opts.SynonymIDs), "synonym"),
-			opts.Indice,
+			opts.Index,
 		)
 	}
 
