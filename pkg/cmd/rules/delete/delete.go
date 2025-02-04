@@ -5,8 +5,7 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -21,11 +20,12 @@ type DeleteOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice            string
+	Index             string
 	RuleIDs           []string
 	ForwardToReplicas bool
+	Wait              bool
 
 	DoConfirm bool
 }
@@ -59,7 +59,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			$ algolia rules delete MOVIES --rule-ids 1,2
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
@@ -83,6 +83,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Forward the delete request to the replicas")
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -93,9 +94,8 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
 	for _, ruleID := range opts.RuleIDs {
-		if _, err := indice.GetRule(ruleID); err != nil {
+		if _, err := client.GetRule(client.NewApiGetRuleRequest(opts.Index, ruleID)); err != nil {
 			// The original error is not helpful, so we print a more helpful message
 			extra := "Operation aborted, no deletion action taken"
 			if strings.Contains(err.Error(), "ObjectID does not exist") {
@@ -111,7 +111,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			fmt.Sprintf(
 				"Delete the %s from %s?",
 				utils.Pluralize(len(opts.RuleIDs), "rule"),
-				opts.Indice,
+				opts.Index,
 			),
 			&confirmed,
 		)
@@ -123,11 +123,27 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
+	var taskIDs []int64
+
 	for _, ruleID := range opts.RuleIDs {
-		_, err = indice.DeleteRule(ruleID, opt.ForwardToReplicas(opts.ForwardToReplicas))
+		res, err := client.DeleteRule(
+			client.NewApiDeleteRuleRequest(opts.Index, ruleID).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
 		if err != nil {
-			err = fmt.Errorf("failed to delete rule %s: %w", ruleID, err)
-			return err
+			return fmt.Errorf("failed to delete rule %s: %w", ruleID, err)
+		}
+		if opts.Wait {
+			taskIDs = append(taskIDs, res.TaskID)
+		}
+	}
+
+	if len(taskIDs) > 0 {
+		for _, taskID := range taskIDs {
+			_, err := client.WaitForTask(opts.Index, taskID)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -138,7 +154,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			"%s Successfully deleted %s from %s\n",
 			cs.SuccessIcon(),
 			utils.Pluralize(len(opts.RuleIDs), "rule"),
-			opts.Indice,
+			opts.Index,
 		)
 	}
 
