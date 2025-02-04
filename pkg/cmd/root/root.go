@@ -22,7 +22,6 @@ import (
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
-	"github.com/algolia/cli/pkg/cmd/art"
 	"github.com/algolia/cli/pkg/cmd/crawler"
 	"github.com/algolia/cli/pkg/cmd/dictionary"
 	"github.com/algolia/cli/pkg/cmd/events"
@@ -110,9 +109,6 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
 	cmd.AddCommand(events.NewEventsCmd(f))
 	cmd.AddCommand(crawler.NewCrawlersCmd(f))
-
-	// ??? related commands
-	cmd.AddCommand(art.NewArtCmd(f))
 
 	return cmd
 }
@@ -306,8 +302,8 @@ func checkForUpdate(cfg config.Config, currentVersion string) (*update.ReleaseIn
 	return update.CheckForUpdate(&client, stateFilePath, currentVersion)
 }
 
-// Check whether the gh binary was found under the Homebrew prefix
-func isUnderHomebrew(ghBinary string) bool {
+// Check whether the CLI was found under the Homebrew prefix
+func isUnderHomebrew(cli string) bool {
 	brewExe, err := safeexec.LookPath("brew")
 	if err != nil {
 		return false
@@ -324,5 +320,5 @@ func isUnderHomebrew(ghBinary string) bool {
 	) + string(
 		filepath.Separator,
 	)
-	return strings.HasPrefix(ghBinary, brewBinPrefix)
+	return strings.HasPrefix(cli, brewBinPrefix)
 }
