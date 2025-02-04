@@ -153,12 +153,12 @@ func runClearCmd(opts *ClearOptions) error {
 	}
 
 	for _, dict := range dictionaries {
-		_, err = client.BatchDictionaryEntries(
-			client.NewApiBatchDictionaryEntriesRequest(
-				dict,
-				search.NewEmptyBatchDictionaryEntriesParams().
-					SetClearExistingDictionaryEntries(true),
-			),
+		batchParams := search.NewBatchDictionaryEntriesParams(
+			[]search.BatchDictionaryEntriesRequest{},
+			search.WithBatchDictionaryEntriesParamsClearExistingDictionaryEntries(true),
+		)
+		_, err := client.BatchDictionaryEntries(
+			client.NewApiBatchDictionaryEntriesRequest(dict, batchParams),
 		)
 		if err != nil {
 			return err

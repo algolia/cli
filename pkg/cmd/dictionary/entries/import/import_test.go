@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/pkg/cmd/dictionary/shared"
-	"github.com/algolia/cli/pkg/httpmock"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/pkg/httpmock/v4"
+	"github.com/algolia/cli/test/v4"
 )
 
 func Test_runImportCmd(t *testing.T) {
@@ -20,7 +19,7 @@ func Test_runImportCmd(t *testing.T) {
 	err := os.WriteFile(
 		tmpFile,
 		[]byte(
-			`{"language":"en","word":"test","state":"enabled","objectID":"test","type":"custom"}`,
+			`{"language":"en","word":"test","objectID":"test"}`,
 		),
 		0o600,
 	)
@@ -36,7 +35,7 @@ func Test_runImportCmd(t *testing.T) {
 		{
 			name:    "from stdin",
 			cli:     "stopwords -F -",
-			stdin:   `{"language":"en","word":"test","state":"enabled","objectID":"test","type":"custom"}`,
+			stdin:   `{"language":"en","word":"test","objectID":"test"}`,
 			wantOut: "✓ Successfully imported 1 entries on stopwords in",
 		},
 		{
@@ -47,14 +46,14 @@ func Test_runImportCmd(t *testing.T) {
 		{
 			name:    "from stdin with invalid JSON",
 			cli:     "stopwords -F -",
-			stdin:   `{"language":"en","word":"test","state":"enabled","type":"custom"}`,
+			stdin:   `{"language":"en","word":"test"}`,
 			wantErr: "X Found 1 error (out of 1 entries) while parsing the file:\n  line 1: objectID is missing\n",
 		},
 		{
 			name: "from stdin with invalid JSON (multiple operations)",
 			cli:  "stopwords -F -",
-			stdin: `{"word":"test","state":"enabled","objectID":"test","type":"custom"},
-			{"language":"fr","state":"enabled","objectID":"testFr","type":"custom"}`,
+			stdin: `{"word":"test","objectID":"test"},
+			{"language":"fr","objectID":"testFr"}`,
 			wantErr: "X Found 2 errors (out of 2 entries) while parsing the file:\n  line 1: invalid character ',' after top-level value\n  line 2: word is missing\n",
 		},
 		{
@@ -66,8 +65,8 @@ func Test_runImportCmd(t *testing.T) {
 		{
 			name: "from stdin with invalid JSON (2 entries) with --continue-on-error",
 			cli:  "stopwords -F - --continue-on-error",
-			stdin: `{"language":"en","state":"enabled","objectID":"test","type":"custom"}
-			{"language":"en","word":"test","state":"enabled","type":"custom"}`,
+			stdin: `{"language":"en","objectID":"test"}
+			{"language":"en","word":"test"}`,
 			wantErr: "X Found 2 errors (out of 2 entries) while parsing the file:\n  line 1: word is missing\n  line 2: objectID is missing\n",
 		},
 		{
@@ -88,7 +87,7 @@ func Test_runImportCmd(t *testing.T) {
 			if tt.wantErr == "" {
 				r.Register(
 					httpmock.REST("POST", "1/dictionaries/stopwords/batch"),
-					httpmock.JSONResponse(search.MultipleBatchRes{}),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
 				)
 			}
 			defer r.Verify(t)
@@ -102,59 +101,6 @@ func Test_runImportCmd(t *testing.T) {
 			}
 
 			assert.Contains(t, out.String(), tt.wantOut)
-		})
-	}
-}
-
-func Test_ValidateDictionaryEntry(t *testing.T) {
-	tests := []struct {
-		name        string
-		entry       shared.DictionaryEntry
-		currentLine int
-		wantErr     bool
-		wantErrMsg  string
-	}{
-		{
-			name: "no objectID",
-			entry: shared.DictionaryEntry{
-				Word:     "test",
-				Language: "en",
-			},
-			currentLine: 1,
-			wantErr:     true,
-			wantErrMsg:  "line 1: objectID is missing",
-		},
-		{
-			name: "no word",
-			entry: shared.DictionaryEntry{
-				ObjectID: "123",
-				Language: "en",
-			},
-			currentLine: 1,
-			wantErr:     true,
-			wantErrMsg:  "line 1: word is missing",
-		},
-		{
-			name: "no language",
-			entry: shared.DictionaryEntry{
-				ObjectID: "123",
-				Word:     "test",
-			},
-			currentLine: 1,
-			wantErr:     true,
-			wantErrMsg:  "line 1: language is missing",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateDictionaryEntry(tt.entry, tt.currentLine)
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Equal(t, tt.wantErrMsg, err.Error())
-				return
-			}
-			assert.NoError(t, err)
 		})
 	}
 }
