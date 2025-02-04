@@ -29,7 +29,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &BrowseOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
@@ -37,7 +37,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "browse <index>",
 		Aliases:           []string{"list"},
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Short:             "List all the the synonyms of the given index",
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -73,7 +73,7 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 	if !exists {
-		return fmt.Errorf("index %s doesn't exist", opts.Index)
+		return fmt.Errorf("Index %s doesn't exist.", opts.Index)
 	}
 
 	p, err := opts.PrintFlags.ToPrinter()
