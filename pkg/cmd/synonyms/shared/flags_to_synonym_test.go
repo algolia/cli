@@ -1,9 +1,9 @@
 package shared
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,7 +11,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 	tests := []struct {
 		name         string
 		synonymFlags SynonymFlags
-		synonymType  string
+		synonymType  search.SynonymType
 		wantsErr     bool
 		wantsErrMsg  string
 	}{
@@ -23,64 +23,64 @@ func Test_FlagsToSynonym(t *testing.T) {
 				SynonymID: "23",
 				Synonyms:  []string{"mj", "goat"},
 			},
-			synonymType: "search.RegularSynonym",
+			synonymType: search.SYNONYM_TYPE_SYNONYM,
 		},
 		{
 			name:     "Regular synonym explicit type",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType: Regular,
+				SynonymType: "synonym",
 				SynonymID:   "23",
 				Synonyms:    []string{"mj", "goat"},
 			},
-			synonymType: "search.RegularSynonym",
+			synonymType: search.SYNONYM_TYPE_SYNONYM,
 		},
 		// One way type
 		{
 			name:     "One way synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:  OneWay,
+				SynonymType:  "oneWaySynonym",
 				SynonymID:    "23",
 				Synonyms:     []string{"mj", "goat"},
 				SynonymInput: "michael",
 			},
-			synonymType: "search.OneWaySynonym",
+			synonymType: search.SYNONYM_TYPE_ONE_WAY_SYNONYM,
 		},
 		// Alt correction type
 		{
 			name:     "AltCorrection1 synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:        AltCorrection1,
+				SynonymType:        "altCorrection1",
 				SynonymID:          "23",
 				SynonymCorrections: []string{"mj", "goat"},
 				SynonymWord:        "michael",
 			},
-			synonymType: "search.AltCorrection1",
+			synonymType: search.SYNONYM_TYPE_ALT_CORRECTION1,
 		},
 		{
 			name:     "AltCorrection2 synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:        AltCorrection2,
+				SynonymType:        "altCorrection2",
 				SynonymID:          "24",
 				SynonymCorrections: []string{"bryant", "mamba"},
 				SynonymWord:        "kobe",
 			},
-			synonymType: "search.AltCorrection2",
+			synonymType: search.SYNONYM_TYPE_ALT_CORRECTION2,
 		},
 		// Placeholder type
 		{
 			name:     "Placeholder synonym",
 			wantsErr: false,
 			synonymFlags: SynonymFlags{
-				SynonymType:         Placeholder,
+				SynonymType:         string(search.SYNONYM_TYPE_PLACEHOLDER),
 				SynonymID:           "23",
 				SynonymReplacements: []string{"james", "lebron"},
 				SynonymPlaceholder:  "king",
 			},
-			synonymType: "search.Placeholder",
+			synonymType: search.SYNONYM_TYPE_PLACEHOLDER,
 		},
 		// Wrong type
 		{
@@ -105,7 +105,7 @@ func Test_FlagsToSynonym(t *testing.T) {
 				return
 			}
 
-			assert.Equal(t, reflect.TypeOf(synonym).String(), tt.synonymType)
+			assert.Equal(t, synonym.Type, tt.synonymType)
 		})
 	}
 }
