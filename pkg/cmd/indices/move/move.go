@@ -34,7 +34,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 	opts := &MoveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	var confirm bool

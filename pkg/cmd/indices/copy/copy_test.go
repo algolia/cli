@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock/v4"
+	"github.com/algolia/cli/pkg/httpmock"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test/v4"
+	"github.com/algolia/cli/test"
 )
 
 func TestNewCopyCmd(t *testing.T) {

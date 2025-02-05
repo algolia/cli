@@ -39,7 +39,7 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 	opts := &OperationsOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	cmd := &cobra.Command{

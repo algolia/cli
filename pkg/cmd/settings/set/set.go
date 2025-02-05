@@ -32,7 +32,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "set <index>",

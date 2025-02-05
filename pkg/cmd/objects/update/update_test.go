@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/pkg/httpmock/v4"
-	"github.com/algolia/cli/test/v4"
+	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/test"
 )
 
 func Test_runUpdateCmd(t *testing.T) {

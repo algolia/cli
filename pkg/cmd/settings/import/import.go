@@ -31,7 +31,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	var settingsFile string

@@ -36,7 +36,7 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &StatsOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 

@@ -34,7 +34,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	opts := &CreateOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -107,7 +107,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
-			indicesRes, err := client.ListIndices()
+			indicesRes, err := client.ListIndices(client.NewApiListIndicesRequest())
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveError
 			}
@@ -115,7 +115,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			for _, index := range indicesRes.Items {
 				allowedIndices = append(
 					allowedIndices,
-					fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(index.Entries)),
+					fmt.Sprintf("%s\t%s records", index.Name, humanize.Comma(int64(index.Entries))),
 				)
 			}
 			return allowedIndices, cobra.ShellCompDirectiveNoFileComp

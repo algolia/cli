@@ -28,7 +28,7 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 	opts := &SetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "set --disable-standard-entries <languages...>  --enable-standard-entries <languages...> [--reset-standard-entries]",
