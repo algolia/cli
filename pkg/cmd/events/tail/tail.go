@@ -9,21 +9,19 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
 	"github.com/algolia/cli/pkg/validators"
 
-	_insights "github.com/algolia/algoliasearch-client-go/v3/algolia/insights"
-	region "github.com/algolia/algoliasearch-client-go/v3/algolia/region"
+	algoliaInsights "github.com/algolia/algoliasearch-client-go/v4/algolia/insights"
 	"github.com/algolia/cli/api/insights"
 )
 
 const (
 	// DefaultRegion is the default region to use.
-	DefaultRegion = region.US
+	DefaultRegion = algoliaInsights.US
 
 	// Interval is the interval between each request to fetch events.
 	Interval = 3 * time.Second
@@ -34,20 +32,16 @@ type TailOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
-
-	Region string
-
+	Region     string
 	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewTailCmd returns a new command for tailing events.
 func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Command {
 	opts := &TailOptions{
-		IO:           f.IOStreams,
-		Config:       f.Config,
-		SearchClient: f.SearchClient,
-		PrintFlags:   cmdutil.NewPrintFlags(),
+		IO:         f.IOStreams,
+		Config:     f.Config,
+		PrintFlags: cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:  "tail",
@@ -84,8 +78,8 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 	cmd.Flags().
 		StringVarP(&opts.Region, "region", "r", string(DefaultRegion), "Region where your analytics data is stored and processed.")
 	_ = cmd.RegisterFlagCompletionFunc("region", cmdutil.StringCompletionFunc(map[string]string{
-		string(region.US): "United States",
-		string(region.DE): "Germany (Europe)",
+		string(algoliaInsights.US): "United States",
+		string(algoliaInsights.DE): "Germany (Europe)",
 	}))
 
 	opts.PrintFlags.AddFlags(cmd)
@@ -98,18 +92,16 @@ func runTailCmd(opts *TailOptions) error {
 	if err != nil {
 		return err
 	}
-	apiKey, err := opts.Config.Profile().GetAdminAPIKey()
+	apiKey, err := opts.Config.Profile().GetAPIKey()
 	if err != nil {
 		return err
 	}
 
-	// We don't use the base insights client because it doesn't support fetching events.
-	config := _insights.Configuration{
-		AppID:  appID,
-		APIKey: apiKey,
-		Region: region.Region(opts.Region),
+	// This is the CLIs custom augmented API client
+	client, err := insights.NewClient(appID, apiKey, algoliaInsights.Region(opts.Region))
+	if err != nil {
+		return err
 	}
-	insightsClient := insights.NewClientWithConfig(config)
 
 	var p printers.Printer
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
@@ -124,7 +116,7 @@ func runTailCmd(opts *TailOptions) error {
 	c := time.Tick(Interval)
 	for t := range c {
 		utc := t.UTC()
-		events, err := insightsClient.FetchEvents(utc.Add(-1*time.Second), utc, 1000)
+		events, err := client.GetEvents(utc.Add(-1*time.Second), utc, 1000)
 		if err != nil {
 			if strings.Contains(err.Error(), "The log processing region does not match") {
 				cs := opts.IO.ColorScheme()

@@ -26,6 +26,7 @@ func (t *Timestamp) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// TODO: Replace this with a type from the API.
 type Event struct {
 	EventType string    `json:"eventType"`
 	EventName string    `json:"eventName"`
