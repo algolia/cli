@@ -3,7 +3,7 @@ package crawler
 import (
 	"time"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 // ErrResponse is a Crawler API error response.
@@ -67,8 +67,8 @@ type Config struct {
 	IgnoreNoFollowTo     bool `json:"ignoreNoFollowTo,omitempty"`
 	IgnoreCanonicalTo    bool `json:"ignoreCanonicalTo,omitempty"`
 
-	SaveBackup           bool                        `json:"saveBackup,omitempty"`
-	InitialIndexSettings map[string]*search.Settings `json:"initialIndexSettings,omitempty"`
+	SaveBackup           bool                             `json:"saveBackup,omitempty"`
+	InitialIndexSettings map[string]*search.IndexSettings `json:"initialIndexSettings,omitempty"`
 
 	Actions []*Action `json:"actions,omitempty"`
 }
