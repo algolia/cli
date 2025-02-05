@@ -2,7 +2,9 @@ package factory
 
 import (
 	"fmt"
+	"net/url"
 
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
@@ -40,17 +42,27 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClie
 			return nil, err
 		}
 
-		defaultClient, _ := search.NewClient(appID, apiKey)
-		defaultUserAgent := defaultClient.GetConfiguration().UserAgent
+		userAgent, err := getUserAgentInfo(appID, apiKey, appVersion)
+		if err != nil {
+			return nil, err
+		}
+		if userAgent == "" {
+			return nil, fmt.Errorf("user agent must not be empty")
+		}
 
-		// TODO: Doesn't support custom `search_hosts` yet.
-		// To support it, it's best to transform the GetSearchHosts() function
 		clientConf := search.SearchConfiguration{
 			Configuration: transport.Configuration{
-				AppID:     appID,
-				ApiKey:    apiKey,
-				UserAgent: defaultUserAgent + fmt.Sprintf("Algolia CLI (%s)", appVersion),
+				AppID:                           appID,
+				ApiKey:                          apiKey,
+				UserAgent:                       userAgent,
+				ExposeIntermediateNetworkErrors: true,
 			},
+		}
+
+		// Read custom hosts from flags, environment, or profile, or use default ones
+		hosts := getStatefulHosts(f.Config.Profile().GetSearchHosts())
+		if len(hosts) > 0 {
+			clientConf.Configuration.Hosts = hosts
 		}
 
 		return search.NewClientWithConfig(clientConf)
@@ -70,4 +82,32 @@ func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
 
 		return crawler.NewClient(userID, APIKey), nil
 	}
+}
+
+// getUserAgentInfo returns the standard user agent info plus Algolia CLI
+func getUserAgentInfo(appID string, apiKey string, appVersion string) (string, error) {
+	client, err := search.NewClient(appID, apiKey)
+	if err != nil {
+		return "", err
+	}
+	return client.GetConfiguration().UserAgent + fmt.Sprintf("Algolia CLI (%s)", appVersion), nil
+}
+
+// getStatefulHosts reads the hosts information from the profile and turns into the right structure
+func getStatefulHosts(hosts []string) []transport.StatefulHost {
+	var out []transport.StatefulHost
+	for _, host := range hosts {
+		// User might or might not provide the URL with `https://`
+		parsedURL, _ := url.Parse(host)
+		if parsedURL.Scheme == "" {
+			parsedURL.Scheme = "https"
+		}
+		statefulHost := transport.NewStatefulHost(
+			parsedURL.Scheme,
+			parsedURL.Host,
+			call.IsReadWrite,
+		)
+		out = append(out, statefulHost)
+	}
+	return out
 }
