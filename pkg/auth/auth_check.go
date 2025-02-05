@@ -81,7 +81,7 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.ListAPIKeys()
+	_, err = client.ListApiKeys()
 	if err == nil {
 		return nil // Admin API Key, no need to check ACLs
 	}
@@ -92,12 +92,21 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 
 	// Check the ACLs of the provided API Key
-	apiKey, err := client.GetAPIKey(f.Config.Profile().GetAPIKey())
+	key, err := f.Config.Profile().GetAPIKey()
+	if err != nil {
+		return err
+	}
+	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(key))
 	if err != nil {
 		return err
 	}
 
-	missingACLs := utils.Differences(neededACLs, apiKey.ACL)
+	var hasAcls []string
+	for _, acl := range apiKey.Acl {
+		hasAcls = append(hasAcls, string(acl))
+	}
+
+	missingACLs := utils.Differences(neededACLs, hasAcls)
 	if len(missingACLs) > 0 {
 		return errMissingACLs(missingACLs)
 	}

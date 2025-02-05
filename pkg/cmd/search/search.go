@@ -30,7 +30,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SearchOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
@@ -38,7 +38,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "search <index>",
 		Short:             "Search the given index",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Long:              `Search for objects in your index.`,
 		Annotations: map[string]string{
 			"runInWebCLI": "true",

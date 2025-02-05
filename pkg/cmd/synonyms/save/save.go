@@ -32,7 +32,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	opts := &SaveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	flags := &shared.SynonymFlags{}
@@ -40,7 +40,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},

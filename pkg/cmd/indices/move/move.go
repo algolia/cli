@@ -34,7 +34,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 	opts := &MoveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	var confirm bool
@@ -42,7 +42,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:               "move <source-index> <destination-index>",
 		Args:              validators.ExactArgs(2),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},

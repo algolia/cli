@@ -6,8 +6,8 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/algolia/cli/pkg/httpmock/v4"
-	"github.com/algolia/cli/test/v4"
+	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/test"
 )
 
 func Test_runGetCmd(t *testing.T) {

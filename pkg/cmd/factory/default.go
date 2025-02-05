@@ -3,7 +3,6 @@ package factory
 import (
 	"fmt"
 
-	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
@@ -44,22 +43,13 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClie
 		defaultClient, _ := search.NewClient(appID, apiKey)
 		defaultUserAgent := defaultClient.GetConfiguration().UserAgent
 
-		var hosts []transport.StatefulHost
-		for _, host := range f.Config.Profile().GetSearchHosts() {
-			statefulHost := transport.NewStatefulHost("https", host, call.IsReadWrite)
-			hosts = append(hosts, statefulHost)
-		}
-
+		// TODO: Doesn't support custom `search_hosts` yet.
+		// To support it, it's best to transform the GetSearchHosts() function
 		clientConf := search.SearchConfiguration{
 			Configuration: transport.Configuration{
-				AppID:  appID,
-				ApiKey: apiKey,
-				UserAgent: defaultUserAgent + fmt.Sprintf(
-					"Algolia CLI (%s)",
-					appVersion,
-				),
-				Hosts:                           hosts,
-				ExposeIntermediateNetworkErrors: true,
+				AppID:     appID,
+				ApiKey:    apiKey,
+				UserAgent: defaultUserAgent + fmt.Sprintf("Algolia CLI (%s)", appVersion),
 			},
 		}
 

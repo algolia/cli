@@ -29,7 +29,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &GetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
@@ -44,7 +44,7 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 			# Store the settings of an index in a file
 			$ algolia settings get MOVIES > movies_settings.json
 		`),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 

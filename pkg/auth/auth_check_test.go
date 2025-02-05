@@ -3,7 +3,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/cli/pkg/httpmock"
 	"github.com/algolia/cli/test"
 
@@ -16,7 +16,7 @@ func Test_CheckACLs(t *testing.T) {
 		name           string
 		cmd            *cobra.Command
 		adminKey       bool
-		ACLs           []string
+		ACLs           []search.Acl
 		wantErr        bool
 		wantErrMessage string
 	}{
@@ -26,7 +26,7 @@ func Test_CheckACLs(t *testing.T) {
 				Annotations: map[string]string{},
 			},
 			adminKey: false,
-			ACLs:     []string{},
+			ACLs:     []search.Acl{},
 			wantErr:  false,
 		},
 		{
@@ -37,7 +37,7 @@ func Test_CheckACLs(t *testing.T) {
 				},
 			},
 			adminKey:       false,
-			ACLs:           []string{},
+			ACLs:           []search.Acl{},
 			wantErr:        true,
 			wantErrMessage: "this command requires an admin API key. Use the `--api-key` flag with a valid admin API key",
 		},
@@ -49,7 +49,7 @@ func Test_CheckACLs(t *testing.T) {
 				},
 			},
 			adminKey:       true,
-			ACLs:           []string{},
+			ACLs:           []search.Acl{},
 			wantErr:        false,
 			wantErrMessage: "",
 		},
@@ -61,7 +61,7 @@ func Test_CheckACLs(t *testing.T) {
 				},
 			},
 			adminKey: false,
-			ACLs:     []string{},
+			ACLs:     []search.Acl{},
 			wantErr:  true,
 			wantErrMessage: `Missing API key ACL(s): search
 Edit your profile or use the ` + "`--api-key`" + ` flag to provide an API key with the missing ACLs.
@@ -75,7 +75,7 @@ See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restriction
 				},
 			},
 			adminKey: false,
-			ACLs:     []string{"search"},
+			ACLs:     []search.Acl{search.ACL_SEARCH},
 			wantErr:  false,
 		},
 	}
@@ -86,7 +86,7 @@ See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restriction
 			if tt.adminKey {
 				r.Register(
 					httpmock.REST("GET", "1/keys"),
-					httpmock.JSONResponse(search.ListAPIKeysRes{}),
+					httpmock.JSONResponse(search.ListApiKeysResponse{}),
 				)
 			} else {
 				r.Register(
@@ -98,7 +98,7 @@ See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restriction
 			if tt.ACLs != nil && !tt.adminKey {
 				r.Register(
 					httpmock.REST("GET", "1/keys/test"),
-					httpmock.JSONResponse(search.Key{ACL: tt.ACLs}),
+					httpmock.JSONResponse(search.ApiKey{Acl: tt.ACLs}),
 				)
 			}
 

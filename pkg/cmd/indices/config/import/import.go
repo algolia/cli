@@ -19,7 +19,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &config.ImportOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 
 	var confirm bool
@@ -28,7 +28,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file> --scope <scope>...",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "settings,editSettings",
 		},

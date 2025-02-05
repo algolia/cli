@@ -8,7 +8,8 @@ import (
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -69,10 +70,15 @@ func NewFactory(
 	}
 
 	if r != nil {
-		f.SearchClient = func() (*search.Client, error) {
-			return search.NewClientWithConfig(search.Configuration{
-				Requester: r,
-			}), nil
+		f.SearchClient = func() (*search.APIClient, error) {
+			cfg := search.SearchConfiguration{
+				Configuration: transport.Configuration{
+					AppID:     "default",
+					ApiKey:    "default",
+					Requester: r,
+				},
+			}
+			return search.NewClientWithConfig(cfg)
 		}
 		f.CrawlerClient = func() (*crawler.Client, error) {
 			return crawler.NewClientWithHTTPClient("id", "key", &http.Client{

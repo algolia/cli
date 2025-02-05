@@ -31,7 +31,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.V4SearchClient,
+		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "set <index>",
@@ -44,7 +44,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 			# Set the typo tolerance to false on the MOVIES index
 			$ algolia settings set MOVIES --typoTolerance="false"
 		`),
-		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 
