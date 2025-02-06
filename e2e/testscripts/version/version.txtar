@@ -1,0 +1,3 @@
+# Check that we're using the correct version
+exec algolia --version
+stdout '^algolia version main$'

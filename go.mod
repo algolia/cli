@@ -11,6 +11,7 @@ require (
 	github.com/algolia/algoliasearch-client-go/v4 v4.13.0
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/briandowns/spinner v1.23.2
+	github.com/cli/go-internal v0.0.0-20241025142207-6c48bcd5ce24
 	github.com/cli/safeexec v1.0.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/getkin/kin-openapi v0.100.0

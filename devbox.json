@@ -8,5 +8,6 @@
     "golines@latest",
     "gh@latest",
     "curl@latest"
-  ]
+  ],
+  "env_from": ".env"
 }
