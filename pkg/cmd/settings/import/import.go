@@ -23,6 +23,7 @@ type ImportOptions struct {
 	Index             string
 	Settings          search.IndexSettings
 	ForwardToReplicas bool
+	Wait              bool
 }
 
 // NewImportCmd creates and returns an import command for settings
@@ -66,6 +67,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	_ = cmd.MarkFlagRequired("file")
 	cmd.Flags().
 		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -77,14 +79,25 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Importing settings to index ", opts.Index))
-	_, err = client.SetSettings(
+	res, err := client.SetSettings(
 		client.NewApiSetSettingsRequest(opts.Index, &opts.Settings).
 			WithForwardToReplicas(opts.ForwardToReplicas),
 	)
-	opts.IO.StopProgressIndicator()
 	if err != nil {
+		opts.IO.StopProgressIndicator()
 		return err
 	}
+
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
+	}
+
+	opts.IO.StopProgressIndicator()
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

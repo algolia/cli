@@ -22,6 +22,7 @@ type SetOptions struct {
 
 	Settings          search.IndexSettings
 	ForwardToReplicas bool
+	Wait              bool
 
 	Index string
 }
@@ -69,6 +70,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().
 		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	cmdutil.AddIndexSettingsFlags(cmd)
 
@@ -84,14 +86,26 @@ func runSetCmd(opts *SetOptions) error {
 	opts.IO.StartProgressIndicatorWithLabel(
 		fmt.Sprintf("Setting settings for index %s", opts.Index),
 	)
-	_, err = client.SetSettings(
+
+	res, err := client.SetSettings(
 		client.NewApiSetSettingsRequest(opts.Index, &opts.Settings).
 			WithForwardToReplicas(opts.ForwardToReplicas),
 	)
-	opts.IO.StopProgressIndicator()
 	if err != nil {
+		opts.IO.StopProgressIndicator()
 		return err
 	}
+
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
+	}
+
+	opts.IO.StopProgressIndicator()
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

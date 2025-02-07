@@ -24,6 +24,7 @@ type DeleteOptions struct {
 	Indices         []string
 	DoConfirm       bool
 	IncludeReplicas bool
+	Wait            bool
 }
 
 // NewDeleteCmd creates and returns a delete command for indices
@@ -84,6 +85,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
 	cmd.Flags().
 		BoolVarP(&opts.IncludeReplicas, "include-replicas", "r", false, "delete replica indices too")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -136,6 +138,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			)
 			err = detachReplica(index, *settings.Primary, client)
 			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return fmt.Errorf("can't detach index %s: %w", index, err)
 			}
 			opts.IO.StopProgressIndicator()
@@ -146,14 +149,26 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		)
 		res, err := client.DeleteIndex(client.NewApiDeleteIndexRequest(index))
 		if err != nil {
+			opts.IO.StopProgressIndicator()
 			return fmt.Errorf("can't delete index %s: %w", index, err)
+		}
+
+		if !opts.IncludeReplicas && opts.Wait {
+			opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+			_, err := client.WaitForTask(index, res.TaskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 
 		if opts.IncludeReplicas && len(settings.Replicas) > 0 {
 			// Wait for primary to be deleted, otherwise deleting replicas might fail
+			opts.IO.UpdateProgressIndicatorLabel("Waiting for the primary index to be deleted")
 			_, err := client.WaitForTask(index, res.TaskID)
 			if err != nil {
-				return fmt.Errorf("error waiting for index %s to be deleted: %w", index, err)
+				opts.IO.StopProgressIndicator()
+				return fmt.Errorf("error while waiting for index %s to be deleted: %w", index, err)
 			}
 
 			for _, replica := range settings.Replicas {
@@ -170,9 +185,17 @@ func runDeleteCmd(opts *DeleteOptions) error {
 				opts.IO.UpdateProgressIndicatorLabel(
 					fmt.Sprintf("Deleting replica %s", index),
 				)
-				_, err = client.DeleteIndex(client.NewApiDeleteIndexRequest(replica))
+				res, err = client.DeleteIndex(client.NewApiDeleteIndexRequest(replica))
 				if err != nil {
+					opts.IO.StopProgressIndicator()
 					return fmt.Errorf("can't delete replica %s: %w", replica, err)
+				}
+				if opts.Wait {
+					_, err := client.WaitForTask(replica, res.TaskID)
+					if err != nil {
+						opts.IO.StopProgressIndicator()
+						return err
+					}
 				}
 			}
 		}

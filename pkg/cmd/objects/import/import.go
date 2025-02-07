@@ -22,13 +22,12 @@ type ImportOptions struct {
 	SearchClient func() (*search.APIClient, error)
 	Index        string
 
-	Scanner       *bufio.Scanner
-	BatchSize     int
-	AutoObjectIDs bool
-	Wait          bool
+	Scanner   *bufio.Scanner
+	BatchSize int
+	Wait      bool
 }
 
-// NewImportCmd creates and returns an import command for records
+// NewImportCmd creates and returns an import command for indice object
 func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
@@ -77,8 +76,6 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	_ = cmd.MarkFlagRequired("file")
 
 	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
-	cmd.Flags().
-		BoolVarP(&opts.AutoObjectIDs, "auto-generate-object-id-if-not-exist", "a", false, "Auto-generate objectIDs if they don't exist")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 	return cmd
 }
@@ -102,17 +99,6 @@ func runImportCmd(opts *ImportOptions) error {
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			err := fmt.Errorf("failed to parse JSON object on line %d: %s", count, err)
 			return err
-		}
-
-		if len(record) == 0 {
-			return fmt.Errorf("empty object on line %d", count)
-		}
-		// The API always automatically generates objectIDs for this operation
-		// The v3 API clients implemented this option, but not v4, so we'll implement it here
-		if !opts.AutoObjectIDs {
-			if _, ok := record["objectID"]; !ok {
-				return fmt.Errorf("missing objectID on line %d", count)
-			}
 		}
 		records = append(records, record)
 		count++

@@ -24,6 +24,7 @@ type ImportOptions struct {
 	Index                   string
 	ForwardToReplicas       bool
 	ReplaceExistingSynonyms bool
+	Wait                    bool
 	Scanner                 *bufio.Scanner
 }
 
@@ -90,6 +91,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
 	cmd.Flags().
 		BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -109,6 +111,7 @@ func runImportCmd(opts *ImportOptions) error {
 		synonyms   = make([]search.SynonymHit, 0, batchSize)
 		count      = 0
 		totalCount = 0
+		taskIDs    []int64
 	)
 
 	opts.IO.StartProgressIndicatorWithLabel("Importing synonyms")
@@ -131,8 +134,16 @@ func runImportCmd(opts *ImportOptions) error {
 		count++
 
 		if count == batchSize {
-			if _, err := client.SaveSynonyms(client.NewApiSaveSynonymsRequest(opts.Index, synonyms).WithReplaceExistingSynonyms(clearExistingSynonyms).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+			res, err := client.SaveSynonyms(
+				client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
+					WithReplaceExistingSynonyms(clearExistingSynonyms).
+					WithForwardToReplicas(opts.ForwardToReplicas),
+			)
+			if err != nil {
 				return err
+			}
+			if opts.Wait {
+				taskIDs = append(taskIDs, res.TaskID)
 			}
 			synonyms = make([]search.SynonymHit, 0, batchSize)
 			totalCount += count
@@ -144,14 +155,37 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := client.SaveSynonyms(client.NewApiSaveSynonymsRequest(opts.Index, synonyms).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+		res, err := client.SaveSynonyms(
+			client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
+		if err != nil {
 			return err
+		}
+		if opts.Wait {
+			taskIDs = append(taskIDs, res.TaskID)
 		}
 	}
 
 	if totalCount == 0 && opts.ReplaceExistingSynonyms {
-		if _, err := client.ClearSynonyms(client.NewApiClearSynonymsRequest(opts.Index).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+		res, err := client.ClearSynonyms(
+			client.NewApiClearSynonymsRequest(opts.Index).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
+		if err != nil {
 			return err
+		}
+		if opts.Wait {
+			taskIDs = append(taskIDs, res.TaskID)
+		}
+	}
+
+	if len(taskIDs) > 0 {
+		for _, taskID := range taskIDs {
+			_, err := client.WaitForTask(opts.Index, taskID)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

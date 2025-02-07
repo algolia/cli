@@ -25,6 +25,7 @@ type ImportOptions struct {
 	Index              string
 	ForwardToReplicas  bool
 	ClearExistingRules bool
+	Wait               bool
 	Scanner            *bufio.Scanner
 
 	DoConfirm bool
@@ -102,6 +103,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the rules to the index replicas")
 	cmd.Flags().
 		BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Clear existing rules before importing new ones")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -146,8 +148,8 @@ func runImportCmd(opts *ImportOptions) error {
 
 		var rule search.Rule
 		if err := json.Unmarshal([]byte(line), &rule); err != nil {
-			err := fmt.Errorf("failed to parse JSON rule on line %d: %s", count, err)
-			return err
+			opts.IO.StopProgressIndicator()
+			return fmt.Errorf("failed to parse JSON rule on line %d: %s", count, err)
 		}
 
 		rules = append(rules, rule)
@@ -156,17 +158,26 @@ func runImportCmd(opts *ImportOptions) error {
 		// If requested, only clear existing rules the first time
 		clearExistingRules := opts.ClearExistingRules
 		if count == batchSize {
-			_, err := client.SaveRules(
+			res, err := client.SaveRules(
 				client.NewApiSaveRulesRequest(opts.Index, rules).
 					WithClearExistingRules(clearExistingRules).
 					WithForwardToReplicas(opts.ForwardToReplicas),
 			)
 			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return err
 			}
-			rules = make([]search.Rule, 0, batchSize)
+			if opts.Wait {
+				_, err := client.WaitForTask(opts.Index, res.TaskID)
+				if err != nil {
+					opts.IO.StopProgressIndicator()
+					return err
+				}
+			}
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d rules", totalCount))
+
+			rules = make([]search.Rule, 0, batchSize)
 			count = 0
 			clearExistingRules = false
 		}
@@ -174,14 +185,38 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
-		if _, err := client.SaveRules(client.NewApiSaveRulesRequest(opts.Index, rules).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+		res, err := client.SaveRules(
+			client.NewApiSaveRulesRequest(opts.Index, rules).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
 			return err
+		}
+		if opts.Wait {
+			_, err := client.WaitForTask(opts.Index, res.TaskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 	}
 	// Clear rules if 0 rules are imported and the clear existing is set
 	if totalCount == 0 && opts.ClearExistingRules {
-		if _, err := client.ClearRules(client.NewApiClearRulesRequest(opts.Index).WithForwardToReplicas(opts.ForwardToReplicas)); err != nil {
+		res, err := client.ClearRules(
+			client.NewApiClearRulesRequest(opts.Index).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
 			return err
+		}
+		if opts.Wait {
+			_, err := client.WaitForTask(opts.Index, res.TaskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 	}
 

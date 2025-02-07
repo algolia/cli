@@ -204,10 +204,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	// Wait for the tasks to complete
 	if opts.Wait {
-		opts.IO.StartProgressIndicatorWithLabel("Waiting for all of the deletion tasks to complete")
+		opts.IO.StartProgressIndicatorWithLabel("Waiting for all deletion tasks to complete")
 		for _, taskID := range taskIDs {
 			_, err := client.WaitForTask(opts.Index, taskID)
 			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return err
 			}
 		}
@@ -221,6 +222,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	return nil
 }
 
+// deleteByToSearchParams returns a new SearchParamsObject from a DeleteByParams struct
 func deleteByToSearchParams(input *search.DeleteByParams) *search.SearchParamsObject {
 	return &search.SearchParamsObject{
 		Filters:           input.Filters,

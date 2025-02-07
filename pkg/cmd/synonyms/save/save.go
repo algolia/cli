@@ -25,6 +25,7 @@ type SaveOptions struct {
 	ForwardToReplicas bool
 	Synonym           search.SynonymHit
 	SuccessMessage    string
+	Wait              bool
 }
 
 // NewSaveCmd creates and returns a save command for index synonyms
@@ -120,6 +121,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		StringVarP(&flags.SynonymWord, "word", "w", "", "A single word, used as the basis for the array of corrections (alt correction synonyms only)")
 	cmd.Flags().
 		StringSliceVarP(&flags.SynonymCorrections, "corrections", "c", nil, "A list of corrections of the word (alt correction synonyms only)")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -129,13 +131,18 @@ func runSaveCmd(opts *SaveOptions) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.SaveSynonym(
+	res, err := client.SaveSynonym(
 		client.NewApiSaveSynonymRequest(opts.Index, opts.Synonym.ObjectID, &opts.Synonym).
 			WithForwardToReplicas(opts.ForwardToReplicas),
 	)
 	if err != nil {
-		err = fmt.Errorf("failed to save synonym: %w", err)
-		return err
+		return fmt.Errorf("failed to save synonym: %w", err)
+	}
+	if opts.Wait {
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			return err
+		}
 	}
 
 	if opts.IO.IsStdoutTTY() {

@@ -22,6 +22,7 @@ type ClearOptions struct {
 
 	Index     string
 	DoConfirm bool
+	Wait      bool
 }
 
 // NewClearCmd creates and returns a clear command for indices
@@ -70,6 +71,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	}
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -94,10 +96,25 @@ func runClearCmd(opts *ClearOptions) error {
 		return err
 	}
 
-	_, err = client.ClearObjects(client.NewApiClearObjectsRequest(opts.Index))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Deleting all records from index %s", opts.Index),
+	)
+	res, err := client.ClearObjects(client.NewApiClearObjectsRequest(opts.Index))
 	if err != nil {
+		opts.IO.StopProgressIndicator()
 		return err
 	}
+
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
+	}
+
+	opts.IO.StopProgressIndicator()
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

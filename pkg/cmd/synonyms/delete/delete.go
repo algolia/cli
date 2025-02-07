@@ -25,6 +25,7 @@ type DeleteOptions struct {
 	Index             string
 	SynonymIDs        []string
 	ForwardToReplicas bool
+	Wait              bool
 
 	DoConfirm bool
 }
@@ -82,6 +83,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Forward the delete request to the replicas")
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -122,14 +124,27 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
+	var taskIDs []int64
+
 	for _, synonymID := range opts.SynonymIDs {
-		_, err = client.DeleteSynonym(
+		res, err := client.DeleteSynonym(
 			client.NewApiDeleteSynonymRequest(opts.Index, synonymID).
 				WithForwardToReplicas(opts.ForwardToReplicas),
 		)
 		if err != nil {
-			err = fmt.Errorf("failed to delete synonym %s: %w", synonymID, err)
-			return err
+			return fmt.Errorf("failed to delete synonym %s: %w", synonymID, err)
+		}
+		if opts.Wait {
+			taskIDs = append(taskIDs, res.TaskID)
+		}
+	}
+
+	if len(taskIDs) > 0 {
+		for _, taskID := range taskIDs {
+			_, err := client.WaitForTask(opts.Index, taskID)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
