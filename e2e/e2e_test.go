@@ -133,3 +133,8 @@ func TestSettings(t *testing.T) {
 func TestObjects(t *testing.T) {
 	runTestsInDir(t, "testscripts/objects")
 }
+
+// TestSynonyms tests `algolia synonyms` commands
+func TestSynonyms(t *testing.T) {
+	runTestsInDir(t, "testscripts/synonyms")
+}
