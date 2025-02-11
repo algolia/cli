@@ -143,3 +143,8 @@ func TestSynonyms(t *testing.T) {
 func TestRules(t *testing.T) {
 	runTestsInDir(t, "testscripts/rules")
 }
+
+// TestSearch tests `algolia search`
+func TestSearch(t *testing.T) {
+	runTestsInDir(t, "testscripts/search")
+}
