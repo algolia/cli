@@ -34,9 +34,10 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	var configFile string
 
 	cmd := &cobra.Command{
-		Use:   "create <name> -F <file>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Create a crawler",
+		Use:     "create <name> -F <file>",
+		Aliases: []string{"new", "n", "c"},
+		Args:    cobra.ExactArgs(1),
+		Short:   "Create a crawler",
 		Long: heredoc.Doc(`
 			Create a new crawler from the given configuration.
 		`),
