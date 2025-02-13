@@ -8,7 +8,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
-// NewConfigCmd returns a new command for indice config management
+// NewConfigCmd returns a new command for index config management
 func NewConfigCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
