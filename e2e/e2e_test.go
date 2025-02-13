@@ -118,3 +118,8 @@ func runTestsInDir(t *testing.T, dirName string) {
 func TestVersion(t *testing.T) {
 	runTestsInDir(t, "testscripts/version")
 }
+
+// TestIndices test `algolia indices` commands
+func TestIndices(t *testing.T) {
+	runTestsInDir(t, "testscripts/indices")
+}
