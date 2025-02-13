@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/shared/handler"
@@ -20,12 +19,13 @@ type SaveOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice            string
+	Index             string
 	ForwardToReplicas bool
-	Synonym           search.Synonym
+	Synonym           search.SynonymHit
 	SuccessMessage    string
+	Wait              bool
 }
 
 // NewSaveCmd creates and returns a save command for index synonyms
@@ -33,7 +33,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	opts := &SaveOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	flags := &shared.SynonymFlags{}
@@ -41,7 +41,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -56,7 +56,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			$ algolia synonyms save MOVIES --id 1 --synonyms foo,bar
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			flagsHandler := &handler.SynonymHandler{
 				Flags: flags,
@@ -72,14 +72,17 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			// Correct flags are passed
-			opts.Synonym = synonym
+			opts.Synonym = *synonym
 
-			err, successMessage := GetSuccessMessage(*flags, opts.Indice)
+			successMessage, err := GetSuccessMessage(*flags, opts.Index)
 			if err != nil {
 				return err
 			}
-			opts.SuccessMessage = fmt.Sprintf("%s %s", f.IOStreams.ColorScheme().SuccessIcon(), successMessage)
+			opts.SuccessMessage = fmt.Sprintf(
+				"%s %s",
+				f.IOStreams.ColorScheme().SuccessIcon(),
+				successMessage,
+			)
 
 			if runF != nil {
 				return runF(opts)
@@ -91,7 +94,8 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 
 	// Common
 	cmd.Flags().StringVarP(&flags.SynonymID, "id", "i", "", "Synonym ID to save")
-	cmd.Flags().StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type to save (default to regular)")
+	cmd.Flags().
+		StringVarP(&flags.SynonymType, "type", "t", "", "Synonym type to save (default to regular)")
 	_ = cmd.RegisterFlagCompletionFunc("type",
 		cmdutil.StringCompletionFunc(map[string]string{
 			shared.Regular:        "(default) Used when you want a word or phrase to find its synonyms or the other way around.",
@@ -100,17 +104,24 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			shared.AltCorrection2: "Used when you want records with an exact query match to rank higher than a synonym match. (will return matches with two typos)",
 			shared.Placeholder:    "Used to place not-yet-defined “tokens” (that can take any value from a list of defined words).",
 		}))
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the save request to the replicas")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the save request to the replicas")
 	// Regular synonym
 	cmd.Flags().StringSliceVarP(&flags.Synonyms, "synonyms", "s", nil, "Synonyms to save")
 	// One way synonym
-	cmd.Flags().StringVarP(&flags.SynonymInput, "input", "n", "", "Word of phrases to appear in query strings (one way synonyms only)")
+	cmd.Flags().
+		StringVarP(&flags.SynonymInput, "input", "n", "", "Word of phrases to appear in query strings (one way synonyms only)")
 	// Placeholder synonym
-	cmd.Flags().StringVarP(&flags.SynonymPlaceholder, "placeholder", "l", "", "A single word, used as the basis for the below array of replacements (placeholder synonyms only)")
-	cmd.Flags().StringSliceVarP(&flags.SynonymReplacements, "replacements", "r", nil, "An list of replacements of the placeholder (placeholder synonyms only)")
+	cmd.Flags().
+		StringVarP(&flags.SynonymPlaceholder, "placeholder", "l", "", "A single word, used as the basis for the below array of replacements (placeholder synonyms only)")
+	cmd.Flags().
+		StringSliceVarP(&flags.SynonymReplacements, "replacements", "r", nil, "An list of replacements of the placeholder (placeholder synonyms only)")
 	// Alt correction synonym
-	cmd.Flags().StringVarP(&flags.SynonymWord, "word", "w", "", "A single word, used as the basis for the array of corrections (alt correction synonyms only)")
-	cmd.Flags().StringSliceVarP(&flags.SynonymCorrections, "corrections", "c", nil, "A list of corrections of the word (alt correction synonyms only)")
+	cmd.Flags().
+		StringVarP(&flags.SynonymWord, "word", "w", "", "A single word, used as the basis for the array of corrections (alt correction synonyms only)")
+	cmd.Flags().
+		StringSliceVarP(&flags.SynonymCorrections, "corrections", "c", nil, "A list of corrections of the word (alt correction synonyms only)")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -120,14 +131,18 @@ func runSaveCmd(opts *SaveOptions) error {
 	if err != nil {
 		return err
 	}
-
-	indice := client.InitIndex(opts.Indice)
-	forwardToReplicas := opt.ForwardToReplicas(opts.ForwardToReplicas)
-
-	_, err = indice.SaveSynonym(opts.Synonym, forwardToReplicas)
+	res, err := client.SaveSynonym(
+		client.NewApiSaveSynonymRequest(opts.Index, opts.Synonym.ObjectID, &opts.Synonym).
+			WithForwardToReplicas(opts.ForwardToReplicas),
+	)
 	if err != nil {
-		err = fmt.Errorf("failed to save synonym: %w", err)
-		return err
+		return fmt.Errorf("failed to save synonym: %w", err)
+	}
+	if opts.Wait {
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			return err
+		}
 	}
 
 	if opts.IO.IsStdoutTTY() {
