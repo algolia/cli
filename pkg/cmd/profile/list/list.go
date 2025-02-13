@@ -27,9 +27,10 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		config: f.Config,
 	}
 	cmd := &cobra.Command{
-		Use:   "list",
-		Args:  validators.NoArgs(),
-		Short: "List the configured profile(s)",
+		Use:     "list",
+		Aliases: []string{"l"},
+		Args:    validators.NoArgs(),
+		Short:   "List the configured profile(s)",
 		Example: heredoc.Doc(`
 			# List the configured profiles
 			$ algolia profile list
