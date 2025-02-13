@@ -1,11 +1,10 @@
 package browse
 
 import (
-	"io"
+	"encoding/json"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,10 +17,10 @@ type BrowseOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice       string
-	BrowseParams map[string]interface{}
+	Index        string
+	BrowseParams search.BrowseParamsObject
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -31,14 +30,15 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &BrowseOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
 		Use:               "browse <index>",
+		Aliases:           []string{"list", "l"},
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
 			"acls":        "browse",
@@ -61,13 +61,22 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia objects browse MOVIES > movies.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			browseParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.BrowseParamsObject...)
 			if err != nil {
 				return err
 			}
-			opts.BrowseParams = browseParams
+
+			// Convert map to object
+			tmp, err := json.Marshal(browseParams)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(tmp, &opts.BrowseParams)
+			if err != nil {
+				return err
+			}
 
 			return runBrowseCmd(opts)
 		},
@@ -87,36 +96,28 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
-
-	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.BrowseParams["query"].(string)
-	if !ok {
-		query = ""
-	} else {
-		delete(opts.BrowseParams, "query")
-	}
-	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.BrowseParams))
-	if err != nil {
-		return err
-	}
-
 	p, err := opts.PrintFlags.ToPrinter()
 	if err != nil {
 		return err
 	}
 
-	for {
-		iObject, err := res.Next()
-		if err != nil {
-			if err == io.EOF {
-				return nil
+	err = client.BrowseObjects(
+		opts.Index,
+		opts.BrowseParams,
+		search.WithAggregator(func(res any, err error) {
+			if err != nil {
+				return
 			}
-			return err
-		}
-		if err = p.Print(opts.IO, iObject); err != nil {
-			return err
-		}
-
+			for _, hit := range res.(*search.BrowseResponse).Hits {
+				err := p.Print(opts.IO, hit)
+				if err != nil {
+					return
+				}
+			}
+		}),
+	)
+	if err != nil {
+		return err
 	}
+	return nil
 }
