@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/dictionary/shared"
@@ -19,10 +19,10 @@ type DeleteOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Dictionary search.DictionaryName
-	ObjectIDs  []string
+	DictionaryType search.DictionaryType
+	ObjectIDs      []string
 
 	DoConfirm bool
 }
@@ -34,14 +34,14 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:       "delete <dictionary> --object-ids <object-ids> [--confirm]",
 		Args:      validators.ExactArgs(1),
-		ValidArgs: shared.DictionaryNames(),
+		ValidArgs: shared.DictionaryTypes(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryTypes(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Annotations: map[string]string{
 			"acls": "settings,editSettings",
@@ -59,10 +59,16 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		`),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Dictionary = search.DictionaryName(args[0])
+			d, err := search.NewDictionaryTypeFromValue(args[0])
+			if err != nil {
+				return err
+			}
+			opts.DictionaryType = *d
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -92,7 +98,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionary), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf(
+				"Delete the %s from %s?",
+				pluralizeEntry(len(opts.ObjectIDs)),
+				opts.DictionaryType,
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -101,14 +114,34 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	_, err = client.DeleteDictionaryEntries(opts.Dictionary, opts.ObjectIDs)
+	var requests []search.BatchDictionaryEntriesRequest
+	for _, id := range opts.ObjectIDs {
+		req := search.NewBatchDictionaryEntriesRequest(
+			search.DICTIONARY_ACTION_DELETE_ENTRY,
+			*search.NewDictionaryEntry(id),
+		)
+		requests = append(requests, *req)
+	}
+
+	_, err = client.BatchDictionaryEntries(
+		client.NewApiBatchDictionaryEntriesRequest(
+			opts.DictionaryType,
+			search.NewBatchDictionaryEntriesParams(requests),
+		),
+	)
 	if err != nil {
 		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionary)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully deleted %s from %s\n",
+			cs.SuccessIcon(),
+			pluralizeEntry(len(opts.ObjectIDs)),
+			opts.DictionaryType,
+		)
 	}
 
 	return nil
