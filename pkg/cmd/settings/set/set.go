@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -19,10 +18,11 @@ type SetOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Settings          search.Settings
+	Settings          search.IndexSettings
 	ForwardToReplicas bool
+	Wait              bool
 
 	Index string
 }
@@ -32,7 +32,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SetOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:  "set <index>",
@@ -45,7 +45,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 			# Set the typo tolerance to false on the MOVIES index
 			$ algolia settings set MOVIES --typoTolerance="false"
 		`),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 
@@ -54,12 +54,12 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			// Serialize / Unseralize the settings
-			b, err := json.Marshal(settings)
+			// Serialize / Deseralize the settings
+			tmp, err := json.Marshal(settings)
 			if err != nil {
 				return err
 			}
-			err = json.Unmarshal(b, &opts.Settings)
+			err = json.Unmarshal(tmp, &opts.Settings)
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,9 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	cmdutil.AddIndexSettingsFlags(cmd)
 
@@ -81,12 +83,29 @@ func runSetCmd(opts *SetOptions) error {
 		return err
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Setting settings for index %s", opts.Index))
-	_, err = client.InitIndex(opts.Index).SetSettings(opts.Settings, opt.ForwardToReplicas(opts.ForwardToReplicas))
-	opts.IO.StopProgressIndicator()
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Setting settings for index %s", opts.Index),
+	)
+
+	res, err := client.SetSettings(
+		client.NewApiSetSettingsRequest(opts.Index, &opts.Settings).
+			WithForwardToReplicas(opts.ForwardToReplicas),
+	)
 	if err != nil {
+		opts.IO.StopProgressIndicator()
 		return err
 	}
+
+	if opts.Wait {
+		opts.IO.UpdateProgressIndicatorLabel("Waiting for the task to complete")
+		_, err := client.WaitForTask(opts.Index, res.TaskID)
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
+	}
+
+	opts.IO.StopProgressIndicator()
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
