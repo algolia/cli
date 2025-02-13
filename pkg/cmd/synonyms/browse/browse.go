@@ -1,10 +1,10 @@
 package browse
 
 import (
-	"io"
+	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,9 +17,9 @@ type BrowseOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice string
+	Index string
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -29,15 +29,16 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &BrowseOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
 		Use:               "browse <index>",
+		Aliases:           []string{"list", "l"},
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "List all the the synonyms of the given index",
+		Short:             "List all the synonyms of the given index",
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
 			"acls":        "settings",
@@ -50,7 +51,7 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia synonyms browse MOVIES > synonyms.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			return runBrowseCmd(opts)
 		},
@@ -66,11 +67,13 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	if err != nil {
 		return err
 	}
-
-	indice := client.InitIndex(opts.Indice)
-	res, err := indice.BrowseSynonyms()
+	// Check if index exists, because the API just returns an empty list if it doesn't
+	exists, err := client.IndexExists(opts.Index)
 	if err != nil {
 		return err
+	}
+	if !exists {
+		return fmt.Errorf("index %s doesn't exist", opts.Index)
 	}
 
 	p, err := opts.PrintFlags.ToPrinter()
@@ -78,16 +81,17 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
-	for {
-		iObject, err := res.Next()
-		if err != nil {
-			if err == io.EOF {
-				return nil
+	err = client.BrowseSynonyms(
+		opts.Index,
+		*search.NewEmptySearchSynonymsParams(),
+		search.WithAggregator(func(res any, _ error) {
+			for _, synonym := range res.(*search.SearchSynonymsResponse).Hits {
+				p.Print(opts.IO, synonym)
 			}
-			return err
-		}
-		if err = p.Print(opts.IO, iObject); err != nil {
-			return err
-		}
+		}),
+	)
+	if err != nil {
+		return err
 	}
+	return nil
 }
