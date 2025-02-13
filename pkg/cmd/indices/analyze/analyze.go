@@ -1,12 +1,12 @@
 package analyze
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/internal/analyze"
@@ -21,10 +21,10 @@ type StatsOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice       string
-	BrowseParams map[string]interface{}
+	Index        string
+	BrowseParams search.BrowseParamsObject
 	NoLimit      bool
 	Only         string
 
@@ -36,14 +36,14 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &StatsOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
 		Use:               "analyze <index>",
 		Args:              validators.ExactArgs(1),
-		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
+		ValidArgsFunction: cmdutil.V4IndexNames(opts.SearchClient),
 		Annotations: map[string]string{
 			"acls": "browse,settings",
 		},
@@ -70,20 +70,33 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia index analyze MOVIES --only actors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
-			browseParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.BrowseParamsObject...)
+			browseParamsMap, err := cmdutil.FlagValuesMap(
+				cmd.Flags(),
+				cmdutil.BrowseParamsObject...)
 			if err != nil {
 				return err
 			}
-			opts.BrowseParams = browseParams
+
+			// Convert map to object
+			tmp, err := json.Marshal(browseParamsMap)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(tmp, &opts.BrowseParams)
+			if err != nil {
+				return err
+			}
 
 			return runAnalyzeCmd(opts)
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.NoLimit, "no-limit", "n", false, "If set, the command will not limit the number of objects to analyze. Otherwise, the default limit is 1000 objects.")
-	cmd.Flags().StringVarP(&opts.Only, "only", "", "", "If set, the command will only analyze the specified attribute. Chosen attribute values statistics will be shown in the output.")
+	cmd.Flags().
+		BoolVarP(&opts.NoLimit, "no-limit", "n", false, "If set, the command will not limit the number of objects to analyze. Otherwise, the default limit is 1000 objects.")
+	cmd.Flags().
+		StringVarP(&opts.Only, "only", "", "", "If set, the command will only analyze the specified attribute. Chosen attribute values statistics will be shown in the output.")
 
 	cmdutil.AddBrowseParamsObjectFlags(cmd)
 	opts.PrintFlags.AddFlags(cmd)
@@ -98,54 +111,70 @@ func runAnalyzeCmd(opts *StatsOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
+	var records []search.Hit
+	counter := 1
 
-	// We use the `opt.ExtraOptions` to pass the `SearchParams` to the API.
-	query, ok := opts.BrowseParams["query"].(string)
-	if !ok {
-		query = ""
-	} else {
-		delete(opts.BrowseParams, "query")
-	}
-
-	// If no-limit flag is passed, count the number of objects in the index
-	count := 1000
-	limit := 1000
+	// With `--no-limit`, we iterate over all records
 	if opts.NoLimit {
-		limit = 0
-		res, err := indice.Search("", opt.HitsPerPage(0))
+		// Get the number of records (just for printing; maybe we can avoid this?)
+		res, err := client.SearchSingleIndex(
+			client.NewApiSearchSingleIndexRequest(opts.Index).
+				WithSearchParams(search.SearchParamsObjectAsSearchParams(search.NewEmptySearchParamsObject().SetQuery("").SetHitsPerPage(0))),
+		)
 		if err != nil {
 			return err
 		}
-		count = res.NbHits
-	}
-
-	io.StartProgressIndicatorWithLabel(fmt.Sprintf("Analyzing %d/%d objects", limit, count))
-
-	// Chan to receive the object count
-	counter := make(chan int)
-	go func() {
-		var total int
-		for c := range counter {
-			total += c
-			io.UpdateProgressIndicatorLabel(fmt.Sprintf("Analyzing %d/%d objects", total, count))
+		limit := int(*res.NbHits)
+		io.StartProgressIndicatorWithLabel(fmt.Sprintf("Analyzing 0/%d objects", limit))
+		err = client.BrowseObjects(
+			opts.Index,
+			opts.BrowseParams,
+			search.WithAggregator(func(response any, err error) {
+				if err != nil {
+					return
+				}
+				for _, hit := range response.(*search.BrowseResponse).Hits {
+					io.UpdateProgressIndicatorLabel(
+						fmt.Sprintf("Analyzing %d/%d objects", counter, limit),
+					)
+					records = append(records, hit)
+					counter++
+				}
+			}),
+		)
+		if err != nil {
+			io.StopProgressIndicator()
+			return err
 		}
-		close(counter)
-	}()
+	} else {
+		// Without `--no-limit`, just iterate over the first 1,000 records.
+		// Since `BrowseObjects` can't be terminated early, we use the regular Browse method here.
+		res, err := client.Browse(
+			client.
+				NewApiBrowseRequest(opts.Index).
+				WithBrowseParams(search.BrowseParamsObjectAsBrowseParams(&opts.BrowseParams)),
+		)
+		limit := int(*res.NbHits)
+		io.StartProgressIndicatorWithLabel(fmt.Sprintf("Analyzing 0/%d objects", limit))
+		if err != nil {
+			return err
+		}
+		for _, hit := range res.Hits {
+			io.UpdateProgressIndicatorLabel(
+				fmt.Sprintf("Analyzing %d/%d objects", counter, limit),
+			)
+			records = append(records, hit)
+			counter++
+		}
+	}
 
-	res, err := indice.BrowseObjects(opt.Query(query), opt.ExtraOptions(opts.BrowseParams))
+	settings, err := client.GetSettings(client.NewApiGetSettingsRequest(opts.Index))
 	if err != nil {
 		io.StopProgressIndicator()
 		return err
 	}
 
-	settings, err := indice.GetSettings()
-	if err != nil {
-		io.StopProgressIndicator()
-		return err
-	}
-
-	stats, err := analyze.ComputeStats(res, settings, limit, opts.Only, counter)
+	stats, err := analyze.ComputeStats(records, *settings, opts.Only)
 	if err != nil {
 		io.StopProgressIndicator()
 		return err
@@ -222,7 +251,7 @@ func printStats(stats *analyze.Stats, opts *StatsOptions) error {
 	for _, key := range sorted {
 		// Print colorized output depending on the percentage
 		// If <1%: red, if <5%: yellow
-		var color = func(s string) string { return s }
+		color := func(s string) string { return s }
 		if stats.Attributes[key].Percentage < 1 {
 			color = cs.Red
 		} else if stats.Attributes[key].Percentage < 5 {
@@ -265,7 +294,11 @@ func printSingleAttributeStats(stats *analyze.Stats, opts *StatsOptions) error {
 		for _, v := range sorted {
 			table.AddField(fmt.Sprintf("%v", v), nil, nil)
 			table.AddField(fmt.Sprintf("%d", value.Values[v]), nil, nil)
-			table.AddField(fmt.Sprintf("%.2f%%", float64(value.Values[v])*100/float64(stats.TotalRecords)), nil, nil)
+			table.AddField(
+				fmt.Sprintf("%.2f%%", float64(value.Values[v])*100/float64(stats.TotalRecords)),
+				nil,
+				nil,
+			)
 			table.EndRow()
 		}
 	}
