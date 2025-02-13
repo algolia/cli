@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewDeleteCmd(t *testing.T) {
@@ -36,7 +36,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				SynonymIDs: []string{
 					"1",
 				},
@@ -50,7 +50,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: true,
-				Indice:    "foo",
+				Index:     "foo",
 				SynonymIDs: []string{
 					"1",
 				},
@@ -64,7 +64,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				SynonymIDs: []string{
 					"1",
 					"2",
@@ -79,7 +79,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
 				DoConfirm: false,
-				Indice:    "foo",
+				Index:     "foo",
 				SynonymIDs: []string{
 					"1",
 					"2",
@@ -121,7 +121,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Indice, opts.Indice)
+			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.SynonymIDs, opts.SynonymIDs)
 			assert.Equal(t, tt.wantsOpts.ForwardToReplicas, opts.ForwardToReplicas)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
@@ -133,15 +133,15 @@ func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
 		name       string
 		cli        string
-		indice     string
+		index      string
 		synonymIDs []string
 		isTTY      bool
 		wantOut    string
 	}{
 		{
-			name:   "single synonym-id, no TTY",
-			cli:    "foo --synonym-ids 1 --confirm",
-			indice: "foo",
+			name:  "single synonym-id, no TTY",
+			cli:   "foo --synonym-ids 1 --confirm",
+			index: "foo",
 			synonymIDs: []string{
 				"1",
 			},
@@ -149,9 +149,9 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "",
 		},
 		{
-			name:   "single synonym-id, TTY",
-			cli:    "foo --synonym-ids 1 --confirm",
-			indice: "foo",
+			name:  "single synonym-id, TTY",
+			cli:   "foo --synonym-ids 1 --confirm",
+			index: "foo",
 			synonymIDs: []string{
 				"1",
 			},
@@ -159,9 +159,9 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "✓ Successfully deleted 1 synonym from foo\n",
 		},
 		{
-			name:   "multiple synonym-ids, TTY",
-			cli:    "foo --synonym-ids 1,2 --confirm",
-			indice: "foo",
+			name:  "multiple synonym-ids, TTY",
+			cli:   "foo --synonym-ids 1,2 --confirm",
+			index: "foo",
 			synonymIDs: []string{
 				"1",
 				"2",
@@ -175,8 +175,17 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, id := range tt.synonymIDs {
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, id)), httpmock.JSONResponse(search.OneWaySynonym{}))
-				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.indice, id)), httpmock.JSONResponse(search.DeleteTaskRes{}))
+				r.Register(
+					httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.index, id)),
+					httpmock.JSONResponse(search.SynonymHit{
+						ObjectID: "1",
+						Type:     search.SYNONYM_TYPE_ONEWAYSYNONYM,
+					}),
+				)
+				r.Register(
+					httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s/synonyms/%s", tt.index, id)),
+					httpmock.JSONResponse(search.DeletedAtResponse{}),
+				)
 			}
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
