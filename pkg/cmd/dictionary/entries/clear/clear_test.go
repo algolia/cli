@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/pkg/cmdutil"
-	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/httpmock/v4"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/test/v4"
 )
 
 func TestNewClearCmd(t *testing.T) {
@@ -30,8 +30,8 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: true,
 			wantsOpts: ClearOptions{
 				DoConfirm: true,
-				Dictionaries: []search.DictionaryName{
-					search.Plurals,
+				Dictionaries: []search.DictionaryType{
+					search.DICTIONARY_TYPE_PLURALS,
 				},
 			},
 		},
@@ -42,8 +42,8 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: ClearOptions{
 				DoConfirm: false,
-				Dictionaries: []search.DictionaryName{
-					search.Plurals,
+				Dictionaries: []search.DictionaryType{
+					search.DICTIONARY_TYPE_PLURALS,
 				},
 			},
 		},
@@ -53,12 +53,8 @@ func TestNewClearCmd(t *testing.T) {
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: ClearOptions{
-				DoConfirm: true,
-				Dictionaries: []search.DictionaryName{
-					search.Stopwords,
-					search.Plurals,
-					search.Compounds,
-				},
+				DoConfirm:    true,
+				Dictionaries: search.AllowedDictionaryTypeEnumValues,
 			},
 		},
 		{
@@ -68,8 +64,8 @@ func TestNewClearCmd(t *testing.T) {
 			wantsErr: true,
 			wantsOpts: ClearOptions{
 				DoConfirm: false,
-				Dictionaries: []search.DictionaryName{
-					search.Plurals,
+				Dictionaries: []search.DictionaryType{
+					search.DICTIONARY_TYPE_PLURALS,
 				},
 			},
 		},
@@ -126,7 +122,7 @@ func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
 		name         string
 		cli          string
-		dictionaries []search.DictionaryName
+		dictionaries []search.DictionaryType
 		entries      bool
 		isTTY        bool
 		wantOut      string
@@ -134,8 +130,8 @@ func Test_runDeleteCmd(t *testing.T) {
 		{
 			name: "one dictionary",
 			cli:  "plurals --confirm",
-			dictionaries: []search.DictionaryName{
-				search.Plurals,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_PLURALS,
 			},
 			entries: true,
 			isTTY:   false,
@@ -144,31 +140,27 @@ func Test_runDeleteCmd(t *testing.T) {
 		{
 			name: "multiple dictionaries",
 			cli:  "plurals compounds --confirm",
-			dictionaries: []search.DictionaryName{
-				search.Plurals,
-				search.Compounds,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_PLURALS,
+				search.DICTIONARY_TYPE_COMPOUNDS,
 			},
 			entries: true,
 			isTTY:   false,
 			wantOut: "",
 		},
 		{
-			name: "all dictionaries",
-			cli:  "--all --confirm",
-			dictionaries: []search.DictionaryName{
-				search.Stopwords,
-				search.Plurals,
-				search.Compounds,
-			},
-			entries: true,
-			isTTY:   false,
-			wantOut: "",
+			name:         "all dictionaries",
+			cli:          "--all --confirm",
+			dictionaries: search.AllowedDictionaryTypeEnumValues,
+			entries:      true,
+			isTTY:        false,
+			wantOut:      "",
 		},
 		{
 			name: "no entries",
 			cli:  "plurals --confirm",
-			dictionaries: []search.DictionaryName{
-				search.Plurals,
+			dictionaries: []search.DictionaryType{
+				search.DICTIONARY_TYPE_PLURALS,
 			},
 			entries: false,
 			isTTY:   false,
@@ -180,14 +172,28 @@ func Test_runDeleteCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, d := range tt.dictionaries {
-				var entries []DictionaryEntry
+				var entries []search.DictionaryEntry
 				if tt.entries {
-					entries = append(entries, DictionaryEntry{Type: "custom"})
+					entries = append(
+						entries,
+						search.DictionaryEntry{
+							ObjectID: "1",
+							Language: search.SUPPORTED_LANGUAGE_EN.Ptr(),
+							Words:    []string{"foo", "bar"},
+							Type:     search.DICTIONARY_ENTRY_TYPE_CUSTOM.Ptr(),
+						},
+					)
 				}
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)), httpmock.JSONResponse(search.SearchDictionariesRes{
-					Hits: entries,
-				}))
-				r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", d)), httpmock.JSONResponse(search.TaskStatusRes{}))
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)),
+					httpmock.JSONResponse(search.SearchDictionaryEntriesResponse{
+						Hits: entries,
+					}),
+				)
+				r.Register(
+					httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", d)),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			}
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")

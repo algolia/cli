@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -22,16 +21,12 @@ type ClearOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Dictionaries []search.DictionaryName
+	Dictionaries []search.DictionaryType
 	All          bool
 
 	DoConfirm bool
-}
-
-type DictionaryEntry struct {
-	Type shared.EntryType
 }
 
 // NewClearCmd creates and returns a clear command for dictionaries' entries.
@@ -42,14 +37,14 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 	opts := &ClearOptions{
 		IO:           f.IOStreams,
 		Config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 	cmd := &cobra.Command{
 		Use:       "clear {<dictionary>... | --all} [--confirm]",
 		Args:      cobra.OnlyValidArgs,
-		ValidArgs: shared.DictionaryNames(),
+		ValidArgs: shared.DictionaryTypes(),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
+			return shared.DictionaryTypes(), cobra.ShellCompDirectiveNoFileComp
 		},
 		Annotations: map[string]string{
 			"acls": "settings,editSettings",
@@ -70,21 +65,25 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.All && len(args) > 0 || !opts.All && len(args) == 0 {
-				return cmdutil.FlagErrorf("Either specify dictionaries' names or use --all to clear all dictionaries")
+				return cmdutil.FlagErrorf(
+					"Either specify dictionaries' names or use --all to clear all dictionaries",
+				)
 			}
 
 			if opts.All {
-				opts.Dictionaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
+				opts.Dictionaries = search.AllowedDictionaryTypeEnumValues
 			} else {
-				opts.Dictionaries = make([]search.DictionaryName, len(args))
+				opts.Dictionaries = make([]search.DictionaryType, len(args))
 				for i, dictionary := range args {
-					opts.Dictionaries[i] = search.DictionaryName(dictionary)
+					opts.Dictionaries[i] = search.DictionaryType(dictionary)
 				}
 			}
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -137,7 +136,14 @@ func runClearCmd(opts *ClearOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Clear %d entries from %s dictionary?", totalEntries, utils.SliceToReadableString(dictionariesNames)), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf(
+				"Clear %d entries from %s dictionary?",
+				totalEntries,
+				utils.SliceToReadableString(dictionariesNames),
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -146,39 +152,62 @@ func runClearCmd(opts *ClearOptions) error {
 		}
 	}
 
-	for _, dictionary := range dictionaries {
-		_, err = client.ClearDictionaryEntries(dictionary)
+	for _, dict := range dictionaries {
+		_, err = client.BatchDictionaryEntries(
+			client.NewApiBatchDictionaryEntriesRequest(
+				dict,
+				search.NewEmptyBatchDictionaryEntriesParams().
+					SetClearExistingDictionaryEntries(true),
+			),
+		)
 		if err != nil {
 			return err
 		}
 	}
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully cleared %d entries from %s dictionary\n", cs.SuccessIcon(), totalEntries, utils.SliceToReadableString(dictionariesNames))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully cleared %d entries from %s dictionary\n",
+			cs.SuccessIcon(),
+			totalEntries,
+			utils.SliceToReadableString(dictionariesNames),
+		)
 	}
 
 	return nil
 }
 
-func customEntriesNb(client *search.Client, dictionary search.DictionaryName) (int, error) {
-	res, err := client.SearchDictionaryEntries(dictionary, "", opt.HitsPerPage(1000))
+func customEntriesNb(client *search.APIClient, dictionary search.DictionaryType) (int, error) {
+	res, err := client.SearchDictionaryEntries(
+		client.NewApiSearchDictionaryEntriesRequest(
+			dictionary,
+			search.NewEmptySearchDictionaryEntriesParams().SetHitsPerPage(1000).SetQuery(""),
+		),
+	)
 	if err != nil {
 		return 0, err
 	}
 	data, err := json.Marshal(res.Hits)
 	if err != nil {
-		return 0, fmt.Errorf("cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v", err)
+		return 0, fmt.Errorf(
+			"cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v",
+			err,
+		)
 	}
 
-	var entries []DictionaryEntry
+	var entries []search.DictionaryEntry
 	err = json.Unmarshal(data, &entries)
 	if err != nil {
-		return 0, fmt.Errorf("cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
+		return 0, fmt.Errorf(
+			"cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v",
+			err,
+		)
 	}
 
 	var customEntriesNb int
 	for _, entry := range entries {
-		if entry.Type == shared.CustomEntryType {
+		if entry.Type != nil && *entry.Type == search.DICTIONARY_ENTRY_TYPE_CUSTOM {
 			customEntriesNb++
 		}
 	}
