@@ -6,17 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/pkg/httpmock"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/pkg/httpmock/v4"
+	"github.com/algolia/cli/test/v4"
 )
 
 func Test_runUpdateCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "objects.json")
-	err := os.WriteFile(tmpFile, []byte(`{"objectID":"foo"}`), 0600)
+	err := os.WriteFile(tmpFile, []byte(`{"objectID":"foo"}`), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -79,7 +79,10 @@ func Test_runUpdateCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/batch"), httpmock.JSONResponse(search.BatchRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/batch"),
+					httpmock.JSONResponse(search.BatchResponse{}),
+				)
 			}
 			defer r.Verify(t)
 
