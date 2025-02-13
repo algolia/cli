@@ -2,6 +2,7 @@ package shared
 
 import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	v4 "github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 // EntryType represents the type of an entry in a dictionary.
@@ -36,4 +37,12 @@ var (
 			string(search.Plurals),
 		}
 	}
-)
+}
+
+func DictionaryTypes() []string {
+	var types []string
+	for _, d := range v4.AllowedDictionaryTypeEnumValues {
+		types = append(types, string(d))
+	}
+	return types
+}
