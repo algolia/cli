@@ -3,7 +3,7 @@ package delete
 import (
 	"fmt"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -18,7 +18,7 @@ type DeleteOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	APIKey    string
 	DoConfirm bool
@@ -29,7 +29,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	opts := &DeleteOptions{
 		IO:           f.IOStreams,
 		config:       f.Config,
-		SearchClient: f.SearchClient,
+		SearchClient: f.V4SearchClient,
 	}
 
 	var confirm bool
@@ -45,7 +45,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			opts.APIKey = args[0]
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -70,14 +72,17 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	_, err = client.GetAPIKey(opts.APIKey)
+	_, err = client.GetApiKey(client.NewApiGetApiKeyRequest(opts.APIKey))
 	if err != nil {
 		return fmt.Errorf("API key %q does not exist", opts.APIKey)
 	}
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the following API key: %s?", opts.APIKey), &confirmed)
+		err = prompt.Confirm(
+			fmt.Sprintf("Delete the following API key: %s?", opts.APIKey),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -86,14 +91,19 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	_, err = client.DeleteAPIKey(opts.APIKey)
+	_, err = client.DeleteApiKey(client.NewApiDeleteApiKeyRequest(opts.APIKey))
 	if err != nil {
 		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s API key successfully deleted: %s\n", cs.SuccessIcon(), opts.APIKey)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s API key successfully deleted: %s\n",
+			cs.SuccessIcon(),
+			opts.APIKey,
+		)
 	}
 	return nil
 }
