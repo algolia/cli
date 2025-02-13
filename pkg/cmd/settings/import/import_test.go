@@ -6,18 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/pkg/httpmock"
-	"github.com/algolia/cli/test"
+	"github.com/algolia/cli/pkg/httpmock/v4"
+	"github.com/algolia/cli/test/v4"
 )
 
 func Test_runExportCmd(t *testing.T) {
-
 	tmpFile := filepath.Join(t.TempDir(), "settings.json")
-	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -42,7 +41,10 @@ func Test_runExportCmd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			r.Register(httpmock.REST("PUT", "1/indexes/foo/settings"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			r.Register(
+				httpmock.REST("PUT", "1/indexes/foo/settings"),
+				httpmock.JSONResponse(search.UpdatedAtResponse{}),
+			)
 			defer r.Verify(t)
 
 			f, out := test.NewFactory(true, &r, nil, tt.stdin)
