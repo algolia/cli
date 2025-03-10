@@ -27,6 +27,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/dictionary"
 	"github.com/algolia/cli/pkg/cmd/events"
 	"github.com/algolia/cli/pkg/cmd/factory"
+	"github.com/algolia/cli/pkg/cmd/genai"
 	"github.com/algolia/cli/pkg/cmd/indices"
 	"github.com/algolia/cli/pkg/cmd/objects"
 	"github.com/algolia/cli/pkg/cmd/open"
@@ -106,6 +107,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
 	cmd.AddCommand(events.NewEventsCmd(f))
 	cmd.AddCommand(crawler.NewCrawlersCmd(f))
+	cmd.AddCommand(genai.NewGenaiCmd(f))
 
 	// ??? related commands
 	cmd.AddCommand(art.NewArtCmd(f))

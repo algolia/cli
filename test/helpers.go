@@ -10,6 +10,7 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/algolia/cli/api/crawler"
+	"github.com/algolia/cli/api/genai"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/httpmock"
@@ -71,6 +72,11 @@ func NewFactory(isTTY bool, r *httpmock.Registry, cfg config.IConfig, in string)
 		}
 		f.CrawlerClient = func() (*crawler.Client, error) {
 			return crawler.NewClientWithHTTPClient("id", "key", &http.Client{
+				Transport: r,
+			}), nil
+		}
+		f.GenAIClient = func() (*genai.Client, error) {
+			return genai.NewClientWithHTTPClient("id", "key", &http.Client{
 				Transport: r,
 			}), nil
 		}
