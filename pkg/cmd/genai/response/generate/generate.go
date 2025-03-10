@@ -29,7 +29,7 @@ type GenerateOptions struct {
 	WithObjectIDs        []string
 	AttributesToRetrieve []string
 	ConversationID       string
-	NoSave               bool
+	Save                 bool
 	UseCache             bool
 }
 
@@ -103,7 +103,7 @@ func NewGenerateCmd(f *cmdutil.Factory, runF func(*GenerateOptions) error) *cobr
 	cmd.Flags().StringVar(&objectIDsString, "object-ids", "", "Specific object IDs to use instead of search (comma-separated)")
 	cmd.Flags().StringSliceVar(&opts.AttributesToRetrieve, "attributes", nil, "Specific attributes to retrieve from the hits")
 	cmd.Flags().StringVar(&opts.ConversationID, "conversation-id", "", "Conversation ID for follow-up queries")
-	cmd.Flags().BoolVar(&opts.NoSave, "no-save", false, "Don't save the response")
+	cmd.Flags().BoolVar(&opts.Save, "save", false, "Save the response")
 	cmd.Flags().BoolVar(&opts.UseCache, "use-cache", false, "Use cached response if available")
 
 	_ = cmd.MarkFlagRequired("query")
@@ -128,7 +128,7 @@ func runGenerateCmd(opts *GenerateOptions) error {
 		PromptID:     opts.PromptID,
 		LogRegion:    opts.LogRegion,
 		NbHits:       opts.NbHits,
-		Save:         !opts.NoSave,
+		Save:         opts.Save,
 		UseCache:     opts.UseCache,
 	}
 

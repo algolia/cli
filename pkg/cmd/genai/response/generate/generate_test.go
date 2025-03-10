@@ -66,7 +66,7 @@ func TestNewGenerateCmd(t *testing.T) {
 		},
 		{
 			name:     "valid with all flags",
-			cli:      "--query \"hello\" --datasource ds-123 --prompt prompt-123 --region de --id resp-123 --hits 10 --filters \"brand:apple\" --object-ids id1,id2 --attributes name,price --conversation-id conv-123 --no-save --use-cache",
+			cli:      "--query \"hello\" --datasource ds-123 --prompt prompt-123 --region de --id resp-123 --hits 10 --filters \"brand:apple\" --object-ids id1,id2 --attributes name,price --conversation-id conv-123 --save --use-cache",
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: GenerateOptions{
@@ -80,7 +80,7 @@ func TestNewGenerateCmd(t *testing.T) {
 				WithObjectIDs:        []string{"id1", "id2"},
 				AttributesToRetrieve: []string{"name", "price"},
 				ConversationID:       "conv-123",
-				NoSave:               true,
+				Save:                 true,
 				UseCache:             true,
 			},
 		},
@@ -131,7 +131,7 @@ func TestNewGenerateCmd(t *testing.T) {
 			assert.Equal(t, tt.wantsOpts.WithObjectIDs, opts.WithObjectIDs)
 			assert.Equal(t, tt.wantsOpts.AttributesToRetrieve, opts.AttributesToRetrieve)
 			assert.Equal(t, tt.wantsOpts.ConversationID, opts.ConversationID)
-			assert.Equal(t, tt.wantsOpts.NoSave, opts.NoSave)
+			assert.Equal(t, tt.wantsOpts.Save, opts.Save)
 			assert.Equal(t, tt.wantsOpts.UseCache, opts.UseCache)
 		})
 	}
@@ -200,7 +200,7 @@ func Test_runGenerateCmd(t *testing.T) {
 				WithObjectIDs:        []string{"id1", "id2"},
 				AttributesToRetrieve: []string{"name", "price"},
 				ConversationID:       "conv-123",
-				NoSave:               true,
+				Save:                 true,
 				UseCache:             true,
 			},
 			isTTY: true,
