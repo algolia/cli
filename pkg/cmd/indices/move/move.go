@@ -48,7 +48,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 		},
 		Short: "Move an index",
 		Long: heredoc.Doc(`
-			Move the full content (objects, synonyms, rules, settings) of the given source index into the destination one, effectively deleting the source index.
+			Move the full source index (records, synonyms, rules, settings) to a destination index, effectively deleting the source.
 		`),
 		Example: heredoc.Doc(`
 			# Move the "TEST_MOVIES" index to "DEV_MOVIES"
@@ -73,8 +73,8 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the move index confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
 
 	return cmd
 }
