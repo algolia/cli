@@ -12,7 +12,7 @@ import (
 func NewSettingsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "settings",
-		Short: "Manage your Algolia dictionaries settings",
+		Short: "Manage your Algolia dictionary settings",
 	}
 
 	cmd.AddCommand(set.NewSetCmd(f, nil))

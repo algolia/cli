@@ -40,7 +40,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Annotations: map[string]string{
 			"acls": "admin",
 		},
-		Short: "List API keys",
+		Short: "Lists all API keys associated with your Algolia application, including their permissions and restrictions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if runF != nil {
 				return runF(opts)

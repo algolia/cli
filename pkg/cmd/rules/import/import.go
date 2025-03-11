@@ -49,10 +49,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
-		Short: "Import rules to the specified index",
+		Short: "Import Rules into an index.",
 		Long: heredoc.Doc(`
-			Import rules to the specified index.
-			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			Import Rules into an index.
+			File imports must contain one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
 			# Import rules from the "rules.ndjson" file to the "MOVIES" index
@@ -91,13 +91,13 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the rule import confirmation prompt.")
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Read rules to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&file, "file", "F", "", "Import rules from a `file` (use \"-\" to read from standard input).")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the rules to the index replicas")
-	cmd.Flags().BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Clear existing rules before importing new ones")
+	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Whether changes are applied to replica indices.")
+	cmd.Flags().BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Delete existing index rules before importing new ones.")
 
 	return cmd
 }
