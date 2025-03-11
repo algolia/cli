@@ -8,6 +8,7 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
 	"github.com/algolia/cli/api/crawler"
+	"github.com/algolia/cli/api/genai"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 )
@@ -17,6 +18,7 @@ type Factory struct {
 	Config        config.IConfig
 	SearchClient  func() (*search.Client, error)
 	CrawlerClient func() (*crawler.Client, error)
+	GenAIClient   func() (*genai.Client, error)
 
 	ExecutableName string
 }
