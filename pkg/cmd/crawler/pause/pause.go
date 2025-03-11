@@ -35,7 +35,7 @@ func NewPauseCmd(f *cmdutil.Factory, runF func(*PauseOptions) error) *cobra.Comm
 		ValidArgsFunction: cmdutil.CrawlerIDs(opts.CrawlerClient),
 		Short:             "Pause one or multiple crawlers",
 		Long: heredoc.Doc(`
-			Request the specified crawler to pause its execution.
+			Pauses the specified crawler.
 		`),
 		Example: heredoc.Doc(`
 			# Pause the crawler with the ID "my-crawler"

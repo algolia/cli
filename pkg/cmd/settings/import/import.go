@@ -41,7 +41,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
-		Short: "Import the index settings from the given file",
+		Short: "Import index settings from a file.",
 		Example: heredoc.Doc(`
 			# Import the settings from "settings.json" to the "MOVIES" index
 			$ algolia settings import MOVIES -F settings.json
@@ -60,7 +60,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&settingsFile, "file", "F", "", "Read settings from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().StringVarP(&settingsFile, "file", "F", "", "Import index settings from a `file` (use \"-\" to read from standard input).")
 	_ = cmd.MarkFlagRequired("file")
 
 	return cmd

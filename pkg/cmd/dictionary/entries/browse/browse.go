@@ -28,7 +28,7 @@ type BrowseOptions struct {
 	PrintFlags *cmdutil.PrintFlags
 }
 
-// DictionaryEntry can be plural, compound or stopword entry.
+// DictionaryEntry can be plural, compound, or stop word entry.
 type DictionaryEntry struct {
 	Type          shared.EntryType
 	Word          string   `json:"word,omitempty"`
@@ -63,7 +63,7 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			This command retrieves all entries from the specified %s dictionaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
-			# Retrieve all entries from the "stopwords" dictionary (doesn't include default stopwords)
+			# Retrieve all entries from the "stopwords" dictionary (not including the Algolia default stop words)
 			$ algolia dictionary entries browse stopwords
 
 			# Retrieve all entries from the "stopwords" and "plurals" dictionaries
@@ -72,7 +72,7 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			# Retrieve all entries from all dictionaries
 			$ algolia dictionary entries browse --all
 
-			# Retrieve all entries from the "stopwords" dictionaries (including default stopwords)
+			# Retrieve all entries from the "stopwords" dictionaries (including the Algolia default stop words)
 			$ algolia dictionary entries browse stopwords --include-defaults
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -120,7 +120,7 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		pageCount := 0
 		maxPages := 1
 
-		// implement infinite pagination
+		// Infinite pagination
 		for pageCount < maxPages {
 			res, err := client.SearchDictionaryEntries(dictionary, "", opt.HitsPerPage(1000), opt.Page(pageCount))
 			if err != nil {
@@ -131,13 +131,13 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 			data, err := json.Marshal(res.Hits)
 			if err != nil {
-				return fmt.Errorf("cannot unmarshal dictionary entries: error while marshalling original dictionary entries: %v", err)
+				return fmt.Errorf("can't unmarshal dictionary entries: error while marshalling original dictionary entries: %v", err)
 			}
 
 			var entries []DictionaryEntry
 			err = json.Unmarshal(data, &entries)
 			if err != nil {
-				return fmt.Errorf("cannot unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
+				return fmt.Errorf("can't unmarshal dictionary entries: error while unmarshalling original dictionary entries: %v", err)
 			}
 
 			if len(entries) != 0 {
@@ -146,12 +146,12 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 			for _, entry := range entries {
 				if opts.IncludeDefaultStopwords {
-					// print all entries (default stopwords included)
+					// Print all entries (inlcuding the default Algolia stop words)
 					if err = p.Print(opts.IO, entry); err != nil {
 						return err
 					}
 				} else if entry.Type == shared.CustomEntryType {
-					// print only custom entries
+					// Print only custom entries
 					if err = p.Print(opts.IO, entry); err != nil {
 						return err
 					}
@@ -161,12 +161,12 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			pageCount++
 		}
 
-		// in case no entry is found in all the dictionaries
+		// If no entry is found in all the dictionaries
 		if hasNoEntries {
 			if _, err = fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon()); err != nil {
 				return err
 			}
-			// go to the next dictionary
+			// Go to the next dictionary
 			break
 		}
 	}
