@@ -6,7 +6,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.5
 	github.com/BurntSushi/toml v1.2.0
 	github.com/MakeNowJust/heredoc v1.0.0
-	github.com/algolia/algoliasearch-client-go/v3 v3.26.4
+	github.com/algolia/algoliasearch-client-go/v3 v3.30.0
 	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
 	github.com/briandowns/spinner v1.19.0
 	github.com/cli/safeexec v1.0.0

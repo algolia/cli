@@ -21,8 +21,8 @@ type DeleteOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Dictionnary search.DictionaryName
-	ObjectIDs   []string
+	Dictionary search.DictionaryName
+	ObjectIDs  []string
 
 	DoConfirm bool
 }
@@ -43,6 +43,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
+		Annotations: map[string]string{
+			"acls": "settings,editSettings",
+		},
 		Short: "Delete dictionary entries",
 		Long: heredoc.Docf(`
 			This command deletes entries from the specified dictionary.
@@ -56,7 +59,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		`),
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Dictionnary = search.DictionaryName(args[0])
+			opts.Dictionary = search.DictionaryName(args[0])
 			if !confirm {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
@@ -89,7 +92,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionnary), &confirmed)
+		err = prompt.Confirm(fmt.Sprintf("Delete the %s from %s?", pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionary), &confirmed)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}
@@ -98,14 +101,14 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	_, err = client.DeleteDictionaryEntries(opts.Dictionnary, opts.ObjectIDs)
+	_, err = client.DeleteDictionaryEntries(opts.Dictionary, opts.ObjectIDs)
 	if err != nil {
 		return err
 	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionnary)
+		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s from %s\n", cs.SuccessIcon(), pluralizeEntry(len(opts.ObjectIDs)), opts.Dictionary)
 	}
 
 	return nil

@@ -38,10 +38,13 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import the index settings from the given file",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Import the index settings from the given file",
 		Example: heredoc.Doc(`
-			# Import the settings from "settings.json" to the "TEST_PRODUCTS_1" index
-			$ algolia settings import TEST_PRODUCTS_1 -F settings.json
+			# Import the settings from "settings.json" to the "MOVIES" index
+			$ algolia settings import MOVIES -F settings.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

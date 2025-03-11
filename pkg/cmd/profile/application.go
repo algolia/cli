@@ -3,6 +3,7 @@ package profile
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmd/profile/add"
 	"github.com/algolia/cli/pkg/cmd/profile/list"
 	"github.com/algolia/cli/pkg/cmd/profile/remove"
@@ -18,7 +19,7 @@ func NewProfileCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Manage your profiles",
 	}
 
-	cmdutil.DisableAuthCheck(cmd)
+	auth.DisableAuthCheck(cmd)
 
 	cmd.AddCommand(add.NewAddCmd(f, nil))
 	cmd.AddCommand(list.NewListCmd(f, nil))

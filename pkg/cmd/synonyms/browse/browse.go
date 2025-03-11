@@ -38,12 +38,16 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		Short:             "List all the the synonyms of the given index",
+		Annotations: map[string]string{
+			"runInWebCLI": "true",
+			"acls":        "settings",
+		},
 		Example: heredoc.Doc(`
-			# List all the synonyms of the 'TEST_PRODUCTS_1' index
-			$ algolia synonyms browse TEST_PRODUCTS_1
+			# List all the synonyms of the 'MOVIES' index
+			$ algolia synonyms browse MOVIES
 
-			# List all the synonyms of the 'TEST_PRODUCTS_1' and save them to the 'synonyms.json' file
-			$ algolia synonyms browse TEST_PRODUCTS_1 > synonyms.json
+			# List all the synonyms of the 'MOVIES' and save them to the 'synonyms.json' file
+			$ algolia synonyms browse MOVIES > synonyms.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -82,6 +86,8 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			}
 			return err
 		}
-		p.Print(opts.IO, iObject)
+		if err = p.Print(opts.IO, iObject); err != nil {
+			return err
+		}
 	}
 }

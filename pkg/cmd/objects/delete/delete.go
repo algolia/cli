@@ -46,21 +46,24 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:               "delete <index> [--object-ids <object-ids> | --filters  <filters>...] [--confirm] [--wait]",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete objects from an index",
+		Annotations: map[string]string{
+			"acls": "deleteObject",
+		},
+		Short: "Delete objects from an index",
 		Long: heredoc.Doc(`
 			This command deletes the objects from the specified index.
 
 			You can either directly specify the objects to delete by theirs IDs and/or use the filters related flags to delete the matching objects.
 		`),
 		Example: heredoc.Doc(`
-			# Delete one single object with the ID "1" from the "TEST_PRODUCTS_1" index
-			$ algolia objects delete TEST_PRODUCTS_1 --object-ids 1
+			# Delete one single object with the ID "1" from the "MOVIES" index
+			$ algolia objects delete MOVIES --object-ids 1
 
-			# Delete multiple objects with the IDs "1" and "2" from the "TEST_PRODUCTS_1" index
-			$ algolia objects delete TEST_PRODUCTS_1 --object-ids 1,2
+			# Delete multiple objects with the IDs "1" and "2" from the "MOVIES" index
+			$ algolia objects delete MOVIES --object-ids 1,2
 
-			# Delete all objects matching the filters "brand:Apple" from the "TEST_PRODUCTS_1" index
-			$ algolia objects delete TEST_PRODUCTS_1 --filters "brand:Apple" --confirm
+			# Delete all objects matching the filters "type:Scripted" from the "MOVIES" index
+			$ algolia objects delete MOVIES --filters "type:Scripted" --confirm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -138,7 +141,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	if nbObjectsToDelete == 0 {
-		fmt.Fprintf(opts.IO.Out, "%s No objects to delete. %s\n", cs.WarningIcon(), extra)
+		if _, err = fmt.Fprintf(opts.IO.Out, "%s No objects to delete. %s\n", cs.WarningIcon(), extra); err != nil {
+			return err
+		}
 		return nil
 	}
 

@@ -44,16 +44,19 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:               "delete <index> --rule-ids <rule-ids> --confirm",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Delete rules from an index",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Delete rules from an index",
 		Long: heredoc.Doc(`
 			This command deletes the rules from the specified index.
 		`),
 		Example: heredoc.Doc(`
-			# Delete one single rule with the ID "1" from the "TEST_PRODUCTS_1" index
-			$ algolia rules delete TEST_PRODUCTS_1 --rule-ids 1
+			# Delete one single rule with the ID "1" from the "MOVIES" index
+			$ algolia rules delete MOVIES --rule-ids 1
 
-			# Delete multiple rules with the IDs "1" and "2" from the "TEST_PRODUCTS_1" index
-			$ algolia rules delete TEST_PRODUCTS_1 --rule-ids 1,2
+			# Delete multiple rules with the IDs "1" and "2" from the "MOVIES" index
+			$ algolia rules delete MOVIES --rule-ids 1,2
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

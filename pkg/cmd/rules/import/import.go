@@ -46,23 +46,26 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import rules to the specified index",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Import rules to the specified index",
 		Long: heredoc.Doc(`
 			Import rules to the specified index.
 			The file must contains one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia rules import TEST_PRODUCTS_1 -F rules.ndjson
+			# Import rules from the "rules.ndjson" file to the "MOVIES" index
+			$ algolia rules import MOVIES -F rules.ndjson
 
-			# Import rules from the standard input to the "TEST_PRODUCTS_1" index
-			$ cat rules.ndjson | algolia rules import TEST_PRODUCTS_1 -F -
+			# Import rules from the standard input to the "MOVIES" index
+			$ cat rules.ndjson | algolia rules import MOVIES -F -
 
-			# Browse the rules in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
-			$ algolia rules browse TEST_PRODUCTS_2 | algolia rules import TEST_PRODUCTS_2 -F -
+			# Browse the rules in the "SERIES" index and import them to the "MOVIES" index
+			$ algolia rules browse SERIES | algolia rules import MOVIES -F -
 
-			# Import rules from the "rules.ndjson" file to the "TEST_PRODUCTS_1" index and don't forward them to the index replicas
-			$ algolia import TEST_PRODUCTS_1 -F rules.ndjson -f=false
+			# Import rules from the "rules.ndjson" file to the "MOVIES" index and don't forward them to the index replicas
+			$ algolia rules import MOVIES -F rules.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -117,6 +120,10 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Indice)
+	defaultBatchOptions := []interface{}{
+		opt.ForwardToReplicas(opts.ForwardToReplicas),
+	}
+	// Only clear existing rules on the first batch
 	batchOptions := []interface{}{
 		opt.ForwardToReplicas(opts.ForwardToReplicas),
 		opt.ClearExistingRules(opts.ClearExistingRules),
@@ -150,7 +157,7 @@ func runImportCmd(opts *ImportOptions) error {
 			if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
 				return err
 			}
-
+			batchOptions = defaultBatchOptions
 			batch = make([]search.Rule, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d rules", totalCount))
@@ -161,6 +168,12 @@ func runImportCmd(opts *ImportOptions) error {
 	if count > 0 {
 		totalCount += count
 		if _, err := indice.SaveRules(batch, batchOptions...); err != nil {
+			return err
+		}
+	}
+	// Clear rules if 0 rules are imported and the clear existing is set
+	if totalCount == 0 && opts.ClearExistingRules {
+		if _, err := indice.ClearRules(); err != nil {
 			return err
 		}
 	}

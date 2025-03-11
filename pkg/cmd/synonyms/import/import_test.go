@@ -3,7 +3,9 @@ package importSynonyms
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
@@ -19,7 +21,7 @@ import (
 
 func TestNewImportCmd(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "synonyms.ndjson")
-	_ = ioutil.WriteFile(file, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0600)
+	_ = ioutil.WriteFile(file, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0o600)
 
 	tests := []struct {
 		name      string
@@ -104,8 +106,13 @@ func TestNewImportCmd(t *testing.T) {
 
 func Test_runExportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "synonyms.json")
-	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0600)
+	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0o600)
 	require.NoError(t, err)
+
+	var largeBatchBuilder strings.Builder
+	for i := 0; i < 1001; i += 1 {
+		largeBatchBuilder.Write([]byte("{\"objectID\":\"test\",\"type\":\"synonym\",\"synonyms\":[\"test\"]}\n"))
+	}
 
 	tests := []struct {
 		name    string
@@ -113,41 +120,78 @@ func Test_runExportCmd(t *testing.T) {
 		stdin   string
 		wantOut string
 		wantErr string
+		setup   func(*httpmock.Registry)
 	}{
 		{
 			name:    "from stdin",
 			cli:     "foo -F -",
 			stdin:   `{"objectID":"test", "type": "synonym", "synonyms": ["test"]}`,
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 		{
 			name:    "from file",
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 		{
 			name:    "from stdin with invalid JSON",
 			cli:     "foo -F -",
 			stdin:   `{"objectID", "test"},`,
 			wantErr: "failed to parse JSON synonym on line 0: invalid character ',' after object key",
+			setup: func(r *httpmock.Registry) {
+			},
 		},
 		{
 			name:    "from file with forward to replicas",
 			cli:     fmt.Sprintf("foo -F '%s' -f", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 		{
-			name:    "from file with replace existing synonyms",
-			cli:     fmt.Sprintf("foo -F '%s' -r", tmpFile),
-			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
+			name:    "from empty batch with clear existing",
+			cli:     "foo -r -F -",
+			stdin:   "",
+			wantOut: "✓ Successfully imported 0 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/clear"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
+		},
+		{
+			name:    "from empty batch without clear existing",
+			cli:     "foo -F -",
+			stdin:   "",
+			wantOut: "✓ Successfully imported 0 synonyms to foo\n",
+			setup:   func(r *httpmock.Registry) {},
+		},
+		{
+			name:    "from large batch with clear existing",
+			cli:     "foo -r -F -",
+			stdin:   largeBatchBuilder.String(),
+			wantOut: "✓ Successfully imported 1001 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) && req.URL.Query().Get("replaceExistingSynonyms") == "true"
+				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) && req.URL.Query().Get("replaceExistingSynonyms") == ""
+				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
-			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+			if tt.setup != nil {
+				tt.setup(&r)
 			}
 			defer r.Verify(t)
 

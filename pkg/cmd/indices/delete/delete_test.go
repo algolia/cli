@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
@@ -95,11 +96,13 @@ func TestNewDeleteCmd(t *testing.T) {
 
 func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
-		name    string
-		cli     string
-		indices []string
-		isTTY   bool
-		wantOut string
+		name        string
+		cli         string
+		indices     []string
+		isReplica   bool
+		hasReplicas bool
+		isTTY       bool
+		wantOut     string
 	}{
 		{
 			name:    "no TTY",
@@ -119,8 +122,8 @@ func Test_runDeleteCmd(t *testing.T) {
 			name:    "no TTY, multiple indices",
 			cli:     "foo bar --confirm",
 			indices: []string{"foo", "bar"},
-			isTTY:   true,
-			wantOut: "✓ Deleted indices foo, bar\n",
+			isTTY:   false,
+			wantOut: "",
 		},
 		{
 			name:    "TTY, multiple indices",
@@ -129,13 +132,59 @@ func Test_runDeleteCmd(t *testing.T) {
 			isTTY:   true,
 			wantOut: "✓ Deleted indices foo, bar\n",
 		},
+		{
+			name:      "TTY, replica indices",
+			cli:       "foo --confirm",
+			indices:   []string{"foo"},
+			isReplica: true,
+			isTTY:     true,
+			wantOut:   "✓ Deleted indices foo\n",
+		},
+		{
+			name:        "TTY, has replica indices",
+			cli:         "foo --confirm --includeReplicas",
+			indices:     []string{"foo"},
+			hasReplicas: true,
+			isTTY:       true,
+			wantOut:     "✓ Deleted indices foo\n",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			for _, index := range tt.indices {
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
+				// First settings call with `Exists()`
+				r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{}))
+				if tt.hasReplicas {
+					// Settings calls for the primary index and its replicas
+					r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{
+						Replicas: opt.Replicas("bar"),
+					}))
+					r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{
+						Replicas: opt.Replicas("bar"),
+					}))
+					r.Register(httpmock.REST("GET", "1/indexes/bar/settings"), httpmock.JSONResponse(search.Settings{
+						Primary: opt.Primary("foo"),
+					}))
+					// Additional DELETE calls for the replicas
+					r.Register(httpmock.REST("DELETE", "1/indexes/bar"), httpmock.JSONResponse(search.Settings{}))
+				}
+				if tt.isReplica {
+					// We want the first `Delete()` call to fail
+					r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", index)), httpmock.ErrorResponse())
+					// Second settings call to fetch the primary index name
+					r.Register(httpmock.REST("GET", fmt.Sprintf("1/indexes/%s/settings", index)), httpmock.JSONResponse(search.Settings{
+						Primary: opt.Primary("bar"),
+					}))
+					// Third settings call to fetch the primary index settings
+					r.Register(httpmock.REST("GET", "1/indexes/bar/settings"), httpmock.JSONResponse(search.Settings{
+						Replicas: opt.Replicas(index),
+					}))
+					// Fourth settings call to update the primary settings
+					r.Register(httpmock.REST("PUT", "1/indexes/bar/settings"), httpmock.JSONResponse(search.Settings{}))
+				}
+				// Final `Delete()` call
 				r.Register(httpmock.REST("DELETE", fmt.Sprintf("1/indexes/%s", index)), httpmock.JSONResponse(search.DeleteKeyRes{}))
 			}
 			defer r.Verify(t)

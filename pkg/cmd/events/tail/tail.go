@@ -50,8 +50,11 @@ func NewTailCmd(f *cmdutil.Factory, runF func(*TailOptions) error) *cobra.Comman
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
-		Use:   "tail",
-		Args:  validators.NoArgs(),
+		Use:  "tail",
+		Args: validators.NoArgs(),
+		Annotations: map[string]string{
+			"acls": "analytics",
+		},
 		Short: "Tail events",
 		Long: heredoc.Doc(`
 			Tail events from your Algolia application.
@@ -139,7 +142,9 @@ func runTailCmd(opts *TailOptions) error {
 					return err
 				}
 			} else {
-				printEvent(opts.IO, event)
+				if err := printEvent(opts.IO, event); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -147,7 +152,7 @@ func runTailCmd(opts *TailOptions) error {
 	return nil
 }
 
-func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) {
+func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) error {
 	cs := io.ColorScheme()
 
 	timeLayout := "2006-01-02 15:04:05"
@@ -159,5 +164,6 @@ func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) {
 		colorizedStatus = cs.Red(fmt.Sprint(event.Status))
 	}
 
-	fmt.Fprintf(io.Out, "%s [%s] %s %s [%s] %s\n", cs.Bold(formatedTime), colorizedStatus, event.Event.EventType, cs.Bold(event.Event.Index), event.Event.EventName, event.Event.UserToken)
+	_, err := fmt.Fprintf(io.Out, "%s [%s] %s %s [%s] %s\n", cs.Bold(formatedTime), colorizedStatus, event.Event.EventType, cs.Bold(event.Event.Index), event.Event.EventName, event.Event.UserToken)
+	return err
 }

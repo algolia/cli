@@ -39,22 +39,26 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:               "browse <index>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Browse the index objects",
+		Annotations: map[string]string{
+			"runInWebCLI": "true",
+			"acls":        "browse",
+		},
+		Short: "Browse the index objects",
 		Long: heredoc.Doc(`
 			This command browse the objects of the specified index.
 		`),
 		Example: heredoc.Doc(`
-			# Browse the objects from the "BOOKS" index
-			$ algolia objects browse BOOKS
+			# Browse the objects from the "MOVIES" index
+			$ algolia objects browse MOVIES
 
-			# Browse the objects from the "BOOKS" index and select which attributes to retrieve
-			$ algolia objects browse BOOKS --attributesToRetrieve author,title,description
+			# Browse the objects from the "MOVIES" index and select which attributes to retrieve
+			$ algolia objects browse MOVIES --attributesToRetrieve title,overview
 
-			# Browse the objects from the "BOOKS" index with filters
-			$ algolia objects browse BOOKS --filters "'(category:Book OR category:Ebook) AND _tags:published'"
+			# Browse the objects from the "MOVIES" index with filters
+			$ algolia objects browse MOVIES --filters "genres:Drama"
 
-			# Browse the objects from the "BOOKS" and export the results to a new line delimited JSON (ndjson) file
-			$ algolia objects browse BOOKS > books.ndjson
+			# Browse the objects from the "MOVIES" and export the results to a new line delimited JSON (ndjson) file
+			$ algolia objects browse MOVIES > movies.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]
@@ -110,6 +114,9 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			}
 			return err
 		}
-		p.Print(opts.IO, iObject)
+		if err = p.Print(opts.IO, iObject); err != nil {
+			return err
+		}
+
 	}
 }

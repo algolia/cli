@@ -20,8 +20,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/internal/update"
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/art"
+	"github.com/algolia/cli/pkg/cmd/crawler"
 	"github.com/algolia/cli/pkg/cmd/dictionary"
 	"github.com/algolia/cli/pkg/cmd/events"
 	"github.com/algolia/cli/pkg/cmd/factory"
@@ -59,10 +61,10 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Example: heredoc.Doc(`
-			$ algolia search MY_INDEX --query "foo"
-			$ algolia objects browse MY_INDEX
+			$ algolia search MOVIES --query "toy story"
+			$ algolia objects browse MOVIES
 			$ algolia apikeys create --acl search
-			$ algolia rules import MY_INDEX -f rules.json
+			$ algolia rules import MOVIES -f rules.json
 		`),
 	}
 
@@ -80,7 +82,10 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
+	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
 	cmd.PersistentFlags().StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
+	_ = cmd.PersistentFlags().MarkDeprecated("admin-api-key", "use --api-key instead")
+	cmd.PersistentFlags().StringSliceVar(&f.Config.Profile().SearchHosts, "search-hosts", nil, "The list of search hosts as CSV")
 
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
@@ -100,6 +105,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
 	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
 	cmd.AddCommand(events.NewEventsCmd(f))
+	cmd.AddCommand(crawler.NewCrawlersCmd(f))
 
 	// ??? related commands
 	cmd.AddCommand(art.NewArtCmd(f))
@@ -133,10 +139,15 @@ func Execute() exitCode {
 	// Pre-command auth check and telemetry setup.
 	authError := errors.New("authError")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		if cmdutil.IsAuthCheckEnabled(cmd) {
-			if err := cmdutil.CheckAuth(cfg); err != nil {
+		if auth.IsAuthCheckEnabled(cmd) {
+			if err := auth.CheckAuth(cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
 				fmt.Fprintln(stderr, "Please run `algolia profile add` to configure your first profile.")
+				return authError
+			}
+
+			if err := auth.CheckACLs(cmd, cmdFactory); err != nil {
+				fmt.Fprint(stderr, err)
 				return authError
 			}
 		}
@@ -185,7 +196,6 @@ func Execute() exitCode {
 
 	// Run the command.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {

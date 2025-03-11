@@ -42,15 +42,18 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		Use:               "save <index> --id <id> --synonyms <synonyms>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Save a synonym to the given index",
-		Aliases:           []string{"create", "edit"},
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short:   "Save a synonym to the given index",
+		Aliases: []string{"create", "edit"},
 		Long: heredoc.Doc(`
 			This command save a synonym to the specified index.
 			If the synonym doesn't exist yet, a new one is created.
 		`),
 		Example: heredoc.Doc(`
-			# Save one standard synonym with ID "1" and "foo" and "bar" synonyms to the "TEST_PRODUCTS_1" index
-			$ algolia synonyms save TEST_PRODUCTS_1 --id 1 --synonyms foo,bar
+			# Save one standard synonym with ID "1" and "foo" and "bar" synonyms to the "MOVIES" index
+			$ algolia synonyms save MOVIES --id 1 --synonyms foo,bar
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indice = args[0]

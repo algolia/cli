@@ -35,8 +35,8 @@ func TestNewDeleteCmd(t *testing.T) {
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
-				DoConfirm:   false,
-				Dictionnary: "plural",
+				DoConfirm:  false,
+				Dictionary: "plural",
 				ObjectIDs: []string{
 					"1",
 				},
@@ -48,8 +48,8 @@ func TestNewDeleteCmd(t *testing.T) {
 			tty:      true,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
-				DoConfirm:   true,
-				Dictionnary: "plural",
+				DoConfirm:  true,
+				Dictionary: "plural",
 				ObjectIDs: []string{
 					"1",
 				},
@@ -61,8 +61,8 @@ func TestNewDeleteCmd(t *testing.T) {
 			tty:      false,
 			wantsErr: false,
 			wantsOpts: DeleteOptions{
-				DoConfirm:   false,
-				Dictionnary: "plural",
+				DoConfirm:  false,
+				Dictionary: "plural",
 				ObjectIDs: []string{
 					"1",
 					"2",
@@ -103,7 +103,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, "", stdout.String())
 			assert.Equal(t, "", stderr.String())
 
-			assert.Equal(t, tt.wantsOpts.Dictionnary, opts.Dictionnary)
+			assert.Equal(t, tt.wantsOpts.Dictionary, opts.Dictionary)
 			assert.Equal(t, tt.wantsOpts.ObjectIDs, opts.ObjectIDs)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
 		})
@@ -112,17 +112,17 @@ func TestNewDeleteCmd(t *testing.T) {
 
 func Test_runDeleteCmd(t *testing.T) {
 	tests := []struct {
-		name        string
-		cli         string
-		dictionnary string
-		objectIDs   []string
-		isTTY       bool
-		wantOut     string
+		name       string
+		cli        string
+		dictionary string
+		objectIDs  []string
+		isTTY      bool
+		wantOut    string
 	}{
 		{
-			name:        "single object-id, no TTY",
-			cli:         "plural --object-ids 1 --confirm",
-			dictionnary: "plural",
+			name:       "single object-id, no TTY",
+			cli:        "plural --object-ids 1 --confirm",
+			dictionary: "plural",
 			objectIDs: []string{
 				"1",
 			},
@@ -130,9 +130,9 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "",
 		},
 		{
-			name:        "single object-id, TTY",
-			cli:         "plural --object-ids 1 --confirm",
-			dictionnary: "plural",
+			name:       "single object-id, TTY",
+			cli:        "plural --object-ids 1 --confirm",
+			dictionary: "plural",
 			objectIDs: []string{
 				"1",
 			},
@@ -140,9 +140,9 @@ func Test_runDeleteCmd(t *testing.T) {
 			wantOut: "✓ Successfully deleted 1 entry from plural\n",
 		},
 		{
-			name:        "multiple object-ids, TTY",
-			cli:         "plural --object-ids 1,2 --confirm",
-			dictionnary: "plural",
+			name:       "multiple object-ids, TTY",
+			cli:        "plural --object-ids 1,2 --confirm",
+			dictionary: "plural",
 			objectIDs: []string{
 				"1",
 				"2",
@@ -158,9 +158,9 @@ func Test_runDeleteCmd(t *testing.T) {
 
 			// test is flaky since there's no guarantee of obtaining the right object using a search by objectID
 			for _, id := range tt.objectIDs {
-				r.Register(httpmock.REST("GET", fmt.Sprintf("1/dictionaries/%s/search?query=%s", tt.dictionnary, id)), httpmock.JSONResponse(search.SearchDictionariesRes{}))
+				r.Register(httpmock.REST("GET", fmt.Sprintf("1/dictionaries/%s/search?query=%s", tt.dictionary, id)), httpmock.JSONResponse(search.SearchDictionariesRes{}))
 			}
-			r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", tt.dictionnary)), httpmock.JSONResponse(search.TaskStatusRes{}))
+			r.Register(httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", tt.dictionary)), httpmock.JSONResponse(search.TaskStatusRes{}))
 
 			f, out := test.NewFactory(tt.isTTY, &r, nil, "")
 			cmd := NewDeleteCmd(f, nil)

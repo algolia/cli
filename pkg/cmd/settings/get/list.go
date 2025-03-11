@@ -3,6 +3,7 @@ package get
 import (
 	"fmt"
 
+	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 	"github.com/spf13/cobra"
 
@@ -32,9 +33,17 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		PrintFlags:   cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
-		Use:               "get <index>",
-		Args:              validators.ExactArgs(1),
-		Short:             "Get the settings of the specified index.",
+		Use:   "get <index>",
+		Args:  validators.ExactArgs(1),
+		Short: "Get the settings of the specified index.",
+		Annotations: map[string]string{
+			"runInWebCLI": "true",
+			"acls":        "settings",
+		},
+		Example: heredoc.Doc(`
+			# Store the settings of an index in a file
+			$ algolia settings get MOVIES > movies_settings.json
+		`),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

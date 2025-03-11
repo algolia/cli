@@ -15,14 +15,14 @@ import (
 )
 
 // ListOptions represents the options for the list command
-type AddOptions struct {
+type ListOptions struct {
 	config config.IConfig
 	IO     *iostreams.IOStreams
 }
 
 // NewListCmd returns a new instance of ListCmd
-func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command {
-	opts := &AddOptions{
+func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
+	opts := &ListOptions{
 		IO:     f.IOStreams,
 		config: f.Config,
 	}
@@ -47,7 +47,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command
 }
 
 // runListCmd executes the list command
-func runListCmd(opts *AddOptions) error {
+func runListCmd(opts *ListOptions) error {
 	profiles := opts.config.ConfiguredProfiles()
 	if len(profiles) == 0 {
 		fmt.Fprintln(opts.IO.ErrOut, "No configured profiles")
@@ -68,15 +68,22 @@ func runListCmd(opts *AddOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching configured profiles")
 	for _, profile := range profiles {
-		client := search.NewClient(profile.ApplicationID, profile.AdminAPIKey)
-		res, err := client.ListIndices()
-		if err != nil {
-			return err
-		}
-
 		table.AddField(profile.Name, nil, nil)
 		table.AddField(profile.ApplicationID, nil, nil)
-		table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
+
+		apiKey := profile.APIKey
+		if apiKey == "" {
+			apiKey = profile.AdminAPIKey // Legacy
+		}
+
+		client := search.NewClient(profile.ApplicationID, apiKey)
+		res, err := client.ListIndices()
+		if err != nil {
+			table.AddField(err.Error(), nil, nil)
+		} else {
+			table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
+		}
+
 		if profile.Default {
 			table.AddField(cs.SuccessIcon(), nil, nil)
 		} else {

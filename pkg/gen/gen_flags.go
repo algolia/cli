@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/format"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -44,7 +45,12 @@ func main() {
 	// This is the script that generates the `flags.go` file from the
 	// OpenAPI spec file.
 
-	specNames := []string{"searchParamsObject", "browseParamsObject", "indexSettings", "deleteByParams"}
+	specNames := []string{
+		"searchParamsObject",
+		"browseParamsObject",
+		"indexSettings",
+		"deleteByParams",
+	}
 	templateData, err := getTemplateData(specNames)
 	if err != nil {
 		panic(err)
@@ -146,14 +152,14 @@ func getFlags(params map[string]*openapi3.Schema) *SpecFlags {
 		Flags: make(map[string]*SpecFlag),
 	}
 	for name, param := range params {
-		flags.Flags[name] = getFlag(param)
+		flags.Flags[name] = getFlag(name, param)
 	}
 	return flags
 }
 
 // GetGoType returns the Go type for the given OpenAPI 3.0 schema.
 func GetGoType(param *openapi3.Schema) string {
-	var SpecTypeGoType = map[string]string{
+	SpecTypeGoType := map[string]string{
 		"string":  "string",
 		"integer": "int",
 		"number":  "float64",
@@ -166,7 +172,7 @@ func GetGoType(param *openapi3.Schema) string {
 }
 
 // getFlag returns the flag for the given parameter.
-func getFlag(param *openapi3.Schema) *SpecFlag {
+func getFlag(name string, param *openapi3.Schema) *SpecFlag {
 	subType := ""
 	if param.Type == "array" {
 		subType = param.Items.Value.Type
@@ -176,14 +182,17 @@ func getFlag(param *openapi3.Schema) *SpecFlag {
 
 	var categories []string
 	if param.ExtensionProps.Extensions["x-categories"] != nil {
-		json.Unmarshal(param.ExtensionProps.Extensions["x-categories"].(json.RawMessage), &categories)
+		json.Unmarshal(
+			param.ExtensionProps.Extensions["x-categories"].(json.RawMessage),
+			&categories,
+		)
 	}
 
 	flag := &SpecFlag{
 		Def:        param.Default,
 		Type:       param.Type,
 		GoType:     GetGoType(param),
-		Usage:      getDescription(param),
+		Usage:      getDescription(name, param),
 		SubType:    subType,
 		Categories: categories,
 	}
@@ -197,14 +206,59 @@ func getFlag(param *openapi3.Schema) *SpecFlag {
 	return flag
 }
 
-// getDescription returns the description for the given parameter.
-func getDescription(param *openapi3.Schema) string {
+// shortDescription returns the first sentence of the parameter description.
+func shortDescription(description string) string {
+	// Handle sentences ending with a colon
+	s := strings.Split(description, ":\n")
+	// Handle sentences ending with a period
+	s = strings.Split(s[0], ".\n")
+	s[0] = replaceMarkdownLinks(s[0])
+	s[0] = strings.ReplaceAll(s[0], "`", "")
+
+	if !strings.HasSuffix(s[0], ".") {
+		s[0] += "."
+	}
+
+	return strings.TrimSpace(s[0])
+}
+
+func replaceMarkdownLinks(text string) string {
+	re := regexp.MustCompile("\\[([^\\[\\]]*)\\]\\([^\\(\\)]*\\)")
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	for _, match := range matches {
+		linkText := match[1]
+		text = strings.Replace(text, match[0], linkText, 1)
+	}
+
+	return text
+}
+
+// getDescription returns the short description for the given parameter.
+// It's the first sentence of the parameter description followed by possible values if it's an enum,
+// followed by a link to the API param reference page
+func getDescription(name string, param *openapi3.Schema) string {
+	withLink := true
+	// These params don't have an API reference page
+	if name == "semanticSearch" || name == "cursor" || name == "reRankingApplyFilter" {
+		withLink = false
+	}
+
+	description := shortDescription(param.Description)
+
+	// Add choices if param is an enum
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
 		for i, e := range param.Enum {
 			choices[i] = e.(string)
 		}
-		return fmt.Sprintf("%s One of: (%v).", param.Description, strings.Join(choices, ", "))
+		description = fmt.Sprintf("%s One of: %v.", description, strings.Join(choices, ", "))
 	}
-	return param.Description
+
+	// Add link to the API param reference page
+	if withLink {
+		link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
+		description = fmt.Sprintf("%s\nSee: %s", description, link)
+	}
+	return description
 }

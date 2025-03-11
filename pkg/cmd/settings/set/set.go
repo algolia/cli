@@ -35,12 +35,15 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 		SearchClient: f.SearchClient,
 	}
 	cmd := &cobra.Command{
-		Use:   "set <index>",
-		Args:  validators.ExactArgs(1),
+		Use:  "set <index>",
+		Args: validators.ExactArgs(1),
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
 		Short: "Set the settings of the specified index.",
 		Example: heredoc.Doc(`
-			# Set the typo tolerance to false on the PRODUCTS index
-			$ algolia settings set PRODUCTS --typoTolerance="false"
+			# Set the typo tolerance to false on the MOVIES index
+			$ algolia settings set MOVIES --typoTolerance="false"
 		`),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
 		RunE: func(cmd *cobra.Command, args []string) error {

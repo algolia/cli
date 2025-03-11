@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -53,7 +54,7 @@ func NewArtCmd(f *cmdutil.Factory) *cobra.Command {
 		Hidden: true,
 	}
 
-	cmdutil.DisableAuthCheck(cmd)
+	auth.DisableAuthCheck(cmd)
 
 	return cmd
 }

@@ -9,10 +9,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -41,7 +43,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 			$ algolia profile add
 
 			# Add a new profile (non-interactive) and set it to default
-			$ algolia profile add --name "my-profile" --app-id "my-app-id" --admin-api-key "my-admin-api-key" --default
+			$ algolia profile add --name "my-profile" --app-id "my-app-id" --api-key "my-api-key" --default
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Interactive = true
@@ -49,12 +51,12 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 			flags := cmd.Flags()
 			nameProvided := flags.Changed("name")
 			appIDProvided := flags.Changed("app-id")
-			adminAPIKeyProvided := flags.Changed("admin-api-key")
+			APIKeyProvided := flags.Changed("api-key")
 
-			opts.Interactive = !(nameProvided && appIDProvided && adminAPIKeyProvided)
+			opts.Interactive = !(nameProvided && appIDProvided && APIKeyProvided)
 
 			if opts.Interactive && !opts.IO.CanPrompt() {
-				return cmdutil.FlagErrorf("`--name`, `--app-id` and `--admin-api-key` required when not running interactively")
+				return cmdutil.FlagErrorf("`--name`, `--app-id` and `--api-key` required when not running interactively")
 			}
 
 			if !opts.Interactive {
@@ -79,7 +81,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 
 	cmd.Flags().StringVarP(&opts.Profile.Name, "name", "n", "", heredoc.Doc(`Name of the profile.`))
 	cmd.Flags().StringVar(&opts.Profile.ApplicationID, "app-id", "", heredoc.Doc(`ID of the application.`))
-	cmd.Flags().StringVar(&opts.Profile.AdminAPIKey, "admin-api-key", "", heredoc.Doc(`Admin API Key of the application.`))
+	cmd.Flags().StringVar(&opts.Profile.APIKey, "api-key", "", heredoc.Doc(`API Key of the application.`))
 	cmd.Flags().BoolVarP(&opts.Profile.Default, "default", "d", false, heredoc.Doc(`Set the profile as the default one.`))
 
 	return cmd
@@ -113,10 +115,10 @@ func runAddCmd(opts *AddOptions) error {
 				Validate: survey.ComposeValidators(survey.Required, validators.ApplicationIDExists(opts.config)),
 			},
 			{
-				Name: "adminAPIKey",
+				Name: "APIKey",
 				Prompt: &survey.Input{
-					Message: "Admin API Key:",
-					Default: opts.Profile.AdminAPIKey,
+					Message: "(Write) API Key:",
+					Default: opts.Profile.APIKey,
 				},
 				Validate: survey.Required,
 			},
@@ -134,10 +136,52 @@ func runAddCmd(opts *AddOptions) error {
 		}
 	}
 
-	// Check if the application credentials are valid
-	_, err := search.NewClient(opts.Profile.ApplicationID, opts.Profile.AdminAPIKey).ListAPIKeys()
+	client := search.NewClient(opts.Profile.ApplicationID, opts.Profile.APIKey)
+	var isAdminAPIKey bool
+
+	// Check if the provided API Key is an admin API Key
+	_, err := client.ListAPIKeys()
+	if err == nil {
+		isAdminAPIKey = true
+	}
+
+	// Check the ACLs of the provided API Key
+	apiKey, err := search.NewClient(opts.Profile.ApplicationID, opts.Profile.APIKey).GetAPIKey(opts.Profile.APIKey)
 	if err != nil {
 		return errors.New("invalid application credentials")
+	}
+	if len(apiKey.ACL) == 0 {
+		return errors.New("the provided API key has no ACLs")
+	}
+
+	// We should have at least the ACLs for a write key, otherwise warns the user, but still allows to add the profile.
+	// If it's an admin API Key, we don't need to check ACLs, but we still warn the user.
+	var warning string
+	if !isAdminAPIKey {
+		missingACLs := utils.Differences(auth.WriteAPIKeyDefaultACLs, apiKey.ACL)
+		if len(missingACLs) > 0 {
+			warning = fmt.Sprintf("%s The provided API key might be missing some ACLs: %s", opts.IO.ColorScheme().WarningIcon(), missingACLs)
+			warning += "\n  See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information."
+			warning += "\n  You can still add the profile, but some commands might not be available."
+		}
+	} else {
+		warning = fmt.Sprintf("%s The provided API key is an admin API key.", opts.IO.ColorScheme().WarningIcon())
+		warning += "\n  You can still add the profile, but it would be better to use a more restricted key instead."
+		warning += "\n  See https://www.algolia.com/doc/guides/security/security-best-practices/#keep-your-admin-api-key-confidential for more information."
+	}
+
+	if warning != "" {
+		fmt.Printf("%s\n\n", warning)
+		if opts.IO.CanPrompt() {
+			var confirmed bool
+			err := prompt.Confirm("Do you want to continue?", &confirmed)
+			if err != nil {
+				return err
+			}
+			if !confirmed {
+				return nil
+			}
+		}
 	}
 
 	err = opts.Profile.Add()
@@ -164,7 +208,9 @@ func runAddCmd(opts *AddOptions) error {
 			}
 		}
 
-		fmt.Fprintf(opts.IO.Out, "%s Profile '%s' (%s) added successfully%s\n", cs.SuccessIcon(), opts.Profile.Name, opts.Profile.ApplicationID, extra)
+		if _, err = fmt.Fprintf(opts.IO.Out, "%s Profile '%s' (%s) added successfully%s\n", cs.SuccessIcon(), opts.Profile.Name, opts.Profile.ApplicationID, extra); err != nil {
+			return err
+		}
 	}
 
 	return nil

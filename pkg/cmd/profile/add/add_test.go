@@ -32,7 +32,7 @@ func TestNewAddCmd(t *testing.T) {
 		},
 		{
 			name:     "not interactive, all flags",
-			cli:      "--name my-app --app-id my-app-id --admin-api-key my-admin-api-key",
+			cli:      "--name my-app --app-id my-app-id --api-key my-admin-api-key",
 			cfg:      cfg,
 			tty:      false,
 			wantsErr: false,
@@ -40,20 +40,20 @@ func TestNewAddCmd(t *testing.T) {
 				Profile: config.Profile{
 					Name:          "my-app",
 					ApplicationID: "my-app-id",
-					AdminAPIKey:   "my-admin-api-key",
+					APIKey:        "my-admin-api-key",
 				},
 			},
 		},
 		{
 			name:     "not interactive, all flags, existing profile",
-			cli:      "--name default --app-id my-app-id --admin-api-key my-admin-api-key",
+			cli:      "--name default --app-id my-app-id --api-key my-admin-api-key",
 			cfg:      cfg,
 			tty:      false,
 			wantsErr: true,
 		},
 		{
 			name:     "not interactive, all flags, existing app ID",
-			cli:      "--name my-app --app-id default --admin-api-key my-admin-api-key",
+			cli:      "--name my-app --app-id default --api-key my-admin-api-key",
 			cfg:      cfg,
 			tty:      false,
 			wantsErr: true,

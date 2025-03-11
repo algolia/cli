@@ -21,7 +21,7 @@ type BrowseOptions struct {
 
 	SearchClient func() (*search.Client, error)
 
-	Dictionnaries           []search.DictionaryName
+	Dictionaries            []search.DictionaryName
 	All                     bool
 	IncludeDefaultStopwords bool
 
@@ -38,7 +38,7 @@ type DictionaryEntry struct {
 	Language      string
 }
 
-// NewBrowseCmd creates and returns a browse command for dictionnaries' entries.
+// NewBrowseCmd creates and returns a browse command for dictionaries' entries.
 func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Command {
 	cs := f.IOStreams.ColorScheme()
 
@@ -55,21 +55,24 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return shared.DictionaryNames(), cobra.ShellCompDirectiveNoFileComp
 		},
+		Annotations: map[string]string{
+			"acls": "settings",
+		},
 		Short: "Browse dictionary entries",
 		Long: heredoc.Docf(`
-			This command retrieves all entries from the specified %s dictionnaries.
+			This command retrieves all entries from the specified %s dictionaries.
 		`, cs.Bold("custom")),
 		Example: heredoc.Doc(`
 			# Retrieve all entries from the "stopwords" dictionary (doesn't include default stopwords)
 			$ algolia dictionary entries browse stopwords
 
-			# Retrieve all entries from the "stopwords" and "plurals" dictionnaries
+			# Retrieve all entries from the "stopwords" and "plurals" dictionaries
 			$ algolia dictionary entries browse stopwords plurals
 
-			# Retrieve all entries from all dictionnaries
+			# Retrieve all entries from all dictionaries
 			$ algolia dictionary entries browse --all
 
-			# Retrieve all entries from the "stopwords" dictionnaries (including default stopwords)
+			# Retrieve all entries from the "stopwords" dictionaries (including default stopwords)
 			$ algolia dictionary entries browse stopwords --include-defaults
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -78,11 +81,11 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 			}
 
 			if opts.All {
-				opts.Dictionnaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
+				opts.Dictionaries = []search.DictionaryName{search.Stopwords, search.Plurals, search.Compounds}
 			} else {
-				opts.Dictionnaries = make([]search.DictionaryName, len(args))
-				for i, dictionnary := range args {
-					opts.Dictionnaries[i] = search.DictionaryName(dictionnary)
+				opts.Dictionaries = make([]search.DictionaryName, len(args))
+				for i, dictionary := range args {
+					opts.Dictionaries[i] = search.DictionaryName(dictionary)
 				}
 			}
 
@@ -90,7 +93,7 @@ func NewBrowseCmd(f *cmdutil.Factory, runF func(*BrowseOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "browse all dictionnaries")
+	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "browse all dictionaries")
 	cmd.Flags().BoolVarP(&opts.IncludeDefaultStopwords, "include-defaults", "d", false, "include default stopwords")
 
 	opts.PrintFlags.AddFlags(cmd)
@@ -113,13 +116,13 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 	hasNoEntries := true
 
-	for _, dictionnary := range opts.Dictionnaries {
+	for _, dictionary := range opts.Dictionaries {
 		pageCount := 0
 		maxPages := 1
 
 		// implement infinite pagination
 		for pageCount < maxPages {
-			res, err := client.SearchDictionaryEntries(dictionnary, "", opt.HitsPerPage(1000), opt.Page(pageCount))
+			res, err := client.SearchDictionaryEntries(dictionary, "", opt.HitsPerPage(1000), opt.Page(pageCount))
 			if err != nil {
 				return err
 			}
@@ -144,10 +147,14 @@ func runBrowseCmd(opts *BrowseOptions) error {
 			for _, entry := range entries {
 				if opts.IncludeDefaultStopwords {
 					// print all entries (default stopwords included)
-					p.Print(opts.IO, entry)
+					if err = p.Print(opts.IO, entry); err != nil {
+						return err
+					}
 				} else if entry.Type == shared.CustomEntryType {
 					// print only custom entries
-					p.Print(opts.IO, entry)
+					if err = p.Print(opts.IO, entry); err != nil {
+						return err
+					}
 				}
 			}
 
@@ -156,7 +163,9 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 		// in case no entry is found in all the dictionaries
 		if hasNoEntries {
-			fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon())
+			if _, err = fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon()); err != nil {
+				return err
+			}
 			// go to the next dictionary
 			break
 		}

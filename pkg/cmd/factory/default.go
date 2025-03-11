@@ -5,6 +5,7 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
 
+	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -17,6 +18,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	}
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
+	f.CrawlerClient = crawlerClient(f)
 
 	return f
 }
@@ -32,7 +34,7 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client,
 		if err != nil {
 			return nil, err
 		}
-		APIKey, err := f.Config.Profile().GetAdminAPIKey()
+		APIKey, err := f.Config.Profile().GetAPIKey()
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +43,23 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.Client,
 			AppID:          appID,
 			APIKey:         APIKey,
 			ExtraUserAgent: fmt.Sprintf("Algolia CLI (%s)", appVersion),
+			Hosts:          f.Config.Profile().GetSearchHosts(),
 		}
 		return search.NewClientWithConfig(clientCfg), nil
+	}
+}
+
+func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
+	return func() (*crawler.Client, error) {
+		userID, err := f.Config.Profile().GetCrawlerUserID()
+		if err != nil {
+			return nil, err
+		}
+		APIKey, err := f.Config.Profile().GetCrawlerAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		return crawler.NewClient(userID, APIKey), nil
 	}
 }

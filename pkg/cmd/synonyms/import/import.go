@@ -42,26 +42,29 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Use:               "import <index> -F <file>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "Import synonyms to the index",
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Short: "Import synonyms to the index",
 		Long: heredoc.Doc(`
 			Import synonyms to the provided index.
 			The file must contains one single JSON synonym per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index
-			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson
+			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index
+			$ algolia synonyms import MOVIES -F synonyms.ndjson
 
-			# Import synonyms from the standard input to the "TEST_PRODUCTS_1" index
-			$ cat synonyms.ndjson | algolia synonyms import TEST_PRODUCTS_1 -F -
+			# Import synonyms from the standard input to the "MOVIES" index
+			$ cat synonyms.ndjson | algolia synonyms import MOVIES -F -
 
-			# Browse the synonyms in the "TEST_PRODUCTS_1" index and import them to the "TEST_PRODUCTS_2" index
-			$ algolia synonyms browse TEST_PRODUCTS_1 | algolia synonyms import TEST_PRODUCTS_2 -F -
+			# Browse the synonyms in the "SERIES" index and import them to the "MOVIES" index
+			$ algolia synonyms browse SERIES | algolia synonyms import MOVIES -F -
 
-			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index and replace existing synonyms
-			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson -r
+			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index and replace existing synonyms
+			$ algolia synonyms import MOVIES -F synonyms.ndjson -r
 
-			# Import synonyms from the "synonyms.ndjson" file to the "TEST_PRODUCTS_1" index and don't forward the synonyms to the index replicas
-			$ algolia synonyms import TEST_PRODUCTS_1 -F synonyms.ndjson -f=false
+			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index and don't forward the synonyms to the index replicas
+			$ algolia synonyms import MOVIES -F synonyms.ndjson -f=false
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
@@ -96,6 +99,10 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	indice := client.InitIndex(opts.Index)
+	defaultBatchOptions := []interface{}{
+		opt.ForwardToReplicas(opts.ForwardToReplicas),
+	}
+	// Only clear existing rules on the first batch
 	batchOptions := []interface{}{
 		opt.ForwardToReplicas(opts.ForwardToReplicas),
 		opt.ReplaceExistingSynonyms(opts.ReplaceExistingSynonyms),
@@ -179,7 +186,7 @@ func runImportCmd(opts *ImportOptions) error {
 			if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
 				return err
 			}
-
+			batchOptions = defaultBatchOptions
 			batch = make([]search.Synonym, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d synonyms", totalCount))
@@ -190,6 +197,12 @@ func runImportCmd(opts *ImportOptions) error {
 	if count > 0 {
 		totalCount += count
 		if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
+			return err
+		}
+	}
+
+	if totalCount == 0 && opts.ReplaceExistingSynonyms {
+		if _, err := indice.ClearSynonyms(); err != nil {
 			return err
 		}
 	}
