@@ -64,14 +64,14 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 
 			// Check that the user isn't resetting standard entries and trying to turn standard entries on or off at the same time
 			if opts.ResetStandardEntries && (len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0) {
-				return cmdutil.FlagErrorf("You can't reset standard entries and turn them on or off at the same time")
+				return cmdutil.FlagErrorf("You cannot reset standard entries and disable or enable standard entries at the same time")
 			}
 
 			// Check if the user is trying to turn standard entries on or off for the same languages at the same time
 			for _, disableLanguage := range opts.DisableStandardEntries {
 				for _, enableLanguage := range opts.EnableStandardEntries {
 					if disableLanguage == enableLanguage {
-						return cmdutil.FlagErrorf("You can't turn standard entries on or off for the same language: %s", disableLanguage)
+						return cmdutil.FlagErrorf("You cannot disable and enable standard entries for the same language: %s", disableLanguage)
 					}
 				}
 			}
