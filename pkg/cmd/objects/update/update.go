@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -25,7 +24,7 @@ type UpdateOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index             string
 	CreateIfNotExists bool
@@ -88,13 +87,17 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Records to update from `file` (use \"-\" to use the standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "Records to update from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent record will create a new opne with the objectID and the attributes defined in the file")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+	cmd.Flags().
+		BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new one with the objectID and the attributes defined in the file")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
 
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating records even if some are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating records even if some are invalid.")
 
 	return cmd
 }
@@ -106,10 +109,9 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	cs := opts.IO.ColorScheme()
-	index := client.InitIndex(opts.Index)
 
 	var (
-		objects      []interface{}
+		objects      []map[string]any
 		currentLine  = 0
 		totalObjects = 0
 	)
@@ -127,12 +129,17 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		}
 
 		totalObjects++
-		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File))
+		opts.IO.UpdateProgressIndicatorLabel(
+			fmt.Sprintf("Read %s from %s", utils.Pluralize(totalObjects, "object"), opts.File),
+		)
 
-		var obj Object
+		var obj map[string]any
 		if err := json.Unmarshal([]byte(line), &obj); err != nil {
-			err := fmt.Errorf("line %d: %s", currentLine, err)
-			errors = append(errors, err.Error())
+			errors = append(errors, fmt.Errorf("line %d: %s", currentLine, err).Error())
+			continue
+		}
+		if err = IsValidUpdate(obj); err != nil {
+			errors = append(errors, fmt.Errorf("line %d: %s", currentLine, err).Error())
 			continue
 		}
 
@@ -153,7 +160,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	// No objects found
 	if len(objects) == 0 {
 		if len(errors) > 0 {
-			return fmt.Errorf(errorMsg)
+			return fmt.Errorf("%s", errorMsg)
 		}
 		return fmt.Errorf("%s No objects found in the file", cs.FailureIcon())
 	}
@@ -175,8 +182,19 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	// Update the objects
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating %s objects on %s", cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index)))
-	res, err := index.PartialUpdateObjects(objects, opt.CreateIfNotExists(opts.CreateIfNotExists))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Updating %s objects on %s",
+			cs.Bold(fmt.Sprint(len(objects))),
+			cs.Bold(opts.Index),
+		),
+	)
+
+	responses, err := client.PartialUpdateObjects(
+		opts.Index,
+		objects,
+		search.WithCreateIfNotExists(opts.CreateIfNotExists),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -185,13 +203,64 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	// Wait for the operation to complete if requested
 	if opts.Wait {
 		opts.IO.UpdateProgressIndicatorLabel("Waiting for operation to complete")
-		if err := res.Wait(); err != nil {
-			opts.IO.StopProgressIndicator()
-			return err
+		for _, res := range responses {
+			_, err := client.WaitForTask(opts.Index, res.TaskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 		}
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully updated %s objects on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(objects))), cs.Bold(opts.Index), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully updated %s objects on %s in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(objects))),
+		cs.Bold(opts.Index),
+		time.Since(elapsed),
+	)
 	return err
+}
+
+// IsAllowedOperation checks if the `_operation` value is allowed
+func IsAllowedOperation(op string) bool {
+	for _, t := range search.AllowedBuiltInOperationTypeEnumValues {
+		if op == string(t) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsValidUpdate validates the update object before hitting the API
+func IsValidUpdate(obj map[string]any) error {
+	if _, ok := obj["objectID"]; !ok {
+		return fmt.Errorf("objectID is required")
+	}
+
+	// For printing
+	var allowedOps []string
+	for _, op := range search.AllowedBuiltInOperationTypeEnumValues {
+		allowedOps = append(allowedOps, string(op))
+	}
+
+	for name, attribute := range obj {
+		// Check if we have a nested attribute
+		if nested, ok := attribute.(map[string]any); ok {
+			// Check if we have a built-in operation
+			if op, ok := nested["_operation"]; ok {
+				if !IsAllowedOperation(op.(string)) {
+					return fmt.Errorf(
+						"invalid operation \"%s\" for attribute \"%s\". Allowed operations: %s",
+						op,
+						name,
+						strings.Join(allowedOps, ", "),
+					)
+				}
+			}
+		}
+	}
+	return nil
 }

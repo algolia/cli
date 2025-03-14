@@ -36,9 +36,10 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		PrintFlags:    cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
-		Use:   "list",
-		Args:  validators.NoArgs(),
-		Short: "List crawlers",
+		Use:     "list",
+		Aliases: []string{"l"},
+		Args:    validators.NoArgs(),
+		Short:   "List crawlers",
 		Long: heredoc.Doc(`
 			List crawlers, optionally filtered by name or appID.
 		`),

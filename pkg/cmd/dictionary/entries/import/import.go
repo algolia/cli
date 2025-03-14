@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/dictionary/shared"
@@ -26,11 +26,10 @@ type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	DictionaryName    string
-	CreateIfNotExists bool
-	Wait              bool
+	DictionaryType search.DictionaryType
+	Wait           bool
 
 	File    string
 	Scanner *bufio.Scanner
@@ -49,7 +48,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd := &cobra.Command{
 		Use:       "import <dictionary> -F <file> [--wait] [--continue-on-errors]",
 		Args:      validators.ExactArgs(1),
-		ValidArgs: shared.DictionaryNames(),
+		ValidArgs: shared.DictionaryTypes(),
 		Annotations: map[string]string{
 			"acls": "settings,editSettings",
 		},
@@ -67,7 +66,11 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 			$ algolia dictionary import plurals -F entries.ndjson --continue-on-errors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.DictionaryName = args[0]
+			d, err := search.NewDictionaryTypeFromValue(args[0])
+			if err != nil {
+				return err
+			}
+			opts.DictionaryType = *d
 
 			scanner, err := cmdutil.ScanFile(opts.File, opts.IO.In)
 			if err != nil {
@@ -83,11 +86,14 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Read entries to import from `file` (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "Read entries to import from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
-	cmd.Flags().BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue importing entries even if some entries are invalid.")
+	cmd.Flags().
+		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
+	cmd.Flags().
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue importing entries even if some entries are invalid.")
 
 	return cmd
 }
@@ -101,7 +107,7 @@ func runImportCmd(opts *ImportOptions) error {
 	cs := opts.IO.ColorScheme()
 
 	var (
-		entries      []search.DictionaryEntry
+		entries      []*search.DictionaryEntry
 		currentLine  = 0
 		totalEntries = 0
 	)
@@ -121,19 +127,17 @@ func runImportCmd(opts *ImportOptions) error {
 		totalEntries++
 		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Read entries from %s", opts.File))
 
-		var entry shared.DictionaryEntry
+		var entry search.DictionaryEntry
+
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			err := fmt.Errorf("line %d: %s", currentLine, err)
-			errors = append(errors, err.Error())
-			continue
-		}
-		err := ValidateDictionaryEntry(entry, currentLine)
-		if err != nil {
-			errors = append(errors, err.Error())
+			errors = append(errors, fmt.Errorf("line %d: %s", currentLine, err).Error())
 			continue
 		}
 
-		dictionaryEntry, err := createDictionaryEntry(opts.DictionaryName, entry)
+		fmt.Printf("TYPE: %v\n", opts.DictionaryType)
+		fmt.Printf("ENTRY: %v\n", entry)
+
+		dictionaryEntry, err := createDictionaryEntry(opts.DictionaryType, entry)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("line %d: %s", currentLine, err.Error()).Error())
 			continue
@@ -155,7 +159,7 @@ func runImportCmd(opts *ImportOptions) error {
 	// No entries found
 	if len(entries) == 0 {
 		if len(errors) > 0 {
-			return fmt.Errorf(errorMsg)
+			return fmt.Errorf("%s", errorMsg)
 		}
 		return fmt.Errorf("%s No entries found in the file", cs.FailureIcon())
 	}
@@ -177,9 +181,27 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	// Import entries
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating %s entries on %s", cs.Bold(fmt.Sprint(len(entries))), cs.Bold(opts.DictionaryName)))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Updating %s entries on %s",
+			cs.Bold(fmt.Sprint(len(entries))),
+			cs.Bold(string(opts.DictionaryType)),
+		),
+	)
 
-	res, err := client.SaveDictionaryEntries(search.DictionaryName(opts.DictionaryName), entries)
+	var requests []search.BatchDictionaryEntriesRequest
+	for _, e := range entries {
+		requests = append(
+			requests,
+			*search.NewBatchDictionaryEntriesRequest(search.DICTIONARY_ACTION_ADD_ENTRY, *e),
+		)
+	}
+	res, err := client.BatchDictionaryEntries(
+		client.NewApiBatchDictionaryEntriesRequest(
+			opts.DictionaryType,
+			search.NewBatchDictionaryEntriesParams(requests),
+		),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
@@ -188,40 +210,64 @@ func runImportCmd(opts *ImportOptions) error {
 	// Wait for the operation to complete if requested
 	if opts.Wait {
 		opts.IO.UpdateProgressIndicatorLabel("Waiting for operation to complete")
-		if err := res.Wait(); err != nil {
+		if _, err := client.WaitForAppTask(res.TaskID); err != nil {
 			opts.IO.StopProgressIndicator()
 			return err
 		}
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s entries on %s in %v\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(len(entries))), cs.Bold(opts.DictionaryName), time.Since(elapsed))
+	_, err = fmt.Fprintf(
+		opts.IO.Out,
+		"%s Successfully imported %s entries on %s in %v\n",
+		cs.SuccessIcon(),
+		cs.Bold(fmt.Sprint(len(entries))),
+		cs.Bold(string(opts.DictionaryType)),
+		time.Since(elapsed),
+	)
 	return err
 }
 
-func ValidateDictionaryEntry(entry shared.DictionaryEntry, currentLine int) error {
+func createDictionaryEntry(
+	dictionaryType search.DictionaryType,
+	entry search.DictionaryEntry,
+) (*search.DictionaryEntry, error) {
 	if entry.ObjectID == "" {
-		return fmt.Errorf("line %d: objectID is missing", currentLine)
+		return nil, fmt.Errorf("objectID is missing")
 	}
-	if entry.Word == "" {
-		return fmt.Errorf("line %d: word is missing", currentLine)
-	}
-	if entry.Language == "" {
-		return fmt.Errorf("line %d: language is missing", currentLine)
+	switch dictionaryType {
+	case search.DICTIONARY_TYPE_PLURALS:
+		if len(entry.Words) == 0 {
+			return nil, fmt.Errorf("words is missing")
+		}
+		if entry.Language == nil {
+			return nil, fmt.Errorf("language is missing")
+		}
+		return search.NewDictionaryEntry(
+			entry.ObjectID,
+			search.WithDictionaryEntryLanguage(*entry.Language),
+			search.WithDictionaryEntryWords(entry.Words),
+		), nil
+	case search.DICTIONARY_TYPE_COMPOUNDS:
+		if entry.Word == nil {
+			return nil, fmt.Errorf("word is missing")
+		}
+		return search.NewDictionaryEntry(
+			entry.ObjectID,
+			search.WithDictionaryEntryLanguage(*entry.Language),
+			search.WithDictionaryEntryWord(*entry.Word),
+			search.WithDictionaryEntryDecomposition(entry.Decomposition),
+		), nil
+	case search.DICTIONARY_TYPE_STOPWORDS:
+		if entry.Word == nil {
+			return nil, fmt.Errorf("word is missing")
+		}
+		return search.NewDictionaryEntry(
+			entry.ObjectID,
+			search.WithDictionaryEntryLanguage(*entry.Language),
+			search.WithDictionaryEntryWord(*entry.Word),
+		), nil
 	}
 
-	return nil
-}
-
-func createDictionaryEntry(dictionaryName string, entry shared.DictionaryEntry) (search.DictionaryEntry, error) {
-	switch dictionaryName {
-	case string(search.Plurals):
-		return search.NewPlural(entry.ObjectID, entry.Language, entry.Words), nil
-	case string(search.Compounds):
-		return search.NewCompound(entry.ObjectID, entry.Language, entry.Word, entry.Decomposition), nil
-	case string(search.Stopwords):
-		return search.NewStopword(entry.ObjectID, entry.Language, entry.Word, entry.State), nil
-	}
-
-	return nil, fmt.Errorf("Wrong dictionary name")
+	return nil, fmt.Errorf("wrong dictionary name")
 }

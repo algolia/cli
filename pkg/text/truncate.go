@@ -29,6 +29,14 @@ func Truncate(maxWidth int, s string) string {
 		tail = ellipsis
 	}
 
+	// Guard against overflow
+	if maxWidth < 0 {
+		maxWidth = 0
+	}
+
+	// Seems to be a false positive from gosec
+	// since max(uint) > max(int) && maxWidth >= 0 at this point
+	// nolint:gosec
 	r := truncate.StringWithTail(s, uint(maxWidth), tail)
 	if DisplayWidth(r) < maxWidth {
 		r += " "

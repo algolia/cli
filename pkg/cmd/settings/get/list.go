@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,7 +17,7 @@ type GetOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index string
 
@@ -69,7 +69,7 @@ func runListCmd(opts *GetOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprint("Fetching settings for index ", opts.Index))
-	res, err := client.InitIndex(opts.Index).GetSettings()
+	res, err := client.GetSettings(client.NewApiGetSettingsRequest(opts.Index))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

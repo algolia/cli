@@ -1,4 +1,4 @@
-package importRecords
+package importrecords
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +16,7 @@ import (
 
 func Test_runImportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "objects.json")
-	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"foo\"}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"objectID\":\"foo\"}"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -35,6 +35,24 @@ func Test_runImportCmd(t *testing.T) {
 		{
 			name:    "from file",
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
+			wantOut: "✓ Successfully imported 1 objects to foo in",
+		},
+		{
+			name:    "empty record",
+			cli:     "foo -F -",
+			stdin:   `{}`,
+			wantErr: "empty object on line 0",
+		},
+		{
+			name:    "missing objectID",
+			cli:     "foo -F -",
+			stdin:   `{"attribute": "foo"}`,
+			wantErr: "missing objectID on line 0",
+		},
+		{
+			name:    "with auto-generated objectID",
+			cli:     "foo --auto-generate-object-id-if-not-exist -F -",
+			stdin:   `{"attribute": "foo"}`,
 			wantOut: "✓ Successfully imported 1 objects to foo in",
 		},
 		{
@@ -59,7 +77,10 @@ func Test_runImportCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/batch"), httpmock.JSONResponse(search.BatchRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/batch"),
+					httpmock.JSONResponse(search.BatchResponse{}),
+				)
 			}
 			defer r.Verify(t)
 

@@ -13,7 +13,7 @@ import (
 func ExactArgsWithMsg(n int, msg string) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) != n {
-			return cmdutil.FlagErrorf(msg)
+			return cmdutil.FlagErrorf("%s", msg)
 		}
 
 		return nil
@@ -49,7 +49,6 @@ func ExactArgs(n int) cobra.PositionalArgs {
 
 		return extractArgs(cmd, args)
 	}
-
 }
 
 // AtLeastNArgs is a validator for commands to print an error with a custom message
@@ -62,11 +61,11 @@ func AtLeastNArgs(n int) cobra.PositionalArgs {
 
 	return func(cmd *cobra.Command, args []string) error {
 		if len(args) < n {
-			return cmdutil.FlagErrorf(
-				fmt.Sprintf("`%s` requires at least %d %s.", cmd.CommandPath(), n, argument))
+			msg := fmt.Sprintf("`%s` requires at least %d %s.", cmd.CommandPath(), n, argument)
+
+			return cmdutil.FlagErrorf("%s", msg)
 		}
 
 		return nil
 	}
-
 }

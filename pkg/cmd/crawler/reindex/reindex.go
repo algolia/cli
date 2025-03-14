@@ -64,7 +64,9 @@ func runReindexCmd(opts *ReindexOptions) error {
 	}
 	cs := opts.IO.ColorScheme()
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Reindexing %s", utils.Pluralize(len(opts.IDs), "crawler")))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Reindexing %s", utils.Pluralize(len(opts.IDs), "crawler")),
+	)
 	for _, id := range opts.IDs {
 		if _, err := client.Reindex(id); err != nil {
 			opts.IO.StopProgressIndicator()
@@ -74,7 +76,15 @@ func runReindexCmd(opts *ReindexOptions) error {
 	opts.IO.StopProgressIndicator()
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s %s\n", cs.SuccessIconWithColor(cs.Green), fmt.Sprintf("Successfully requested reindexing for %s", utils.Pluralize(len(opts.IDs), "crawler")))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s %s\n",
+			cs.SuccessIconWithColor(cs.Green),
+			fmt.Sprintf(
+				"Successfully requested reindexing for %s",
+				utils.Pluralize(len(opts.IDs), "crawler"),
+			),
+		)
 	}
 
 	return nil

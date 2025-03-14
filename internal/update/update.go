@@ -33,7 +33,10 @@ type StateEntry struct {
 }
 
 // CheckForUpdate checks whether this software has had a newer release on GitHub
-func CheckForUpdate(client *http.Client, stateFilePath, currentVersion string) (*ReleaseInfo, error) {
+func CheckForUpdate(
+	client *http.Client,
+	stateFilePath, currentVersion string,
+) (*ReleaseInfo, error) {
 	stateEntry, _ := getStateEntry(stateFilePath)
 	if stateEntry != nil && time.Since(stateEntry.CheckedForUpdateAt).Hours() < 24 {
 		return nil, nil
@@ -97,12 +100,12 @@ func setStateEntry(stateFilePath string, t time.Time, r ReleaseInfo) error {
 		return err
 	}
 
-	err = os.MkdirAll(filepath.Dir(stateFilePath), 0755)
+	err = os.MkdirAll(filepath.Dir(stateFilePath), 0o755)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(stateFilePath, content, 0600)
+	err = os.WriteFile(stateFilePath, content, 0o600)
 	return err
 }
 

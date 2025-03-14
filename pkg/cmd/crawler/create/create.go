@@ -34,9 +34,10 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	var configFile string
 
 	cmd := &cobra.Command{
-		Use:   "create <name> -F <file>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Create a crawler",
+		Use:     "create <name> -F <file>",
+		Aliases: []string{"new", "n", "c"},
+		Args:    cobra.ExactArgs(1),
+		Short:   "Create a crawler",
 		Long: heredoc.Doc(`
 			Create a new crawler from the given configuration.
 		`),
@@ -67,7 +68,8 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&configFile, "file", "F", "", "Path to the configuration file (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&configFile, "file", "F", "", "Path to the configuration file (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
 	return cmd
@@ -88,7 +90,13 @@ func runCreateCmd(opts *CreateOptions) error {
 	}
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Crawler %s created: %s\n", cs.SuccessIconWithColor(cs.Green), cs.Bold(opts.Name), cs.Bold(id))
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Crawler %s created: %s\n",
+			cs.SuccessIconWithColor(cs.Green),
+			cs.Bold(opts.Name),
+			cs.Bold(id),
+		)
 	}
 
 	return nil

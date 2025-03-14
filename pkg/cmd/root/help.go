@@ -10,7 +10,10 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-func rootUsageFunc(IOStreams *iostreams.IOStreams, command *cobra.Command) func(cmd *cobra.Command) error {
+func rootUsageFunc(
+	IOStreams *iostreams.IOStreams,
+	command *cobra.Command,
+) func(cmd *cobra.Command) error {
 	return cmdutil.UsageFuncDefault(IOStreams, command)
 }
 
@@ -85,10 +88,20 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, args []string) {
 	if len(categoryFlagSet.Categories) > 0 {
 		for _, categoryName := range categoryFlagSet.SortedCategoryNames() {
 			groupName := fmt.Sprintf("%s Flags", categoryName)
-			helpEntries.AddEntry(cmdutil.UsageEntry{Title: groupName, Body: cmdutil.Dedent(categoryFlagSet.Categories[categoryName].FlagUsages())})
+			helpEntries.AddEntry(
+				cmdutil.UsageEntry{
+					Title: groupName,
+					Body:  cmdutil.Dedent(categoryFlagSet.Categories[categoryName].FlagUsages()),
+				},
+			)
 		}
 		if categoryFlagSet.Others.FlagUsages() != "" {
-			helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Other Flags"), Body: cmdutil.Dedent(categoryFlagSet.Others.FlagUsages())})
+			helpEntries.AddEntry(
+				cmdutil.UsageEntry{
+					Title: cs.Bold("Other Flags"),
+					Body:  cmdutil.Dedent(categoryFlagSet.Others.FlagUsages()),
+				},
+			)
 		}
 	} else {
 		helpEntries.AddFlags(f.IOStreams, command, cmdutil.Dedent(categoryFlagSet.Others.FlagUsages()))
@@ -96,17 +109,32 @@ func rootHelpFunc(f *cmdutil.Factory, command *cobra.Command, args []string) {
 
 	printFlagUsages := categoryFlagSet.Print.FlagUsages()
 	if printFlagUsages != "" {
-		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Output Formatting Flags"), Body: cmdutil.Dedent(printFlagUsages)})
+		helpEntries.AddEntry(
+			cmdutil.UsageEntry{
+				Title: cs.Bold("Output Formatting Flags"),
+				Body:  cmdutil.Dedent(printFlagUsages),
+			},
+		)
 	}
 	inheritedFlagUsages := command.InheritedFlags().FlagUsages()
 	if inheritedFlagUsages != "" {
-		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Inherited Flags"), Body: cmdutil.Dedent(inheritedFlagUsages)})
+		helpEntries.AddEntry(
+			cmdutil.UsageEntry{
+				Title: cs.Bold("Inherited Flags"),
+				Body:  cmdutil.Dedent(inheritedFlagUsages),
+			},
+		)
 	}
 	if command.Example != "" {
 		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Examples"), Body: command.Example})
 	}
 	if _, ok := command.Annotations["help:see-also"]; ok {
-		helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("See also"), Body: command.Annotations["help:see-also"]})
+		helpEntries.AddEntry(
+			cmdutil.UsageEntry{
+				Title: cs.Bold("See also"),
+				Body:  command.Annotations["help:see-also"],
+			},
+		)
 	}
 	helpEntries.AddEntry(cmdutil.UsageEntry{Title: cs.Bold("Learn More"), Body: `
 Use 'algolia <command> <subcommand> --help' for more information about a command.

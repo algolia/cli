@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Registry struct {
@@ -38,7 +39,11 @@ func (r *Registry) Verify(t Testing) {
 }
 
 // Request satisfies Requester interface
-func (r *Registry) Request(req *http.Request) (*http.Response, error) {
+func (r *Registry) Request(
+	req *http.Request,
+	_ time.Duration,
+	_ time.Duration,
+) (*http.Response, error) {
 	var stub *Stub
 
 	r.mu.Lock()

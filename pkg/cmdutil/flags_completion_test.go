@@ -23,7 +23,11 @@ func Test_runStringSliceCompletion(t *testing.T) {
 		{
 			name:       "first input, no letter",
 			toComplete: "",
-			results:    []string{"rules\tcopy only rules", "settings\tcopy only settings", "synonyms\tcopy only synonyms"},
+			results: []string{
+				"rules\tcopy only rules",
+				"settings\tcopy only settings",
+				"synonyms\tcopy only synonyms",
+			},
 		},
 		{
 			name:       "second input (settings already passed), no letter",
@@ -58,6 +62,5 @@ func Test_runStringSliceCompletion(t *testing.T) {
 			assert.Equal(t, tt.results, results)
 			assert.Equal(t, cobra.ShellCompDirectiveNoSpace, rule)
 		})
-
 	}
 }

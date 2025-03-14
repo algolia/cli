@@ -78,7 +78,8 @@ func NewTestCmd(f *cmdutil.Factory, runF func(*TestOptions) error) *cobra.Comman
 	cmd.Flags().StringVarP(&opts.URL, "url", "u", "", "The URL to test.")
 	_ = cmd.MarkFlagRequired("url")
 
-	cmd.Flags().StringVarP(&configFile, "config", "F", "", "The configuration file to use to override the crawler's configuration. (use \"-\" to read from standard input)")
+	cmd.Flags().
+		StringVarP(&configFile, "config", "F", "", "The configuration file to use to override the crawler's configuration. (use \"-\" to read from standard input)")
 
 	return cmd
 }
@@ -90,7 +91,9 @@ func runTestCmd(opts *TestOptions) error {
 	}
 	cs := opts.IO.ColorScheme()
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Testing URL %s on crawler %s", cs.Bold(opts.URL), cs.Bold(opts.ID)))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf("Testing URL %s on crawler %s", cs.Bold(opts.URL), cs.Bold(opts.ID)),
+	)
 	res, err := client.Test(opts.ID, opts.URL, opts.config)
 	if err != nil {
 		opts.IO.StopProgressIndicator()

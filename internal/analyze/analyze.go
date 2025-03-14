@@ -3,11 +3,9 @@ package analyze
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/iterator"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 // AttributeType is an enum for the different types of attributes.
@@ -47,33 +45,19 @@ type Stats struct {
 }
 
 // ComputeStats computes the stats for the given index.
-func ComputeStats(i iterator.Iterator, s search.Settings, limit int, only string, counter chan int) (*Stats, error) {
-	settingsMap := settingsAsMap(s)
+func ComputeStats(
+	records []search.Hit,
+	settings search.SettingsResponse,
+	only string,
+) (*Stats, error) {
+	settingsMap := settingsAsMap(settings)
 	stats := &Stats{
-		Attributes: make(map[string]*AttributeStats),
+		Attributes:   make(map[string]*AttributeStats),
+		TotalRecords: len(records),
 	}
 
-	for {
-		iObject, err := i.Next()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-
-		object, ok := iObject.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		if limit > 0 && stats.TotalRecords >= limit {
-			break
-		}
-
-		stats.TotalRecords++
-		counter <- 1
-		stats = computeObjectStats(stats, "", object, only)
+	for _, record := range records {
+		stats = computeObjectStats(stats, "", record.AdditionalProperties, only)
 	}
 
 	for key, value := range stats.Attributes {
@@ -175,7 +159,7 @@ func getType(value interface{}) AttributeType {
 
 // settingsAsMap converts the given settings to a map.
 // We marshal and unmarshal the settings to avoid having to write the conversion code ourselves.
-func settingsAsMap(s search.Settings) map[string]interface{} {
+func settingsAsMap(s search.SettingsResponse) map[string]interface{} {
 	var settingsMap map[string]interface{}
 	var settingsBytes []byte
 	settingsBytes, err := s.MarshalJSON()
