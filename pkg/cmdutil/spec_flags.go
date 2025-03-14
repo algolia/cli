@@ -248,27 +248,27 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumeri
 	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact/`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
-	cmd.Flags().Bool("analytics", true, heredoc.Doc(`Whether to include this query in Algolia's search analytics.
+	cmd.Flags().Bool("analytics", true, heredoc.Doc(`Whether this search will be included in Analytics.
 See: https://www.algolia.com/doc/api-reference/api-parameters/analytics/`))
 	cmd.Flags().SetAnnotation("analytics", "Categories", []string{"Analytics"})
-	cmd.Flags().StringSlice("analyticsTags", []string{}, heredoc.Doc(`Search analytics tags for query data segmentation.
+	cmd.Flags().StringSlice("analyticsTags", []string{}, heredoc.Doc(`Tags to apply to the query for segmenting analytics data.
 See: https://www.algolia.com/doc/api-reference/api-parameters/analyticsTags/`))
 	cmd.Flags().SetAnnotation("analyticsTags", "Categories", []string{"Analytics"})
-	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle: expressed as a comma-separated string of latitude and longitude values.
+	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle, expressed as a comma-separated string of latitude and longitude.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLng/`))
 	cmd.Flags().SetAnnotation("aroundLatLng", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Bool("aroundLatLngViaIP", false, heredoc.Doc(`Whether to use the location computed from the user's IP address.
+	cmd.Flags().Bool("aroundLatLngViaIP", false, heredoc.Doc(`Whether to obtain the coordinates from the request's IP address.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLngViaIP/`))
 	cmd.Flags().SetAnnotation("aroundLatLngViaIP", "Categories", []string{"Geo-Search"})
 	aroundPrecision := NewJSONVar([]string{"integer", "array"}...)
-	cmd.Flags().Var(aroundPrecision, "aroundPrecision", heredoc.Doc(`Groups similar distances into range bands.
+	cmd.Flags().Var(aroundPrecision, "aroundPrecision", heredoc.Doc(`Precision of a coordinate-based search in meters to group results with similar distances.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundPrecision/`))
 	cmd.Flags().SetAnnotation("aroundPrecision", "Categories", []string{"Geo-Search"})
 	aroundRadius := NewJSONVar([]string{"integer", "string"}...)
 	cmd.Flags().Var(aroundRadius, "aroundRadius", heredoc.Doc(`Maximum radius for a search around a central location.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundRadius/`))
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity. This setting only affects ranking if the Attribute ranking criterion comes before Proximity. If true, the best matching attribute is selected based on the minimum proximity of multiple matches.
+	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
 See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity/`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
 	cmd.Flags().StringSlice("attributesToHighlight", []string{}, heredoc.Doc(`Attributes to highlight.
@@ -297,7 +297,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/disableTypoToleran
 	cmd.Flags().Var(distinct, "distinct", heredoc.Doc(`Determines how many records of a group are included in the search results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/distinct/`))
 	cmd.Flags().SetAnnotation("distinct", "Categories", []string{"Advanced"})
-	cmd.Flags().Bool("enableABTest", true, heredoc.Doc(`Whether to include this search in currently running A/B tests.
+	cmd.Flags().Bool("enableABTest", true, heredoc.Doc(`Whether to enable A/B testing for this search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/enableABTest/`))
 	cmd.Flags().SetAnnotation("enableABTest", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("enablePersonalization", false, heredoc.Doc(`Whether to enable Personalization.
@@ -316,13 +316,13 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/exactOnSingleWordQ
 	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`Filter the search by facet values, so that only records with the same facet values are retrieved.
 See: https://www.algolia.com/doc/api-reference/api-parameters/facetFilters/`))
 	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})
-	cmd.Flags().Bool("facetingAfterDistinct", false, heredoc.Doc(`Whether to apply faceting after deduplication with distinct.
+	cmd.Flags().Bool("facetingAfterDistinct", false, heredoc.Doc(`Whether faceting should be applied after deduplication with distinct.
 See: https://www.algolia.com/doc/api-reference/api-parameters/facetingAfterDistinct/`))
 	cmd.Flags().SetAnnotation("facetingAfterDistinct", "Categories", []string{"Faceting"})
-	cmd.Flags().StringSlice("facets", []string{}, heredoc.Doc(`Retrieve the specified facets and their facet values.
+	cmd.Flags().StringSlice("facets", []string{}, heredoc.Doc(`Facets for which to retrieve facet values that match the search criteria and the number of matching facet values.
 See: https://www.algolia.com/doc/api-reference/api-parameters/facets/`))
 	cmd.Flags().SetAnnotation("facets", "Categories", []string{"Faceting"})
-	cmd.Flags().String("filters", "", heredoc.Doc(`Only include items that match the filter.
+	cmd.Flags().String("filters", "", heredoc.Doc(`Filter expression to only include items that match the filter criteria in the response.
 See: https://www.algolia.com/doc/api-reference/api-parameters/filters/`))
 	cmd.Flags().SetAnnotation("filters", "Categories", []string{"Filtering"})
 	cmd.Flags().Bool("getRankingInfo", false, heredoc.Doc(`Whether the search response should include detailed ranking information.
@@ -360,24 +360,24 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/minWordSizefor1Typ
 	cmd.Flags().Int("minWordSizefor2Typos", 8, heredoc.Doc(`Minimum number of characters a word in the search query must contain to accept matches with two typos.
 See: https://www.algolia.com/doc/api-reference/api-parameters/minWordSizefor2Typos/`))
 	cmd.Flags().SetAnnotation("minWordSizefor2Typos", "Categories", []string{"Typos"})
-	cmd.Flags().Int("minimumAroundRadius", 0, heredoc.Doc(`If aroundRadius isn't set, defines a [minimum radius] for aroundLatLng and aroundLatLngViaIP (in meters).
+	cmd.Flags().Int("minimumAroundRadius", 0, heredoc.Doc(`Minimum radius (in meters) for a search around a location when aroundRadius isn't set.
 See: https://www.algolia.com/doc/api-reference/api-parameters/minimumAroundRadius/`))
 	cmd.Flags().SetAnnotation("minimumAroundRadius", "Categories", []string{"Geo-Search"})
 	cmd.Flags().String("mode", "keywordSearch", heredoc.Doc(`Search mode the index will use to query for results. One of: neuralSearch, keywordSearch.
 See: https://www.algolia.com/doc/api-reference/api-parameters/mode/`))
 	cmd.Flags().SetAnnotation("mode", "Categories", []string{"Query strategy"})
-	cmd.Flags().StringSlice("naturalLanguages", []string{}, heredoc.Doc(`Change the default settings for several natural language parameters in a single operation: ignorePlurals, removeStopWords, removeWordsIfNoResults, analyticsTags, and ruleContexts.
+	cmd.Flags().StringSlice("naturalLanguages", []string{}, heredoc.Doc(`ISO language codes that adjust settings that are useful for processing natural language queries (as opposed to keyword searches).
 See: https://www.algolia.com/doc/api-reference/api-parameters/naturalLanguages/`))
 	cmd.Flags().SetAnnotation("naturalLanguages", "Categories", []string{"Languages"})
 	numericFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(numericFilters, "numericFilters", heredoc.Doc(`Filter by numeric facets.
 See: https://www.algolia.com/doc/api-reference/api-parameters/numericFilters/`))
 	cmd.Flags().SetAnnotation("numericFilters", "Categories", []string{"Filtering"})
-	cmd.Flags().Int("offset", 0, heredoc.Doc(`Out of the results list, indicate which one you want to show first.
+	cmd.Flags().Int("offset", 0, heredoc.Doc(`Position of the first hit to retrieve.
 See: https://www.algolia.com/doc/api-reference/api-parameters/offset/`))
 	cmd.Flags().SetAnnotation("offset", "Categories", []string{"Pagination"})
 	optionalFilters := NewJSONVar([]string{"array", "string"}...)
-	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Create filters for ranking purposes. Records that match the filter will rank higher (or lower for a negative filter).
+	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Filters to promote or demote records in the search results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalFilters/`))
 	cmd.Flags().SetAnnotation("optionalFilters", "Categories", []string{"Filtering"})
 	optionalWords := NewJSONVar([]string{"string", "null", "array"}...)
@@ -386,16 +386,16 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/optionalWords/`))
 	cmd.Flags().Int("page", 0, heredoc.Doc(`Page of search results to retrieve.
 See: https://www.algolia.com/doc/api-reference/api-parameters/page/`))
 	cmd.Flags().SetAnnotation("page", "Categories", []string{"Pagination"})
-	cmd.Flags().Bool("percentileComputation", true, heredoc.Doc(`Whether to include this query in the processing-time percentile computation.
+	cmd.Flags().Bool("percentileComputation", true, heredoc.Doc(`Whether to include this search when calculating processing-time percentiles.
 See: https://www.algolia.com/doc/api-reference/api-parameters/percentileComputation/`))
 	cmd.Flags().SetAnnotation("percentileComputation", "Categories", []string{"Advanced"})
-	cmd.Flags().Int("personalizationImpact", 100, heredoc.Doc(`Determines the impact of the Personalization feature on results: from 0 (none) to 100 (maximum).
+	cmd.Flags().Int("personalizationImpact", 100, heredoc.Doc(`Impact that Personalization should have on this search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/personalizationImpact/`))
 	cmd.Flags().SetAnnotation("personalizationImpact", "Categories", []string{"Personalization"})
-	cmd.Flags().String("query", "", heredoc.Doc(`The text to search for in the index.
+	cmd.Flags().String("query", "", heredoc.Doc(`Search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/query/`))
 	cmd.Flags().SetAnnotation("query", "Categories", []string{"Search"})
-	cmd.Flags().StringSlice("queryLanguages", []string{}, heredoc.Doc(`Define languages for which to apply language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
+	cmd.Flags().StringSlice("queryLanguages", []string{}, heredoc.Doc(`Languages for language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
 See: https://www.algolia.com/doc/api-reference/api-parameters/queryLanguages/`))
 	cmd.Flags().SetAnnotation("queryLanguages", "Categories", []string{"Languages"})
 	cmd.Flags().String("queryType", "prefixLast", heredoc.Doc(`Determines if and how query words are interpreted as prefixes. One of: prefixLast, prefixAll, prefixNone.
@@ -423,13 +423,13 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/renderingContent/`
 	cmd.Flags().Bool("replaceSynonymsInHighlight", false, heredoc.Doc(`Whether to replace a highlighted word with the matched synonym.
 See: https://www.algolia.com/doc/api-reference/api-parameters/replaceSynonymsInHighlight/`))
 	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
-	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`Properties to include in search and browse API responses.
+	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`Properties to include in the API response of search and browse requests.
 See: https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
-	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Whether to restrict highlighting and snippeting to items that partially or fully matched the search query.
+	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Whether to restrict highlighting and snippeting to items that at least partially matched the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/restrictHighlightAndSnippetArrays/`))
 	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
-	cmd.Flags().StringSlice("restrictSearchableAttributes", []string{}, heredoc.Doc(`Restrict the query to look at only the specified searchable attributes.
+	cmd.Flags().StringSlice("restrictSearchableAttributes", []string{}, heredoc.Doc(`Restricts a search to a subset of your searchable attributes.
 See: https://www.algolia.com/doc/api-reference/api-parameters/restrictSearchableAttributes/`))
 	cmd.Flags().SetAnnotation("restrictSearchableAttributes", "Categories", []string{"Filtering"})
 	cmd.Flags().StringSlice("ruleContexts", []string{}, heredoc.Doc(`Assigns a rule context to the search query.
@@ -437,7 +437,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/ruleContexts/`))
 	cmd.Flags().SetAnnotation("ruleContexts", "Categories", []string{"Rules"})
 	semanticSearch := NewJSONVar([]string{}...)
 	cmd.Flags().Var(semanticSearch, "semanticSearch", heredoc.Doc(`Settings for the semantic search part of NeuralSearch.`))
-	cmd.Flags().String("similarQuery", "", heredoc.Doc(`Overrides the query parameter and performs a more generic search to find "similar" results.
+	cmd.Flags().String("similarQuery", "", heredoc.Doc(`Keywords to be used instead of the search query to conduct a more broader search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/similarQuery/`))
 	cmd.Flags().SetAnnotation("similarQuery", "Categories", []string{"Search"})
 	cmd.Flags().String("snippetEllipsisText", "…", heredoc.Doc(`String used as an ellipsis indicator when a snippet is truncated.
@@ -446,10 +446,10 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/snippetEllipsisTex
 	cmd.Flags().String("sortFacetValuesBy", "count", heredoc.Doc(`Order in which to retrieve facet values.
 See: https://www.algolia.com/doc/api-reference/api-parameters/sortFacetValuesBy/`))
 	cmd.Flags().SetAnnotation("sortFacetValuesBy", "Categories", []string{"Faceting"})
-	cmd.Flags().Bool("sumOrFiltersScores", false, heredoc.Doc(`How to calculate the filtering score. Whether to sum the scores of each matched filter or use the highest score of the filters.
+	cmd.Flags().Bool("sumOrFiltersScores", false, heredoc.Doc(`Whether to sum all filter scores.
 See: https://www.algolia.com/doc/api-reference/api-parameters/sumOrFiltersScores/`))
 	cmd.Flags().SetAnnotation("sumOrFiltersScores", "Categories", []string{"Filtering"})
-	cmd.Flags().Bool("synonyms", true, heredoc.Doc(`Whether to use or disregard an index's synonyms for this search.
+	cmd.Flags().Bool("synonyms", true, heredoc.Doc(`Whether to take into account an index's synonyms for this search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/synonyms/`))
 	cmd.Flags().SetAnnotation("synonyms", "Categories", []string{"Advanced"})
 	tagFilters := NewJSONVar([]string{"array", "string"}...)
@@ -460,13 +460,13 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/tagFilters/`))
 	cmd.Flags().Var(typoTolerance, "typoTolerance", heredoc.Doc(`Whether typo tolerance is enabled and how it is applied.
 See: https://www.algolia.com/doc/api-reference/api-parameters/typoTolerance/`))
 	cmd.Flags().SetAnnotation("typoTolerance", "Categories", []string{"Typos"})
-	cmd.Flags().String("userToken", "", heredoc.Doc(`Link the current search to a specific user with a user token (a unique pseudonymous or anonymous identifier).
+	cmd.Flags().String("userToken", "", heredoc.Doc(`Unique pseudonymous or anonymous user identifier.
 See: https://www.algolia.com/doc/api-reference/api-parameters/userToken/`))
 	cmd.Flags().SetAnnotation("userToken", "Categories", []string{"Personalization"})
 }
 
 func AddDeleteByParamsFlags(cmd *cobra.Command) {
-	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle: expressed as a comma-separated string of latitude and longitude values.
+	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle, expressed as a comma-separated string of latitude and longitude.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLng/`))
 	cmd.Flags().SetAnnotation("aroundLatLng", "Categories", []string{"Geo-Search"})
 	aroundRadius := NewJSONVar([]string{"integer", "string"}...)
@@ -477,7 +477,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/aroundRadius/`))
 	cmd.Flags().Var(facetFilters, "facetFilters", heredoc.Doc(`Filter the search by facet values, so that only records with the same facet values are retrieved.
 See: https://www.algolia.com/doc/api-reference/api-parameters/facetFilters/`))
 	cmd.Flags().SetAnnotation("facetFilters", "Categories", []string{"Filtering"})
-	cmd.Flags().String("filters", "", heredoc.Doc(`Only include items that match the filter.
+	cmd.Flags().String("filters", "", heredoc.Doc(`Filter expression to only include items that match the filter criteria in the response.
 See: https://www.algolia.com/doc/api-reference/api-parameters/filters/`))
 	cmd.Flags().SetAnnotation("filters", "Categories", []string{"Filtering"})
 	insideBoundingBox := NewJSONVar([]string{"string", "null", "array"}...)
@@ -510,7 +510,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumeri
 	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact/`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
-	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity. This setting only affects ranking if the Attribute ranking criterion comes before Proximity. If true, the best matching attribute is selected based on the minimum proximity of multiple matches.
+	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
 See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity/`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
 	cmd.Flags().String("attributeForDistinct", "", heredoc.Doc(`Attribute that should be used to establish groups of results.
@@ -588,7 +588,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage/`))
 	cmd.Flags().Var(ignorePlurals, "ignorePlurals", heredoc.Doc(`Treat singular, plurals, and other forms of declensions as equivalent.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ignorePlurals/`))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
-	cmd.Flags().StringSlice("indexLanguages", []string{}, heredoc.Doc(`Define languages for which to apply language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
+	cmd.Flags().StringSlice("indexLanguages", []string{}, heredoc.Doc(`Languages for language-specific processing steps, such as word detection and dictionary settings.
 See: https://www.algolia.com/doc/api-reference/api-parameters/indexLanguages/`))
 	cmd.Flags().SetAnnotation("indexLanguages", "Categories", []string{"Languages"})
 	cmd.Flags().String("keepDiacriticsOnCharacters", "", heredoc.Doc(`Characters for which diacritics should be preserved.
@@ -620,7 +620,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/numericAttributesF
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalWords/`))
 	cmd.Flags().Int("paginationLimitedTo", 1000, heredoc.Doc(`Maximum number of search results that can be obtained through pagination.
 See: https://www.algolia.com/doc/api-reference/api-parameters/paginationLimitedTo/`))
-	cmd.Flags().StringSlice("queryLanguages", []string{}, heredoc.Doc(`Define languages for which to apply language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
+	cmd.Flags().StringSlice("queryLanguages", []string{}, heredoc.Doc(`Languages for language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
 See: https://www.algolia.com/doc/api-reference/api-parameters/queryLanguages/`))
 	cmd.Flags().SetAnnotation("queryLanguages", "Categories", []string{"Languages"})
 	cmd.Flags().String("queryType", "prefixLast", heredoc.Doc(`Determines if and how query words are interpreted as prefixes. One of: prefixLast, prefixAll, prefixNone.
@@ -651,10 +651,10 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/replaceSynonymsInH
 	cmd.Flags().StringSlice("replicas", []string{}, heredoc.Doc(`Creates replica indices.
 See: https://www.algolia.com/doc/api-reference/api-parameters/replicas/`))
 	cmd.Flags().SetAnnotation("replicas", "Categories", []string{"Ranking"})
-	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`Properties to include in search and browse API responses.
+	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`Properties to include in the API response of search and browse requests.
 See: https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
-	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Whether to restrict highlighting and snippeting to items that partially or fully matched the search query.
+	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Whether to restrict highlighting and snippeting to items that at least partially matched the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/restrictHighlightAndSnippetArrays/`))
 	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
 	cmd.Flags().StringSlice("searchableAttributes", []string{}, heredoc.Doc(`Attributes used for searching. Attribute names are case-sensitive.
@@ -697,27 +697,27 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumeri
 	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact/`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
-	cmd.Flags().Bool("analytics", true, heredoc.Doc(`Whether to include this query in Algolia's search analytics.
+	cmd.Flags().Bool("analytics", true, heredoc.Doc(`Whether this search will be included in Analytics.
 See: https://www.algolia.com/doc/api-reference/api-parameters/analytics/`))
 	cmd.Flags().SetAnnotation("analytics", "Categories", []string{"Analytics"})
-	cmd.Flags().StringSlice("analyticsTags", []string{}, heredoc.Doc(`Search analytics tags for query data segmentation.
+	cmd.Flags().StringSlice("analyticsTags", []string{}, heredoc.Doc(`Tags to apply to the query for segmenting analytics data.
 See: https://www.algolia.com/doc/api-reference/api-parameters/analyticsTags/`))
 	cmd.Flags().SetAnnotation("analyticsTags", "Categories", []string{"Analytics"})
-	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle: a comma-separated string of latitude and longitude values.
+	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle, expressed as a comma-separated string of latitude and longitude.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLng/`))
 	cmd.Flags().SetAnnotation("aroundLatLng", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Bool("aroundLatLngViaIP", false, heredoc.Doc(`Whether to use the location computed from the user's IP address.
+	cmd.Flags().Bool("aroundLatLngViaIP", false, heredoc.Doc(`Whether to obtain the coordinates from the request's IP address.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLngViaIP/`))
 	cmd.Flags().SetAnnotation("aroundLatLngViaIP", "Categories", []string{"Geo-Search"})
 	aroundPrecision := NewJSONVar([]string{"integer", "array"}...)
-	cmd.Flags().Var(aroundPrecision, "aroundPrecision", heredoc.Doc(`Groups similar distances into range bands.
+	cmd.Flags().Var(aroundPrecision, "aroundPrecision", heredoc.Doc(`Precision of a coordinate-based search in meters to group results with similar distances.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundPrecision/`))
 	cmd.Flags().SetAnnotation("aroundPrecision", "Categories", []string{"Geo-Search"})
 	aroundRadius := NewJSONVar([]string{"integer", "string"}...)
 	cmd.Flags().Var(aroundRadius, "aroundRadius", heredoc.Doc(`Maximum radius for a search around a central location.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundRadius/`))
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
-	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity. This setting only affects ranking if the Attribute ranking criterion comes before Proximity. If true, the best matching attribute is selected based on the minimum proximity of multiple matches.
+	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
 See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity/`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
 	cmd.Flags().StringSlice("attributesToHighlight", []string{}, heredoc.Doc(`Attributes to highlight.
@@ -745,7 +745,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/disableTypoToleran
 	cmd.Flags().Var(distinct, "distinct", heredoc.Doc(`Determines how many records of a group are included in the search results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/distinct/`))
 	cmd.Flags().SetAnnotation("distinct", "Categories", []string{"Advanced"})
-	cmd.Flags().Bool("enableABTest", true, heredoc.Doc(`Whether to include this search in currently running A/B tests.
+	cmd.Flags().Bool("enableABTest", true, heredoc.Doc(`Whether to enable A/B testing for this search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/enableABTest/`))
 	cmd.Flags().SetAnnotation("enableABTest", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("enablePersonalization", false, heredoc.Doc(`Whether to enable Personalization.
@@ -767,10 +767,10 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/facetFilters/`))
 	cmd.Flags().Bool("facetingAfterDistinct", false, heredoc.Doc(`Whether faceting should be applied after deduplication with distinct.
 See: https://www.algolia.com/doc/api-reference/api-parameters/facetingAfterDistinct/`))
 	cmd.Flags().SetAnnotation("facetingAfterDistinct", "Categories", []string{"Faceting"})
-	cmd.Flags().StringSlice("facets", []string{}, heredoc.Doc(`Retrieve the specified facets and their facet values.
+	cmd.Flags().StringSlice("facets", []string{}, heredoc.Doc(`Facets for which to retrieve facet values that match the search criteria and the number of matching facet values.
 See: https://www.algolia.com/doc/api-reference/api-parameters/facets/`))
 	cmd.Flags().SetAnnotation("facets", "Categories", []string{"Faceting"})
-	cmd.Flags().String("filters", "", heredoc.Doc(`Only include items that match the filter.
+	cmd.Flags().String("filters", "", heredoc.Doc(`Filter expression to only include items that match the filter criteria in the response.
 See: https://www.algolia.com/doc/api-reference/api-parameters/filters/`))
 	cmd.Flags().SetAnnotation("filters", "Categories", []string{"Filtering"})
 	cmd.Flags().Bool("getRankingInfo", false, heredoc.Doc(`Whether the search response should include detailed ranking information.
@@ -808,24 +808,24 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/minWordSizefor1Typ
 	cmd.Flags().Int("minWordSizefor2Typos", 8, heredoc.Doc(`Minimum number of characters a word in the search query must contain to accept matches with two typos.
 See: https://www.algolia.com/doc/api-reference/api-parameters/minWordSizefor2Typos/`))
 	cmd.Flags().SetAnnotation("minWordSizefor2Typos", "Categories", []string{"Typos"})
-	cmd.Flags().Int("minimumAroundRadius", 0, heredoc.Doc(`If aroundRadius isn't set, defines a [minimum radius] for aroundLatLng and aroundLatLngViaIP (in meters).
+	cmd.Flags().Int("minimumAroundRadius", 0, heredoc.Doc(`Minimum radius (in meters) for a search around a location when aroundRadius isn't set.
 See: https://www.algolia.com/doc/api-reference/api-parameters/minimumAroundRadius/`))
 	cmd.Flags().SetAnnotation("minimumAroundRadius", "Categories", []string{"Geo-Search"})
 	cmd.Flags().String("mode", "keywordSearch", heredoc.Doc(`Search mode the index will use to query for results. One of: neuralSearch, keywordSearch.
 See: https://www.algolia.com/doc/api-reference/api-parameters/mode/`))
 	cmd.Flags().SetAnnotation("mode", "Categories", []string{"Query strategy"})
-	cmd.Flags().StringSlice("naturalLanguages", []string{}, heredoc.Doc(`Change the default settings for several natural language parameters in a single operation: ignorePlurals, removeStopWords, removeWordsIfNoResults, analyticsTags, and ruleContexts.
+	cmd.Flags().StringSlice("naturalLanguages", []string{}, heredoc.Doc(`ISO language codes that adjust settings that are useful for processing natural language queries (as opposed to keyword searches).
 See: https://www.algolia.com/doc/api-reference/api-parameters/naturalLanguages/`))
 	cmd.Flags().SetAnnotation("naturalLanguages", "Categories", []string{"Languages"})
 	numericFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(numericFilters, "numericFilters", heredoc.Doc(`Filter by numeric facets.
 See: https://www.algolia.com/doc/api-reference/api-parameters/numericFilters/`))
 	cmd.Flags().SetAnnotation("numericFilters", "Categories", []string{"Filtering"})
-	cmd.Flags().Int("offset", 0, heredoc.Doc(`Out of the results list, indicate which one you want to show first.
+	cmd.Flags().Int("offset", 0, heredoc.Doc(`Position of the first hit to retrieve.
 See: https://www.algolia.com/doc/api-reference/api-parameters/offset/`))
 	cmd.Flags().SetAnnotation("offset", "Categories", []string{"Pagination"})
 	optionalFilters := NewJSONVar([]string{"array", "string"}...)
-	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Create filters for ranking purposes. Records that match the filter will rank higher (or lower for a negative filter).
+	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Filters to promote or demote records in the search results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalFilters/`))
 	cmd.Flags().SetAnnotation("optionalFilters", "Categories", []string{"Filtering"})
 	optionalWords := NewJSONVar([]string{"string", "null", "array"}...)
@@ -834,16 +834,16 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/optionalWords/`))
 	cmd.Flags().Int("page", 0, heredoc.Doc(`Page of search results to retrieve.
 See: https://www.algolia.com/doc/api-reference/api-parameters/page/`))
 	cmd.Flags().SetAnnotation("page", "Categories", []string{"Pagination"})
-	cmd.Flags().Bool("percentileComputation", true, heredoc.Doc(`Whether to include this query in the processing-time percentile computation.
+	cmd.Flags().Bool("percentileComputation", true, heredoc.Doc(`Whether to include this search when calculating processing-time percentiles.
 See: https://www.algolia.com/doc/api-reference/api-parameters/percentileComputation/`))
 	cmd.Flags().SetAnnotation("percentileComputation", "Categories", []string{"Advanced"})
-	cmd.Flags().Int("personalizationImpact", 100, heredoc.Doc(`Determines the impact of the Personalization feature on results: from 0 (none) to 100 (maximum).
+	cmd.Flags().Int("personalizationImpact", 100, heredoc.Doc(`Impact that Personalization should have on this search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/personalizationImpact/`))
 	cmd.Flags().SetAnnotation("personalizationImpact", "Categories", []string{"Personalization"})
-	cmd.Flags().String("query", "", heredoc.Doc(`The text to search for in the index.
+	cmd.Flags().String("query", "", heredoc.Doc(`Search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/query/`))
 	cmd.Flags().SetAnnotation("query", "Categories", []string{"Search"})
-	cmd.Flags().StringSlice("queryLanguages", []string{}, heredoc.Doc(`Define languages for which to apply language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
+	cmd.Flags().StringSlice("queryLanguages", []string{}, heredoc.Doc(`Languages for language-specific query processing steps such as plurals, stop-word removal, and word-detection dictionaries.
 See: https://www.algolia.com/doc/api-reference/api-parameters/queryLanguages/`))
 	cmd.Flags().SetAnnotation("queryLanguages", "Categories", []string{"Languages"})
 	cmd.Flags().String("queryType", "prefixLast", heredoc.Doc(`Determines if and how query words are interpreted as prefixes. One of: prefixLast, prefixAll, prefixNone.
@@ -871,13 +871,13 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/renderingContent/`
 	cmd.Flags().Bool("replaceSynonymsInHighlight", false, heredoc.Doc(`Whether to replace a highlighted word with the matched synonym.
 See: https://www.algolia.com/doc/api-reference/api-parameters/replaceSynonymsInHighlight/`))
 	cmd.Flags().SetAnnotation("replaceSynonymsInHighlight", "Categories", []string{"Highlighting and Snippeting"})
-	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`Properties to include in search and browse API responses.
+	cmd.Flags().StringSlice("responseFields", []string{"*"}, heredoc.Doc(`Properties to include in the API response of search and browse requests.
 See: https://www.algolia.com/doc/api-reference/api-parameters/responseFields/`))
 	cmd.Flags().SetAnnotation("responseFields", "Categories", []string{"Advanced"})
-	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Whether to restrict highlighting and snippeting to items that partially or fully matched the search query.
+	cmd.Flags().Bool("restrictHighlightAndSnippetArrays", false, heredoc.Doc(`Whether to restrict highlighting and snippeting to items that at least partially matched the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/restrictHighlightAndSnippetArrays/`))
 	cmd.Flags().SetAnnotation("restrictHighlightAndSnippetArrays", "Categories", []string{"Highlighting and Snippeting"})
-	cmd.Flags().StringSlice("restrictSearchableAttributes", []string{}, heredoc.Doc(`Restrict the query to look at only the specified searchable attributes.
+	cmd.Flags().StringSlice("restrictSearchableAttributes", []string{}, heredoc.Doc(`Restricts a search to a subset of your searchable attributes.
 See: https://www.algolia.com/doc/api-reference/api-parameters/restrictSearchableAttributes/`))
 	cmd.Flags().SetAnnotation("restrictSearchableAttributes", "Categories", []string{"Filtering"})
 	cmd.Flags().StringSlice("ruleContexts", []string{}, heredoc.Doc(`Assigns a rule context to the search query.
@@ -885,7 +885,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/ruleContexts/`))
 	cmd.Flags().SetAnnotation("ruleContexts", "Categories", []string{"Rules"})
 	semanticSearch := NewJSONVar([]string{}...)
 	cmd.Flags().Var(semanticSearch, "semanticSearch", heredoc.Doc(`Settings for the semantic search part of NeuralSearch.`))
-	cmd.Flags().String("similarQuery", "", heredoc.Doc(`Overrides the query parameter and performs a more generic search to find "similar" results.
+	cmd.Flags().String("similarQuery", "", heredoc.Doc(`Keywords to be used instead of the search query to conduct a more broader search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/similarQuery/`))
 	cmd.Flags().SetAnnotation("similarQuery", "Categories", []string{"Search"})
 	cmd.Flags().String("snippetEllipsisText", "…", heredoc.Doc(`String used as an ellipsis indicator when a snippet is truncated.
@@ -894,10 +894,10 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/snippetEllipsisTex
 	cmd.Flags().String("sortFacetValuesBy", "count", heredoc.Doc(`Order in which to retrieve facet values.
 See: https://www.algolia.com/doc/api-reference/api-parameters/sortFacetValuesBy/`))
 	cmd.Flags().SetAnnotation("sortFacetValuesBy", "Categories", []string{"Faceting"})
-	cmd.Flags().Bool("sumOrFiltersScores", false, heredoc.Doc(`How to calculate the filtering score. Whether to sum the scores of each matched filter or use the highest score of the filters.
+	cmd.Flags().Bool("sumOrFiltersScores", false, heredoc.Doc(`Whether to sum all filter scores.
 See: https://www.algolia.com/doc/api-reference/api-parameters/sumOrFiltersScores/`))
 	cmd.Flags().SetAnnotation("sumOrFiltersScores", "Categories", []string{"Filtering"})
-	cmd.Flags().Bool("synonyms", true, heredoc.Doc(`Whether to use or disregard an index's synonyms for this search.
+	cmd.Flags().Bool("synonyms", true, heredoc.Doc(`Whether to take into account an index's synonyms for this search.
 See: https://www.algolia.com/doc/api-reference/api-parameters/synonyms/`))
 	cmd.Flags().SetAnnotation("synonyms", "Categories", []string{"Advanced"})
 	tagFilters := NewJSONVar([]string{"array", "string"}...)
@@ -908,7 +908,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/tagFilters/`))
 	cmd.Flags().Var(typoTolerance, "typoTolerance", heredoc.Doc(`Whether typo tolerance is enabled and how it is applied.
 See: https://www.algolia.com/doc/api-reference/api-parameters/typoTolerance/`))
 	cmd.Flags().SetAnnotation("typoTolerance", "Categories", []string{"Typos"})
-	cmd.Flags().String("userToken", "", heredoc.Doc(`Link the current search to a specific user with a user token (a unique pseudonymous or anonymous identifier).
+	cmd.Flags().String("userToken", "", heredoc.Doc(`Unique pseudonymous or anonymous user identifier.
 See: https://www.algolia.com/doc/api-reference/api-parameters/userToken/`))
 	cmd.Flags().SetAnnotation("userToken", "Categories", []string{"Personalization"})
 }
