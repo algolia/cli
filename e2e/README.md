@@ -7,13 +7,13 @@ They make real API requests,
 so they work best in an empty Algolia application.
 To run these tests,
 you need to set the `ALGOLIA_APPLICATION_ID` and `ALGOLIA_API_KEY` environment variables.
-If you're using `devbox`, create a `testing.env` file with these variables.
+If you're using `devbox`, create a `.env` file in the project root directory with these variables.
 If you start a development environment with `devbox shell`,
-the environment variables will be available for you.
+the environment variables will be available to you.
 
 ## New tests
 
-The tests use a very simple format.
+The tests use a simple format.
 For more information, run `go doc testscript`.
 
 To add a new scenario, create a new directory under the `testscripts` directory,
@@ -59,8 +59,8 @@ To make tests interfere less, follow these guidelines:
   For an example, see `indices.txtar`.
 
 - Don't test for number of indices, or empty lists.
-  Different tests might also create their own indices,
-  and thus will fail a test that expect a certain number of indices present.
-  You can ensure that the index with a given name exists or doesn't exist,
+  As other tests might create their own indices and objects,
+  checks that expect a certain number of items might fail.
+  You can ensure that the index with a given name exists or doesn't exist
   by searching for the index name's pattern in the standard output.
   Again, see `indices.txtar`.
