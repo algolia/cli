@@ -4,16 +4,16 @@ import (
 	"context"
 	"testing"
 
+	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 // Context-related tests.
 func TestEventMetadataWithGet(t *testing.T) {
 	ctx := context.Background()
 	event := &CLIAnalyticsEventMetadata{
-		UserId:                   "user-id",
+		UserID:                   "user-id",
 		InvocationID:             "invocation-id",
 		OS:                       "os",
 		CLIVersion:               "cli-version",

@@ -2,19 +2,19 @@ name: Scheduled API Specs Pull Request
 on:
   schedule:
     - cron: '0 */12 * * *'
-
 jobs:
   api-specs-pr:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.19
-      - run: |
-          git config --global user.name "algolia-ci"
-          git config --global user.email "noreply@algolia.com"
+          go-version: 1.23
       - run: make api-specs-pr
         env:
           GH_TOKEN: ${{ secrets.GH_SECRET }}
+          GIT_COMMITTER_NAME: algolia-ci
+          GIT_AUTHOR_NAME: algolia-ci
+          GIT_COMMITTER_EMAIL: noreply@algolia.com
+          GIT_AUTHOR_EMAIL: noreply@algolia.com

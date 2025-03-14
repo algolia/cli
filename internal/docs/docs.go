@@ -83,7 +83,6 @@ func newCommand(cmd *cobra.Command) Command {
 
 	if categoryFlagSet.Print.HasAvailableFlags() {
 		flags["Output formatting flags"] = newFlags(categoryFlagSet.Print)
-
 	}
 	command.Flags = flags
 

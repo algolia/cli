@@ -12,33 +12,34 @@ import (
 	"github.com/algolia/cli/pkg/utils"
 )
 
-var (
-	WriteAPIKeyDefaultACLs = []string{
-		"search",
-		"browse",
-		"seeUnretrievableAttributes",
-		"listIndexes",
-		"analytics",
-		"logs",
-		"addObject",
-		"deleteObject",
-		"deleteIndex",
-		"settings",
-		"editSettings",
-		"recommendation",
-	}
-)
+var WriteAPIKeyDefaultACLs = []string{
+	"search",
+	"browse",
+	"seeUnretrievableAttributes",
+	"listIndexes",
+	"analytics",
+	"logs",
+	"addObject",
+	"deleteObject",
+	"deleteIndex",
+	"settings",
+	"editSettings",
+	"recommendation",
+}
 
 // errMissingACLs return an error with the missing ACLs
 func errMissingACLs(missing []string) error {
-	err := fmt.Sprintf("Missing API Key ACL(s): %s\n", strings.Join(missing, ", "))
-	err += "Either edit your profile or use the `--api-key` flag to provide an API Key with the missing ACLs.\n"
-	err += "See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information.\n"
+	err := fmt.Sprintf("Missing API key ACL(s): %s\n", strings.Join(missing, ", "))
+	err += "Edit your profile or use the `--api-key` flag to provide an API key with the missing ACLs.\n"
+	err += "See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restrictions for more information"
+
 	return errors.New(err)
 }
 
 // errAdminAPIKeyRequired is returned when the command requires an admin API Key
-var errAdminAPIKeyRequired = errors.New("This command requires an admin API Key. Please use the `--api-key` flag to provide a valid admin API Key.\n")
+var errAdminAPIKeyRequired = errors.New(
+	"this command requires an admin API key. Use the `--api-key` flag with a valid admin API key",
+)
 
 func DisableAuthCheck(cmd *cobra.Command) {
 	if cmd.Annotations == nil {
@@ -81,7 +82,7 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.ListAPIKeys()
+	_, err = client.ListApiKeys()
 	if err == nil {
 		return nil // Admin API Key, no need to check ACLs
 	}
@@ -92,12 +93,21 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 
 	// Check the ACLs of the provided API Key
-	apiKey, err := client.GetAPIKey(f.Config.Profile().GetAPIKey())
+	key, err := f.Config.Profile().GetAPIKey()
+	if err != nil {
+		return err
+	}
+	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(key))
 	if err != nil {
 		return err
 	}
 
-	missingACLs := utils.Differences(neededACLs, apiKey.ACL)
+	var hasAcls []string
+	for _, acl := range apiKey.Acl {
+		hasAcls = append(hasAcls, string(acl))
+	}
+
+	missingACLs := utils.Differences(neededACLs, hasAcls)
 	if len(missingACLs) > 0 {
 		return errMissingACLs(missingACLs)
 	}

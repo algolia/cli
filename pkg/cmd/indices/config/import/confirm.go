@@ -7,7 +7,11 @@ import (
 	"github.com/algolia/cli/pkg/utils"
 )
 
-func GetConfirmMessage(cs *iostreams.ColorScheme, scope []string, clearExistingRules, clearExistingSynonyms bool) string {
+func GetConfirmMessage(
+	cs *iostreams.ColorScheme,
+	scope []string,
+	clearExistingRules, clearExistingSynonyms bool,
+) string {
 	scopeToClear := []string{}
 	scopeToUpdate := []string{}
 	message := ""
@@ -30,12 +34,21 @@ func GetConfirmMessage(cs *iostreams.ColorScheme, scope []string, clearExistingR
 		}
 	}
 	if len(scopeToClear) > 0 {
-		message = fmt.Sprintf("%s Your %s will be %s\n",
-			cs.WarningIcon(), utils.SliceToReadableString(scopeToClear), cs.Bold("CLEARED and REPLACED."))
+		message = fmt.Sprintf(
+			"%s Your %s will be %s\n",
+			cs.WarningIcon(),
+			utils.SliceToReadableString(scopeToClear),
+			cs.Bold("CLEARED and REPLACED."),
+		)
 	}
 	if len(scopeToUpdate) > 0 {
-		message = fmt.Sprintf("%s%s Your %s will be %s\n",
-			message, cs.WarningIcon(), utils.SliceToReadableString(scopeToUpdate), cs.Bold("UPDATED"))
+		message = fmt.Sprintf(
+			"%s%s Your %s will be %s\n",
+			message,
+			cs.WarningIcon(),
+			utils.SliceToReadableString(scopeToUpdate),
+			cs.Bold("UPDATED"),
+		)
 	}
 
 	return message

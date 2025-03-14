@@ -37,7 +37,6 @@ func CanOpenBrowser() bool {
 	}
 
 	output, err := execCommand("xdg-settings", "get", "default-web-browser").Output()
-
 	if err != nil {
 		return false
 	}

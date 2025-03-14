@@ -18,5 +18,5 @@ vendor/
 # local build
 algolia
 
-# Ignore docs directory
-docs/
+# Environment variables
+*.env

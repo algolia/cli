@@ -56,7 +56,9 @@ func NewUnblockCmd(f *cmdutil.Factory, runF func(*UnblockOptions) error) *cobra.
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -86,7 +88,14 @@ func runUnblockCmd(opts *UnblockOptions) error {
 
 	if opts.DoConfirm {
 		var confirmed bool
-		err := prompt.Confirm(fmt.Sprintf("Are you sure you want to unblock the crawler %q? \nBlocking error is: %s", opts.ID, crawler.BlockingError), &confirmed)
+		err := prompt.Confirm(
+			fmt.Sprintf(
+				"Are you sure you want to unblock the crawler %q? \nBlocking error is: %s",
+				opts.ID,
+				crawler.BlockingError,
+			),
+			&confirmed,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to prompt: %w", err)
 		}

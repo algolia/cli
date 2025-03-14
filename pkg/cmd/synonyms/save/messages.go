@@ -13,62 +13,66 @@ import (
 type SuccessMessage struct {
 	Icon   string
 	Type   string
-	Id     string
+	ID     string
 	Values string
-	Indice string
+	Index  string
 }
 
-const successTemplate = `{{ .Type}} '{{ .Id}}' successfully saved with {{ .Values}} to {{ .Indice}}`
+const successTemplate = `{{ .Type }} '{{ .ID }}' successfully saved with {{ .Values }} to {{ .Index }}`
 
-func GetSuccessMessage(flags shared.SynonymFlags, indice string) (error, string) {
+func GetSuccessMessage(flags shared.SynonymFlags, index string) (string, error) {
 	var successMessage SuccessMessage
 
 	if flags.SynonymType == "" || flags.SynonymType == shared.Regular {
 		successMessage = SuccessMessage{
 			Type: "Synonym",
-			Id:   flags.SynonymID,
+			ID:   flags.SynonymID,
 			Values: fmt.Sprintf("%s (%s)",
 				utils.Pluralize(len(flags.Synonyms), "synonym"),
 				strings.Join(flags.Synonyms, ", ")),
-			Indice: indice,
+			Index: index,
 		}
 	}
 
 	switch flags.SynonymType {
-	case shared.OneWay:
+	case shared.OneWay, shared.AltOneWay:
 		successMessage = SuccessMessage{
 			Type: "One way synonym",
-			Id:   flags.SynonymID,
+			ID:   flags.SynonymID,
 			Values: fmt.Sprintf("input '%s' and %s (%s)",
 				flags.SynonymInput,
 				utils.Pluralize(len(flags.Synonyms), "synonym"),
 				strings.Join(flags.Synonyms, ", ")),
-			Indice: indice,
+			Index: index,
 		}
 	case shared.Placeholder:
 		successMessage = SuccessMessage{
 			Type: "Placeholder synonym",
-			Id:   flags.SynonymID,
+			ID:   flags.SynonymID,
 			Values: fmt.Sprintf("placeholder '%s' and %s (%s)",
 				flags.SynonymPlaceholder,
 				utils.Pluralize(len(flags.SynonymReplacements), "replacement"),
 				strings.Join(flags.SynonymReplacements, ", ")),
-			Indice: indice,
+			Index: index,
 		}
-	case shared.AltCorrection1, shared.AltCorrection2:
+	case shared.AltCorrection1,
+		shared.AltCorrection2,
+		shared.AltAltCorrection1,
+		shared.AltAltCorrection2:
 		altCorrectionType := "1"
-		if flags.SynonymType == shared.AltCorrection2 {
+		if flags.SynonymType == shared.AltCorrection2 ||
+			flags.SynonymType == shared.AltAltCorrection2 {
 			altCorrectionType = "2"
 		}
 		altCorrectionType = "Alt correction " + altCorrectionType + " synonym"
 		successMessage = SuccessMessage{
 			Type: altCorrectionType,
-			Id:   flags.SynonymID,
+			ID:   flags.SynonymID,
 			Values: fmt.Sprintf("word '%s' and %s (%s)",
 				flags.SynonymWord,
 				utils.Pluralize(len(flags.SynonymCorrections), "correction"),
 				strings.Join(flags.SynonymCorrections, ", ")),
-			Indice: indice,
+			Index: index,
 		}
 	}
 
@@ -76,7 +80,7 @@ func GetSuccessMessage(flags shared.SynonymFlags, indice string) (error, string)
 
 	var tpl bytes.Buffer
 	if err := t.Execute(&tpl, successMessage); err != nil {
-		return err, ""
+		return "", err
 	}
-	return nil, tpl.String() + "\n"
+	return tpl.String() + "\n", nil
 }

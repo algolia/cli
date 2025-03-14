@@ -22,7 +22,8 @@ func Test_ValidateSynonymFlags(t *testing.T) {
 			wantsErr: false,
 			synonymFlags: shared.SynonymFlags{
 				SynonymID: "23",
-				Synonyms:  []string{"mj", "goat"}},
+				Synonyms:  []string{"mj", "goat"},
+			},
 		},
 		{
 			name:     "Regular synonym explicit type",
@@ -30,14 +31,16 @@ func Test_ValidateSynonymFlags(t *testing.T) {
 			synonymFlags: shared.SynonymFlags{
 				SynonymType: shared.Regular,
 				SynonymID:   "23",
-				Synonyms:    []string{"mj", "goat"}},
+				Synonyms:    []string{"mj", "goat"},
+			},
 		},
 		{
 			name:        "Regular synonym without id",
 			wantsErr:    true,
 			wantsErrMsg: "a unique synonym id is required",
 			synonymFlags: shared.SynonymFlags{
-				Synonyms: []string{"mj", "goat"}},
+				Synonyms: []string{"mj", "goat"},
+			},
 		},
 		// One way type
 		{

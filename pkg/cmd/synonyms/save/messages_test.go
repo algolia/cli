@@ -26,7 +26,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 				Synonyms:  []string{"mj", "goat"},
 			},
 			saveOptions: SaveOptions{
-				Indice: "legends",
+				Index: "legends",
 			},
 			wantsOutput: "✓ Synonym '23' successfully saved with 2 synonyms (mj, goat) to legends\n",
 		},
@@ -39,7 +39,20 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 				SynonymInput: "michael",
 			},
 			saveOptions: SaveOptions{
-				Indice: "legends",
+				Index: "legends",
+			},
+			wantsOutput: "✓ One way synonym '23' successfully saved with input 'michael' and 2 synonyms (mj, goat) to legends\n",
+		},
+		{
+			name: "Save one way synonym (alt. spelling)",
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:  shared.AltOneWay,
+				SynonymID:    "23",
+				Synonyms:     []string{"mj", "goat"},
+				SynonymInput: "michael",
+			},
+			saveOptions: SaveOptions{
+				Index: "legends",
 			},
 			wantsOutput: "✓ One way synonym '23' successfully saved with input 'michael' and 2 synonyms (mj, goat) to legends\n",
 		},
@@ -52,7 +65,7 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 				SynonymPlaceholder:  "michael",
 			},
 			saveOptions: SaveOptions{
-				Indice: "legends",
+				Index: "legends",
 			},
 			wantsOutput: "✓ Placeholder synonym '23' successfully saved with placeholder 'michael' and 2 replacements (mj, goat) to legends\n",
 		},
@@ -65,7 +78,20 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 				SynonymWord:        "michael",
 			},
 			saveOptions: SaveOptions{
-				Indice: "legends",
+				Index: "legends",
+			},
+			wantsOutput: "✓ Alt correction 1 synonym '23' successfully saved with word 'michael' and 2 corrections (mj, goat) to legends\n",
+		},
+		{
+			name: "Save alt correction 1 synonym (alt. spelling)",
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:        shared.AltAltCorrection1,
+				SynonymID:          "23",
+				SynonymCorrections: []string{"mj", "goat"},
+				SynonymWord:        "michael",
+			},
+			saveOptions: SaveOptions{
+				Index: "legends",
 			},
 			wantsOutput: "✓ Alt correction 1 synonym '23' successfully saved with word 'michael' and 2 corrections (mj, goat) to legends\n",
 		},
@@ -78,7 +104,20 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 				SynonymWord:        "michael",
 			},
 			saveOptions: SaveOptions{
-				Indice: "legends",
+				Index: "legends",
+			},
+			wantsOutput: "✓ Alt correction 2 synonym '23' successfully saved with word 'michael' and 2 corrections (mj, goat) to legends\n",
+		},
+		{
+			name: "Save alt correction 2 synonym (alt. correction 2)",
+			synonymFlags: shared.SynonymFlags{
+				SynonymType:        shared.AltAltCorrection2,
+				SynonymID:          "23",
+				SynonymCorrections: []string{"mj", "goat"},
+				SynonymWord:        "michael",
+			},
+			saveOptions: SaveOptions{
+				Index: "legends",
 			},
 			wantsOutput: "✓ Alt correction 2 synonym '23' successfully saved with word 'michael' and 2 corrections (mj, goat) to legends\n",
 		},
@@ -91,10 +130,14 @@ func Test_GetSynonymSuccessMessage(t *testing.T) {
 				IOStreams: io,
 			}
 
-			err, message := GetSuccessMessage(tt.synonymFlags, tt.saveOptions.Indice)
+			message, err := GetSuccessMessage(tt.synonymFlags, tt.saveOptions.Index)
 
 			assert.Equal(t, err, nil)
-			assert.Equal(t, tt.wantsOutput, fmt.Sprintf("%s %s", f.IOStreams.ColorScheme().SuccessIcon(), message))
+			assert.Equal(
+				t,
+				tt.wantsOutput,
+				fmt.Sprintf("%s %s", f.IOStreams.ColorScheme().SuccessIcon(), message),
+			)
 		})
 	}
 }

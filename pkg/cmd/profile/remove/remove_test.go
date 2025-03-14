@@ -97,21 +97,30 @@ func Test_runRemoveCmd(t *testing.T) {
 		wantOut  string
 	}{
 		{
-			name:     "existing profile (default)",
-			cli:      "default --confirm",
-			profiles: []config.Profile{{Name: "default", Default: true}, {Name: "foo", Default: false}},
-			wantOut:  "✓ 'default' removed successfully. Set a new default profile with 'algolia profile setdefault'.\n",
+			name: "existing profile (default)",
+			cli:  "default --confirm",
+			profiles: []config.Profile{
+				{Name: "default", Default: true},
+				{Name: "foo", Default: false},
+			},
+			wantOut: "✓ 'default' removed successfully. Set a new default profile with 'algolia profile setdefault'.\n",
 		},
 		{
-			name:     "existing profile (non-default)",
-			cli:      "foo --confirm",
-			profiles: []config.Profile{{Name: "default", Default: true}, {Name: "foo", Default: false}},
-			wantOut:  "✓ 'foo' removed successfully.\n",
+			name: "existing profile (non-default)",
+			cli:  "foo --confirm",
+			profiles: []config.Profile{
+				{Name: "default", Default: true},
+				{Name: "foo", Default: false},
+			},
+			wantOut: "✓ 'foo' removed successfully.\n",
 		},
 		{
-			name:     "non-existant profile",
-			cli:      "bar --confirm",
-			profiles: []config.Profile{{Name: "default", Default: true}, {Name: "foo", Default: false}},
+			name: "non-existant profile",
+			cli:  "bar --confirm",
+			profiles: []config.Profile{
+				{Name: "default", Default: true},
+				{Name: "foo", Default: false},
+			},
 			wantsErr: "the specified profile does not exist: 'bar'",
 		},
 		{

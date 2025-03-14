@@ -1,5 +1,6 @@
 package set
 
+// The v4 API client doesn't have the long form of language names
 var Languages = map[string]string{
 	"af":    "Afrikaans",
 	"sq":    "Albanian",

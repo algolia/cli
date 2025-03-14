@@ -69,7 +69,7 @@ func AskSynonym(flags *shared.SynonymFlags, cmd *cobra.Command) error {
 		replacementsProvided: cmd.Flags().Changed("repalcements"),
 	}
 
-	err := AskSynonymIdQuestion(flags, flagsProvided)
+	err := AskSynonymIDQuestion(flags, flagsProvided)
 	if err != nil {
 		return err
 	}
@@ -93,11 +93,16 @@ func AskSynonym(flags *shared.SynonymFlags, cmd *cobra.Command) error {
 	}
 }
 
-func AskSynonymIdQuestion(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
+func AskSynonymIDQuestion(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
 	if flagsProvided.idProvided {
 		return nil
 	}
-	return ask.AskInputQuestion("id:", &flags.SynonymID, flags.SynonymID, survey.WithValidator(survey.Required))
+	return ask.AskInputQuestion(
+		"id:",
+		&flags.SynonymID,
+		flags.SynonymID,
+		survey.WithValidator(survey.Required),
+	)
 }
 
 func AskSynonymTypeQuestion(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
@@ -113,7 +118,13 @@ func AskSynonymTypeQuestion(flags *shared.SynonymFlags, flagsProvided FlagsProvi
 	return ask.AskSelectQuestion(
 		"type:",
 		&flags.SynonymType,
-		[]string{shared.Regular, shared.OneWay, shared.Placeholder, shared.AltCorrection1, shared.AltCorrection2},
+		[]string{
+			shared.Regular,
+			shared.OneWay,
+			shared.Placeholder,
+			shared.AltCorrection1,
+			shared.AltCorrection2,
+		},
 		defaultType,
 		survey.WithValidator(survey.Required),
 	)
@@ -134,7 +145,12 @@ func AskRegularSynonymQuestion(flags *shared.SynonymFlags, flagsProvided FlagsPr
 
 func AskOneWaySynonymQuestions(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
 	if !flagsProvided.inputProvided {
-		err := ask.AskInputQuestion("input:", &flags.SynonymInput, flags.SynonymInput, survey.WithValidator(survey.Required))
+		err := ask.AskInputQuestion(
+			"input:",
+			&flags.SynonymInput,
+			flags.SynonymInput,
+			survey.WithValidator(survey.Required),
+		)
 		if err != nil {
 			return err
 		}
@@ -145,7 +161,12 @@ func AskOneWaySynonymQuestions(flags *shared.SynonymFlags, flagsProvided FlagsPr
 
 func AskPlaceholderSynonymQuestions(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
 	if !flagsProvided.placeholderProvided {
-		err := ask.AskInputQuestion("placeholder:", &flags.SynonymPlaceholder, flags.SynonymPlaceholder, survey.WithValidator(survey.Required))
+		err := ask.AskInputQuestion(
+			"placeholder:",
+			&flags.SynonymPlaceholder,
+			flags.SynonymPlaceholder,
+			survey.WithValidator(survey.Required),
+		)
 		if err != nil {
 			return err
 		}
@@ -162,9 +183,17 @@ func AskPlaceholderSynonymQuestions(flags *shared.SynonymFlags, flagsProvided Fl
 	return nil
 }
 
-func AskAltCorrectionSynonymQuestions(flags *shared.SynonymFlags, flagsProvided FlagsProvided) error {
+func AskAltCorrectionSynonymQuestions(
+	flags *shared.SynonymFlags,
+	flagsProvided FlagsProvided,
+) error {
 	if !flagsProvided.wordProvided {
-		err := ask.AskInputQuestion("word:", &flags.SynonymWord, flags.SynonymWord, survey.WithValidator(survey.Required))
+		err := ask.AskInputQuestion(
+			"word:",
+			&flags.SynonymWord,
+			flags.SynonymWord,
+			survey.WithValidator(survey.Required),
+		)
 		if err != nil {
 			return err
 		}

@@ -8,7 +8,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
-	indiceConfig "github.com/algolia/cli/pkg/cmd/shared/config"
+	indexConfig "github.com/algolia/cli/pkg/cmd/shared/config"
 	"github.com/algolia/cli/pkg/cmd/shared/handler"
 	config "github.com/algolia/cli/pkg/cmd/shared/handler/indices"
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -47,21 +47,21 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia index config export MOVIES --directory exports
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 
 			client, err := opts.SearchClient()
 			if err != nil {
 				return err
 			}
-			existingIndices, err := client.ListIndices()
+			listResponse, err := client.ListIndices(client.NewApiListIndicesRequest())
 			if err != nil {
 				return err
 			}
-			var availableIndicesNames []string
-			for _, currentIndexName := range existingIndices.Items {
-				availableIndicesNames = append(availableIndicesNames, currentIndexName.Name)
+			var indices []string
+			for _, i := range listResponse.Items {
+				indices = append(indices, i.Name)
 			}
-			opts.ExistingIndices = availableIndicesNames
+			opts.Indices = indices
 			exportConfigHandler := &handler.IndexConfigExportHandler{
 				Opts: opts,
 			}
@@ -75,9 +75,11 @@ func NewExportCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (default: current folder)")
+	cmd.Flags().
+		StringVarP(&opts.Directory, "directory", "d", "", "Directory path of the output file (default: current folder)")
 	_ = cmd.MarkFlagDirname("directory")
-	cmd.Flags().StringSliceVarP(&opts.Scope, "scope", "s", []string{"settings", "synonyms", "rules"}, "Scope to export (default: all)")
+	cmd.Flags().
+		StringSliceVarP(&opts.Scope, "scope", "s", []string{"settings", "synonyms", "rules"}, "Scope to export (default: all)")
 	_ = cmd.RegisterFlagCompletionFunc("scope",
 		cmdutil.StringSliceCompletionFunc(map[string]string{
 			"settings": "settings",
@@ -95,19 +97,27 @@ func runExportCmd(opts *config.ExportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Indice)
-	configJson, err := indiceConfig.GetIndiceConfig(indice, opts.Scope, cs)
+	configJSON, err := indexConfig.GetIndexConfig(client, opts.Index, opts.Scope, cs)
 	if err != nil {
 		return err
 	}
 
-	configJsonIndented, err := json.MarshalIndent(configJson, "", "  ")
+	configJSONIndented, err := json.MarshalIndent(configJSON, "", "  ")
 	if err != nil {
-		return fmt.Errorf("%s An error occurred when creating the config json: %w", cs.FailureIcon(), err)
+		return fmt.Errorf(
+			"%s An error occurred when creating the config json: %w",
+			cs.FailureIcon(),
+			err,
+		)
 	}
 
-	filePath := config.GetConfigFileName(opts.Directory, opts.Indice, indice.GetAppID())
-	err = os.WriteFile(filePath, configJsonIndented, 0644)
+	filePath := config.GetConfigFileName(
+		opts.Directory,
+		opts.Index,
+		client.GetConfiguration().AppID,
+	)
+	// Gosec wants permissions of 0600 or less, but I don't want to change it
+	err = os.WriteFile(filePath, configJSONIndented, 0o644) // nolint:gosec
 	if err != nil {
 		return fmt.Errorf("%s An error occurred when saving the file: %w", cs.FailureIcon(), err)
 	}
@@ -116,9 +126,13 @@ func runExportCmd(opts *config.ExportOptions) error {
 	if opts.Directory != "" {
 		rootPath = currentDir
 	}
-	fmt.Printf("%s '%s' Index config (%s) successfully exported to %s\n",
-		cs.SuccessIcon(), opts.Indice, utils.SliceToReadableString(opts.Scope), fmt.Sprintf("%s/%s", rootPath, filePath))
+	fmt.Printf(
+		"%s '%s' Index config (%s) successfully exported to %s\n",
+		cs.SuccessIcon(),
+		opts.Index,
+		utils.SliceToReadableString(opts.Scope),
+		fmt.Sprintf("%s/%s", rootPath, filePath),
+	)
 
 	return nil
-
 }

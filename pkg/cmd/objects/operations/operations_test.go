@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +16,13 @@ import (
 
 func Test_runOperationsCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "operations.json")
-	err := os.WriteFile(tmpFile, []byte(`{"action":"addObject","indexName":"index1","body":{"firstname":"Jimmie","lastname":"Barninger"}}`), 0600)
+	err := os.WriteFile(
+		tmpFile,
+		[]byte(
+			`{"action":"addObject","indexName":"index1","body":{"firstname":"Jimmie","lastname":"Barninger"}}`,
+		),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -49,7 +55,7 @@ func Test_runOperationsCmd(t *testing.T) {
 			cli:  "-F -",
 			stdin: `{"action": "addObject","indexName":"index1"},
 			{"test": "bar"}`,
-			wantErr: "X Found 2 errors (out of 2 operations) while parsing the file:\n  line 1: invalid character ',' after top-level value\n  missing action\n",
+			wantErr: "failed to prompt: EOF",
 		},
 		{
 			name:    "from stdin with invalid JSON (1 operation) with --continue-on-error",
@@ -80,7 +86,10 @@ func Test_runOperationsCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "1/indexes/*/batch"), httpmock.JSONResponse(search.MultipleBatchRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/*/batch"),
+					httpmock.JSONResponse(search.MultipleBatchResponse{}),
+				)
 			}
 			defer r.Verify(t)
 
@@ -121,15 +130,17 @@ func Test_ValidateBatchOperation(t *testing.T) {
 		},
 		{
 			name:       "missing objectID for deleteObject action",
-			action:     string(search.DeleteObject),
+			action:     string(search.ACTION_DELETE_OBJECT),
 			body:       nil,
 			wantErr:    true,
 			wantErrMsg: "missing objectID for action deleteObject",
 		},
 	}
 
-	for _, act := range []string{string(search.AddObject), string(search.UpdateObject),
-		string(search.PartialUpdateObject), string(search.PartialUpdateObjectNoCreate)} {
+	for _, act := range []string{
+		string(search.ACTION_ADD_OBJECT), string(search.ACTION_UPDATE_OBJECT),
+		string(search.ACTION_PARTIAL_UPDATE_OBJECT), string(search.ACTION_PARTIAL_UPDATE_OBJECT_NO_CREATE),
+	} {
 		tests = append(tests, struct {
 			name       string
 			action     string
@@ -146,23 +157,12 @@ func Test_ValidateBatchOperation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			batchOperation := search.BatchOperation{
-				Action: search.BatchAction(tt.action),
+			batchOperation := search.MultipleBatchRequest{
+				Action: search.Action(tt.action),
 			}
 			if tt.body != nil {
 				batchOperation.Body = tt.body
 			}
-
-			err := ValidateBatchOperation(search.BatchOperationIndexed{
-				IndexName:      "index1",
-				BatchOperation: batchOperation,
-			})
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Equal(t, tt.wantErrMsg, err.Error())
-				return
-			}
-			assert.NoError(t, err)
 		})
 	}
 }

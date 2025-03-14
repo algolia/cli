@@ -2,9 +2,11 @@ package list
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -19,7 +21,7 @@ type ListOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -33,9 +35,10 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
-		Use:   "list",
-		Args:  validators.NoArgs(),
-		Short: "List indices",
+		Use:     "list",
+		Aliases: []string{"l"},
+		Args:    validators.NoArgs(),
+		Short:   "List indices",
 		Example: heredoc.Doc(`
 			# List indices
 			$ algolia indices list
@@ -61,7 +64,7 @@ func runListCmd(opts *ListOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching indices")
-	res, err := client.ListIndices()
+	res, err := client.ListIndices(client.NewApiListIndicesRequest())
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -94,15 +97,50 @@ func runListCmd(opts *ListOptions) error {
 	}
 
 	for _, index := range res.Items {
+		var primary string
+		if index.Primary == nil {
+			primary = ""
+		} else {
+			primary = *index.Primary
+		}
+		updatedAt, err := parseTime(index.UpdatedAt)
+		if err != nil {
+			return fmt.Errorf("can't parse %s into a time struct", index.UpdatedAt)
+		}
+		createdAt, err := parseTime(index.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("can't parse %s into a time struct", index.CreatedAt)
+		}
+		// Prevent integer overflow
+		if index.DataSize < 0 {
+			index.DataSize = 0
+		}
 		table.AddField(index.Name, nil, nil)
-		table.AddField(humanize.Comma(index.Entries), nil, nil)
+		table.AddField(humanize.Comma(int64(index.Entries)), nil, nil)
 		table.AddField(humanize.Bytes(uint64(index.DataSize)), nil, nil)
-		table.AddField(humanize.Time(index.UpdatedAt), nil, nil)
-		table.AddField(humanize.Time(index.CreatedAt), nil, nil)
-		table.AddField(index.LastBuildTime.String(), nil, nil)
-		table.AddField(index.Primary, nil, nil)
+		table.AddField(updatedAt, nil, nil)
+		table.AddField(createdAt, nil, nil)
+		table.AddField(strconv.Itoa(int(index.LastBuildTimeS))+"s", nil, nil)
+		table.AddField(primary, nil, nil)
 		table.AddField(fmt.Sprintf("%v", index.Replicas), nil, nil)
 		table.EndRow()
 	}
 	return table.Render()
+}
+
+// parseTime parses the string from the API response into a relative time string
+func parseTime(timeAsString string) (string, error) {
+	const layout = "2006-01-02T15:04:05.999Z"
+
+	// This *should* restore the previous behavior when UpdatedAt is empty
+	if timeAsString == "" {
+		return "a long while ago", nil
+	}
+
+	t, err := time.Parse(layout, timeAsString)
+	if err != nil {
+		return "", err
+	}
+
+	return humanize.Time(t), nil
 }

@@ -1,14 +1,14 @@
-package importSynonyms
+package importsynonyms
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,11 @@ import (
 
 func TestNewImportCmd(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "synonyms.ndjson")
-	_ = ioutil.WriteFile(file, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0o600)
+	_ = os.WriteFile(
+		file,
+		[]byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"),
+		0o600,
+	)
 
 	tests := []struct {
 		name      string
@@ -106,12 +110,18 @@ func TestNewImportCmd(t *testing.T) {
 
 func Test_runExportCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "synonyms.json")
-	err := ioutil.WriteFile(tmpFile, []byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"), 0o600)
+	err := os.WriteFile(
+		tmpFile,
+		[]byte("{\"objectID\":\"test\", \"type\": \"synonym\", \"synonyms\": [\"test\"]}"),
+		0o600,
+	)
 	require.NoError(t, err)
 
 	var largeBatchBuilder strings.Builder
 	for i := 0; i < 1001; i += 1 {
-		largeBatchBuilder.Write([]byte("{\"objectID\":\"test\",\"type\":\"synonym\",\"synonyms\":[\"test\"]}\n"))
+		largeBatchBuilder.Write(
+			[]byte("{\"objectID\":\"test\",\"type\":\"synonym\",\"synonyms\":[\"test\"]}\n"),
+		)
 	}
 
 	tests := []struct {
@@ -128,7 +138,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   `{"objectID":"test", "type": "synonym", "synonyms": ["test"]}`,
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -136,7 +149,10 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s'", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -152,7 +168,10 @@ func Test_runExportCmd(t *testing.T) {
 			cli:     fmt.Sprintf("foo -F '%s' -f", tmpFile),
 			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/batch"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/batch"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -161,7 +180,10 @@ func Test_runExportCmd(t *testing.T) {
 			stdin:   "",
 			wantOut: "✓ Successfully imported 0 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
-				r.Register(httpmock.REST("POST", "1/indexes/foo/synonyms/clear"), httpmock.JSONResponse(search.UpdateTaskRes{}))
+				r.Register(
+					httpmock.REST("POST", "1/indexes/foo/synonyms/clear"),
+					httpmock.JSONResponse(search.UpdatedAtResponse{}),
+				)
 			},
 		},
 		{
@@ -178,11 +200,13 @@ func Test_runExportCmd(t *testing.T) {
 			wantOut: "✓ Successfully imported 1001 synonyms to foo\n",
 			setup: func(r *httpmock.Registry) {
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) && req.URL.Query().Get("replaceExistingSynonyms") == "true"
-				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
+						req.URL.Query().Get("replaceExistingSynonyms") == "true"
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
 				r.Register(httpmock.Matcher(func(req *http.Request) bool {
-					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) && req.URL.Query().Get("replaceExistingSynonyms") == ""
-				}), httpmock.JSONResponse(search.UpdateTaskRes{}))
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
+						req.URL.Query().Get("replaceExistingSynonyms") == ""
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
 			},
 		},
 	}
@@ -204,6 +228,183 @@ func Test_runExportCmd(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.wantOut, out.String())
+		})
+	}
+}
+
+func TestValidateSynonym(t *testing.T) {
+	tests := []struct {
+		name     string
+		synonym  *search.SynonymHit
+		wantsErr string
+	}{
+		{
+			name:     "Missing objectID",
+			synonym:  search.NewEmptySynonymHit(),
+			wantsErr: "objectID required for synonym",
+		},
+		{
+			name:     "Missing synonym type",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test"),
+			wantsErr: "synonym type required",
+		},
+		{
+			name:     "Missing synonyms",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("synonym"),
+			wantsErr: "`synonyms` property required for regular synonym",
+		},
+		{
+			name: "Valid regular synonym",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("synonym").
+				SetSynonyms([]string{"foo"}),
+			wantsErr: "",
+		},
+		{
+			name:     "Missing input (one-way)",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("oneWaySynonym"),
+			wantsErr: "`input` property required for one-way synonym",
+		},
+		{
+			name: "Missing synonyms (one-way)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("oneWaySynonym").
+				SetInput("foo"),
+			wantsErr: "`synonyms` property required for one-way synonym",
+		},
+		{
+			name: "Valid one-way synonym",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("oneWaySynonym").
+				SetInput("foo").SetSynonyms([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+		{
+			name: "Valid one-way synonym (alternative spelling)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("onewaysynonym").
+				SetInput("foo").SetSynonyms([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+		{
+			name:     "Missing placeholder",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("placeholder"),
+			wantsErr: "`placeholder` property required for placeholder synonym",
+		},
+		{
+			name: "Missing replacements",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("placeholder").
+				SetPlaceholder("foo"),
+			wantsErr: "`replacements` property required for placeholder synonym",
+		},
+		{
+			name: "Valid placeholder synonym",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("placeholder").
+				SetPlaceholder("foo").SetReplacements([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+		{
+			name:     "Missing word (alt-correction 1)",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("altCorrection1"),
+			wantsErr: "`word` property required for alt-correction synonym",
+		},
+		{
+			name:     "Missing word (alt-correction 1, alternative spelling)",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("altcorrection1"),
+			wantsErr: "`word` property required for alt-correction synonym",
+		},
+		{
+			name:     "Missing word (alt-correction 2)",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("altCorrection2"),
+			wantsErr: "`word` property required for alt-correction synonym",
+		},
+		{
+			name:     "Missing word (alt-correction 2, alternative spelling)",
+			synonym:  search.NewEmptySynonymHit().SetObjectID("test").SetType("altcorrection2"),
+			wantsErr: "`word` property required for alt-correction synonym",
+		},
+		{
+			name: "Missing corrections (alt-correction 1)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altCorrection1").
+				SetWord("foo"),
+			wantsErr: "`corrections` property required for alt-correction synonym",
+		},
+		{
+			name: "Missing corrections (alt-correction 1, alternative spelling)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altcorrection1").
+				SetWord("foo"),
+			wantsErr: "`corrections` property required for alt-correction synonym",
+		},
+		{
+			name: "Missing corrections (alt-correction 2)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altCorrection2").
+				SetWord("foo"),
+			wantsErr: "`corrections` property required for alt-correction synonym",
+		},
+		{
+			name: "Missing corrections (alt-correction 2, alternative spelling)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altcorrection2").
+				SetWord("foo"),
+			wantsErr: "`corrections` property required for alt-correction synonym",
+		},
+		{
+			name: "Valid alt correction 1 synonym",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altCorrection1").
+				SetWord("foo").SetCorrections([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+		{
+			name: "Valid alt correction 1 synonym (alternative spelling)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altCorrection1").
+				SetWord("foo").SetCorrections([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+		{
+			name: "Valid alt correction 2 synonym",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altCorrection2").
+				SetWord("foo").SetCorrections([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+		{
+			name: "Valid alt correction 2 synonym (alternative spelling)",
+			synonym: search.NewEmptySynonymHit().
+				SetObjectID("test").
+				SetType("altCorrection2").
+				SetWord("foo").SetCorrections([]string{"bar", "baz"}),
+			wantsErr: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateSynonym(*tt.synonym)
+			if tt.wantsErr == "" {
+				assert.Equal(t, nil, err)
+			} else {
+				assert.EqualError(t, err, tt.wantsErr)
+			}
 		})
 	}
 }

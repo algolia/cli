@@ -3,7 +3,7 @@ package shared
 import (
 	"fmt"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
 type SynonymFlags struct {
@@ -22,12 +22,20 @@ type SynonymFlags struct {
 type SynonymType string
 
 const (
-	// Matching API https://www.algolia.com/doc/api-reference/api-methods/save-synonym/#method-param-type
-	Regular        string = "synonym"
-	OneWay         string = "oneWaySynonym"
-	AltCorrection1 string = "altCorrection1"
-	AltCorrection2 string = "altCorrection2"
-	Placeholder    string = "placeholder"
+	Regular string = string(search.SYNONYM_TYPE_SYNONYM)
+	// oneWaySynonym
+	OneWay string = string(search.SYNONYM_TYPE_ONE_WAY_SYNONYM)
+	// onewaysynonym
+	AltOneWay string = string(search.SYNONYM_TYPE_ONEWAYSYNONYM)
+	// altCorrection1
+	AltCorrection1 string = string(search.SYNONYM_TYPE_ALT_CORRECTION1)
+	// altcorrection1
+	AltAltCorrection1 string = string(search.SYNONYM_TYPE_ALTCORRECTION1)
+	// altCorrection2
+	AltCorrection2 string = string(search.SYNONYM_TYPE_ALT_CORRECTION2)
+	// altcorrection2
+	AltAltCorrection2 string = string(search.SYNONYM_TYPE_ALTCORRECTION2)
+	Placeholder       string = string(search.SYNONYM_TYPE_PLACEHOLDER)
 )
 
 func (e *SynonymType) String() string {
@@ -41,11 +49,20 @@ func (e *SynonymType) Set(v string) error {
 	}
 
 	switch v {
-	case Regular, OneWay, AltCorrection1, AltCorrection2, Placeholder:
+	case Regular,
+		OneWay,
+		AltCorrection1,
+		AltCorrection2,
+		Placeholder,
+		AltOneWay,
+		AltAltCorrection1,
+		AltAltCorrection2:
 		*e = SynonymType(v)
 		return nil
 	default:
-		return fmt.Errorf(`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`)
+		return fmt.Errorf(
+			`must be one of "regular", "one-way", "alt-correction1", "alt-correction2" or "placeholder"`,
+		)
 	}
 }
 
@@ -53,37 +70,42 @@ func (e *SynonymType) Type() string {
 	return "SynonymType"
 }
 
-func FlagsToSynonym(flags SynonymFlags) (search.Synonym, error) {
+func FlagsToSynonym(flags SynonymFlags) (*search.SynonymHit, error) {
 	switch flags.SynonymType {
-	case OneWay:
-		return search.NewOneWaySynonym(
-			flags.SynonymID,
-			flags.SynonymInput,
-			flags.Synonyms...,
-		), nil
-	case AltCorrection1:
-		return search.NewAltCorrection1(
-			flags.SynonymID,
-			flags.SynonymWord,
-			flags.SynonymCorrections...,
-		), nil
-	case AltCorrection2:
-		return search.NewAltCorrection2(
-			flags.SynonymID,
-			flags.SynonymWord,
-			flags.SynonymCorrections...,
-		), nil
+	case OneWay, AltOneWay:
+		return search.NewEmptySynonymHit().
+				SetType(search.SYNONYM_TYPE_ONE_WAY_SYNONYM).
+				SetObjectID(flags.SynonymID).
+				SetInput(flags.SynonymInput).
+				SetSynonyms(flags.Synonyms),
+			nil
+	case AltCorrection1, AltAltCorrection1:
+		return search.NewEmptySynonymHit().
+				SetType(search.SYNONYM_TYPE_ALT_CORRECTION1).
+				SetObjectID(flags.SynonymID).
+				SetWord(flags.SynonymWord).
+				SetCorrections(flags.SynonymCorrections),
+			nil
+	case AltCorrection2, AltAltCorrection2:
+		return search.NewEmptySynonymHit().
+				SetType(search.SYNONYM_TYPE_ALT_CORRECTION2).
+				SetObjectID(flags.SynonymID).
+				SetWord(flags.SynonymWord).
+				SetCorrections(flags.SynonymCorrections),
+			nil
 	case Placeholder:
-		return search.NewPlaceholder(
-			flags.SynonymID,
-			flags.SynonymPlaceholder,
-			flags.SynonymReplacements...,
-		), nil
+		return search.NewEmptySynonymHit().
+				SetType(search.SYNONYM_TYPE_PLACEHOLDER).
+				SetObjectID(flags.SynonymID).
+				SetPlaceholder(flags.SynonymPlaceholder).
+				SetReplacements(flags.SynonymReplacements),
+			nil
 	case "", Regular:
-		return search.NewRegularSynonym(
-			flags.SynonymID,
-			flags.Synonyms...,
-		), nil
+		return search.NewEmptySynonymHit().
+				SetType(search.SYNONYM_TYPE_SYNONYM).
+				SetObjectID(flags.SynonymID).
+				SetSynonyms(flags.Synonyms),
+			nil
 	}
 
 	return nil, fmt.Errorf("invalid synonym type")

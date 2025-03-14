@@ -2,9 +2,8 @@ package list
 
 import (
 	"testing"
-	"time"
 
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/algolia/cli/pkg/httpmock"
@@ -20,33 +19,28 @@ func Test_runListCmd(t *testing.T) {
 		{
 			name:    "list",
 			isTTY:   false,
-			wantOut: "\ttest\t[*]\t[]\tNever expire\t0\t0\t[]\ta long while ago\n",
+			wantOut: "foo\ttest\t[search]\t[]\tNever expire\t0\t0\t[]\t5 years ago\n",
 		},
 		{
-			name:  "list_tty",
-			isTTY: true,
-			wantOut: `KEY  DESCRIPTION  ACL  INDICES  VALIDITY  MAX H...  MAX Q...  REFERERS  CREAT...
-     test         [*]  []       Never...  0         0         []        a lon...
-`,
+			name:    "list_tty",
+			isTTY:   true,
+			wantOut: "KEY  DESCRIPTION  ACL      INDICES  VALI...  MAX ...  MAX ...  REFE...  CREA...\nfoo  test         [sea...  []       Neve...  0        0        []       5 ye...\n",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			name := "test"
 			r := httpmock.Registry{}
 			r.Register(
 				httpmock.REST("GET", "1/keys"),
-				httpmock.JSONResponse(search.ListAPIKeysRes{
-					Keys: []search.Key{
+				httpmock.JSONResponse(search.ListApiKeysResponse{
+					Keys: []search.GetApiKeyResponse{
 						{
-							Value:                  "foo",
-							Description:            "test",
-							ACL:                    []string{"*"},
-							Validity:               0,
-							MaxHitsPerQuery:        0,
-							MaxQueriesPerIPPerHour: 0,
-							Referers:               []string{},
-							CreatedAt:              time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+							Value:       "foo",
+							Description: &name,
+							Acl:         []search.Acl{search.ACL_SEARCH},
+							CreatedAt:   1577836800,
 						},
 					},
 				}),

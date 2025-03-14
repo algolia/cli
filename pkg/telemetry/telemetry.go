@@ -2,23 +2,25 @@ package telemetry
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" // nolint:gosec
 	"fmt"
 	"log"
 	"net"
 	"runtime"
 
+	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/xtgo/uuid"
-	"gopkg.in/segmentio/analytics-go.v3"
 
 	"github.com/algolia/cli/pkg/utils"
 	"github.com/algolia/cli/pkg/version"
 )
 
-const AppName = "cli"
-const telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+const (
+	AppName               = "cli"
+	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+)
 
 type telemetryMetadataKey struct{}
 
@@ -80,7 +82,7 @@ func anonymousID() string {
 		}
 		a := a.HardwareAddr.String()
 		if a != "" {
-			return fmt.Sprintf("%x", md5.Sum([]byte(a)))
+			return fmt.Sprintf("%x", md5.Sum([]byte(a))) // nolint: gosec
 		}
 	}
 	return ""
@@ -90,7 +92,7 @@ type NoOpTelemetryClient struct{}
 
 type CLIAnalyticsEventMetadata struct {
 	AnonymousID              string   // the anonymous id is the hash of the mac address of the machine
-	UserId                   string   // TODO: Once we implement OAuth
+	UserID                   string   // TODO: Once we implement OAuth
 	InvocationID             string   // the invocation id is unique to each context object and represents all events coming from one command
 	ConfiguredApplicationsNb int      // the number of configured applications
 	AppID                    string   // the app id with which the command was called

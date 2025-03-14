@@ -3,7 +3,6 @@ package cmdutil
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
@@ -11,12 +10,12 @@ const maxCapacity = 1024 * 5120 // 5MB
 
 func ReadFile(filename string, stdin io.ReadCloser) ([]byte, error) {
 	if filename == "-" {
-		b, err := ioutil.ReadAll(stdin)
+		b, err := io.ReadAll(stdin)
 		_ = stdin.Close()
 		return b, err
 	}
 
-	return ioutil.ReadFile(filename)
+	return os.ReadFile(filename)
 }
 
 func ScanFile(filename string, stdin io.ReadCloser) (*bufio.Scanner, error) {

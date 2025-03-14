@@ -19,7 +19,7 @@ import (
 
 func TestNewCreateCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "config.json")
-	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -81,7 +81,7 @@ func TestNewCreateCmd(t *testing.T) {
 
 func Test_runCreateCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "config.json")
-	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0600)
+	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {

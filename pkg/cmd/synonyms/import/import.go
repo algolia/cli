@@ -1,4 +1,4 @@
-package importSynonyms
+package importsynonyms
 
 import (
 	"bufio"
@@ -6,8 +6,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -20,15 +19,16 @@ type ImportOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	Index                   string
 	ForwardToReplicas       bool
 	ReplaceExistingSynonyms bool
+	Wait                    bool
 	Scanner                 *bufio.Scanner
 }
 
-// NewImportCmd creates and returns an import command for indice synonyms
+// NewImportCmd creates and returns an import command for synonyms
 func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Command {
 	opts := &ImportOptions{
 		IO:           f.IOStreams,
@@ -83,11 +83,15 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringVarP(&file, "file", "F", "", "Import synonyms from a `file` (use \"-\" to read from standard input).")
+	cmd.Flags().
+		StringVarP(&file, "file", "F", "", "Import synonyms from a `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
-	cmd.Flags().BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Whether changes are applied to replica indices.")
-	cmd.Flags().BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index.")
+	cmd.Flags().
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Whether to also add the synonyms to replicas")
+	cmd.Flags().
+		BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
 	return cmd
 }
@@ -98,22 +102,16 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	indice := client.InitIndex(opts.Index)
-	defaultBatchOptions := []interface{}{
-		opt.ForwardToReplicas(opts.ForwardToReplicas),
-	}
-	// Only clear existing rules on the first batch
-	batchOptions := []interface{}{
-		opt.ForwardToReplicas(opts.ForwardToReplicas),
-		opt.ReplaceExistingSynonyms(opts.ReplaceExistingSynonyms),
-	}
+	// Only clear existing synonyms on the first batch
+	clearExistingSynonyms := opts.ReplaceExistingSynonyms
 
 	// Move the following code to another module?
 	var (
 		batchSize  = 1000
-		batch      = make([]search.Synonym, 0, batchSize)
+		synonyms   = make([]search.SynonymHit, 0, batchSize)
 		count      = 0
 		totalCount = 0
+		taskIDs    []int64
 	)
 
 	opts.IO.StartProgressIndicatorWithLabel("Importing synonyms")
@@ -124,86 +122,74 @@ func runImportCmd(opts *ImportOptions) error {
 		}
 
 		lineB := []byte(line)
-		var rawSynonym map[string]interface{}
+		var synonym search.SynonymHit
 
 		// Unmarshal as map[string]interface{} to get the type of the synonym
-		if err := json.Unmarshal(lineB, &rawSynonym); err != nil {
-			err := fmt.Errorf("failed to parse JSON synonym on line %d: %s", count, err)
-			return err
-		}
-		typeString := rawSynonym["type"].(string)
-
-		// This is really ugly, but algoliasearch package doesn't provide a way to
-		// unmarshal a synonym from a JSON string.
-		switch search.SynonymType(typeString) {
-		case search.RegularSynonymType:
-			var syn search.RegularSynonym
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.OneWaySynonymType:
-			var syn search.OneWaySynonym
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.AltCorrection1Type:
-			var syn search.AltCorrection1
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.AltCorrection2Type:
-			var syn search.AltCorrection2
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		case search.PlaceholderType:
-			var syn search.Placeholder
-			err = json.Unmarshal(lineB, &syn)
-			if err != nil {
-				return err
-			}
-			batch = append(batch, syn)
-
-		default:
-			return fmt.Errorf("cannot unmarshal synonym: unknown type %s", typeString)
+		if err := json.Unmarshal(lineB, &synonym); err != nil {
+			return fmt.Errorf("failed to parse JSON synonym on line %d: %s", count, err)
 		}
 
+		err = validateSynonym(synonym)
+		if err != nil {
+			return fmt.Errorf("%s on line %d", err, count)
+		}
+
+		synonyms = append(synonyms, synonym)
 		count++
 
 		if count == batchSize {
-			if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
+			res, err := client.SaveSynonyms(
+				client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
+					WithReplaceExistingSynonyms(clearExistingSynonyms).
+					WithForwardToReplicas(opts.ForwardToReplicas),
+			)
+			if err != nil {
 				return err
 			}
-			batchOptions = defaultBatchOptions
-			batch = make([]search.Synonym, 0, batchSize)
+			if opts.Wait {
+				taskIDs = append(taskIDs, res.TaskID)
+			}
+			synonyms = make([]search.SynonymHit, 0, batchSize)
 			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d synonyms", totalCount))
 			count = 0
+			clearExistingSynonyms = false
 		}
 	}
 
 	if count > 0 {
 		totalCount += count
-		if _, err := indice.SaveSynonyms(batch, batchOptions...); err != nil {
+		res, err := client.SaveSynonyms(
+			client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
+		if err != nil {
 			return err
+		}
+		if opts.Wait {
+			taskIDs = append(taskIDs, res.TaskID)
 		}
 	}
 
 	if totalCount == 0 && opts.ReplaceExistingSynonyms {
-		if _, err := indice.ClearSynonyms(); err != nil {
+		res, err := client.ClearSynonyms(
+			client.NewApiClearSynonymsRequest(opts.Index).
+				WithForwardToReplicas(opts.ForwardToReplicas),
+		)
+		if err != nil {
 			return err
+		}
+		if opts.Wait {
+			taskIDs = append(taskIDs, res.TaskID)
+		}
+	}
+
+	if len(taskIDs) > 0 {
+		for _, taskID := range taskIDs {
+			_, err := client.WaitForTask(opts.Index, taskID)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -215,7 +201,55 @@ func runImportCmd(opts *ImportOptions) error {
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully imported %s synonyms to %s\n", cs.SuccessIcon(), cs.Bold(fmt.Sprint(totalCount)), opts.Index)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully imported %s synonyms to %s\n",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(totalCount)),
+			opts.Index,
+		)
+	}
+
+	return nil
+}
+
+// validateSynonym validates a synonym before making an API request
+func validateSynonym(syn search.SynonymHit) error {
+	if syn.ObjectID == "" {
+		return fmt.Errorf("objectID required for synonym")
+	}
+
+	switch syn.Type {
+	case "":
+		return fmt.Errorf("synonym type required")
+	case search.SYNONYM_TYPE_SYNONYM:
+		if len(syn.Synonyms) == 0 {
+			return fmt.Errorf("`synonyms` property required for regular synonym")
+		}
+	case search.SYNONYM_TYPE_ONE_WAY_SYNONYM, search.SYNONYM_TYPE_ONEWAYSYNONYM:
+		if syn.Input == nil {
+			return fmt.Errorf("`input` property required for one-way synonym")
+		}
+		if len(syn.Synonyms) == 0 {
+			return fmt.Errorf("`synonyms` property required for one-way synonym")
+		}
+	case search.SYNONYM_TYPE_PLACEHOLDER:
+		if syn.Placeholder == nil {
+			return fmt.Errorf("`placeholder` property required for placeholder synonym")
+		}
+		if len(syn.Replacements) == 0 {
+			return fmt.Errorf("`replacements` property required for placeholder synonym")
+		}
+	case search.SYNONYM_TYPE_ALTCORRECTION1,
+		search.SYNONYM_TYPE_ALT_CORRECTION1,
+		search.SYNONYM_TYPE_ALTCORRECTION2,
+		search.SYNONYM_TYPE_ALT_CORRECTION2:
+		if syn.Word == nil {
+			return fmt.Errorf("`word` property required for alt-correction synonym")
+		}
+		if len(syn.Corrections) == 0 {
+			return fmt.Errorf("`corrections` property required for alt-correction synonym")
+		}
 	}
 
 	return nil

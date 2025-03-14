@@ -25,7 +25,10 @@ func (f *JSONPrintFlags) ToPrinter(outputFormat string) (printers.Printer, error
 	case "json":
 		printer = &printers.JSONPrinter{}
 	default:
-		return nil, NoCompatiblePrinterError{OutputFormat: &outputFormat, AllowedFormats: f.AllowedFormats()}
+		return nil, NoCompatiblePrinterError{
+			OutputFormat:   &outputFormat,
+			AllowedFormats: f.AllowedFormats(),
+		}
 	}
 
 	return printer, nil
