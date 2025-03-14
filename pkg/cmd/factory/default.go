@@ -90,7 +90,7 @@ func getUserAgentInfo(appID string, apiKey string, appVersion string) (string, e
 	if err != nil {
 		return "", err
 	}
-	return client.GetConfiguration().UserAgent + fmt.Sprintf("Algolia CLI (%s)", appVersion), nil
+	return client.GetConfiguration().UserAgent + fmt.Sprintf("; Algolia CLI (%s)", appVersion), nil
 }
 
 // getStatefulHosts reads the hosts information from the profile and turns into the right structure

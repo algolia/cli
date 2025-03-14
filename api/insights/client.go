@@ -76,5 +76,5 @@ func getUserAgentInfo(
 		return "", err
 	}
 
-	return client.GetConfiguration().UserAgent + fmt.Sprintf("Algolia CLI (%s)", appVersion), nil
+	return client.GetConfiguration().UserAgent + fmt.Sprintf("; Algolia CLI (%s)", appVersion), nil
 }
