@@ -51,23 +51,23 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
-		Short: "Update objects from a file to the specified index",
+		Short: "Update an index with records from a file",
 		Long: heredoc.Doc(`
-			Update objects from a file to the specified index.
+			Update a specified index with records from a file.
 			
-			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			The file must contains one JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Update objects from the "objects.ndjson" file to the "MOVIES" index
+			# Update the "MOVIES" index with records from the "objects.ndjson" file
 			$ algolia objects update MOVIES -F objects.ndjson
 
-			# Update objects from the "objects.ndjson" file to the "MOVIES" index and create the objects if they don't exist
+			# Update the "MOVIES" index with records from the "objects.ndjson" file and create the records if they don't exist
 			$ algolia objects update MOVIES -F objects.ndjson --create-if-not-exists
 
-			# Update objects from the "objects.ndjson" file to the "MOVIES" index and wait for the operation to complete
+			# Update the "MOVIES" index with records from the "objects.ndjson" file and wait for the operation to complete
 			$ algolia objects update MOVIES -F objects.ndjson --wait
 
-			# Update objects from the "objects.ndjson" file to the "MOVIES" index and continue updating objects even if some objects are invalid
+			# Update the "MOVIES" index with records from the "objects.ndjson" file and continue updating records even if some are invalid
 			$ algolia objects update MOVIES -F objects.ndjson --continue-on-error
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -88,16 +88,16 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().
-		StringVarP(&opts.File, "file", "F", "", "Read objects to update from `file` (use \"-\" to read from standard input)")
+		StringVarP(&opts.File, "file", "F", "", "Records to update from `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
 	cmd.Flags().
-		BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new object with the objectID and the attributes defined in the object")
+		BoolVarP(&opts.CreateIfNotExists, "create-if-not-exists", "c", false, "If provided, updating a nonexistent object will create a new one with the objectID and the attributes defined in the file")
 	cmd.Flags().
 		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
 
 	cmd.Flags().
-		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating objects even if some objects are invalid.")
+		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating records even if some are invalid.")
 
 	return cmd
 }

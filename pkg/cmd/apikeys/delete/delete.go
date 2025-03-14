@@ -36,7 +36,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:   "delete <api-key>",
-		Short: "Delete API key",
+		Short: "Deletes the API key",
 		Args:  validators.ExactArgs(1),
 		Annotations: map[string]string{
 			"acls": "admin",
@@ -60,7 +60,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete API key confirmation prompt")
 
 	return cmd
 }

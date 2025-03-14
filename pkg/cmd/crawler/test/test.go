@@ -42,10 +42,9 @@ func NewTestCmd(f *cmdutil.Factory, runF func(*TestOptions) error) *cobra.Comman
 		Use:               "test <crawler_id> --url <url> [-F <file>]",
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: cmdutil.CrawlerIDs(opts.CrawlerClient),
-		Short:             "Test a URL on a crawler",
+		Short:             "Tests a URL with the crawler's configuration and shows the extracted records.",
 		Long: heredoc.Doc(`
-			Test an URL against the given crawler's configuration and see what will be processed.
-			You can also override parts of the configuration to try your changes before updating the configuration.
+			You can override parts of the configuration to test your changes before updating the configuration.
 		`),
 		Example: heredoc.Doc(`
 			# Test the URL "https://www.example.com" against the crawler with the ID "my-crawler"

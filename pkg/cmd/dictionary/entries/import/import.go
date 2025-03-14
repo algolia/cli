@@ -59,10 +59,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import entries from the "entries.ndjson" file to "stopwords" dictionary
+			# Import entries from the "entries.ndjson" file to the "stopwords" dictionary
 			$ algolia dictionary import stopwords -F entries.ndjson
 
-			# Import entries from the "entries.ndjson" file to "plurals" dictionary and continue importing entries even if some entries are invalid
+			# Import entries from the "entries.ndjson" file to the "plurals" dictionary and continue importing entries even if some entries are invalid
 			$ algolia dictionary import plurals -F entries.ndjson --continue-on-errors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

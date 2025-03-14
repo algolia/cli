@@ -53,7 +53,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 			Make a copy of an index, including its records, settings, synonyms, and rules except for the "enableReRanking" setting.
 		`),
 		Example: heredoc.Doc(`
-			# Copy the records, settings, synonyms and rules from the "SERIES" index to the "MOVIES" index
+			# Copy the records, settings, synonyms, and rules from the "SERIES" index to the "MOVIES" index
 			$ algolia indices copy SERIES MOVIES
 
 			# Copy only the synonyms of the "SERIES" to the "MOVIES" index
@@ -89,10 +89,10 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
 	cmd.Flags().
-		StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "scope to copy (default: all)")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+  StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "Scope to copy: settings, synonyms, rules, or all (default)")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
 
 	_ = cmd.RegisterFlagCompletionFunc("scope",
 		cmdutil.StringSliceCompletionFunc(map[string]string{

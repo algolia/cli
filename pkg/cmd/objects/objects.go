@@ -15,7 +15,7 @@ import (
 func NewObjectsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "objects",
-		Short:   "Manage your indices' objects",
+		Short:   "Add, update, and delete records",
 		Aliases: []string{"records"},
 	}
 

@@ -43,21 +43,21 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 			"runInWebCLI": "true",
 			"acls":        "browse",
 		},
-		Short: "Browse the index objects",
+		Short: "Browse records in an index.",
 		Long: heredoc.Doc(`
-			This command browse the objects of the specified index.
+			This command browses records in the specified index.
 		`),
 		Example: heredoc.Doc(`
-			# Browse the objects from the "MOVIES" index
+			# Browse records in the "MOVIES" index
 			$ algolia objects browse MOVIES
 
-			# Browse the objects from the "MOVIES" index and select which attributes to retrieve
+			# Browse records in the "MOVIES" index and select which attributes to retrieve
 			$ algolia objects browse MOVIES --attributesToRetrieve title,overview
 
-			# Browse the objects from the "MOVIES" index with filters
+			# Browse records in the "MOVIES" index with filters
 			$ algolia objects browse MOVIES --filters "genres:Drama"
 
-			# Browse the objects from the "MOVIES" and export the results to a new line delimited JSON (ndjson) file
+			# Browse records in the "MOVIES" and export the results to a new line delimited JSON (ndjson) file
 			$ algolia objects browse MOVIES > movies.ndjson
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -77,13 +77,13 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.SynonymIDs, "synonym-ids", "", nil, "Synonym IDs to delete")
+	cmd.Flags().StringSliceVarP(&opts.SynonymIDs, "synonym-ids", "", nil, "Synonym IDs to delete.")
 	_ = cmd.MarkFlagRequired("synonym-ids")
 	cmd.Flags().
-		BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Forward the delete request to the replicas")
+		BoolVar(&opts.ForwardToReplicas, "forward-to-replicas", false, "Whether to delete synonyms also from the replicas")
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "skip confirmation prompt")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
 
 	return cmd
 }

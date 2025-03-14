@@ -84,11 +84,11 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().
-		StringVarP(&file, "file", "F", "", "Read synonyms to import from `file` (use \"-\" to read from standard input)")
+		StringVarP(&file, "file", "F", "", "Import synonyms from a `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
 	cmd.Flags().
-		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Forward the synonyms to the replicas of the index")
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", true, "Whether to also add the synonyms to replicas")
 	cmd.Flags().
 		BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")

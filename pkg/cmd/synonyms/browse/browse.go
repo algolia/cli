@@ -38,16 +38,16 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases:           []string{"list", "l"},
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Short:             "List all the synonyms of the given index",
+		Short:             "List all synonyms in this index",
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
 			"acls":        "settings",
 		},
 		Example: heredoc.Doc(`
-			# List all the synonyms of the 'MOVIES' index
+			# List all the synonyms in the 'MOVIES' index
 			$ algolia synonyms browse MOVIES
 
-			# List all the synonyms of the 'MOVIES' and save them to the 'synonyms.json' file
+			# List all the synonyms in the 'MOVIES' index and save them in the 'synonyms.json' file
 			$ algolia synonyms browse MOVIES > synonyms.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

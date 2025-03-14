@@ -83,28 +83,28 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 			}
 			return openNames(), cobra.ShellCompDirectiveNoFileComp
 		},
-		Short: "Quickly open Algolia pages",
-		Long:  `The open command provices shortcuts to quickly let you open pages to Algolia within your browser. 'algolia open --list' for a list of supported shortcuts.`,
+		Short: "Access Algolia support resources",
+		Long:  `The open command provides links to Algolia support resources. 'algolia open --list' for a list of support links.`,
 		Example: heredoc.Doc(`
-			# Display the list of supported shortcuts
+			# The support links
 			$ algolia open --list
 
-			# Open the dashboard for the current application
+			# The Algolia dashboard for the current application
 			$ algolia open dashboard
 			
-			# Open the API reference
+			# The Algolia REST APIs
 			$ algolia open api
 			
-			# Open the documentation
+			# The Algolia documentation home page
 			$ algolia open docs
 
-			# Open the CLI documentation
+			# The Algolia CLI documentation
 			$ algolia open cli-docs
 
-			# Open the status page
+			# Algolia's status page
 			$ algolia open status
 
-			# Open Algolia supported languages page
+			# Algolia's supported languages page
 			$ algolia open languages
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -115,7 +115,7 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolP("list", "l", false, "List all supported shortcuts")
+	cmd.Flags().BoolP("list", "l", false, "List all support links")
 
 	auth.DisableAuthCheck(cmd)
 

@@ -45,11 +45,11 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
-		Short:   "Save a synonym to the given index",
+		Short:   "Add a synonym to an index",
 		Aliases: []string{"create", "edit"},
 		Long: heredoc.Doc(`
-			This command save a synonym to the specified index.
-			If the synonym doesn't exist yet, a new one is created.
+			This command adds a synonym to the specified index.
+			If the synonym doesn't exist, a new one is created.
 		`),
 		Example: heredoc.Doc(`
 			# Save one standard synonym with ID "1" and "foo" and "bar" synonyms to the "MOVIES" index
@@ -100,28 +100,28 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		cmdutil.StringCompletionFunc(map[string]string{
 			shared.Regular:        "(default) Used when you want a word or phrase to find its synonyms or the other way around.",
 			shared.OneWay:         "Used when you want a word or phrase to find its synonyms, but not the reverse.",
-			shared.AltCorrection1: "Used when you want records with an exact query match to rank higher than a synonym match. (will return matches with one typo)",
-			shared.AltCorrection2: "Used when you want records with an exact query match to rank higher than a synonym match. (will return matches with two typos)",
-			shared.Placeholder:    "Used to place not-yet-defined “tokens” (that can take any value from a list of defined words).",
+			shared.AltCorrection1: "Used when you want records with an exact query match to rank higher than a synonym match. Will return matches with one typo.",
+			shared.AltCorrection2: "Used when you want records with an exact query match to rank higher than a synonym match. Will return matches with two typos.",
+			shared.Placeholder:    "Used to place not-yet-defined tokens (that can take any value from a list of defined words).",
 		}))
 	cmd.Flags().
-		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the save request to the replicas")
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Whether to add the synoynm to replicas")
 	// Regular synonym
 	cmd.Flags().StringSliceVarP(&flags.Synonyms, "synonyms", "s", nil, "Synonyms to save")
 	// One way synonym
 	cmd.Flags().
-		StringVarP(&flags.SynonymInput, "input", "n", "", "Word of phrases to appear in query strings (one way synonyms only)")
+		StringVarP(&flags.SynonymInput, "input", "n", "", "Word of phrases to appear in query strings (one-way synonyms only)")
 	// Placeholder synonym
 	cmd.Flags().
-		StringVarP(&flags.SynonymPlaceholder, "placeholder", "l", "", "A single word, used as the basis for the below array of replacements (placeholder synonyms only)")
+		StringVarP(&flags.SynonymPlaceholder, "placeholder", "l", "", "Placeholder token to represent a synonym within records")
 	cmd.Flags().
-		StringSliceVarP(&flags.SynonymReplacements, "replacements", "r", nil, "An list of replacements of the placeholder (placeholder synonyms only)")
+		StringSliceVarP(&flags.SynonymReplacements, "replacements", "r", nil, "Query words that will match the placeholder synonym token")
 	// Alt correction synonym
 	cmd.Flags().
-		StringVarP(&flags.SynonymWord, "word", "w", "", "A single word, used as the basis for the array of corrections (alt correction synonyms only)")
+		StringVarP(&flags.SynonymWord, "word", "w", "", "A single word, used as the basis for the array of corrections (alt-correction synonyms only)")
 	cmd.Flags().
 		StringSliceVarP(&flags.SynonymCorrections, "corrections", "c", nil, "A list of corrections of the word (alt correction synonyms only)")
-	cmd.Flags().BoolVarP(&opts.Wait, "wait", "", false, "wait for the operation to complete")
+	cmd.Flags().BoolVarP(&opts.Wait, "wait", "", false, "Wait for the operation to complete")
 
 	return cmd
 }

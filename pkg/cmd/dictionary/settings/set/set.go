@@ -40,16 +40,16 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		Long: heredoc.Doc(`
 			Set the dictionary settings.
 
-			For now, the only setting available is to enable/disable the standard entries for the stopwords dictionary.
+			You can turn the standard stop words dictionary on or off.
 		`),
 		Example: heredoc.Doc(`
-			# Disable standard entries for English and French
+			# Tuen off standard entries for English and French
 			$ algolia dictionary settings set --disable-standard-entries en,fr
 
-			# Enable standard entries for English and French languages
+			# Enable standard entries for English and French
 			$ algolia dictionary settings set --enable-standard-entries en,fr
 
-			# Disable standard entries for English and French languages and enable standard entries for Spanish language.
+			# Turn off standard entries for English and French and enable standard entries for Spanish.
 			$ algolia dictionary settings set --disable-standard-entries en,fr --enable-standard-entries es
 
 			# Reset standard entries to their default values
@@ -72,7 +72,7 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 				)
 			}
 
-			// Check if the user is trying to disable and enable standard entries for the same languages at the same time
+			// Check if the user is trying to turn standard entries on or off for the same languages at the same time
 			for _, disableLanguage := range opts.DisableStandardEntries {
 				for _, enableLanguage := range opts.EnableStandardEntries {
 					if disableLanguage == enableLanguage {

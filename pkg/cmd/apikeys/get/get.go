@@ -36,7 +36,7 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 
 	cmd := &cobra.Command{
 		Use:   "get <api-key>",
-		Short: "Get API key",
+		Short: "Get the API key",
 		Long: heredoc.Doc(`
 			Get the details of a given API Key (ACLs, description, indexes, and other attributes).
 		`),

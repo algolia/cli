@@ -39,7 +39,7 @@ func NewCrawlCmd(f *cmdutil.Factory, runF func(*CrawlOptions) error) *cobra.Comm
 		ValidArgsFunction: cmdutil.CrawlerIDs(opts.CrawlerClient),
 		Short:             "Crawl specific URLs",
 		Long: heredoc.Doc(`
-			Immediately crawl the given URLs.
+			Immediately crawl these URLs.
 			The generated records are pushed to the live index if there's no ongoing reindex, and to the temporary index otherwise.
 		`),
 		Example: heredoc.Doc(`
@@ -71,9 +71,9 @@ func NewCrawlCmd(f *cmdutil.Factory, runF func(*CrawlOptions) error) *cobra.Comm
 	_ = cmd.MarkFlagRequired("urls")
 
 	cmd.Flags().BoolVarP(&opts.Save, "save", "s", false, heredoc.Doc(`
-		When true, the given URLs are added to the extraUrls list of your configuration (unless already present in startUrls or sitemaps).
-		When false, the URLs aren't saved in the configuration.
-		When unspecified, the URLs are added to the extraUrls list of your configuration, but only if they haven't been indexed during the last reindex, and they aren't already present in startUrls or sitemaps.
+		When true, the URLs are added to your %[1]sextraUrls%[1]s (unless present in %[1]sstartUrls%[1]s or %[1]ssitemaps%[1]s).
+		When false, the URLs aren't added.
+		When unspecified, the URLs are added to your %[1]sextraUrls%[1]s (unless present in %[1]sstartUrls%[1]s or %[1]ssitemaps%[1]s or they weren't indexed during the preceding reindex).
 	`))
 
 	return cmd

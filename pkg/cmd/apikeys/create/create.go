@@ -62,42 +62,41 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().StringSliceVar(&opts.ACL, "acl", nil, heredoc.Docf(`
-		ACL of the API Key.
+		API key's ACL.
 
-			%[1]ssearch%[1]s: allowed to perform search operations.
-			%[1]sbrowse%[1]s: allowed to retrieve all index data with the browse endpoint.
-			%[1]saddObject%[1]s: allowed to add or update a records in the index.
-			%[1]sdeleteObject%[1]s: allowed to delete an existing record.
-			%[1]slistIndexes%[1]s: allowed to get a list of all existing indices.
-			%[1]sdeleteIndex%[1]s: allowed to delete an index.
-			%[1]ssettings%[1]s: allowed to read all index settings.
-			%[1]seditSettings%[1]s: allowed to update all index settings.
-			%[1]sanalytics%[1]s: allowed to retrieve data with the Analytics API.
-			%[1]srecommendation%[1]s: allowed to interact with the Recommendation API.
-			%[1]susage%[1]s: allowed to retrieve data with the Usage API.
-			%[1]slogs%[1]s: allowed to query the logs.
-			%[1]sseeUnretrievableAttributes%[1]s: allowed to retrieve unretrievableAttributes for all operations that return records.
+			%[1]ssearch%[1]s: can perform search operations.
+			%[1]sbrowse%[1]s: can retrieve all index data with the browse endpoint.
+			%[1]saddObject%[1]s: can add or update records in the index.
+			%[1]sdeleteObject%[1]s: can delete an existing record.
+			%[1]slistIndexes%[1]s: can get a list of all indices.
+			%[1]sdeleteIndex%[1]s: can delete an index.
+			%[1]ssettings%[1]s: can read all index settings.
+			%[1]seditSettings%[1]s: can update all index settings.
+			%[1]sanalytics%[1]s: can retrieve data with the Analytics API.
+			%[1]srecommendation%[1]s: can interact with the Recommendation API.
+			%[1]susage%[1]s: can retrieve data with the Usage API.
+			%[1]slogs%[1]s: can query the logs.
+			%[1]sseeUnretrievableAttributes%[1]s: can retrieve unretrievableAttributes for all operations that return records.
 	`, "`"))
 
 	cmd.Flags().StringSliceVarP(&opts.Indices, "indices", "i", nil, heredoc.Docf(`
-		Specify the list of targeted indices.
-		You can target all indices starting with a prefix or ending with a suffix using the %[1]s*%[1]s character.
-		For example, %[1]sdev_*%[1]s matches all indices starting with %[1]sdev_%[1]s and %[1]s*_dev%[1]s matches all indices ending with %[1]s_dev%[1]s.
+		Index names or patterns that this API key can access. By default, an API key can access all indices in the same application.
+
+		You can use leading and trailing wildcard characters (%[1]s*%[1]s).
+		For example, %[1]sdev_*%[1]s matches all indices starting with %[1]sdev_%[1]s. %[1]s*_dev%[1]s matches all indices ending with %[1]s_dev%[1]s. %[1]s*_products_*%[1]s matches all indices containing %[1]sproducts%[1]s.
 	`, "`"))
 
 	cmd.Flags().DurationVarP(&opts.Validity, "validity", "u", 0, heredoc.Doc(`
-		How long this API key is valid, in seconds.
-		A value of 0 means the API key doesn’t expire.`,
+		Duration (in seconds) after which the API key expires. By default (a value of 0), API keys don't expire.`,
 	))
 
 	cmd.Flags().StringSliceVarP(&opts.Referers, "referers", "r", nil, heredoc.Docf(`
 		Specify the list of referrers that can perform an operation.
-		You can use the %[1]s*%[1]s (asterisk) character as a wildcard to match subdomains, or all pages of a website.
+		You can use the wildcard character (%[1]s*%[1]s) to match subdomains or entire websites.
 	`, "`"))
 
 	cmd.Flags().StringVarP(&opts.Description, "description", "d", "", heredoc.Doc(`
-		Specify a description of the API key.
-		Used for informative purposes only. It has no impact on the functionality of the API key.`,
+		Describe an API key to help you identify its uses.`,
 	))
 
 	_ = cmd.RegisterFlagCompletionFunc(
@@ -137,7 +136,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			"usage":                      "retrieve data with the Usage API",
 			"logs":                       "query the logs",
 			"seeUnretrievableAttributes": "retrieve unretrievableAttributes for all operations that return records",
-		}, "allowed to"))
+		}, "can"))
 
 	return cmd
 }

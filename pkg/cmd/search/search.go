@@ -36,28 +36,28 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:               "search <index>",
-		Short:             "Search the given index",
+		Short:             "Search an index",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Long:              `Search for objects in your index.`,
+		Long:              `Search for records in your index.`,
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
 			"acls":        "search",
 		},
 		Example: heredoc.Doc(`
-			# Search for objects in the "MOVIES" index matching the query "toy story"
+			# Search for records in the "MOVIES" index matching the query "toy story"
 			$ algolia search MOVIES --query "toy story"
 
-			# Search for objects in the "MOVIES" index matching the query "toy story" with filters
+			# Search for records in the "MOVIES" index matching the query "toy story" with filters
 			$ algolia search MOVIES --query "toy story" --filters "'(genres:Animation OR genres:Family) AND original_language:en'"
 
-			# Search for objects in the "MOVIES" index matching the query "toy story" while setting the number of hits per page and specifying the page to retrieve
+			# Search for records in the "MOVIES" index matching the query "toy story" while setting the number of hits per page and specifying the page to retrieve
 			$ algolia search MOVIES --query "toy story" --hitsPerPage 2 --page 4
 
-			# Search for objects in the "MOVIES" index matching the query "toy story" and export the response to a .json file
+			# Search for records in the "MOVIES" index matching the query "toy story" and export the response to a .json file
 			$ algolia search MOVIES --query "toy story" > movies.json
 
-			# Search for objects in the "MOVIES" index matching the query "toy story" and only export the results to a .json file
+			# Search for records in the "MOVIES" index matching the query "toy story" and only export the results to a .json file
 			$ algolia search MOVIES --query "toy story" --output="jsonpath={$.Hits}" > movies.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {

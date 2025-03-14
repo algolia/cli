@@ -45,19 +45,19 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Annotations: map[string]string{
 			"acls": "addObject",
 		},
-		Short: "Import objects to the specified index",
+		Short: "Import records into an index",
 		Long: heredoc.Doc(`
-			Import objects to the specified index from a file / the standard input.
-			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			Import records into the specified index from a file or the standard input.
+			The file must contain one JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
 		`),
 		Example: heredoc.Doc(`
-			# Import objects from the "data.ndjson" file to the "MOVIES" index
+			# Import records from the "data.ndjson" file into the "MOVIES" index
 			$ algolia objects import MOVIES -F data.ndjson
 
-			# Import objects from the standard input to the "MOVIES" index
+			# Import records from the standard input into the "MOVIES" index
 			$ cat data.ndjson | algolia objects import MOVIES -F -
 
-			# Browse the objects in the "SERIES" index and import them to the "MOVIES" index
+			# Browse records in the "SERIES" index and import them into the "MOVIES" index
 			$ algolia objects browse SERIES | algolia objects import MOVIES -F -
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,12 +73,11 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().
-		StringVarP(&file, "file", "F", "", "Read records to import from `file` (use \"-\" to read from standard input)")
+		StringVarP(&file, "file", "F", "", "Import records from a `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
-
 	cmd.Flags().IntVarP(&opts.BatchSize, "batch-size", "b", 1000, "Specify the upload batch size")
 	cmd.Flags().
-		BoolVarP(&opts.AutoObjectIDs, "auto-generate-object-id-if-not-exist", "a", false, "Auto-generate objectIDs if they don't exist")
+		BoolVarP(&opts.AutoObjectIDs, "auto-generate-object-id-if-not-exist", "a", false, "Auto-generate object IDs if they don't exist")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 	return cmd
 }
