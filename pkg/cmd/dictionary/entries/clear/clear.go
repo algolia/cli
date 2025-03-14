@@ -96,7 +96,8 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the clear dictionary entry confirmation prompt")
+	cmd.Flags().
+		BoolVarP(&confirm, "confirm", "y", false, "Skip the clear dictionary entry confirmation prompt")
 	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "Clear all dictionaries")
 
 	return cmd

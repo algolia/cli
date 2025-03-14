@@ -73,7 +73,8 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the remove profile confirmation prompt")
+	cmd.Flags().
+		BoolVarP(&confirm, "confirm", "y", false, "Skip the remove profile confirmation prompt")
 
 	return cmd
 }

@@ -91,7 +91,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
 	cmd.Flags().
-  StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "Scope to copy: settings, synonyms, rules, or all (default)")
+		StringSliceVarP(&opts.Scope, "scope", "s", []string{}, "Scope to copy: settings, synonyms, rules, or all (default)")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
 
 	_ = cmd.RegisterFlagCompletionFunc("scope",

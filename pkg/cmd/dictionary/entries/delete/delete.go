@@ -84,7 +84,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd.Flags().StringSliceVarP(&opts.ObjectIDs, "object-ids", "", nil, "Object IDs to delete")
 	_ = cmd.MarkFlagRequired("object-ids")
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete dictionary entry confirmation prompt")
+	cmd.Flags().
+		BoolVarP(&confirm, "confirm", "y", false, "Skip the delete dictionary entry confirmation prompt")
 
 	return cmd
 }

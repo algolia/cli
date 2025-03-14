@@ -60,7 +60,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete API key confirmation prompt")
+	cmd.Flags().
+		BoolVarP(&confirm, "confirm", "y", false, "Skip the delete API key confirmation prompt")
 
 	return cmd
 }
