@@ -6,8 +6,7 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -22,11 +21,12 @@ type DeleteOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
-	Indice       string
-	ObjectIDs    []string
-	DeleteParams map[string]interface{}
+	Index         string
+	ObjectIDs     []string
+	DeleteParams  search.DeleteByParams
+	NdeleteParams int
 
 	DoConfirm bool
 	Wait      bool
@@ -66,20 +66,32 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			$ algolia objects delete MOVIES --filters "type:Scripted" --confirm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Indice = args[0]
+			opts.Index = args[0]
 			deleteParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.DeleteByParams...)
 			if err != nil {
 				return err
 			}
-			opts.DeleteParams = deleteParams
+			opts.NdeleteParams = len(deleteParams)
 
-			if len(opts.ObjectIDs) == 0 && len(opts.DeleteParams) == 0 {
+			// Convert map into object
+			tmp, err := json.Marshal(deleteParams)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(tmp, &opts.DeleteParams)
+			if err != nil {
+				return err
+			}
+
+			if len(opts.ObjectIDs) == 0 && opts.NdeleteParams == 0 {
 				return cmdutil.FlagErrorf("you must specify either --object-ids or a filter")
 			}
 
 			if !confirm {
 				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+					return cmdutil.FlagErrorf(
+						"--confirm required when non-interactive shell is detected",
+					)
 				}
 				opts.DoConfirm = true
 			}
@@ -92,11 +104,12 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.ObjectIDs, "object-ids", "", nil, "objectIDs to delete")
+	cmd.Flags().StringSliceVarP(&opts.ObjectIDs, "object-ids", "", nil, "Object IDs to delete")
 	cmdutil.AddDeleteByParamsFlags(cmd)
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the delete record confirmation prompt")
-	cmd.Flags().BoolVar(&opts.Wait, "wait", false, "Wait for all the operations to complete before returning")
+	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
+	cmd.Flags().
+		BoolVar(&opts.Wait, "wait", false, "Wait for all the operations to complete")
 
 	return cmd
 }
@@ -107,15 +120,13 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	if err != nil {
 		return err
 	}
-
-	indice := client.InitIndex(opts.Indice)
 	nbObjectsToDelete := len(opts.ObjectIDs)
 	extra := "Operation aborted, no deletion action taken"
 
 	// Tests if the provided object IDs exists.
 	for _, objectID := range opts.ObjectIDs {
-		var obj interface{}
-		if err := indice.GetObject(objectID, &obj); err != nil {
+		_, err := client.GetObject(client.NewApiGetObjectRequest(opts.Index, objectID))
+		if err != nil {
 			// The original error is not helpful, so we print a more helpful message
 			if strings.Contains(err.Error(), "ObjectID does not exist") {
 				return fmt.Errorf("object with ID '%s' does not exist. %s", objectID, extra)
@@ -129,13 +140,16 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	exactOrApproximate := "exactly"
 
 	// If the user provided filters, we need to count the number of objects matching the filters
-	if len(opts.DeleteParams) > 0 {
-		res, err := indice.Search("", opt.ExtraOptions(opts.DeleteParams))
+	if opts.NdeleteParams > 0 {
+		res, err := client.SearchSingleIndex(
+			client.NewApiSearchSingleIndexRequest(opts.Index).
+				WithSearchParams(search.SearchParamsObjectAsSearchParams(deleteByToSearchParams(&opts.DeleteParams))),
+		)
 		if err != nil {
 			return err
 		}
-		nbObjectsToDelete = nbObjectsToDelete + res.NbHits
-		if !res.ExhaustiveNbHits {
+		nbObjectsToDelete = nbObjectsToDelete + int(*res.NbHits)
+		if res.ExhaustiveNbHits != nil && !*res.ExhaustiveNbHits {
 			exactOrApproximate = "approximately"
 		}
 	}
@@ -147,7 +161,12 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return nil
 	}
 
-	objectNbMessage := fmt.Sprintf("%s %s from %s", exactOrApproximate, utils.Pluralize(nbObjectsToDelete, "object"), opts.Indice)
+	objectNbMessage := fmt.Sprintf(
+		"%s %s from %s",
+		exactOrApproximate,
+		utils.Pluralize(nbObjectsToDelete, "object"),
+		opts.Index,
+	)
 
 	if opts.DoConfirm {
 		var confirmed bool
@@ -164,34 +183,32 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	// Delete the objects by their IDs
 	if len(opts.ObjectIDs) > 0 {
-		deleteByIDRes, err := indice.DeleteObjects(opts.ObjectIDs)
+		batchRes, err := client.DeleteObjects(opts.Index, opts.ObjectIDs)
 		if err != nil {
 			return err
 		}
-
-		taskIDs = append(taskIDs, deleteByIDRes.TaskID)
+		for _, res := range batchRes {
+			taskIDs = append(taskIDs, res.TaskID)
+		}
 	}
 
 	// Delete the objects matching the filters
-	if len(opts.DeleteParams) > 0 {
-		deleteByOpts, err := deleteParamsToDeleteByOpts(opts.DeleteParams)
+	if opts.NdeleteParams > 0 {
+		res, err := client.DeleteBy(client.NewApiDeleteByRequest(opts.Index, &opts.DeleteParams))
 		if err != nil {
 			return err
 		}
 
-		deleteByRes, err := indice.DeleteBy(deleteByOpts...)
-		if err != nil {
-			return err
-		}
-
-		taskIDs = append(taskIDs, deleteByRes.TaskID)
+		taskIDs = append(taskIDs, res.TaskID)
 	}
 
 	// Wait for the tasks to complete
 	if opts.Wait {
-		opts.IO.StartProgressIndicatorWithLabel("Waiting for all of the deletion tasks to complete")
+		opts.IO.StartProgressIndicatorWithLabel("Waiting for all deletion tasks to complete")
 		for _, taskID := range taskIDs {
-			if err := indice.WaitTask(taskID); err != nil {
+			_, err := client.WaitForTask(opts.Index, taskID)
+			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return err
 			}
 		}
@@ -205,68 +222,16 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	return nil
 }
 
-// flagValueToOpts returns a given option from the provided flag.
-// It is used to convert the flag value to the correct type expected by the `DeleteBy` method.
-func flagValueToOpts(value interface{}, opt interface{}) error {
-	b, err := json.Marshal(value)
-	if err != nil {
-		return err
+// deleteByToSearchParams returns a new SearchParamsObject from a DeleteByParams struct
+func deleteByToSearchParams(input *search.DeleteByParams) *search.SearchParamsObject {
+	return &search.SearchParamsObject{
+		Filters:           input.Filters,
+		FacetFilters:      input.FacetFilters,
+		NumericFilters:    input.NumericFilters,
+		TagFilters:        input.TagFilters,
+		AroundLatLng:      input.AroundLatLng,
+		AroundRadius:      input.AroundRadius,
+		InsideBoundingBox: input.InsideBoundingBox,
+		InsidePolygon:     input.InsidePolygon,
 	}
-
-	if err := json.Unmarshal(b, opt); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// deleteParamsToDeleteByOpts returns an array of deleteByOptions from the provided delete parameters.
-func deleteParamsToDeleteByOpts(params map[string]interface{}) ([]interface{}, error) {
-	var opts []interface{}
-
-	for key, value := range params {
-		switch key {
-		case "filters":
-			var filtersOpt opt.FiltersOption
-			if err := flagValueToOpts(value, &filtersOpt); err != nil {
-				return nil, err
-			}
-
-			opts = append(opts, &filtersOpt)
-
-		case "facetFilters":
-			var facetFiltersOpt opt.FacetFiltersOption
-			if err := flagValueToOpts(value, &facetFiltersOpt); err != nil {
-				return nil, err
-			}
-
-			opts = append(opts, &facetFiltersOpt)
-
-		case "numericFilters":
-			var numericFiltersOpt opt.NumericFiltersOption
-			if err := flagValueToOpts(value, &numericFiltersOpt); err != nil {
-				return nil, err
-			}
-
-			opts = append(opts, &numericFiltersOpt)
-
-		case "tagFilters":
-			var tagFiltersOpt opt.TagFiltersOption
-			if err := flagValueToOpts(value, &tagFiltersOpt); err != nil {
-				return nil, err
-			}
-
-			opts = append(opts, &tagFiltersOpt)
-
-		case "aroundLatLng":
-			var aroundLatLngOpt opt.AroundLatLngOption
-			if err := flagValueToOpts(value, &aroundLatLngOpt); err != nil {
-				return nil, err
-			}
-
-			opts = append(opts, &aroundLatLngOpt)
-		}
-	}
-
-	return opts, nil
 }

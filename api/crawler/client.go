@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -43,7 +42,13 @@ func NewClientWithHTTPClient(userID, apiKey string, client *http.Client) *Client
 
 // Request sends an HTTP request and returns an HTTP response.
 // It unmarshals the response body to the given interface.
-func (c *Client) request(res interface{}, method string, path string, body interface{}, urlParams map[string]string) error {
+func (c *Client) request(
+	res interface{},
+	method string,
+	path string,
+	body interface{},
+	urlParams map[string]string,
+) error {
 	r, err := c.buildRequest(method, path, body, urlParams)
 	if err != nil {
 		return err
@@ -99,14 +104,18 @@ func (c *Client) buildRequestWithBody(method, url string, body interface{}) (*ht
 			return nil, err
 		}
 
-		r = ioutil.NopCloser(bytes.NewReader(b))
+		r = io.NopCloser(bytes.NewReader(b))
 	}
 
 	return http.NewRequest(method, url, r)
 }
 
 // buildRequest builds an HTTP request.
-func (c *Client) buildRequest(method, path string, body interface{}, urlParams map[string]string) (req *http.Request, err error) {
+func (c *Client) buildRequest(
+	method, path string,
+	body interface{},
+	urlParams map[string]string,
+) (req *http.Request, err error) {
 	url := DefaultBaseURL + path
 
 	if body == nil {
@@ -275,7 +284,11 @@ func (c *Client) Stats(crawlerID string) (*StatsResponse, error) {
 
 // CrawlURLs crawls the specified URLs on the specified Crawler.
 // It returns the Task ID if successful.
-func (c *Client) CrawlURLs(crawlerID string, URLs []string, save, saveSpecified bool) (string, error) {
+func (c *Client) CrawlURLs(
+	crawlerID string,
+	URLs []string,
+	save, saveSpecified bool,
+) (string, error) {
 	var res TaskIDResponse
 	path := fmt.Sprintf("crawlers/%s/urls/crawl", crawlerID)
 

@@ -1,49 +1,69 @@
 # Algolia CLI
 
-A command line interface to enable Algolia developers to interact with and configure their Algolia applications straight from a command line or terminal window. Automate common workloads, create snapshots, revert to backups, or quickly modify applications as needed! This is a lightweight tool, providing a text-only interface, that is easy to install and use!
+The Algolia CLI lets you work with your Algolia resources,
+such as indices, records, API keys, and synonyms,
+and from the command line.
 
 ![cli](https://user-images.githubusercontent.com/5702266/153008646-1fd8fbf2-4a4d-4421-b2f2-0886487f3e27.png)
 
 ## Documentation
 
-See the [documentation](https://algolia.com/doc/tools/cli/) for setup and usage instructions.
+See [Algolia CLI](https://algolia.com/doc/tools/cli/) in the Algolia documentation for setup and usage instructions.
 
 ## Installation
 
-### Build from Source
+### macOS
 
-A `Makefile` is available to help installing and building the CLI.
+The Algolia CLI is available on [Homebrew](https://brew.sh/) and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
 
-```bash
-git clone git@github.com:algolia/cli.git && make install
+```sh
+brew install algolia/algolia-cli/algolia
 ```
 
-### MacOS
+### Linux
 
-`algolia` is available on Homebrew and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
+The Algolia CLI is available as a `.deb` package:
 
-```bash
-brew tap algolia/algolia-cli && brew install algolia
+```sh
+# Select the package appropriate for your platform:
+sudo dpkg -i algolia_*.deb
+```
+
+as a `.rpm` package:
+
+```sh
+# Select the package appropriate for your platform
+sudo rpm -i algolia_*.rpm
+```
+
+or as a tarball from the [releases page](https://github.com/algolia/cli/releases):
+
+```sh
+# Select the archive appropriate for your platform
+tar xvf algolia_*_linux_*.tar.gz
 ```
 
 ### Windows
 
-`algolia` is available via [Chocolatey](https://community.chocolatey.org/packages/algolia/) and as downloadable .exe files.
+The Algolia CLI is available via [Chocolatey](https://community.chocolatey.org/packages/algolia/) and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases)
 
-#### Chocolatey
+### Community packages
 
-| Install:           | Upgrade:           |
-| ------------------ | ------------------ |
-| `choco install algolia` | `choco upgrade algolia` |
+Other packages are maintained by the community, not by Algolia.
+If you distribute a package for the Algolia CLI, create a pull request so that we can list it here!
 
-#### Executable
+### Build from source
 
-Executable files are available on the [releases page](https://github.com/algolia/cli/releases).
+To build the Algolia CLI from source, you'll need:
 
-### Other platforms
+- Go version 1.23 or later
+- [Go task](https://taskfile.dev/)
 
-Download packaged binaries from the [releases page](https://github.com/algolia/cli/releases).
+1. Clone the repo: `git clone https://github.com/kai687/cli.git algolia-cli && cd algolia-cli`
+1. Run: `task build`
 
 ## Support
 
-Found a bug on the CLI? [Open a new issue](https://github.com/algolia/cli/issues/new) or [contact the support](https://www.algolia.com/support/) to get help with Algolia!
+If you found an issue with the Algolia CLI,
+[open a new GitHub issue](https://github.com/algolia/cli/issues/new),
+or join the Algolia community on [Discord](https://alg.li/discord).

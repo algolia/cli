@@ -16,7 +16,12 @@ func (my *StringSlice) WriteAnswer(name string, value interface{}) error {
 	return nil
 }
 
-func AskCommaSeparatedInputQuestion(message string, storage *[]string, defaultValues []string, opts ...survey.AskOpt) error {
+func AskCommaSeparatedInputQuestion(
+	message string,
+	storage *[]string,
+	defaultValues []string,
+	opts ...survey.AskOpt,
+) error {
 	stringSlice := StringSlice{}
 	err := survey.AskOne(
 		&survey.Input{
@@ -30,7 +35,13 @@ func AskCommaSeparatedInputQuestion(message string, storage *[]string, defaultVa
 	return err
 }
 
-func AskMultiSelectQuestion(message string, defaultValues []string, storage *[]string, options []string, opts ...survey.AskOpt) error {
+func AskMultiSelectQuestion(
+	message string,
+	defaultValues []string,
+	storage *[]string,
+	options []string,
+	opts ...survey.AskOpt,
+) error {
 	err := survey.AskOne(
 		&survey.MultiSelect{
 			Message: message,
@@ -43,7 +54,13 @@ func AskMultiSelectQuestion(message string, defaultValues []string, storage *[]s
 	return err
 }
 
-func AskSelectQuestion(message string, storage *string, options []string, defaultValue string, opts ...survey.AskOpt) error {
+func AskSelectQuestion(
+	message string,
+	storage *string,
+	options []string,
+	defaultValue string,
+	opts ...survey.AskOpt,
+) error {
 	return survey.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
@@ -51,14 +68,25 @@ func AskSelectQuestion(message string, storage *string, options []string, defaul
 	}, storage, opts...)
 }
 
-func AskInputQuestion(message string, storage *string, defaultValue string, opts ...survey.AskOpt) error {
+func AskInputQuestion(
+	message string,
+	storage *string,
+	defaultValue string,
+	opts ...survey.AskOpt,
+) error {
 	return survey.AskOne(&survey.Input{
 		Message: message,
 		Default: defaultValue,
 	}, storage, opts...)
 }
 
-func AskInputQuestionWithSuggestion(message string, storage *string, defaultValue string, suggest func(toComplete string) []string, opts ...survey.AskOpt) error {
+func AskInputQuestionWithSuggestion(
+	message string,
+	storage *string,
+	defaultValue string,
+	suggest func(toComplete string) []string,
+	opts ...survey.AskOpt,
+) error {
 	return survey.AskOne(&survey.Input{
 		Message: message,
 		Default: defaultValue,
@@ -66,7 +94,12 @@ func AskInputQuestionWithSuggestion(message string, storage *string, defaultValu
 	}, storage, opts...)
 }
 
-func AskBooleanQuestion(message string, storage *bool, defaultValue bool, opts ...survey.AskOpt) error {
+func AskBooleanQuestion(
+	message string,
+	storage *bool,
+	defaultValue bool,
+	opts ...survey.AskOpt,
+) error {
 	return survey.AskOne(&survey.Confirm{
 		Message: message,
 		Default: defaultValue,

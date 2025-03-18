@@ -57,7 +57,8 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().BoolVarP(&opts.ConfigOnly, "config-only", "c", false, "Display only the crawler configuration")
+	cmd.Flags().
+		BoolVarP(&opts.ConfigOnly, "config-only", "c", false, "Display only the crawler configuration")
 
 	return cmd
 }

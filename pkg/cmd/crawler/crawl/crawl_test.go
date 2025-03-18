@@ -154,7 +154,10 @@ func Test_runCrawlCmd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httpmock.Registry{}
 			if tt.wantErr == "" {
-				r.Register(httpmock.REST("POST", "api/1/crawlers/"+tt.id+"/urls/crawl"), httpmock.JSONResponse(crawler.TaskIDResponse{TaskID: "taskID"}))
+				r.Register(
+					httpmock.REST("POST", "api/1/crawlers/"+tt.id+"/urls/crawl"),
+					httpmock.JSONResponse(crawler.TaskIDResponse{TaskID: "taskID"}),
+				)
 			} else {
 				r.Register(httpmock.REST("POST", "api/1/crawlers/"+tt.id+"/urls/crawl"), httpmock.ErrorResponseWithBody(crawler.ErrResponse{Err: crawler.Err{Code: "not-found", Message: "Crawler not-found not found"}}))
 			}

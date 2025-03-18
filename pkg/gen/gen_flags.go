@@ -82,7 +82,7 @@ func main() {
 
 	// Write the formatted source code to disk
 	fmt.Printf("writing %s\n", pathOutput)
-	err = ioutil.WriteFile(pathOutput, formatted, 0644)
+	err = ioutil.WriteFile(pathOutput, formatted, 0o644)
 	if err != nil {
 		panic(err)
 	}

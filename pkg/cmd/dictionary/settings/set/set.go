@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/opt"
-	"github.com/algolia/algoliasearch-client-go/v3/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -17,7 +16,7 @@ type SetOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	SearchClient func() (*search.Client, error)
+	SearchClient func() (*search.APIClient, error)
 
 	DisableStandardEntries []string
 	EnableStandardEntries  []string
@@ -58,20 +57,29 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Check that either --disable-standard-entries and --enable-standard-entries or --reset-standard-entries is set
-			if !opts.ResetStandardEntries && (len(opts.DisableStandardEntries) == 0 && len(opts.EnableStandardEntries) == 0) {
-				return cmdutil.FlagErrorf("Either --disable-standard-entries and/or --enable-standard-entries or --reset-standard-entries must be set")
+			if !opts.ResetStandardEntries &&
+				(len(opts.DisableStandardEntries) == 0 && len(opts.EnableStandardEntries) == 0) {
+				return cmdutil.FlagErrorf(
+					"Either --disable-standard-entries and/or --enable-standard-entries or --reset-standard-entries must be set",
+				)
 			}
 
-			// Check that the user isn't resetting standard entries and trying to turn standard entries on or off at the same time
-			if opts.ResetStandardEntries && (len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0) {
-				return cmdutil.FlagErrorf("You cannot reset standard entries and disable or enable standard entries at the same time")
+			// Check that the user is not resetting standard entries and trying to disable or enable standard entries at the same time
+			if opts.ResetStandardEntries &&
+				(len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0) {
+				return cmdutil.FlagErrorf(
+					"You cannot reset standard entries and disable or enable standard entries at the same time",
+				)
 			}
 
 			// Check if the user is trying to turn standard entries on or off for the same languages at the same time
 			for _, disableLanguage := range opts.DisableStandardEntries {
 				for _, enableLanguage := range opts.EnableStandardEntries {
 					if disableLanguage == enableLanguage {
-						return cmdutil.FlagErrorf("You cannot disable and enable standard entries for the same language: %s", disableLanguage)
+						return cmdutil.FlagErrorf(
+							"You cannot disable and enable standard entries for the same language: %s",
+							disableLanguage,
+						)
 					}
 				}
 			}
@@ -84,16 +92,25 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().StringSliceVarP(&opts.DisableStandardEntries, "disable-standard-entries", "d", []string{}, "Turn off standard entries for these languages")
-	cmd.Flags().StringSliceVarP(&opts.EnableStandardEntries, "enable-standard-entries", "e", []string{}, "Turn on standard entries for these languages")
-	cmd.Flags().BoolVarP(&opts.ResetStandardEntries, "reset-standard-entries", "r", false, "Reset standard entries to their default values")
+	cmd.Flags().
+		StringSliceVarP(&opts.DisableStandardEntries, "disable-standard-entries", "d", []string{}, "Disable standard entries for the given languages")
+	cmd.Flags().
+		StringSliceVarP(&opts.EnableStandardEntries, "enable-standard-entries", "e", []string{}, "Enable standard entries for the given languages")
+	cmd.Flags().
+		BoolVarP(&opts.ResetStandardEntries, "reset-standard-entries", "r", false, "Reset standard entries to their default values")
 
-	SupportedLanguages := make(map[string]string, len(LanguagesWithStopwordsSupport))
+	supportedLanguages := make(map[string]string, len(LanguagesWithStopwordsSupport))
 	for _, languageCode := range LanguagesWithStopwordsSupport {
-		SupportedLanguages[languageCode] = Languages[languageCode]
+		supportedLanguages[languageCode] = Languages[languageCode]
 	}
-	_ = cmd.RegisterFlagCompletionFunc("disable-standard-entries", cmdutil.StringCompletionFunc(SupportedLanguages))
-	_ = cmd.RegisterFlagCompletionFunc("enable-standard-entries", cmdutil.StringCompletionFunc(SupportedLanguages))
+	_ = cmd.RegisterFlagCompletionFunc(
+		"disable-standard-entries",
+		cmdutil.StringCompletionFunc(supportedLanguages),
+	)
+	_ = cmd.RegisterFlagCompletionFunc(
+		"enable-standard-entries",
+		cmdutil.StringCompletionFunc(supportedLanguages),
+	)
 
 	return cmd
 }
@@ -105,35 +122,36 @@ func runSetCmd(opts *SetOptions) error {
 		return err
 	}
 
-	var disableStandardEntriesOpt *opt.DisableStandardEntriesOption
+	var disableStandardEntriesOpt search.StandardEntries
 	if opts.ResetStandardEntries {
-		disableStandardEntriesOpt = opt.DisableStandardEntries(map[string]map[string]bool{"stopwords": nil})
+		disableStandardEntriesOpt = *search.NewEmptyStandardEntries().SetStopwords(nil)
 	}
 
+	stopwords := make(map[string]bool, len(LanguagesWithStopwordsSupport))
 	if len(opts.DisableStandardEntries) > 0 || len(opts.EnableStandardEntries) > 0 {
-		stopwords := map[string]map[string]bool{"stopwords": {}}
 		for _, language := range opts.DisableStandardEntries {
-			stopwords["stopwords"][language] = true
+			stopwords[language] = true
 		}
 		for _, language := range opts.EnableStandardEntries {
-			stopwords["stopwords"][language] = false
+			stopwords[language] = false
 		}
-		disableStandardEntriesOpt = opt.DisableStandardEntries(stopwords)
-	}
-
-	dictionarySettings := search.DictionarySettings{
-		DisableStandardEntries: disableStandardEntriesOpt,
+		disableStandardEntriesOpt = *search.NewEmptyStandardEntries().SetStopwords(stopwords)
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Updating dictionary settings")
-	res, err := client.SetDictionarySettings(dictionarySettings)
+
+	res, err := client.SetDictionarySettings(
+		client.NewApiSetDictionarySettingsRequest(
+			search.NewDictionarySettingsParams(disableStandardEntriesOpt),
+		),
+	)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err
 	}
 
 	// Wait for the task to complete (so if the user runs `algolia dictionary settings get` right after, the settings will be updated)
-	err = res.Wait()
+	_, err = client.WaitForAppTask(res.TaskID)
 	if err != nil {
 		opts.IO.StopProgressIndicator()
 		return err

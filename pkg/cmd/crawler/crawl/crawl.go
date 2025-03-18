@@ -86,7 +86,13 @@ func runCrawlCmd(opts *CrawlOptions) error {
 	}
 	cs := opts.IO.ColorScheme()
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Requesting crawl for %s on crawler %s", utils.Pluralize(len(opts.URLs), "URL"), opts.ID))
+	opts.IO.StartProgressIndicatorWithLabel(
+		fmt.Sprintf(
+			"Requesting crawl for %s on crawler %s",
+			utils.Pluralize(len(opts.URLs), "URL"),
+			opts.ID,
+		),
+	)
 	_, err = client.CrawlURLs(opts.ID, opts.URLs, opts.Save, opts.SaveSpecified)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
@@ -94,7 +100,13 @@ func runCrawlCmd(opts *CrawlOptions) error {
 	}
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Successfully requested crawl for %s on crawler %s\n", cs.SuccessIconWithColor(cs.Green), utils.Pluralize(len(opts.URLs), "URL"), opts.ID)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Successfully requested crawl for %s on crawler %s\n",
+			cs.SuccessIconWithColor(cs.Green),
+			utils.Pluralize(len(opts.URLs), "URL"),
+			opts.ID,
+		)
 	}
 
 	return nil

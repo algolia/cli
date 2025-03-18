@@ -68,7 +68,12 @@ func runRunCmd(opts *RunOptions) error {
 	}
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Crawler %s started\n", cs.SuccessIconWithColor(cs.Green), opts.ID)
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Crawler %s started\n",
+			cs.SuccessIconWithColor(cs.Green),
+			opts.ID,
+		)
 	}
 
 	return nil

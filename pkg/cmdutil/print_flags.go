@@ -44,7 +44,11 @@ func (e NoCompatiblePrinterError) Error() string {
 	}
 
 	sort.Strings(e.AllowedFormats)
-	return fmt.Sprintf("unable to match a printer suitable for the output format %q, allowed formats are: %s", output, strings.Join(e.AllowedFormats, ","))
+	return fmt.Sprintf(
+		"unable to match a printer suitable for the output format %q, allowed formats are: %s",
+		output,
+		strings.Join(e.AllowedFormats, ","),
+	)
 }
 
 func (f *PrintFlags) AllowedFormats() []string {
@@ -67,12 +71,17 @@ func (f *PrintFlags) ToPrinter() (printers.Printer, error) {
 	}
 
 	if f.JSONPathPrintFlags != nil {
-		if p, err := f.JSONPathPrintFlags.ToPrinter(outputFormat); !IsNoCompatiblePrinterError(err) {
+		if p, err := f.JSONPathPrintFlags.ToPrinter(outputFormat); !IsNoCompatiblePrinterError(
+			err,
+		) {
 			return p, err
 		}
 	}
 
-	return nil, NoCompatiblePrinterError{OutputFormat: f.OutputFormat, AllowedFormats: f.AllowedFormats()}
+	return nil, NoCompatiblePrinterError{
+		OutputFormat:   f.OutputFormat,
+		AllowedFormats: f.AllowedFormats(),
+	}
 }
 
 func (f *PrintFlags) AddFlags(cmd *cobra.Command) {
@@ -80,7 +89,8 @@ func (f *PrintFlags) AddFlags(cmd *cobra.Command) {
 	f.JSONPathPrintFlags.AddFlags(cmd)
 
 	if f.OutputFormat != nil {
-		cmd.Flags().StringVarP(f.OutputFormat, "output", "o", *f.OutputFormat, fmt.Sprintf(`Output format. One of: %s.`, strings.Join(f.AllowedFormats(), ", ")))
+		cmd.Flags().
+			StringVarP(f.OutputFormat, "output", "o", *f.OutputFormat, fmt.Sprintf(`Output format. One of: (%s).`, strings.Join(f.AllowedFormats(), ", ")))
 		_ = cmd.Flags().SetAnnotation("output", "IsPrint", []string{"true"})
 		if f.OutputFlagSpecified == nil {
 			f.OutputFlagSpecified = func() bool {
