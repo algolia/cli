@@ -1,0 +1,17 @@
+env INDEX_NAME=test-can-delete-index
+env REPLICA_NAME=test-can-delete-replica
+
+# Create a new index with one replica index
+exec algolia settings set ${INDEX_NAME} --replicas ${REPLICA_NAME} --wait
+! stderr .
+
+# Check that you can delete both manually
+exec algolia index delete ${INDEX_NAME} ${REPLICA_NAME} --confirm
+! stderr .
+! stdout .
+
+# Check that both indices have been deleted
+exec algolia index list
+! stderr .
+! stdout ${INDEX_NAME}
+! stdout ${REPLICA_NAME}

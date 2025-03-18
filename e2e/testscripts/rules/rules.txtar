@@ -1,0 +1,41 @@
+env INDEX_NAME=test-rules
+
+# List rules (empty index should return error)
+! exec algolia rules browse ${INDEX_NAME}
+! stdout .
+stderr -count=1 'index test-rules doesn''t exist'
+
+# Importing a rule without objectID should fail
+stdin without-objectID.json
+! exec algolia rules import ${INDEX_NAME} --file -
+! stdout .
+stderr objectID
+
+# Importing a rule without consequence should also fail
+stdin without-consequence.json
+! exec algolia rules import ${INDEX_NAME} --file -
+! stdout .
+stderr consequence
+
+# Import rule
+exec algolia rules import ${INDEX_NAME} --file rules.json --wait
+! stderr .
+! stdout .
+
+# Delete the rule
+exec algolia rules delete ${INDEX_NAME} --rule-ids "test-rule-1" --wait --confirm
+! stderr .
+! stdout .
+
+# Defer cleanup
+defer algolia index delete ${INDEX_NAME} --confirm
+! stderr .
+
+-- without-objectID.json --
+{}
+
+-- without-consequence.json --
+{"objectID": "foo"}
+
+-- rules.json --
+{"conditions":[{"anchoring":"contains","pattern":"foo"}],"consequence":{"promote":[{"objectID":"foo","position":0}]},"objectID":"test-rule-1"}

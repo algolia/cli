@@ -126,11 +126,13 @@ func runImportCmd(opts *ImportOptions) error {
 
 		// Unmarshal as map[string]interface{} to get the type of the synonym
 		if err := json.Unmarshal(lineB, &synonym); err != nil {
+			opts.IO.StopProgressIndicator()
 			return fmt.Errorf("failed to parse JSON synonym on line %d: %s", count, err)
 		}
 
 		err = validateSynonym(synonym)
 		if err != nil {
+			opts.IO.StopProgressIndicator()
 			return fmt.Errorf("%s on line %d", err, count)
 		}
 
@@ -144,6 +146,7 @@ func runImportCmd(opts *ImportOptions) error {
 					WithForwardToReplicas(opts.ForwardToReplicas),
 			)
 			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return err
 			}
 			if opts.Wait {
@@ -164,6 +167,7 @@ func runImportCmd(opts *ImportOptions) error {
 				WithForwardToReplicas(opts.ForwardToReplicas),
 		)
 		if err != nil {
+			opts.IO.StopProgressIndicator()
 			return err
 		}
 		if opts.Wait {
@@ -177,6 +181,7 @@ func runImportCmd(opts *ImportOptions) error {
 				WithForwardToReplicas(opts.ForwardToReplicas),
 		)
 		if err != nil {
+			opts.IO.StopProgressIndicator()
 			return err
 		}
 		if opts.Wait {
@@ -188,6 +193,7 @@ func runImportCmd(opts *ImportOptions) error {
 		for _, taskID := range taskIDs {
 			_, err := client.WaitForTask(opts.Index, taskID)
 			if err != nil {
+				opts.IO.StopProgressIndicator()
 				return err
 			}
 		}

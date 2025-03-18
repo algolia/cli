@@ -1,0 +1,18 @@
+env INDEX_NAME=test-search
+
+# Add a record to an index
+exec algolia records import ${INDEX_NAME} --file record.json --wait
+! stderr .
+! stdout .
+
+# Defer cleanup
+defer algolia index delete ${INDEX_NAME} --confirm
+! stderr .
+
+# Search for something
+exec algolia search ${INDEX_NAME} --query "test"
+! stderr .
+stdout -count=1 '"nbHits":1'
+
+-- record.json --
+{"objectID": "test-record-1", "name": "Test record"}

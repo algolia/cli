@@ -1,0 +1,38 @@
+env INDEX_NAME=test-synonyms
+
+# List synonyms (empty index should return error)
+! exec algolia synonyms browse ${INDEX_NAME}
+! stdout .
+stderr -count=1 'index test-synonyms doesn''t exist'
+
+# Import synonyms from a file
+exec algolia synonyms import ${INDEX_NAME} --file synonyms.jsonl --wait
+! stderr .
+! stdout .
+
+# Defer cleanup
+defer algolia index delete ${INDEX_NAME} --confirm
+! stderr .
+
+# Import a synonym from the command line
+stdin stdin.json
+exec algolia synonyms import ${INDEX_NAME} --file - --wait
+! stderr .
+! stdout .
+
+# Save a synonym using flags
+exec algolia synonyms save ${INDEX_NAME} --id 'test-synonym-4' --type altCorrection1 --word foo --corrections bar --wait
+! stderr .
+! stdout .
+
+# List synonyms
+exec algolia synonyms browse ${INDEX_NAME}
+! stderr .
+stdout -count=4 'objectID'
+
+-- synonyms.jsonl --
+{"objectID": "test-synonym-1", "type": "synonym", "synonyms": ["foo", "bar"]}
+{"objectID": "test-synonym-2", "type": "synonym", "synonyms": ["bar", "baz"]}
+
+-- stdin.json --
+{"objectID": "test-synonym-3", "type": "onewaysynonym", "input": "add", "synonyms": ["save"]}

@@ -1,0 +1,42 @@
+# Test importing settings from a file
+exec algolia settings import test-settings --file settings.json --wait
+! stderr .
+! stdout .
+
+# Defer deleting the test index
+defer algolia indices delete test-settings --confirm --include-replicas
+
+# Check that settings are applied
+exec algolia settings get test-settings
+stdout -count=1 '"searchableAttributes":\["foo"\]'
+
+# Test applying some settings from flags
+exec algolia settings set test-settings --attributesToRetrieve "foo" --searchableAttributes "bar" --unretrievableAttributes "baz" --attributesForFaceting "searchable(bar)" --replicas "test-settings-replica" --wait
+! stderr .
+
+# Test that the correct settings are applied
+exec algolia settings get test-settings
+stdout -count=1 '"attributesToRetrieve":\["foo"\]'
+stdout -count=1 '"searchableAttributes":\["bar"\]'
+stdout -count=1 '"unretrievableAttributes":\["baz"\]'
+stdout -count=1 '"attributesForFaceting":\["searchable\(bar\)"\]'
+stdout -count=1 '"replicas":\["test-settings-replica"\]'
+
+# Change a setting
+exec algolia settings set test-settings --searchableAttributes "not-changed" --wait
+! stderr .
+
+# Check that change is not applied to replica
+exec algolia settings get test-settings-replica
+! stdout not-changed
+
+# Change another setting and forward change to replica
+exec algolia settings set test-settings --searchableAttributes "changed" --forward-to-replicas --wait
+! stderr .
+
+# Check that change is also applied to replica
+exec algolia settings get test-settings-replica
+stdout -count=1 changed
+
+-- settings.json --
+{"searchableAttributes": ["foo"]}
