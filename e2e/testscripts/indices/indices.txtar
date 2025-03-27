@@ -1,35 +1,38 @@
+env INDEX_NAME=test-index
+env COPY_NAME=test-copy
+
 # Create a new index
-exec algolia settings set test-index --searchableAttributes "foo" --wait
+exec algolia settings set ${INDEX_NAME} --searchableAttributes "foo" --wait
 ! stderr .
 
 # Cleanup
-defer algolia indices delete test-index --confirm
+defer algolia indices delete ${INDEX_NAME} --confirm
 
 # Confirm that the index setting is set
-exec algolia settings get test-index
+exec algolia settings get ${INDEX_NAME}
 stdout -count=1 '"searchableAttributes":\["foo"\]'
 
 # Test that index is listed
 exec algolia indices list
-stdout -count=1 ^test-index
+stdout -count=1 ^${INDEX_NAME}
 
 # Copy the index
-exec algolia indices copy test-index test-copy --wait --confirm
+exec algolia indices copy ${INDEX_NAME} ${COPY_NAME} --wait --confirm
 ! stderr .
 
 # Confirm that there are 2 indices now
 exec algolia indices list
-stdout -count=1 ^test-index
-stdout -count=1 ^test-copy
+stdout -count=1 ^${INDEX_NAME}
+stdout -count=1 ^${COPY_NAME}
 
 # Add replica indices to the copy
-exec algolia settings set test-copy --replicas 'test-replica1,test-replica2' --wait
+exec algolia settings set ${COPY_NAME} --replicas 'test-replica1,test-replica2' --wait
 ! stderr .
 
 # Confirm that there are 4 indices now
 exec algolia indices list
-stdout -count=1 ^test-index
-stdout -count=1 ^test-copy
+stdout -count=1 ^${INDEX_NAME}
+stdout -count=1 ^${COPY_NAME}
 stdout -count=1 ^test-replica1
 stdout -count=1 ^test-replica2
 
@@ -39,23 +42,23 @@ exec algolia indices delete test-replica1 --confirm --wait
 
 # Confirm that there are 3 indices now
 exec algolia indices list
-stdout -count=1 ^test-index
-stdout -count=1 ^test-copy
+stdout -count=1 ^${INDEX_NAME}
+stdout -count=1 ^${COPY_NAME}
 ! stdout ^test-replica1
 stdout -count=1 ^test-replica2
 
 # Confirm that the test-copy index still has 1 replica index
-exec algolia settings get test-copy
+exec algolia settings get ${COPY_NAME}
 stdout -count=1 test-replica2
 ! stdout test-replica1
 
 # Delete the copy index including its replicas
-exec algolia indices delete test-copy --include-replicas --confirm --wait
+exec algolia indices delete ${COPY_NAME} --include-replicas --confirm --wait
 ! stderr .
 
 # Confirm that there is 1 index now
 exec algolia indices list
-stdout -count=1 ^test-index
-! stdout ^test-copy
+stdout -count=1 ^${INDEX_NAME}
+! stdout ^${COPY_NAME}
 ! stdout ^test-replica1
 ! stdout ^test-replica2
