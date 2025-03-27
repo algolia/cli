@@ -1,0 +1,8 @@
+# Get log entries
+exec algolia logs list
+! stderr .
+stdout -count=5 url
+
+# Wrong log type should return error
+! exec algolia logs list --type foo
+stderr 'invalid argument'

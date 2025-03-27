@@ -27,6 +27,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/events"
 	"github.com/algolia/cli/pkg/cmd/factory"
 	"github.com/algolia/cli/pkg/cmd/indices"
+	"github.com/algolia/cli/pkg/cmd/logs"
 	"github.com/algolia/cli/pkg/cmd/objects"
 	"github.com/algolia/cli/pkg/cmd/open"
 	"github.com/algolia/cli/pkg/cmd/profile"
@@ -99,16 +100,17 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(open.NewOpenCmd(f))
 
 	// API related commands
-	cmd.AddCommand(search.NewSearchCmd(f))
-	cmd.AddCommand(indices.NewIndicesCmd(f))
-	cmd.AddCommand(objects.NewObjectsCmd(f))
 	cmd.AddCommand(apikeys.NewAPIKeysCmd(f))
-	cmd.AddCommand(settings.NewSettingsCmd(f))
-	cmd.AddCommand(rules.NewRulesCmd(f))
-	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
+	cmd.AddCommand(crawler.NewCrawlersCmd(f))
 	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
 	cmd.AddCommand(events.NewEventsCmd(f))
-	cmd.AddCommand(crawler.NewCrawlersCmd(f))
+	cmd.AddCommand(indices.NewIndicesCmd(f))
+	cmd.AddCommand(logs.NewLogsCmd(f))
+	cmd.AddCommand(objects.NewObjectsCmd(f))
+	cmd.AddCommand(rules.NewRulesCmd(f))
+	cmd.AddCommand(search.NewSearchCmd(f))
+	cmd.AddCommand(settings.NewSettingsCmd(f))
+	cmd.AddCommand(synonyms.NewSynonymsCmd(f))
 
 	return cmd
 }
