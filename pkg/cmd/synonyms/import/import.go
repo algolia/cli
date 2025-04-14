@@ -47,8 +47,8 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		},
 		Short: "Import synonyms to the index",
 		Long: heredoc.Doc(`
-			Import synonyms to the provided index.
-			The file must contains one single JSON synonym per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			Import synonyms to the specified index.
+			The file must contain one JSON object per line - in newline-delimited JSON (NDJSON) format: https://ndjson.org/.
 		`),
 		Example: heredoc.Doc(`
 			# Import synonyms from the "synonyms.ndjson" file to the "MOVIES" index

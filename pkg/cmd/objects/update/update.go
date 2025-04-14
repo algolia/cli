@@ -54,8 +54,9 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		Short: "Update an index with records from a file",
 		Long: heredoc.Doc(`
 			Update a specified index with records from a file.
-			
-			The file must contains one JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			The file must contain one JSON object per line - in newline-delimited JSON (NDJSON) format: https://ndjson.org/.
+
+			If an attribute is missing in the import file, the original attribute value is retained.
 		`),
 		Example: heredoc.Doc(`
 			# Update the "MOVIES" index with records from the "objects.ndjson" file

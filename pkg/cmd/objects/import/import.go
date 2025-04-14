@@ -48,7 +48,9 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Import records into an index",
 		Long: heredoc.Doc(`
 			Import records into the specified index from a file or the standard input.
-			The file must contain one JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			The file must contain one JSON object per line - in newline-delimited JSON (NDJSON) format: https://ndjson.org/.
+
+			The CLI will create a new index if the specified index doesn't exist
 		`),
 		Example: heredoc.Doc(`
 			# Import records from the "data.ndjson" file into the "MOVIES" index
