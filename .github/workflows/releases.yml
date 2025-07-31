@@ -34,7 +34,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "2"
-          args: release
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
