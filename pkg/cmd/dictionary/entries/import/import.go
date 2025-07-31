@@ -55,8 +55,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Short: "Import dictionary entries from a file to the specified index",
 		Long: heredoc.Doc(`
 			Import dictionary entries from a file to the specified index.
-			
-			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			The file must contain one JSON object per line - in newline-delimited JSON (NDJSON) format: https://ndjson.org/.
 		`),
 		Example: heredoc.Doc(`
 			# Import entries from the "entries.ndjson" file to the "stopwords" dictionary

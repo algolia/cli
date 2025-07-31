@@ -53,7 +53,7 @@ func NewOperationsCmd(f *cmdutil.Factory, runF func(*OperationsOptions) error) *
 		Long: heredoc.Doc(`
 			Perform several indexing operations
 
-			The file must contains one single JSON object per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			The file must contain one JSON object per line - in newline-delimited JSON (NDJSON) format: https://ndjson.org/.
 			Each JSON object must be a valid indexing operation, as documented in the REST API documentation: https://www.algolia.com/doc/rest-api/search/#batch-write-operations-multiple-indices
 		`),
 		Example: heredoc.Doc(`
