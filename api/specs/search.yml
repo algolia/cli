@@ -175,12 +175,9 @@ tags:
     description: |
       Multi-cluster operations.
 
-      Algolia no longer offers multi-cluster management.
-    externalDocs:
-      url: >-
-        https://www.algolia.com/doc/guides/scaling/managing-multiple-clusters-mcm/
-      description: |
-        Related guide: Multi-cluster management.
+      Multi-cluster operations are **deprecated**.
+      If you have issues with your Algolia infrastructure
+      due to large volumes of data, contact the Algolia support team.
   - name: Dictionaries
     description: >
       Manage your dictionaries.
@@ -386,6 +383,7 @@ paths:
       tags:
         - search
       operationId: searchSingleIndex
+      x-mcp-tool: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -445,6 +443,11 @@ paths:
 
         - Multiple searches to the same index—for example, with different
         filters.
+
+
+        Use the helper `searchForHits` or `searchForFacets` to get the results
+        in a more convenient format, if you already know the return type you
+        want.
       requestBody:
         required: true
         description: >-
@@ -634,6 +637,7 @@ paths:
       tags:
         - search
       operationId: saveObject
+      x-mcp-tool: true
       x-acl:
         - addObject
       description: >
@@ -670,10 +674,15 @@ paths:
         description: >-
           The record. A schemaless object with attributes that are useful in the
           context of search and discovery.
+        x-is-generic: true
         content:
           application/json:
             schema:
               type: object
+              example:
+                objectID: blackTShirt
+                name: Black T-shirt
+                color: '#000000'
       responses:
         '201':
           description: Created
@@ -825,10 +834,15 @@ paths:
         description: >-
           The record. A schemaless object with attributes that are useful in the
           context of search and discovery.
+        x-is-generic: true
         content:
           application/json:
             schema:
               type: object
+              example:
+                objectID: blackTShirt
+                name: Black T-shirt
+                color: '#000000'
       responses:
         '200':
           $ref: '#/components/responses/UpdatedAtWithObjectId'
@@ -854,7 +868,7 @@ paths:
         To delete more than one record, use the [`batch`
         operation](#tag/Records/operation/batch).
 
-        To delete records matching a query, use the [`deleteByQuery`
+        To delete records matching a query, use the [`deleteBy`
         operation](#tag/Records/operation/deleteBy).
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -875,6 +889,7 @@ paths:
       tags:
         - search
       operationId: deleteBy
+      x-mcp-tool: true
       x-acl:
         - deleteIndex
       summary: Delete records matching a filter
@@ -951,6 +966,7 @@ paths:
       tags:
         - search
       operationId: partialUpdateObject
+      x-mcp-tool: true
       x-acl:
         - addObject
       summary: Add or update attributes
@@ -1012,6 +1028,11 @@ paths:
         increment or decrement step, value to add or remove.
 
 
+        When updating multiple attributes or using multiple operations targeting
+        the same record, you should use a single partial update for faster
+        processing.
+
+
         This operation is subject to [indexing rate
         limits](https://support.algolia.com/hc/en-us/articles/4406975251089-Is-there-a-rate-limit-for-indexing-on-Algolia).
       parameters:
@@ -1047,6 +1068,7 @@ paths:
       tags:
         - search
       operationId: batch
+      x-mcp-tool: true
       summary: Batch indexing operations on one index
       description: >
         Adds, updates, or deletes records in one index with a single API
@@ -1093,6 +1115,7 @@ paths:
       tags:
         - search
       operationId: multipleBatch
+      x-mcp-tool: true
       description: >
         Adds, updates, or deletes records in multiple indices with a single API
         request.
@@ -1276,8 +1299,9 @@ paths:
       tags:
         - search
       operationId: getSettings
+      x-mcp-tool: true
       x-acl:
-        - search
+        - settings
       description: Retrieves an object with non-null index settings.
       summary: Retrieve index settings
       parameters:
@@ -1510,6 +1534,7 @@ paths:
       tags:
         - search
       operationId: searchSynonyms
+      x-mcp-tool: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -1927,6 +1952,7 @@ paths:
       tags:
         - search
       operationId: searchRules
+      x-mcp-tool: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -2216,6 +2242,7 @@ paths:
       tags:
         - search
       operationId: assignUserId
+      deprecated: true
       x-acl:
         - admin
       summary: Assign or move a user ID
@@ -2256,6 +2283,7 @@ paths:
       tags:
         - search
       operationId: listUserIds
+      deprecated: true
       x-acl:
         - admin
       summary: List user IDs
@@ -2300,6 +2328,7 @@ paths:
       tags:
         - search
       operationId: batchAssignUserIds
+      deprecated: true
       x-acl:
         - admin
       summary: Assign multiple userIDs
@@ -2349,6 +2378,7 @@ paths:
       tags:
         - search
       operationId: getTopUserIds
+      deprecated: true
       x-acl:
         - admin
       summary: Get top user IDs
@@ -2399,6 +2429,7 @@ paths:
       tags:
         - search
       operationId: getUserId
+      deprecated: true
       x-acl:
         - admin
       summary: Retrieve user ID
@@ -2431,6 +2462,7 @@ paths:
       tags:
         - search
       operationId: removeUserId
+      deprecated: true
       x-acl:
         - admin
       summary: Delete user ID
@@ -2464,6 +2496,7 @@ paths:
       tags:
         - search
       operationId: listClusters
+      deprecated: true
       x-acl:
         - admin
       summary: List clusters
@@ -2501,6 +2534,7 @@ paths:
       tags:
         - search
       operationId: searchUserIds
+      deprecated: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -2615,6 +2649,7 @@ paths:
       tags:
         - search
       operationId: hasPendingMappings
+      deprecated: true
       x-acl:
         - admin
       summary: Get migration and user mapping status
@@ -3173,6 +3208,7 @@ paths:
       tags:
         - search
       operationId: listIndices
+      x-mcp-tool: true
       x-acl:
         - listIndexes
       summary: List indices
@@ -3401,6 +3437,67 @@ paths:
                 type: string
         '400':
           $ref: '#/components/responses/IndexNotFound'
+  /accountCopyIndex:
+    get:
+      x-helper: true
+      x-available-languages:
+        - javascript
+      tags:
+        - search
+      x-acl:
+        - browse
+        - editSettings
+        - addObject
+        - settings
+        - search
+      operationId: accountCopyIndex
+      summary: >-
+        Copies the given `sourceIndexName` records, rules and synonyms to an
+        other Algolia application for the given `destinationIndexName`
+      description: >
+        Copies the given `sourceIndexName` records, rules and synonyms to an
+        other Algolia application for the given `destinationIndexName`.
+      parameters:
+        - in: query
+          name: sourceIndexName
+          description: The name of the index to copy.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: destinationAppID
+          description: The application ID to write the index to.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: destinationApiKey
+          description: >-
+            The API Key of the `destinationAppID` to write the index to, must
+            have write ACLs.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: destinationIndexName
+          description: The name of the index to write the copied index to.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: batchSize
+          description: The size of the chunk of `objects`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+      responses:
+        '400':
+          $ref: '#/components/responses/IndexInSameApp'
+        '403':
+          $ref: '#/components/responses/IndexAlreadyExists'
+        '404':
+          $ref: '#/components/responses/IndexNotFound'
   /replaceAllObjects:
     get:
       x-helper: true
@@ -3477,6 +3574,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/replaceAllObjectsResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /replaceAllObjectsWithTransformation:
+    get:
+      x-helper: true
+      tags:
+        - search
+      x-available-languages:
+        - javascript
+        - go
+        - java
+        - php
+        - python
+      operationId: replaceAllObjectsWithTransformation
+      summary: Replace all records in an index
+      description: >
+        Replace all records from your index with a new set of records by
+        leveraging the Transformation pipeline setup in the Push connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/).
+
+
+        This method lets you replace all records in your index without downtime.
+        It performs these operations:
+          1. Copy settings, synonyms, and rules from your original index to a temporary index.
+          2. Add your new records to the temporary index.
+          3. Replace your original index with the temporary index.
+
+        Use the safe parameter to ensure that these (asynchronous) operations
+        are performed in sequence.
+
+        If there's an error duing one of these steps, the temporary index won't
+        be deleted.
+
+        This operation is rate-limited.
+
+        This method creates a temporary index: your record count is temporarily
+        doubled. Algolia doesn't count the three days with the highest number of
+        records towards your monthly usage.
+
+        If you're on a legacy plan (before July 2020), this method counts two
+        operations towards your usage (in addition to the number of records):
+        copySettings and moveIndex.
+
+        The API key you use for this operation must have access to the index
+        YourIndex and the temporary index YourIndex_tmp.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to replace `objects` in.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: List of objects to replace the current objects with.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: batchSize
+          description: >-
+            The size of the chunk of `objects`. The number of `batch` calls will
+            be equal to `length(objects) / batchSize`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+        - in: query
+          name: scopes
+          description: >-
+            List of scopes to kepp in the index. Defaults to `settings`,
+            `synonyms`, and `rules`.
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/scopeType'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/replaceAllObjectsWithTransformationResponse
         '400':
           $ref: '#/components/responses/IndexNotFound'
   /chunkedBatch:
@@ -3600,6 +3784,80 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /saveObjectsWithTransformation:
+    get:
+      x-helper: true
+      x-available-languages:
+        - go
+        - java
+        - javascript
+        - php
+        - python
+      tags:
+        - search
+      operationId: saveObjectsWithTransformation
+      summary: >-
+        Save objects to an Algolia index by leveraging the Transformation
+        pipeline setup using the Push connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+      description: >
+        Helper: Similar to the `saveObjects` method but requires a Push
+        connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+        to be created first, in order to transform records before indexing them
+        to Algolia. The `region` must have been passed to the client
+        instantiation method.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to save `objects` into.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: The objects to save in the index.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: waitForTasks
+          description: >-
+            Whether or not we should wait until every `batch` tasks has been
+            processed, this operation may slow the total execution time of this
+            method but is more reliable.
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: batchSize
+          description: >-
+            The size of the chunk of `objects`. The number of `batch` calls will
+            be equal to `length(objects) / batchSize`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchResponse'
         '400':
           $ref: '#/components/responses/IndexNotFound'
   /deleteObjects:
@@ -3734,6 +3992,89 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /partialUpdateObjectsWithTransformation:
+    post:
+      x-helper: true
+      x-available-languages:
+        - go
+        - java
+        - javascript
+        - php
+        - python
+      tags:
+        - search
+      operationId: partialUpdateObjectsWithTransformation
+      summary: >-
+        Save objects to an Algolia index by leveraging the Transformation
+        pipeline setup using the Push connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+      description: >
+        Helper: Similar to the `partialUpdateObjects` method but requires a Push
+        connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+        to be created first, in order to transform records before indexing them
+        to Algolia. The `region` must have been passed to the client
+        instantiation method.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` where to update `objects`.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: The objects to update.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: createIfNotExists
+          description: >-
+            To be provided if non-existing objects are passed, otherwise, the
+            call will fail.
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: waitForTasks
+          description: >-
+            Whether or not we should wait until every `batch` tasks has been
+            processed, this operation may slow the total execution time of this
+            method but is more reliable.
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: batchSize
+          description: >-
+            The size of the chunk of `objects`. The number of `batch` calls will
+            be equal to `length(objects) / batchSize`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchResponse'
         '400':
           $ref: '#/components/responses/IndexNotFound'
   /indexExists:
@@ -4558,6 +4899,8 @@ components:
       enum:
         - min
         - strict
+        - 'true'
+        - 'false'
     typoTolerance:
       description: >
         Whether [typo
@@ -5647,7 +5990,6 @@ components:
         - dest
         - source
     userData:
-      type: object
       example:
         settingID: f2a7b51e3503acc6a39b3784ffb84300
         pluginVersion: 1.6.0
@@ -5661,8 +6003,6 @@ components:
     baseSearchResponse:
       type: object
       additionalProperties: true
-      required:
-        - processingTimeMS
       properties:
         abTestID:
           type: integer
@@ -5894,6 +6234,7 @@ components:
         - partial
         - full
     highlightResultOption:
+      title: highlightResultOption
       type: object
       description: Surround words that match the query with HTML tags for highlighting.
       additionalProperties: false
@@ -5920,6 +6261,7 @@ components:
         - matchLevel
         - matchedWords
     highlightResultMap:
+      title: highlightResultMap
       type: object
       description: Surround words that match the query with HTML tags for highlighting.
       x-is-free-form: false
@@ -5932,11 +6274,13 @@ components:
         - $ref: '#/components/schemas/highlightResultMap'
         - $ref: '#/components/schemas/highlightResultArray'
     highlightResultArray:
+      title: highlightResultArray
       type: array
       description: Surround words that match the query with HTML tags for highlighting.
       items:
         $ref: '#/components/schemas/highlightResult'
     snippetResultOption:
+      title: snippetResultOption
       type: object
       description: Snippets that show the context around a matching search query.
       additionalProperties: false
@@ -5951,6 +6295,7 @@ components:
       x-discriminator-fields:
         - matchLevel
     snippetResultMap:
+      title: snippetResultMap
       type: object
       description: Snippets that show the context around a matching search query.
       x-is-free-form: false
@@ -5963,6 +6308,7 @@ components:
         - $ref: '#/components/schemas/snippetResultMap'
         - $ref: '#/components/schemas/snippetResultArray'
     snippetResultArray:
+      title: snippetResultArray
       type: array
       description: Snippets that show the context around a matching search query.
       items:
@@ -7232,11 +7578,14 @@ components:
             Filters that trigger the rule.
 
 
-            You can add add filters using the syntax `facet:value` so that the
-            rule is triggered, when the specific filter is selected.
+            You can add filters using the syntax `facet:value` so that the rule
+            is triggered, when the specific filter is selected.
 
             You can use `filters` on its own or combine it with the `pattern`
             parameter.
+
+            You can't combine multiple filters with `OR` and you can't use
+            numeric filters.
           example: genre:comedy
     editType:
       description: Type of edit.
@@ -7483,9 +7832,6 @@ components:
           type: integer
           format: int64
           description: When the rule should stop to be active, in Unix epoch time.
-      required:
-        - from
-        - until
     rule:
       type: object
       description: Rule object.
@@ -7838,10 +8184,12 @@ components:
           example: 100
         dataSize:
           type: integer
+          format: int64
           description: Number of bytes of the index in minified format.
           example: 48450
         fileSize:
           type: integer
+          format: int64
           description: Number of bytes of the index binary file.
           example: 112927
         lastBuildTimeS:
@@ -8002,6 +8350,127 @@ components:
         - copyOperationResponse
         - batchResponses
         - moveOperationResponse
+    RunID:
+      type: string
+      description: Universally unique identifier (UUID) of a task run.
+      example: 6c02aeb1-775e-418e-870b-1faccd4b2c0f
+    EventID:
+      type: string
+      description: Universally unique identifier (UUID) of an event.
+      example: 6c02aeb1-775e-418e-870b-1faccd4b2c0f
+    EventStatus:
+      oneOf:
+        - type: string
+          enum:
+            - created
+            - started
+            - retried
+            - failed
+            - succeeded
+            - critical
+        - type: 'null'
+    EventType:
+      type: string
+      enum:
+        - fetch
+        - record
+        - log
+        - transform
+    PublishedAt:
+      type: string
+      description: Date of publish RFC 3339 format.
+    Event:
+      type: object
+      description: An event describe a step of the task execution flow..
+      additionalProperties: false
+      properties:
+        eventID:
+          $ref: '#/components/schemas/EventID'
+        runID:
+          $ref: '#/components/schemas/RunID'
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        type:
+          $ref: '#/components/schemas/EventType'
+        batchSize:
+          type: integer
+          description: The extracted record batch size.
+          example: 10
+          minimum: 0
+          multipleOf: 1
+        data:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+        publishedAt:
+          $ref: '#/components/schemas/PublishedAt'
+      required:
+        - eventID
+        - runID
+        - status
+        - type
+        - batchSize
+        - publishedAt
+    CreatedAt:
+      type: string
+      description: Date of creation in RFC 3339 format.
+    WatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        runID:
+          $ref: '#/components/schemas/RunID'
+        eventID:
+          $ref: '#/components/schemas/EventID'
+        data:
+          type: array
+          description: >
+            This field is always null when used with the Push endpoint.
+
+            When used for a source discover or source validate run, it will
+            include the sampled data of the source.
+          items:
+            type: object
+        events:
+          description: >-
+            in case of error, observability events will be added to the
+            response.
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        message:
+          description: >-
+            a message describing the outcome of the operation that has been ran
+            (push, discover or validate) run.
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/CreatedAt'
+      required:
+        - runID
+    replaceAllObjectsWithTransformationResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        copyOperationResponse:
+          description: >-
+            The response of the `operationIndex` request for the `copy`
+            operation.
+          $ref: '#/components/schemas/updatedAtResponse'
+        watchResponses:
+          type: array
+          description: The response of the `push` request(s).
+          items:
+            $ref: '#/components/schemas/WatchResponse'
+        moveOperationResponse:
+          description: >-
+            The response of the `operationIndex` request for the `move`
+            operation.
+          $ref: '#/components/schemas/updatedAtResponse'
+      required:
+        - copyOperationResponse
+        - watchResponses
+        - moveOperationResponse
     builtInOperationType:
       type: string
       enum:
@@ -8037,7 +8506,7 @@ components:
     PathInPath:
       name: path
       in: path
-      description: Path of the endpoint, anything after "/1" must be specified.
+      description: Path of the endpoint, for example `1/newFeature`.
       required: true
       schema:
         type: string
@@ -8231,6 +8700,18 @@ components:
             properties:
               createdAt:
                 $ref: '#/components/schemas/createdAt'
+    IndexInSameApp:
+      description: Indices are in the same application. Use operationIndex instead.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBase'
+    IndexAlreadyExists:
+      description: Destination index already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBase'
 x-tagGroups:
   - name: Search and indexing
     tags:
