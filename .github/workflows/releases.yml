@@ -17,6 +17,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.23
+      - name: Install mono
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mono-complete
       - name: Install chocolatey
         run: |
           mkdir -p /opt/chocolatey
@@ -29,8 +33,8 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: "~> v2"
-          args: release
+          version: "2"
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}

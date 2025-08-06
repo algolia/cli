@@ -1,3 +1,4 @@
+version: 2
 project_name: algolia
 
 release:
@@ -23,23 +24,21 @@ builds:
   - <<: *build_defaults
     id: linux
     goos: [linux]
-    goarch: [386, arm, amd64, arm64]
+    goarch: ["386", "arm", "amd64", "arm64"]
     env:
       - CGO_ENABLED=0
 
   - <<: *build_defaults
     id: windows
     goos: [windows]
-    goarch: [386, amd64, arm64]
+    goarch: ["386", "amd64", "arm64"]
 
 archives:
   - id: nix
     builds: [macos, linux]
     <<: &archive_defaults
-      name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+      name_template: "{{ .ProjectName }}_{{ .Version }}_{{- if eq .Os \"darwin\" }}macOS{{- else }}{{ .Os }}{{- end }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     wrap_in_directory: true
-    replacements:
-      darwin: macOS
     format: tar.gz
     files:
       - LICENSE
@@ -65,7 +64,7 @@ nfpms:
       - rpm
 
 brews:
-  - tap:
+  - repository:
       owner: algolia
       name: homebrew-algolia-cli
     commit_author:
