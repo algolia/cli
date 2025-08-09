@@ -175,12 +175,9 @@ tags:
     description: |
       Multi-cluster operations.
 
-      Algolia no longer offers multi-cluster management.
-    externalDocs:
-      url: >-
-        https://www.algolia.com/doc/guides/scaling/managing-multiple-clusters-mcm/
-      description: |
-        Related guide: Multi-cluster management.
+      Multi-cluster operations are **deprecated**.
+      If you have issues with your Algolia infrastructure
+      due to large volumes of data, contact the Algolia support team.
   - name: Dictionaries
     description: >
       Manage your dictionaries.
@@ -386,6 +383,7 @@ paths:
       tags:
         - search
       operationId: searchSingleIndex
+      x-mcp-tool: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -445,6 +443,11 @@ paths:
 
         - Multiple searches to the same index—for example, with different
         filters.
+
+
+        Use the helper `searchForHits` or `searchForFacets` to get the results
+        in a more convenient format, if you already know the return type you
+        want.
       requestBody:
         required: true
         description: >-
@@ -634,6 +637,7 @@ paths:
       tags:
         - search
       operationId: saveObject
+      x-mcp-tool: true
       x-acl:
         - addObject
       description: >
@@ -670,10 +674,15 @@ paths:
         description: >-
           The record. A schemaless object with attributes that are useful in the
           context of search and discovery.
+        x-is-generic: true
         content:
           application/json:
             schema:
               type: object
+              example:
+                objectID: blackTShirt
+                name: Black T-shirt
+                color: '#000000'
       responses:
         '201':
           description: Created
@@ -825,10 +834,15 @@ paths:
         description: >-
           The record. A schemaless object with attributes that are useful in the
           context of search and discovery.
+        x-is-generic: true
         content:
           application/json:
             schema:
               type: object
+              example:
+                objectID: blackTShirt
+                name: Black T-shirt
+                color: '#000000'
       responses:
         '200':
           $ref: '#/components/responses/UpdatedAtWithObjectId'
@@ -854,7 +868,7 @@ paths:
         To delete more than one record, use the [`batch`
         operation](#tag/Records/operation/batch).
 
-        To delete records matching a query, use the [`deleteByQuery`
+        To delete records matching a query, use the [`deleteBy`
         operation](#tag/Records/operation/deleteBy).
       parameters:
         - $ref: '#/components/parameters/IndexName'
@@ -875,6 +889,7 @@ paths:
       tags:
         - search
       operationId: deleteBy
+      x-mcp-tool: true
       x-acl:
         - deleteIndex
       summary: Delete records matching a filter
@@ -951,6 +966,7 @@ paths:
       tags:
         - search
       operationId: partialUpdateObject
+      x-mcp-tool: true
       x-acl:
         - addObject
       summary: Add or update attributes
@@ -1012,6 +1028,11 @@ paths:
         increment or decrement step, value to add or remove.
 
 
+        When updating multiple attributes or using multiple operations targeting
+        the same record, you should use a single partial update for faster
+        processing.
+
+
         This operation is subject to [indexing rate
         limits](https://support.algolia.com/hc/en-us/articles/4406975251089-Is-there-a-rate-limit-for-indexing-on-Algolia).
       parameters:
@@ -1047,6 +1068,7 @@ paths:
       tags:
         - search
       operationId: batch
+      x-mcp-tool: true
       summary: Batch indexing operations on one index
       description: >
         Adds, updates, or deletes records in one index with a single API
@@ -1093,6 +1115,7 @@ paths:
       tags:
         - search
       operationId: multipleBatch
+      x-mcp-tool: true
       description: >
         Adds, updates, or deletes records in multiple indices with a single API
         request.
@@ -1276,8 +1299,9 @@ paths:
       tags:
         - search
       operationId: getSettings
+      x-mcp-tool: true
       x-acl:
-        - search
+        - settings
       description: Retrieves an object with non-null index settings.
       summary: Retrieve index settings
       parameters:
@@ -1510,6 +1534,7 @@ paths:
       tags:
         - search
       operationId: searchSynonyms
+      x-mcp-tool: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -1927,6 +1952,7 @@ paths:
       tags:
         - search
       operationId: searchRules
+      x-mcp-tool: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -2216,6 +2242,7 @@ paths:
       tags:
         - search
       operationId: assignUserId
+      deprecated: true
       x-acl:
         - admin
       summary: Assign or move a user ID
@@ -2256,6 +2283,7 @@ paths:
       tags:
         - search
       operationId: listUserIds
+      deprecated: true
       x-acl:
         - admin
       summary: List user IDs
@@ -2300,6 +2328,7 @@ paths:
       tags:
         - search
       operationId: batchAssignUserIds
+      deprecated: true
       x-acl:
         - admin
       summary: Assign multiple userIDs
@@ -2349,6 +2378,7 @@ paths:
       tags:
         - search
       operationId: getTopUserIds
+      deprecated: true
       x-acl:
         - admin
       summary: Get top user IDs
@@ -2399,6 +2429,7 @@ paths:
       tags:
         - search
       operationId: getUserId
+      deprecated: true
       x-acl:
         - admin
       summary: Retrieve user ID
@@ -2431,6 +2462,7 @@ paths:
       tags:
         - search
       operationId: removeUserId
+      deprecated: true
       x-acl:
         - admin
       summary: Delete user ID
@@ -2464,6 +2496,7 @@ paths:
       tags:
         - search
       operationId: listClusters
+      deprecated: true
       x-acl:
         - admin
       summary: List clusters
@@ -2501,6 +2534,7 @@ paths:
       tags:
         - search
       operationId: searchUserIds
+      deprecated: true
       x-use-read-transporter: true
       x-cacheable: true
       x-acl:
@@ -2615,6 +2649,7 @@ paths:
       tags:
         - search
       operationId: hasPendingMappings
+      deprecated: true
       x-acl:
         - admin
       summary: Get migration and user mapping status
@@ -3173,6 +3208,7 @@ paths:
       tags:
         - search
       operationId: listIndices
+      x-mcp-tool: true
       x-acl:
         - listIndexes
       summary: List indices
@@ -3401,6 +3437,67 @@ paths:
                 type: string
         '400':
           $ref: '#/components/responses/IndexNotFound'
+  /accountCopyIndex:
+    get:
+      x-helper: true
+      x-available-languages:
+        - javascript
+      tags:
+        - search
+      x-acl:
+        - browse
+        - editSettings
+        - addObject
+        - settings
+        - search
+      operationId: accountCopyIndex
+      summary: >-
+        Copies the given `sourceIndexName` records, rules and synonyms to an
+        other Algolia application for the given `destinationIndexName`
+      description: >
+        Copies the given `sourceIndexName` records, rules and synonyms to an
+        other Algolia application for the given `destinationIndexName`.
+      parameters:
+        - in: query
+          name: sourceIndexName
+          description: The name of the index to copy.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: destinationAppID
+          description: The application ID to write the index to.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: destinationApiKey
+          description: >-
+            The API Key of the `destinationAppID` to write the index to, must
+            have write ACLs.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: destinationIndexName
+          description: The name of the index to write the copied index to.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: batchSize
+          description: The size of the chunk of `objects`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+      responses:
+        '400':
+          $ref: '#/components/responses/IndexInSameApp'
+        '403':
+          $ref: '#/components/responses/IndexAlreadyExists'
+        '404':
+          $ref: '#/components/responses/IndexNotFound'
   /replaceAllObjects:
     get:
       x-helper: true
@@ -3477,6 +3574,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/replaceAllObjectsResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /replaceAllObjectsWithTransformation:
+    get:
+      x-helper: true
+      tags:
+        - search
+      x-available-languages:
+        - javascript
+        - go
+        - java
+        - php
+        - python
+      operationId: replaceAllObjectsWithTransformation
+      summary: Replace all records in an index
+      description: >
+        Replace all records from your index with a new set of records by
+        leveraging the Transformation pipeline setup in the Push connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/).
+
+
+        This method lets you replace all records in your index without downtime.
+        It performs these operations:
+          1. Copy settings, synonyms, and rules from your original index to a temporary index.
+          2. Add your new records to the temporary index.
+          3. Replace your original index with the temporary index.
+
+        Use the safe parameter to ensure that these (asynchronous) operations
+        are performed in sequence.
+
+        If there's an error duing one of these steps, the temporary index won't
+        be deleted.
+
+        This operation is rate-limited.
+
+        This method creates a temporary index: your record count is temporarily
+        doubled. Algolia doesn't count the three days with the highest number of
+        records towards your monthly usage.
+
+        If you're on a legacy plan (before July 2020), this method counts two
+        operations towards your usage (in addition to the number of records):
+        copySettings and moveIndex.
+
+        The API key you use for this operation must have access to the index
+        YourIndex and the temporary index YourIndex_tmp.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to replace `objects` in.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: List of objects to replace the current objects with.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: batchSize
+          description: >-
+            The size of the chunk of `objects`. The number of `batch` calls will
+            be equal to `length(objects) / batchSize`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+        - in: query
+          name: scopes
+          description: >-
+            List of scopes to kepp in the index. Defaults to `settings`,
+            `synonyms`, and `rules`.
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/scopeType'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/replaceAllObjectsWithTransformationResponse
         '400':
           $ref: '#/components/responses/IndexNotFound'
   /chunkedBatch:
@@ -3600,6 +3784,80 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/batchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
+  /saveObjectsWithTransformation:
+    get:
+      x-helper: true
+      x-available-languages:
+        - go
+        - java
+        - javascript
+        - php
+        - python
+      tags:
+        - search
+      operationId: saveObjectsWithTransformation
+      summary: >-
+        Save objects to an Algolia index by leveraging the Transformation
+        pipeline setup using the Push connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+      description: >
+        Helper: Similar to the `saveObjects` method but requires a Push
+        connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+        to be created first, in order to transform records before indexing them
+        to Algolia. The `region` must have been passed to the client
+        instantiation method.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` to save `objects` into.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: The objects to save in the index.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: waitForTasks
+          description: >-
+            Whether or not we should wait until every `batch` tasks has been
+            processed, this operation may slow the total execution time of this
+            method but is more reliable.
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: batchSize
+          description: >-
+            The size of the chunk of `objects`. The number of `batch` calls will
+            be equal to `length(objects) / batchSize`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchResponse'
         '400':
           $ref: '#/components/responses/IndexNotFound'
   /deleteObjects:
@@ -3736,6 +3994,89 @@ paths:
                   $ref: '#/components/schemas/batchResponse'
         '400':
           $ref: '#/components/responses/IndexNotFound'
+  /partialUpdateObjectsWithTransformation:
+    post:
+      x-helper: true
+      x-available-languages:
+        - go
+        - java
+        - javascript
+        - php
+        - python
+      tags:
+        - search
+      operationId: partialUpdateObjectsWithTransformation
+      summary: >-
+        Save objects to an Algolia index by leveraging the Transformation
+        pipeline setup using the Push connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+      description: >
+        Helper: Similar to the `partialUpdateObjects` method but requires a Push
+        connector
+        (https://www.algolia.com/doc/guides/sending-and-managing-data/send-and-update-your-data/connectors/push/)
+        to be created first, in order to transform records before indexing them
+        to Algolia. The `region` must have been passed to the client
+        instantiation method.
+      parameters:
+        - in: query
+          name: indexName
+          description: The `indexName` where to update `objects`.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: objects
+          description: The objects to update.
+          required: true
+          schema:
+            type: array
+            items:
+              type: object
+        - in: query
+          name: createIfNotExists
+          description: >-
+            To be provided if non-existing objects are passed, otherwise, the
+            call will fail.
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: waitForTasks
+          description: >-
+            Whether or not we should wait until every `batch` tasks has been
+            processed, this operation may slow the total execution time of this
+            method but is more reliable.
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: batchSize
+          description: >-
+            The size of the chunk of `objects`. The number of `batch` calls will
+            be equal to `length(objects) / batchSize`. Defaults to 1000.
+          required: false
+          schema:
+            type: integer
+            default: 1000
+        - in: query
+          name: requestOptions
+          description: The request options to pass to the `batch` method.
+          required: false
+          schema:
+            type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WatchResponse'
+        '400':
+          $ref: '#/components/responses/IndexNotFound'
   /indexExists:
     get:
       x-helper: true
@@ -3845,6 +4186,30 @@ components:
       properties:
         query:
           $ref: '#/components/schemas/query'
+    similarQuery:
+      type: string
+      description: >
+        Keywords to be used instead of the search query to conduct a more
+        broader search
+
+        Using the `similarQuery` parameter changes other settings
+
+        - `queryType` is set to `prefixNone`.
+
+        - `removeStopWords` is set to true.
+
+        - `words` is set as the first ranking criterion.
+
+        - All remaining words are treated as `optionalWords`
+
+        Since the `similarQuery` is supposed to do a broad search, they usually
+        return many results.
+
+        Combine it with `filters` to narrow down the list of results.
+      default: ''
+      example: comedy drama crime Macy Buscemi
+      x-categories:
+        - Search
     filters:
       type: string
       description: >
@@ -4017,11 +4382,61 @@ components:
         - type: string
       x-categories:
         - Filtering
+    sumOrFiltersScores:
+      type: boolean
+      description: >
+        Whether to sum all filter scores
+
+        If true, all filter scores are summed.
+
+        Otherwise, the maximum filter score is kept.
+
+        For more information, see [filter
+        scores](https://www.algolia.com/doc/guides/managing-results/refine-results/filtering/in-depth/filter-scoring/#accumulating-scores-with-sumorfiltersscores).
+      default: false
+      x-categories:
+        - Filtering
+    restrictSearchableAttributes:
+      type: array
+      items:
+        type: string
+      example:
+        - title
+        - author
+      description: |
+        Restricts a search to a subset of your searchable attributes.
+        Attribute names are case-sensitive.
+      default: []
+      x-categories:
+        - Filtering
+    facetingAfterDistinct:
+      type: boolean
+      description: >
+        Whether faceting should be applied after deduplication with `distinct`
+
+        This leads to accurate facet counts when using faceting in combination
+        with `distinct`.
+
+        It's usually better to use `afterDistinct` modifiers in the
+        `attributesForFaceting` setting,
+
+        as `facetingAfterDistinct` only computes correct facet counts if all
+        records have the same facet values for the `attributeForDistinct`.
+      default: false
+      x-categories:
+        - Faceting
     page:
       type: integer
       description: Page of search results to retrieve.
       default: 0
       minimum: 0
+      x-categories:
+        - Pagination
+    length:
+      type: integer
+      description: Number of hits to retrieve (used in combination with `offset`).
+      minimum: 0
+      maximum: 1000
       x-categories:
         - Pagination
     aroundLatLng:
@@ -4119,6 +4534,14 @@ components:
 
             as are records between 100 and 199 meters.
         - $ref: '#/components/schemas/aroundPrecisionFromValue'
+      x-categories:
+        - Geo-Search
+    minimumAroundRadius:
+      type: integer
+      description: >-
+        Minimum radius (in meters) for a search around a location when
+        `aroundRadius` isn't set.
+      minimum: 1
       x-categories:
         - Geo-Search
     insideBoundingBoxArray:
@@ -4272,6 +4695,54 @@ components:
         - ur
         - uz
         - zh
+    naturalLanguages:
+      type: array
+      items:
+        $ref: '#/components/schemas/supportedLanguage'
+      description: >
+        ISO language codes that adjust settings that are useful for processing
+        natural language queries (as opposed to keyword searches)
+
+        - Sets `removeStopWords` and `ignorePlurals` to the list of provided
+        languages.
+
+        - Sets `removeWordsIfNoResults` to `allOptional`.
+
+        - Adds a `natural_language` attribute to `ruleContexts` and
+        `analyticsTags`.
+      default: []
+      x-categories:
+        - Languages
+    ruleContexts:
+      type: array
+      items:
+        type: string
+      description: >
+        Assigns a rule context to the search query
+
+        [Rule
+        contexts](https://www.algolia.com/doc/guides/managing-results/rules/rules-overview/how-to/customize-search-results-by-platform/#whats-a-context)
+        are strings that you can use to trigger matching rules.
+      default: []
+      example:
+        - mobile
+      x-categories:
+        - Rules
+    personalizationImpact:
+      type: integer
+      description: >
+        Impact that Personalization should have on this search
+
+        The higher this value is, the more Personalization determines the
+        ranking compared to other factors.
+
+        For more information, see [Understanding Personalization
+        impact](https://www.algolia.com/doc/guides/personalization/personalizing-results/in-depth/configuring-personalization/#understanding-personalization-impact).
+      default: 100
+      minimum: 0
+      maximum: 100
+      x-categories:
+        - Personalization
     userToken:
       type: string
       description: >
@@ -4285,37 +4756,63 @@ components:
       example: test-user-123
       x-categories:
         - Personalization
+    getRankingInfo:
+      type: boolean
+      description: Whether the search response should include detailed ranking information.
+      default: false
+      x-categories:
+        - Advanced
+    synonyms:
+      type: boolean
+      description: Whether to take into account an index's synonyms for this search.
+      default: true
+      x-categories:
+        - Advanced
+    clickAnalytics:
+      type: boolean
+      description: >
+        Whether to include a `queryID` attribute in the response
+
+        The query ID is a unique identifier for a search query and is required
+        for tracking [click and conversion
+        events](https://www.algolia.com/guides/sending-events/getting-started/).
+      default: false
+      x-categories:
+        - Analytics
+    analytics:
+      type: boolean
+      description: Whether this search will be included in Analytics.
+      default: true
+      x-categories:
+        - Analytics
+    analyticsTags:
+      type: array
+      items:
+        type: string
+      description: >-
+        Tags to apply to the query for [segmenting analytics
+        data](https://www.algolia.com/doc/guides/search-analytics/guides/segments/).
+      default: []
+    percentileComputation:
+      type: boolean
+      description: >-
+        Whether to include this search when calculating processing-time
+        percentiles.
+      default: true
+      x-categories:
+        - Advanced
+    enableABTest:
+      type: boolean
+      description: Whether to enable A/B testing for this search.
+      default: true
+      x-categories:
+        - Advanced
     baseSearchParamsWithoutQuery:
       type: object
       additionalProperties: false
       properties:
         similarQuery:
-          type: string
-          description: >
-            Keywords to be used instead of the search query to conduct a more
-            broader search.
-
-
-            Using the `similarQuery` parameter changes other settings:
-
-
-            - `queryType` is set to `prefixNone`.
-
-            - `removeStopWords` is set to true.
-
-            - `words` is set as the first ranking criterion.
-
-            - All remaining words are treated as `optionalWords`.
-
-
-            Since the `similarQuery` is supposed to do a broad search, they
-            usually return many results.
-
-            Combine it with `filters` to narrow down the list of results.
-          default: ''
-          example: comedy drama crime Macy Buscemi
-          x-categories:
-            - Search
+          $ref: '#/components/schemas/similarQuery'
         filters:
           $ref: '#/components/schemas/filters'
         facetFilters:
@@ -4327,41 +4824,16 @@ components:
         tagFilters:
           $ref: '#/components/schemas/tagFilters'
         sumOrFiltersScores:
-          type: boolean
-          description: >
-            Whether to sum all filter scores.
-
-
-            If true, all filter scores are summed.
-
-            Otherwise, the maximum filter score is kept.
-
-            For more information, see [filter
-            scores](https://www.algolia.com/doc/guides/managing-results/refine-results/filtering/in-depth/filter-scoring/#accumulating-scores-with-sumorfiltersscores).
-          default: false
-          x-categories:
-            - Filtering
+          $ref: '#/components/schemas/sumOrFiltersScores'
         restrictSearchableAttributes:
-          type: array
-          items:
-            type: string
-          example:
-            - title
-            - author
-          description: |
-            Restricts a search to a subset of your searchable attributes.
-            Attribute names are case-sensitive.
-          default: []
-          x-categories:
-            - Filtering
+          $ref: '#/components/schemas/restrictSearchableAttributes'
         facets:
           type: array
           items:
             type: string
           description: >
             Facets for which to retrieve facet values that match the search
-            criteria and the number of matching facet values.
-
+            criteria and the number of matching facet values
 
             To retrieve all facets, use the wildcard character `*`.
 
@@ -4373,23 +4845,7 @@ components:
           x-categories:
             - Faceting
         facetingAfterDistinct:
-          type: boolean
-          description: >
-            Whether faceting should be applied after deduplication with
-            `distinct`.
-
-
-            This leads to accurate facet counts when using faceting in
-            combination with `distinct`.
-
-            It's usually better to use `afterDistinct` modifiers in the
-            `attributesForFaceting` setting,
-
-            as `facetingAfterDistinct` only computes correct facet counts if all
-            records have the same facet values for the `attributeForDistinct`.
-          default: false
-          x-categories:
-            - Faceting
+          $ref: '#/components/schemas/facetingAfterDistinct'
         page:
           $ref: '#/components/schemas/page'
         offset:
@@ -4398,12 +4854,7 @@ components:
           x-categories:
             - Pagination
         length:
-          type: integer
-          description: Number of hits to retrieve (used in combination with `offset`).
-          minimum: 0
-          maximum: 1000
-          x-categories:
-            - Pagination
+          $ref: '#/components/schemas/length'
         aroundLatLng:
           $ref: '#/components/schemas/aroundLatLng'
         aroundLatLngViaIP:
@@ -4413,131 +4864,168 @@ components:
         aroundPrecision:
           $ref: '#/components/schemas/aroundPrecision'
         minimumAroundRadius:
-          type: integer
-          description: >-
-            Minimum radius (in meters) for a search around a location when
-            `aroundRadius` isn't set.
-          minimum: 1
-          x-categories:
-            - Geo-Search
+          $ref: '#/components/schemas/minimumAroundRadius'
         insideBoundingBox:
           $ref: '#/components/schemas/insideBoundingBox'
         insidePolygon:
           $ref: '#/components/schemas/insidePolygon'
         naturalLanguages:
-          type: array
-          items:
-            $ref: '#/components/schemas/supportedLanguage'
-          description: >
-            ISO language codes that adjust settings that are useful for
-            processing natural language queries (as opposed to keyword
-            searches):
-
-
-            - Sets `removeStopWords` and `ignorePlurals` to the list of provided
-            languages.
-
-            - Sets `removeWordsIfNoResults` to `allOptional`.
-
-            - Adds a `natural_language` attribute to `ruleContexts` and
-            `analyticsTags`.
-          default: []
-          x-categories:
-            - Languages
+          $ref: '#/components/schemas/naturalLanguages'
         ruleContexts:
-          type: array
-          items:
-            type: string
-          description: >
-            Assigns a rule context to the search query.
-
-
-            [Rule
-            contexts](https://www.algolia.com/doc/guides/managing-results/rules/rules-overview/how-to/customize-search-results-by-platform/#whats-a-context)
-            are strings that you can use to trigger matching rules.
-          default: []
-          example:
-            - mobile
-          x-categories:
-            - Rules
+          $ref: '#/components/schemas/ruleContexts'
         personalizationImpact:
-          type: integer
-          description: >
-            Impact that Personalization should have on this search.
-
-
-            The higher this value is, the more Personalization determines the
-            ranking compared to other factors.
-
-            For more information, see [Understanding Personalization
-            impact](https://www.algolia.com/doc/guides/personalization/personalizing-results/in-depth/configuring-personalization/#understanding-personalization-impact).
-          default: 100
-          minimum: 0
-          maximum: 100
-          x-categories:
-            - Personalization
+          $ref: '#/components/schemas/personalizationImpact'
         userToken:
           $ref: '#/components/schemas/userToken'
         getRankingInfo:
-          type: boolean
-          description: >-
-            Whether the search response should include detailed ranking
-            information.
-          default: false
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/getRankingInfo'
         synonyms:
-          type: boolean
-          description: Whether to take into account an index's synonyms for this search.
-          default: true
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/synonyms'
         clickAnalytics:
-          type: boolean
-          description: >
-            Whether to include a `queryID` attribute in the response.
-
-
-            The query ID is a unique identifier for a search query and is
-            required for tracking [click and conversion
-            events](https://www.algolia.com/guides/sending-events/getting-started/).
-          default: false
-          x-categories:
-            - Analytics
+          $ref: '#/components/schemas/clickAnalytics'
         analytics:
-          type: boolean
-          description: Whether this search will be included in Analytics.
-          default: true
-          x-categories:
-            - Analytics
+          $ref: '#/components/schemas/analytics'
         analyticsTags:
-          type: array
-          items:
-            type: string
-          description: >-
-            Tags to apply to the query for [segmenting analytics
-            data](https://www.algolia.com/doc/guides/search-analytics/guides/segments/).
-          default: []
+          $ref: '#/components/schemas/analyticsTags'
           x-categories:
             - Analytics
         percentileComputation:
-          type: boolean
-          description: >-
-            Whether to include this search when calculating processing-time
-            percentiles.
-          default: true
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/percentileComputation'
         enableABTest:
-          type: boolean
-          description: Whether to enable A/B testing for this search.
-          default: true
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/enableABTest'
     baseSearchParams:
       allOf:
         - $ref: '#/components/schemas/searchParamsQuery'
         - $ref: '#/components/schemas/baseSearchParamsWithoutQuery'
+    attributesToRetrieve:
+      type: array
+      items:
+        type: string
+      example:
+        - author
+        - title
+        - content
+      description: >
+        Attributes to include in the API response
+
+        To reduce the size of your response, you can retrieve only some of the
+        attributes.
+
+        Attribute names are case-sensitive
+
+        - `*` retrieves all attributes, except attributes included in the
+        `customRanking` and `unretrievableAttributes` settings.
+
+        - To retrieve all attributes except a specific one, prefix the attribute
+        with a dash and combine it with the `*`: `["*", "-ATTRIBUTE"]`.
+
+        - The `objectID` attribute is always included.
+      default:
+        - '*'
+      x-categories:
+        - Attributes
+    relevancyStrictness:
+      type: integer
+      example: 90
+      description: >
+        Relevancy threshold below which less relevant results aren't included in
+        the results
+
+        You can only set `relevancyStrictness` on [virtual replica
+        indices](https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/in-depth/replicas/#what-are-virtual-replicas).
+
+        Use this setting to strike a balance between the relevance and number of
+        returned results.
+      default: 100
+      x-categories:
+        - Ranking
+    attributesToHighlight:
+      type: array
+      items:
+        type: string
+      example:
+        - author
+        - title
+        - conten
+        - content
+      description: >
+        Attributes to highlight
+
+        By default, all searchable attributes are highlighted.
+
+        Use `*` to highlight all attributes or use an empty array `[]` to turn
+        off highlighting.
+
+        Attribute names are case-sensitive
+
+        With highlighting, strings that match the search query are surrounded by
+        HTML tags defined by `highlightPreTag` and `highlightPostTag`.
+
+        You can use this to visually highlight matching parts of a search query
+        in your UI
+
+        For more information, see [Highlighting and
+        snippeting](https://www.algolia.com/doc/guides/building-search-ui/ui-and-ux-patterns/highlighting-snippeting/js/).
+      x-categories:
+        - Highlighting and Snippeting
+    attributesToSnippet:
+      type: array
+      items:
+        type: string
+      example:
+        - content:80
+        - description
+      description: >
+        Attributes for which to enable snippets.
+
+        Attribute names are case-sensitive
+
+        Snippets provide additional context to matched words.
+
+        If you enable snippets, they include 10 words, including the matched
+        word.
+
+        The matched word will also be wrapped by HTML tags for highlighting.
+
+        You can adjust the number of words with the following notation:
+        `ATTRIBUTE:NUMBER`,
+
+        where `NUMBER` is the number of words to be extracted.
+      default: []
+      x-categories:
+        - Highlighting and Snippeting
+    highlightPreTag:
+      type: string
+      description: >-
+        HTML tag to insert before the highlighted parts in all highlighted
+        results and snippets.
+      default: <em>
+      x-categories:
+        - Highlighting and Snippeting
+    highlightPostTag:
+      type: string
+      description: >-
+        HTML tag to insert after the highlighted parts in all highlighted
+        results and snippets.
+      default: </em>
+      x-categories:
+        - Highlighting and Snippeting
+    snippetEllipsisText:
+      type: string
+      description: String used as an ellipsis indicator when a snippet is truncated.
+      default: …
+      x-categories:
+        - Highlighting and Snippeting
+    restrictHighlightAndSnippetArrays:
+      type: boolean
+      description: >
+        Whether to restrict highlighting and snippeting to items that at least
+        partially matched the search query.
+
+        By default, all items are highlighted and snippeted.
+      default: false
+      x-categories:
+        - Highlighting and Snippeting
     hitsPerPage:
       type: integer
       description: Number of hits per page.
@@ -4546,6 +5034,24 @@ components:
       maximum: 1000
       x-categories:
         - Pagination
+    minWordSizefor1Typo:
+      type: integer
+      description: >-
+        Minimum number of characters a word in the search query must contain to
+        accept matches with [one
+        typo](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/in-depth/configuring-typo-tolerance/#configuring-word-length-for-typos).
+      default: 4
+      x-categories:
+        - Typos
+    minWordSizefor2Typos:
+      type: integer
+      description: >-
+        Minimum number of characters a word in the search query must contain to
+        accept matches with [two
+        typos](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/in-depth/configuring-typo-tolerance/#configuring-word-length-for-typos).
+      default: 8
+      x-categories:
+        - Typos
     typoToleranceEnum:
       type: string
       title: typo tolerance
@@ -4558,6 +5064,8 @@ components:
       enum:
         - min
         - strict
+        - 'true'
+        - 'false'
     typoTolerance:
       description: >
         Whether [typo
@@ -4575,6 +5083,40 @@ components:
             Whether typo tolerance is active. If true, matches with typos are
             included in the search results and rank after exact matches.
         - $ref: '#/components/schemas/typoToleranceEnum'
+      x-categories:
+        - Typos
+    allowTyposOnNumericTokens:
+      type: boolean
+      description: |
+        Whether to allow typos on numbers in the search query
+        Turn off this setting to reduce the number of irrelevant matches
+        when searching in large sets of similar numbers.
+      default: true
+      x-categories:
+        - Typos
+    disableTypoToleranceOnAttributes:
+      type: array
+      items:
+        type: string
+      example:
+        - sku
+      description: >
+        Attributes for which you want to turn off [typo
+        tolerance](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/).
+
+        Attribute names are case-sensitive
+
+        Returning only exact matches can help when
+
+        - [Searching in hyphenated
+        attributes](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/how-to/how-to-search-in-hyphenated-attributes/).
+
+        - Reducing the number of matches when you have too many.
+          This can happen with attributes that are long blocks of text, such as product descriptions
+        Consider alternatives such as `disableTypoToleranceOnWords` or adding
+        synonyms if your attributes have intentional unusual spellings that
+        might look like typos.
+      default: []
       x-categories:
         - Typos
     booleanString:
@@ -4640,6 +5182,73 @@ components:
             If false, stop words are not removed.
       x-categories:
         - Languages
+    queryLanguages:
+      type: array
+      items:
+        $ref: '#/components/schemas/supportedLanguage'
+      example:
+        - es
+      description: >
+        Languages for language-specific query processing steps such as plurals,
+        stop-word removal, and word-detection dictionaries 
+
+        This setting sets a default list of languages used by the
+        `removeStopWords` and `ignorePlurals` settings.
+
+        This setting also sets a dictionary for word detection in the
+        logogram-based
+        [CJK](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/normalization/#normalization-for-logogram-based-languages-cjk)
+        languages.
+
+        To support this, you must place the CJK language **first** 
+
+        **You should always specify a query language.**
+
+        If you don't specify an indexing language, the search engine uses all
+        [supported
+        languages](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/supported-languages/),
+
+        or the languages you specified with the `ignorePlurals` or
+        `removeStopWords` parameters.
+
+        This can lead to unexpected search results.
+
+        For more information, see [Language-specific
+        configuration](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/language-specific-configurations/).
+      default: []
+      x-categories:
+        - Languages
+    decompoundQuery:
+      type: boolean
+      description: >
+        Whether to split compound words in the query into their building blocks
+
+        For more information, see [Word
+        segmentation](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/language-specific-configurations/#splitting-compound-words).
+
+        Word segmentation is supported for these languages: German, Dutch,
+        Finnish, Swedish, and Norwegian.
+
+        Decompounding doesn't work for words with [non-spacing mark Unicode
+        characters](https://www.charactercodes.net/category/non-spacing_mark).
+
+        For example, `Gartenstühle` won't be decompounded if the `ü` consists of
+        `u` (U+0075) and `◌̈` (U+0308).
+      default: true
+      x-categories:
+        - Languages
+    enableRules:
+      type: boolean
+      description: Whether to enable rules.
+      default: true
+      x-categories:
+        - Rules
+    enablePersonalization:
+      type: boolean
+      description: Whether to enable Personalization.
+      default: false
+      x-categories:
+        - Personalization
     queryType:
       type: string
       enum:
@@ -4730,6 +5339,17 @@ components:
               items:
                 type: string
             - type: 'null'
+    advancedSyntax:
+      type: boolean
+      description: >
+        Whether to support phrase matching and excluding words from search
+        queries
+
+        Use the `advancedSyntaxFeatures` parameter to control which feature is
+        supported.
+      default: false
+      x-categories:
+        - Query strategy
     optionalWordsArray:
       type: array
       items:
@@ -4785,6 +5405,31 @@ components:
         - type: string
         - type: 'null'
         - $ref: '#/components/schemas/optionalWordsArray'
+    disableExactOnAttributes:
+      type: array
+      items:
+        type: string
+      example:
+        - description
+      description: >
+        Searchable attributes for which you want to [turn off the Exact ranking
+        criterion](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/override-search-engine-defaults/in-depth/adjust-exact-settings/#turn-off-exact-for-some-attributes).
+
+        Attribute names are case-sensitive
+
+        This can be useful for attributes with long values, where the likelihood
+        of an exact match is high,
+
+        such as product descriptions.
+
+        Turning off the Exact ranking criterion for these attributes favors
+        exact matching on other attributes.
+
+        This reduces the impact of individual attributes with a lot of content
+        on ranking.
+      default: []
+      x-categories:
+        - Query strategy
     exactOnSingleWordQuery:
       type: string
       enum:
@@ -4821,9 +5466,58 @@ components:
         - ignoreConjugations
       x-categories:
         - Query strategy
+    IndexSettings_alternativesAsExact:
+      type: array
+      items:
+        $ref: '#/components/schemas/alternativesAsExact'
+      description: >
+        Determine which plurals and synonyms should be considered an exact
+        matches
+
+        By default, Algolia treats singular and plural forms of a word, and
+        single-word synonyms, as
+        [exact](https://www.algolia.com/doc/guides/managing-results/relevance-overview/in-depth/ranking-criteria/#exact)
+        matches when searching.
+
+        For example
+
+        - "swimsuit" and "swimsuits" are treated the same
+
+        - "swimsuit" and "swimwear" are treated the same (if they are
+        [synonyms](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/adding-synonyms/#regular-synonyms))
+
+        - `ignorePlurals`.
+          Plurals and similar declensions added by the `ignorePlurals` setting are considered exact matches
+        - `singleWordSynonym`.
+          Single-word synonyms, such as "NY" = "NYC", are considered exact matches
+        - `multiWordsSynonym`.
+          Multi-word synonyms, such as "NY" = "New York", are considered exact matches.
+      default:
+        - ignorePlurals
+        - singleWordSynonym
+      x-categories:
+        - Query strategy
     advancedSyntaxFeatures:
       type: string
       enum:
+        - exactPhrase
+        - excludeWords
+      x-categories:
+        - Query strategy
+    IndexSettings_advancedSyntaxFeatures:
+      type: array
+      items:
+        $ref: '#/components/schemas/advancedSyntaxFeatures'
+      description: |
+        Advanced search syntax features you want to support
+        - `exactPhrase`.
+          Phrases in quotes must match exactly.
+          For example, `sparkly blue "iPhone case"` only returns records with the exact string "iPhone case"
+        - `excludeWords`.
+          Query words prefixed with a `-` must not occur in a record.
+          For example, `search -engine` matches records that contain "search" but not "engine"
+        This setting only has an effect if `advancedSyntax` is true.
+      default:
         - exactPhrase
         - excludeWords
       x-categories:
@@ -4867,6 +5561,122 @@ components:
           minimum: 0
           maximum: 4
           default: 0
+      x-categories:
+        - Advanced
+    replaceSynonymsInHighlight:
+      type: boolean
+      description: >
+        Whether to replace a highlighted word with the matched synonym
+
+        By default, the original words are highlighted even if a synonym
+        matches.
+
+        For example, with `home` as a synonym for `house` and a search for
+        `home`,
+
+        records matching either "home" or "house" are included in the search
+        results,
+
+        and either "home" or "house" are highlighted
+
+        With `replaceSynonymsInHighlight` set to `true`, a search for `home`
+        still matches the same records,
+
+        but all occurrences of "house" are replaced by "home" in the highlighted
+        response.
+      default: false
+      x-categories:
+        - Highlighting and Snippeting
+    minProximity:
+      type: integer
+      minimum: 1
+      maximum: 7
+      description: >
+        Minimum proximity score for two matching words
+
+        This adjusts the [Proximity ranking
+        criterion](https://www.algolia.com/doc/guides/managing-results/relevance-overview/in-depth/ranking-criteria/#proximity)
+
+        by equally scoring matches that are farther apart
+
+        For example, if `minProximity` is 2, neighboring matches and matches
+        with one word between them would have the same score.
+      default: 1
+      x-categories:
+        - Advanced
+    responseFields:
+      type: array
+      items:
+        type: string
+      description: >
+        Properties to include in the API response of search and browse requests
+
+        By default, all response properties are included.
+
+        To reduce the response size, you can select which properties should be
+        included
+
+        An empty list may lead to an empty API response (except properties you
+        can't exclude)
+
+        You can't exclude these properties:
+
+        `message`, `warning`, `cursor`, `abTestVariantID`,
+
+        or any property added by setting `getRankingInfo` to true
+
+        Your search depends on the `hits` field. If you omit this field,
+        searches won't return any results.
+
+        Your UI might also depend on other properties, for example, for
+        pagination.
+
+        Before restricting the response size, check the impact on your search
+        experience.
+      default:
+        - '*'
+      x-categories:
+        - Advanced
+    maxValuesPerFacet:
+      type: integer
+      description: Maximum number of facet values to return for each facet.
+      default: 100
+      maximum: 1000
+      x-categories:
+        - Faceting
+    sortFacetValuesBy:
+      type: string
+      description: >
+        Order in which to retrieve facet values
+
+        - `count`.
+          Facet values are retrieved by decreasing count.
+          The count is the number of matching records containing this facet value
+        - `alpha`.
+          Retrieve facet values alphabetically
+        This setting doesn't influence how facet values are displayed in your UI
+        (see `renderingContent`).
+
+        For more information, see [facet value
+        display](https://www.algolia.com/doc/guides/building-search-ui/ui-and-ux-patterns/facet-display/js/).
+      default: count
+      x-categories:
+        - Faceting
+    attributeCriteriaComputedByMinProximity:
+      type: boolean
+      description: >
+        Whether the best matching attribute should be determined by minimum
+        proximity
+
+        This setting only affects ranking if the Attribute ranking criterion
+        comes before Proximity in the `ranking` setting.
+
+        If true, the best matching attribute is selected based on the minimum
+        proximity of multiple matches.
+
+        Otherwise, the best matching attribute is determined by the order in the
+        `searchableAttributes` setting.
+      default: false
       x-categories:
         - Advanced
     order:
@@ -5009,6 +5819,17 @@ components:
           $ref: '#/components/schemas/widgets'
       x-categories:
         - Advanced
+    enableReRanking:
+      type: boolean
+      description: >
+        Whether this search will use [Dynamic
+        Re-Ranking](https://www.algolia.com/doc/guides/algolia-ai/re-ranking/)
+
+        This setting only has an effect if you activated Dynamic Re-Ranking for
+        this index in the Algolia dashboard.
+      default: true
+      x-categories:
+        - Filtering
     reRankingApplyFilter:
       description: >
         Restrict [Dynamic
@@ -5026,35 +5847,7 @@ components:
       additionalProperties: false
       properties:
         attributesToRetrieve:
-          type: array
-          items:
-            type: string
-          example:
-            - author
-            - title
-            - content
-          description: >
-            Attributes to include in the API response.
-
-
-            To reduce the size of your response, you can retrieve only some of
-            the attributes.
-
-            Attribute names are case-sensitive.
-
-
-            - `*` retrieves all attributes, except attributes included in the
-            `customRanking` and `unretrievableAttributes` settings.
-
-            - To retrieve all attributes except a specific one, prefix the
-            attribute with a dash and combine it with the `*`: `["*",
-            "-ATTRIBUTE"]`.
-
-            - The `objectID` attribute is always included.
-          default:
-            - '*'
-          x-categories:
-            - Attributes
+          $ref: '#/components/schemas/attributesToRetrieve'
         ranking:
           type: array
           items:
@@ -5101,248 +5894,43 @@ components:
           x-categories:
             - Ranking
         relevancyStrictness:
-          type: integer
-          example: 90
-          description: >
-            Relevancy threshold below which less relevant results aren't
-            included in the results.
-
-
-            You can only set `relevancyStrictness` on [virtual replica
-            indices](https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/in-depth/replicas/#what-are-virtual-replicas).
-
-            Use this setting to strike a balance between the relevance and
-            number of returned results.
-          default: 100
-          x-categories:
-            - Ranking
+          $ref: '#/components/schemas/relevancyStrictness'
         attributesToHighlight:
-          type: array
-          items:
-            type: string
-          example:
-            - author
-            - title
-            - conten
-            - content
-          description: >
-            Attributes to highlight.
-
-
-            By default, all searchable attributes are highlighted.
-
-            Use `*` to highlight all attributes or use an empty array `[]` to
-            turn off highlighting.
-
-            Attribute names are case-sensitive.
-
-
-            With highlighting, strings that match the search query are
-            surrounded by HTML tags defined by `highlightPreTag` and
-            `highlightPostTag`.
-
-            You can use this to visually highlight matching parts of a search
-            query in your UI.
-
-
-            For more information, see [Highlighting and
-            snippeting](https://www.algolia.com/doc/guides/building-search-ui/ui-and-ux-patterns/highlighting-snippeting/js/).
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/attributesToHighlight'
         attributesToSnippet:
-          type: array
-          items:
-            type: string
-          example:
-            - content:80
-            - description
-          description: >
-            Attributes for which to enable snippets.
-
-            Attribute names are case-sensitive.
-
-
-            Snippets provide additional context to matched words.
-
-            If you enable snippets, they include 10 words, including the matched
-            word.
-
-            The matched word will also be wrapped by HTML tags for highlighting.
-
-            You can adjust the number of words with the following notation:
-            `ATTRIBUTE:NUMBER`,
-
-            where `NUMBER` is the number of words to be extracted.
-          default: []
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/attributesToSnippet'
         highlightPreTag:
-          type: string
-          description: >-
-            HTML tag to insert before the highlighted parts in all highlighted
-            results and snippets.
-          default: <em>
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/highlightPreTag'
         highlightPostTag:
-          type: string
-          description: >-
-            HTML tag to insert after the highlighted parts in all highlighted
-            results and snippets.
-          default: </em>
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/highlightPostTag'
         snippetEllipsisText:
-          type: string
-          description: String used as an ellipsis indicator when a snippet is truncated.
-          default: …
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/snippetEllipsisText'
         restrictHighlightAndSnippetArrays:
-          type: boolean
-          description: >
-            Whether to restrict highlighting and snippeting to items that at
-            least partially matched the search query.
-
-            By default, all items are highlighted and snippeted.
-          default: false
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/restrictHighlightAndSnippetArrays'
         hitsPerPage:
           $ref: '#/components/schemas/hitsPerPage'
         minWordSizefor1Typo:
-          type: integer
-          description: >-
-            Minimum number of characters a word in the search query must contain
-            to accept matches with [one
-            typo](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/in-depth/configuring-typo-tolerance/#configuring-word-length-for-typos).
-          default: 4
-          x-categories:
-            - Typos
+          $ref: '#/components/schemas/minWordSizefor1Typo'
         minWordSizefor2Typos:
-          type: integer
-          description: >-
-            Minimum number of characters a word in the search query must contain
-            to accept matches with [two
-            typos](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/in-depth/configuring-typo-tolerance/#configuring-word-length-for-typos).
-          default: 8
-          x-categories:
-            - Typos
+          $ref: '#/components/schemas/minWordSizefor2Typos'
         typoTolerance:
           $ref: '#/components/schemas/typoTolerance'
         allowTyposOnNumericTokens:
-          type: boolean
-          description: |
-            Whether to allow typos on numbers in the search query.
-
-            Turn off this setting to reduce the number of irrelevant matches
-            when searching in large sets of similar numbers.
-          default: true
-          x-categories:
-            - Typos
+          $ref: '#/components/schemas/allowTyposOnNumericTokens'
         disableTypoToleranceOnAttributes:
-          type: array
-          items:
-            type: string
-          example:
-            - sku
-          description: >
-            Attributes for which you want to turn off [typo
-            tolerance](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/).
-
-            Attribute names are case-sensitive.
-
-
-            Returning only exact matches can help when:
-
-
-            - [Searching in hyphenated
-            attributes](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/typo-tolerance/how-to/how-to-search-in-hyphenated-attributes/).
-
-            - Reducing the number of matches when you have too many.
-              This can happen with attributes that are long blocks of text, such as product descriptions.
-
-            Consider alternatives such as `disableTypoToleranceOnWords` or
-            adding synonyms if your attributes have intentional unusual
-            spellings that might look like typos.
-          default: []
-          x-categories:
-            - Typos
+          $ref: '#/components/schemas/disableTypoToleranceOnAttributes'
         ignorePlurals:
           $ref: '#/components/schemas/ignorePlurals'
         removeStopWords:
           $ref: '#/components/schemas/removeStopWords'
         queryLanguages:
-          type: array
-          items:
-            $ref: '#/components/schemas/supportedLanguage'
-          example:
-            - es
-          description: >
-            Languages for language-specific query processing steps such as
-            plurals, stop-word removal, and word-detection dictionaries.
-
-
-            This setting sets a default list of languages used by the
-            `removeStopWords` and `ignorePlurals` settings.
-
-            This setting also sets a dictionary for word detection in the
-            logogram-based
-            [CJK](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/normalization/#normalization-for-logogram-based-languages-cjk)
-            languages.
-
-            To support this, you must place the CJK language **first**.
-
-
-            **You should always specify a query language.**
-
-            If you don't specify an indexing language, the search engine uses
-            all [supported
-            languages](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/supported-languages/),
-
-            or the languages you specified with the `ignorePlurals` or
-            `removeStopWords` parameters.
-
-            This can lead to unexpected search results.
-
-            For more information, see [Language-specific
-            configuration](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/language-specific-configurations/).
-          default: []
-          x-categories:
-            - Languages
+          $ref: '#/components/schemas/queryLanguages'
         decompoundQuery:
-          type: boolean
-          description: >
-            Whether to split compound words in the query into their building
-            blocks.
-
-
-            For more information, see [Word
-            segmentation](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/language-specific-configurations/#splitting-compound-words).
-
-            Word segmentation is supported for these languages: German, Dutch,
-            Finnish, Swedish, and Norwegian.
-
-            Decompounding doesn't work for words with [non-spacing mark Unicode
-            characters](https://www.charactercodes.net/category/non-spacing_mark).
-
-            For example, `Gartenstühle` won't be decompounded if the `ü`
-            consists of `u` (U+0075) and `◌̈` (U+0308).
-          default: true
-          x-categories:
-            - Languages
+          $ref: '#/components/schemas/decompoundQuery'
         enableRules:
-          type: boolean
-          description: Whether to enable rules.
-          default: true
-          x-categories:
-            - Rules
+          $ref: '#/components/schemas/enableRules'
         enablePersonalization:
-          type: boolean
-          description: Whether to enable Personalization.
-          default: false
-          x-categories:
-            - Personalization
+          $ref: '#/components/schemas/enablePersonalization'
         queryType:
           $ref: '#/components/schemas/queryType'
         removeWordsIfNoResults:
@@ -5352,250 +5940,35 @@ components:
         semanticSearch:
           $ref: '#/components/schemas/semanticSearch'
         advancedSyntax:
-          type: boolean
-          description: >
-            Whether to support phrase matching and excluding words from search
-            queries.
-
-
-            Use the `advancedSyntaxFeatures` parameter to control which feature
-            is supported.
-          default: false
-          x-categories:
-            - Query strategy
+          $ref: '#/components/schemas/advancedSyntax'
         optionalWords:
           $ref: '#/components/schemas/optionalWords'
         disableExactOnAttributes:
-          type: array
-          items:
-            type: string
-          example:
-            - description
-          description: >
-            Searchable attributes for which you want to [turn off the Exact
-            ranking
-            criterion](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/override-search-engine-defaults/in-depth/adjust-exact-settings/#turn-off-exact-for-some-attributes).
-
-            Attribute names are case-sensitive.
-
-
-            This can be useful for attributes with long values, where the
-            likelihood of an exact match is high,
-
-            such as product descriptions.
-
-            Turning off the Exact ranking criterion for these attributes favors
-            exact matching on other attributes.
-
-            This reduces the impact of individual attributes with a lot of
-            content on ranking.
-          default: []
-          x-categories:
-            - Query strategy
+          $ref: '#/components/schemas/disableExactOnAttributes'
         exactOnSingleWordQuery:
           $ref: '#/components/schemas/exactOnSingleWordQuery'
         alternativesAsExact:
-          type: array
-          items:
-            $ref: '#/components/schemas/alternativesAsExact'
-          description: >
-            Determine which plurals and synonyms should be considered an exact
-            matches.
-
-
-            By default, Algolia treats singular and plural forms of a word, and
-            single-word synonyms, as
-            [exact](https://www.algolia.com/doc/guides/managing-results/relevance-overview/in-depth/ranking-criteria/#exact)
-            matches when searching.
-
-            For example:
-
-
-            - "swimsuit" and "swimsuits" are treated the same
-
-            - "swimsuit" and "swimwear" are treated the same (if they are
-            [synonyms](https://www.algolia.com/doc/guides/managing-results/optimize-search-results/adding-synonyms/#regular-synonyms)).
-
-
-            - `ignorePlurals`.
-              Plurals and similar declensions added by the `ignorePlurals` setting are considered exact matches.
-
-            - `singleWordSynonym`.
-              Single-word synonyms, such as "NY" = "NYC", are considered exact matches.
-
-            - `multiWordsSynonym`.
-              Multi-word synonyms, such as "NY" = "New York", are considered exact matches.
-          default:
-            - ignorePlurals
-            - singleWordSynonym
-          x-categories:
-            - Query strategy
+          $ref: '#/components/schemas/IndexSettings_alternativesAsExact'
         advancedSyntaxFeatures:
-          type: array
-          items:
-            $ref: '#/components/schemas/advancedSyntaxFeatures'
-          description: |
-            Advanced search syntax features you want to support.
-
-            - `exactPhrase`.
-              Phrases in quotes must match exactly.
-              For example, `sparkly blue "iPhone case"` only returns records with the exact string "iPhone case".
-
-            - `excludeWords`.
-              Query words prefixed with a `-` must not occur in a record.
-              For example, `search -engine` matches records that contain "search" but not "engine".
-
-            This setting only has an effect if `advancedSyntax` is true.
-          default:
-            - exactPhrase
-            - excludeWords
-          x-categories:
-            - Query strategy
+          $ref: '#/components/schemas/IndexSettings_advancedSyntaxFeatures'
         distinct:
           $ref: '#/components/schemas/distinct'
         replaceSynonymsInHighlight:
-          type: boolean
-          description: >
-            Whether to replace a highlighted word with the matched synonym.
-
-
-            By default, the original words are highlighted even if a synonym
-            matches.
-
-            For example, with `home` as a synonym for `house` and a search for
-            `home`,
-
-            records matching either "home" or "house" are included in the search
-            results,
-
-            and either "home" or "house" are highlighted.
-
-
-            With `replaceSynonymsInHighlight` set to `true`, a search for `home`
-            still matches the same records,
-
-            but all occurrences of "house" are replaced by "home" in the
-            highlighted response.
-          default: false
-          x-categories:
-            - Highlighting and Snippeting
+          $ref: '#/components/schemas/replaceSynonymsInHighlight'
         minProximity:
-          type: integer
-          minimum: 1
-          maximum: 7
-          description: >
-            Minimum proximity score for two matching words.
-
-
-            This adjusts the [Proximity ranking
-            criterion](https://www.algolia.com/doc/guides/managing-results/relevance-overview/in-depth/ranking-criteria/#proximity)
-
-            by equally scoring matches that are farther apart.
-
-
-            For example, if `minProximity` is 2, neighboring matches and matches
-            with one word between them would have the same score.
-          default: 1
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/minProximity'
         responseFields:
-          type: array
-          items:
-            type: string
-          description: >
-            Properties to include in the API response of search and browse
-            requests.
-
-
-            By default, all response properties are included.
-
-            To reduce the response size, you can select which properties should
-            be included.
-
-
-            An empty list may lead to an empty API response (except properties
-            you can't exclude).
-
-
-            You can't exclude these properties:
-
-            `message`, `warning`, `cursor`, `abTestVariantID`,
-
-            or any property added by setting `getRankingInfo` to true.
-
-
-            Your search depends on the `hits` field. If you omit this field,
-            searches won't return any results.
-
-            Your UI might also depend on other properties, for example, for
-            pagination.
-
-            Before restricting the response size, check the impact on your
-            search experience.
-          default:
-            - '*'
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/responseFields'
         maxValuesPerFacet:
-          type: integer
-          description: Maximum number of facet values to return for each facet.
-          default: 100
-          maximum: 1000
-          x-categories:
-            - Faceting
+          $ref: '#/components/schemas/maxValuesPerFacet'
         sortFacetValuesBy:
-          type: string
-          description: >
-            Order in which to retrieve facet values.
-
-
-            - `count`.
-              Facet values are retrieved by decreasing count.
-              The count is the number of matching records containing this facet value.
-
-            - `alpha`.
-              Retrieve facet values alphabetically.
-
-            This setting doesn't influence how facet values are displayed in
-            your UI (see `renderingContent`).
-
-            For more information, see [facet value
-            display](https://www.algolia.com/doc/guides/building-search-ui/ui-and-ux-patterns/facet-display/js/).
-          default: count
-          x-categories:
-            - Faceting
+          $ref: '#/components/schemas/sortFacetValuesBy'
         attributeCriteriaComputedByMinProximity:
-          type: boolean
-          description: >
-            Whether the best matching attribute should be determined by minimum
-            proximity.
-
-
-            This setting only affects ranking if the Attribute ranking criterion
-            comes before Proximity in the `ranking` setting.
-
-            If true, the best matching attribute is selected based on the
-            minimum proximity of multiple matches.
-
-            Otherwise, the best matching attribute is determined by the order in
-            the `searchableAttributes` setting.
-          default: false
-          x-categories:
-            - Advanced
+          $ref: '#/components/schemas/attributeCriteriaComputedByMinProximity'
         renderingContent:
           $ref: '#/components/schemas/renderingContent'
         enableReRanking:
-          type: boolean
-          description: >
-            Whether this search will use [Dynamic
-            Re-Ranking](https://www.algolia.com/doc/guides/algolia-ai/re-ranking/).
-
-
-            This setting only has an effect if you activated Dynamic Re-Ranking
-            for this index in the Algolia dashboard.
-          default: true
-          x-categories:
-            - Filtering
+          $ref: '#/components/schemas/enableReRanking'
         reRankingApplyFilter:
           oneOf:
             - $ref: '#/components/schemas/reRankingApplyFilter'
@@ -5647,7 +6020,6 @@ components:
         - dest
         - source
     userData:
-      type: object
       example:
         settingID: f2a7b51e3503acc6a39b3784ffb84300
         pluginVersion: 1.6.0
@@ -5661,8 +6033,6 @@ components:
     baseSearchResponse:
       type: object
       additionalProperties: true
-      required:
-        - processingTimeMS
       properties:
         abTestID:
           type: integer
@@ -5894,6 +6264,7 @@ components:
         - partial
         - full
     highlightResultOption:
+      title: highlightResultOption
       type: object
       description: Surround words that match the query with HTML tags for highlighting.
       additionalProperties: false
@@ -5920,6 +6291,7 @@ components:
         - matchLevel
         - matchedWords
     highlightResultMap:
+      title: highlightResultMap
       type: object
       description: Surround words that match the query with HTML tags for highlighting.
       x-is-free-form: false
@@ -5932,11 +6304,13 @@ components:
         - $ref: '#/components/schemas/highlightResultMap'
         - $ref: '#/components/schemas/highlightResultArray'
     highlightResultArray:
+      title: highlightResultArray
       type: array
       description: Surround words that match the query with HTML tags for highlighting.
       items:
         $ref: '#/components/schemas/highlightResult'
     snippetResultOption:
+      title: snippetResultOption
       type: object
       description: Snippets that show the context around a matching search query.
       additionalProperties: false
@@ -5951,6 +6325,7 @@ components:
       x-discriminator-fields:
         - matchLevel
     snippetResultMap:
+      title: snippetResultMap
       type: object
       description: Snippets that show the context around a matching search query.
       x-is-free-form: false
@@ -5963,6 +6338,7 @@ components:
         - $ref: '#/components/schemas/snippetResultMap'
         - $ref: '#/components/schemas/snippetResultArray'
     snippetResultArray:
+      title: snippetResultArray
       type: array
       description: Snippets that show the context around a matching search query.
       items:
@@ -7232,11 +7608,14 @@ components:
             Filters that trigger the rule.
 
 
-            You can add add filters using the syntax `facet:value` so that the
-            rule is triggered, when the specific filter is selected.
+            You can add filters using the syntax `facet:value` so that the rule
+            is triggered, when the specific filter is selected.
 
             You can use `filters` on its own or combine it with the `pattern`
             parameter.
+
+            You can't combine multiple filters with `OR` and you can't use
+            numeric filters.
           example: genre:comedy
     editType:
       description: Type of edit.
@@ -7483,9 +7862,6 @@ components:
           type: integer
           format: int64
           description: When the rule should stop to be active, in Unix epoch time.
-      required:
-        - from
-        - until
     rule:
       type: object
       description: Rule object.
@@ -7838,10 +8214,12 @@ components:
           example: 100
         dataSize:
           type: integer
+          format: int64
           description: Number of bytes of the index in minified format.
           example: 48450
         fileSize:
           type: integer
+          format: int64
           description: Number of bytes of the index binary file.
           example: 112927
         lastBuildTimeS:
@@ -8002,6 +8380,127 @@ components:
         - copyOperationResponse
         - batchResponses
         - moveOperationResponse
+    RunID:
+      type: string
+      description: Universally unique identifier (UUID) of a task run.
+      example: 6c02aeb1-775e-418e-870b-1faccd4b2c0f
+    EventID:
+      type: string
+      description: Universally unique identifier (UUID) of an event.
+      example: 6c02aeb1-775e-418e-870b-1faccd4b2c0f
+    EventStatus:
+      oneOf:
+        - type: string
+          enum:
+            - created
+            - started
+            - retried
+            - failed
+            - succeeded
+            - critical
+        - type: 'null'
+    EventType:
+      type: string
+      enum:
+        - fetch
+        - record
+        - log
+        - transform
+    PublishedAt:
+      type: string
+      description: Date of publish RFC 3339 format.
+    Event:
+      type: object
+      description: An event describe a step of the task execution flow..
+      additionalProperties: false
+      properties:
+        eventID:
+          $ref: '#/components/schemas/EventID'
+        runID:
+          $ref: '#/components/schemas/RunID'
+        status:
+          $ref: '#/components/schemas/EventStatus'
+        type:
+          $ref: '#/components/schemas/EventType'
+        batchSize:
+          type: integer
+          description: The extracted record batch size.
+          example: 10
+          minimum: 0
+          multipleOf: 1
+        data:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: 'null'
+        publishedAt:
+          $ref: '#/components/schemas/PublishedAt'
+      required:
+        - eventID
+        - runID
+        - status
+        - type
+        - batchSize
+        - publishedAt
+    CreatedAt:
+      type: string
+      description: Date of creation in RFC 3339 format.
+    WatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        runID:
+          $ref: '#/components/schemas/RunID'
+        eventID:
+          $ref: '#/components/schemas/EventID'
+        data:
+          type: array
+          description: >
+            This field is always null when used with the Push endpoint.
+
+            When used for a source discover or source validate run, it will
+            include the sampled data of the source.
+          items:
+            type: object
+        events:
+          description: >-
+            in case of error, observability events will be added to the
+            response.
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        message:
+          description: >-
+            a message describing the outcome of the operation that has been ran
+            (push, discover or validate) run.
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/CreatedAt'
+      required:
+        - runID
+    replaceAllObjectsWithTransformationResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        copyOperationResponse:
+          description: >-
+            The response of the `operationIndex` request for the `copy`
+            operation.
+          $ref: '#/components/schemas/updatedAtResponse'
+        watchResponses:
+          type: array
+          description: The response of the `push` request(s).
+          items:
+            $ref: '#/components/schemas/WatchResponse'
+        moveOperationResponse:
+          description: >-
+            The response of the `operationIndex` request for the `move`
+            operation.
+          $ref: '#/components/schemas/updatedAtResponse'
+      required:
+        - copyOperationResponse
+        - watchResponses
+        - moveOperationResponse
     builtInOperationType:
       type: string
       enum:
@@ -8037,7 +8536,7 @@ components:
     PathInPath:
       name: path
       in: path
-      description: Path of the endpoint, anything after "/1" must be specified.
+      description: Path of the endpoint, for example `1/newFeature`.
       required: true
       schema:
         type: string
@@ -8231,6 +8730,18 @@ components:
             properties:
               createdAt:
                 $ref: '#/components/schemas/createdAt'
+    IndexInSameApp:
+      description: Indices are in the same application. Use operationIndex instead.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBase'
+    IndexAlreadyExists:
+      description: Destination index already exists.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBase'
 x-tagGroups:
   - name: Search and indexing
     tags:
