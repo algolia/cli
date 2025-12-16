@@ -105,7 +105,7 @@ func runListCmd(opts *ListOptions) error {
 				return "Never expire"
 			} else {
 				validity := time.Duration(*key.Validity) * time.Second
-				return humanize.RelTime(now.Add(validity), now, "ago", "from now")
+				return humanize.RelTime(now, now.Add(validity), "from now", "ago")
 			}
 		}(), nil, nil)
 		if key.MaxHitsPerQuery == nil || *key.MaxHitsPerQuery == 0 {
@@ -120,7 +120,7 @@ func runListCmd(opts *ListOptions) error {
 		}
 		table.AddField(fmt.Sprintf("%v", key.Referers), nil, nil)
 		createdAt := time.Unix(key.CreatedAt, 0)
-		table.AddField(humanize.RelTime(createdAt, now, "ago", "from now"), nil, nil)
+		table.AddField(humanize.RelTime(now, createdAt, "from now", "ago"), nil, nil)
 		table.EndRow()
 	}
 	return table.Render()
