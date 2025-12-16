@@ -19,19 +19,36 @@ import (
 )
 
 type apiKeyInspector interface {
-	ListApiKeys(opts ...search.RequestOption) (*search.ListApiKeysResponse, error)
-	GetApiKey(r search.ApiGetApiKeyRequest, opts ...search.RequestOption) (*search.GetApiKeyResponse, error)
-	NewApiGetApiKeyRequest(key string) search.ApiGetApiKeyRequest
+	ListAPIKeys(opts ...search.RequestOption) (*search.ListApiKeysResponse, error)
+	GetAPIKey(r search.ApiGetApiKeyRequest, opts ...search.RequestOption) (*search.GetApiKeyResponse, error)
+	NewAPIGetAPIKeyRequest(key string) search.ApiGetApiKeyRequest
+}
+
+// searchClientAdapter adapts the Algolia search client to our apiKeyInspector interface
+type searchClientAdapter struct {
+	client *search.APIClient
+}
+
+func (a *searchClientAdapter) ListAPIKeys(opts ...search.RequestOption) (*search.ListApiKeysResponse, error) {
+	return a.client.ListApiKeys(opts...)
+}
+
+func (a *searchClientAdapter) GetAPIKey(r search.ApiGetApiKeyRequest, opts ...search.RequestOption) (*search.GetApiKeyResponse, error) {
+	return a.client.GetApiKey(r, opts...)
+}
+
+func (a *searchClientAdapter) NewAPIGetAPIKeyRequest(key string) search.ApiGetApiKeyRequest {
+	return a.client.NewApiGetApiKeyRequest(key)
 }
 
 func inspectAPIKey(client apiKeyInspector, key string) (isAdmin bool, stringACLs []string, err error) {
 	// Admin API keys are special: they can list keys but aren't themselves retrievable via GET /1/keys/{key}.
-	// So we use ListApiKeys() as the admin-key check and skip GetApiKey() in that case.
-	if _, err := client.ListApiKeys(); err == nil {
+	// So we use ListAPIKeys() as the admin-key check and skip GetAPIKey() in that case.
+	if _, err := client.ListAPIKeys(); err == nil {
 		return true, nil, nil
 	}
 
-	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(key))
+	apiKey, err := client.GetAPIKey(client.NewAPIGetAPIKeyRequest(key))
 	if err != nil {
 		return false, nil, errors.New("invalid application credentials")
 	}
@@ -179,7 +196,8 @@ func runAddCmd(opts *AddOptions) error {
 	if err != nil {
 		return err
 	}
-	isAdminAPIKey, stringACLs, err := inspectAPIKey(client, opts.Profile.APIKey)
+	adapter := &searchClientAdapter{client: client}
+	isAdminAPIKey, stringACLs, err := inspectAPIKey(adapter, opts.Profile.APIKey)
 	if err != nil {
 		return err
 	}

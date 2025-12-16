@@ -113,16 +113,16 @@ type stubAPIKeyInspector struct {
 	getCalled bool
 }
 
-func (s *stubAPIKeyInspector) ListApiKeys(opts ...search.RequestOption) (*search.ListApiKeysResponse, error) {
+func (s *stubAPIKeyInspector) ListAPIKeys(opts ...search.RequestOption) (*search.ListApiKeysResponse, error) {
 	return &search.ListApiKeysResponse{}, s.listErr
 }
 
-func (s *stubAPIKeyInspector) GetApiKey(r search.ApiGetApiKeyRequest, opts ...search.RequestOption) (*search.GetApiKeyResponse, error) {
+func (s *stubAPIKeyInspector) GetAPIKey(r search.ApiGetApiKeyRequest, opts ...search.RequestOption) (*search.GetApiKeyResponse, error) {
 	s.getCalled = true
 	return s.getResp, s.getErr
 }
 
-func (s *stubAPIKeyInspector) NewApiGetApiKeyRequest(key string) search.ApiGetApiKeyRequest {
+func (s *stubAPIKeyInspector) NewAPIGetAPIKeyRequest(key string) search.ApiGetApiKeyRequest {
 	return search.ApiGetApiKeyRequest{}
 }
 
