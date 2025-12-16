@@ -18,6 +18,34 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+type apiKeyInspector interface {
+	ListApiKeys(opts ...search.RequestOption) (*search.ListApiKeysResponse, error)
+	GetApiKey(r search.ApiGetApiKeyRequest, opts ...search.RequestOption) (*search.GetApiKeyResponse, error)
+	NewApiGetApiKeyRequest(key string) search.ApiGetApiKeyRequest
+}
+
+func inspectAPIKey(client apiKeyInspector, key string) (isAdmin bool, stringACLs []string, err error) {
+	// Admin API keys are special: they can list keys but aren't themselves retrievable via GET /1/keys/{key}.
+	// So we use ListApiKeys() as the admin-key check and skip GetApiKey() in that case.
+	if _, err := client.ListApiKeys(); err == nil {
+		return true, nil, nil
+	}
+
+	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(key))
+	if err != nil {
+		return false, nil, errors.New("invalid application credentials")
+	}
+	if len(apiKey.Acl) == 0 {
+		return false, nil, errors.New("the provided API key has no ACLs")
+	}
+
+	for _, a := range apiKey.Acl {
+		stringACLs = append(stringACLs, string(a))
+	}
+
+	return false, stringACLs, nil
+}
+
 // AddOptions represents the options for the add command
 type AddOptions struct {
 	config config.IConfig
@@ -128,7 +156,7 @@ func runAddCmd(opts *AddOptions) error {
 			{
 				Name: "APIKey",
 				Prompt: &survey.Input{
-					Message: "(Write) API Key:",
+					Message: "Write API Key:",
 					Default: opts.Profile.APIKey,
 				},
 				Validate: survey.Required,
@@ -151,25 +179,9 @@ func runAddCmd(opts *AddOptions) error {
 	if err != nil {
 		return err
 	}
-	var isAdminAPIKey bool
-
-	// Check if the provided API Key is an admin API Key
-	_, err = client.ListApiKeys()
-	if err == nil {
-		isAdminAPIKey = true
-	}
-
-	// Check the ACLs of the provided API Key
-	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(opts.Profile.APIKey))
+	isAdminAPIKey, stringACLs, err := inspectAPIKey(client, opts.Profile.APIKey)
 	if err != nil {
-		return errors.New("invalid application credentials")
-	}
-	if len(apiKey.Acl) == 0 {
-		return errors.New("the provided API key has no ACLs")
-	}
-	var stringACLs []string
-	for _, a := range apiKey.Acl {
-		stringACLs = append(stringACLs, string(a))
+		return err
 	}
 
 	// We should have at least the ACLs for a write key, otherwise warns the user, but still allows to add the profile.

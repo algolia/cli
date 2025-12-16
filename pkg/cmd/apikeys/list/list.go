@@ -16,6 +16,9 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// nowFn exists to make time-based output deterministic in tests.
+var nowFn = time.Now
+
 type ListOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
@@ -62,6 +65,8 @@ func runListCmd(opts *ListOptions) error {
 		return err
 	}
 
+	now := nowFn()
+
 	opts.IO.StartProgressIndicatorWithLabel("Fetching API Keys")
 	res, err := client.ListApiKeys()
 	opts.IO.StopProgressIndicator()
@@ -100,7 +105,7 @@ func runListCmd(opts *ListOptions) error {
 				return "Never expire"
 			} else {
 				validity := time.Duration(*key.Validity) * time.Second
-				return humanize.Time(time.Now().Add(validity))
+				return humanize.RelTime(now.Add(validity), now, "ago", "from now")
 			}
 		}(), nil, nil)
 		if key.MaxHitsPerQuery == nil || *key.MaxHitsPerQuery == 0 {
@@ -115,7 +120,7 @@ func runListCmd(opts *ListOptions) error {
 		}
 		table.AddField(fmt.Sprintf("%v", key.Referers), nil, nil)
 		createdAt := time.Unix(key.CreatedAt, 0)
-		table.AddField(humanize.Time(createdAt), nil, nil)
+		table.AddField(humanize.RelTime(createdAt, now, "ago", "from now"), nil, nil)
 		table.EndRow()
 	}
 	return table.Render()

@@ -18,5 +18,7 @@ vendor/
 # local build
 algolia
 
+.gocache/
+
 # Environment variables
 *.env
