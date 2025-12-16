@@ -2,6 +2,7 @@ package list
 
 import (
 	"testing"
+	"time"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +31,10 @@ func Test_runListCmd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			oldNowFn := nowFn
+			nowFn = func() time.Time { return time.Unix(1735689600, 0) } // 2025-01-01T00:00:00Z
+			t.Cleanup(func() { nowFn = oldNowFn })
+
 			name := "test"
 			r := httpmock.Registry{}
 			r.Register(
