@@ -49,10 +49,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
-		Short: "Import Rules into an index.",
+		Short: "Import rules into an index.",
 		Long: heredoc.Doc(`
-			Import Rules into an index.
-			File imports must contain one JSON rule per line (newline delimited JSON objects - ndjson format: https://ndjson.org/).
+			Import rules into an index.
+			The file must contain one JSON object per line - in newline-delimited JSON (NDJSON) format: https://ndjson.org/.
 		`),
 		Example: heredoc.Doc(`
 			# Import rules from the "rules.ndjson" file to the "MOVIES" index
