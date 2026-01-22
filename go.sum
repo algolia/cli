@@ -8,6 +8,8 @@ github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 h1:+vx7roKuyA63n
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2/go.mod h1:HBCaDeC1lPdgDeDbhX8XFpy1jqjK0IBG8W5K+xYqA0w=
 github.com/algolia/algoliasearch-client-go/v4 v4.25.0 h1:5JGJ9b9A5agfylP+eLkG7ETZckqdYq6BOvUa8IXZOlA=
 github.com/algolia/algoliasearch-client-go/v4 v4.25.0/go.mod h1:2bHeze2/5+jvT8IYVq8j2NDLr/4R6erGxgud7ESuXww=
+github.com/algolia/algoliasearch-client-go/v4 v4.35.0 h1:CfckAd2ok/c7/U7MoY3HLW8FeMeAYVBAUFty/d/rxss=
+github.com/algolia/algoliasearch-client-go/v4 v4.35.0/go.mod h1:2bHeze2/5+jvT8IYVq8j2NDLr/4R6erGxgud7ESuXww=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
