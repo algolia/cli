@@ -46,6 +46,9 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Browse records in an index.",
 		Long: heredoc.Doc(`
 			This command browses records in the specified index.
+
+			To keep streamed output compact, use flags like --responseFields and
+			--attributesToRetrieve to limit each record and page payload.
 		`),
 		Example: heredoc.Doc(`
 			# Browse records in the "MOVIES" index
@@ -56,6 +59,9 @@ func NewBrowseCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Browse records in the "MOVIES" index with filters
 			$ algolia objects browse MOVIES --filters "genres:Drama"
+
+			# Browse records in the "MOVIES" index while limiting the response payload
+			$ algolia objects browse MOVIES --responseFields hits,cursor --attributesToRetrieve title,overview
 
 			# Browse records in the "MOVIES" and export the results to a new line delimited JSON (ndjson) file
 			$ algolia objects browse MOVIES > movies.ndjson

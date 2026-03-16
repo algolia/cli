@@ -148,3 +148,8 @@ func TestRules(t *testing.T) {
 func TestSearch(t *testing.T) {
 	runTestsInDir(t, "testscripts/search")
 }
+
+// TestAgentReady tests describe and dry-run contracts.
+func TestAgentReady(t *testing.T) {
+	runTestsInDir(t, "testscripts/agent-ready")
+}

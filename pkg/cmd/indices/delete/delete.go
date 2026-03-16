@@ -25,6 +25,8 @@ type DeleteOptions struct {
 	DoConfirm       bool
 	IncludeReplicas bool
 	Wait            bool
+	DryRun          bool
+	PrintFlags      *cmdutil.PrintFlags
 }
 
 // NewDeleteCmd creates and returns a delete command for indices
@@ -33,6 +35,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var confirm bool
@@ -67,8 +70,13 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Indices = args
+			for _, index := range opts.Indices {
+				if err := cmdutil.ValidateNoControlChars("index", index); err != nil {
+					return err
+				}
+			}
 
-			if !confirm {
+			if !confirm && !opts.DryRun {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
 						"--confirm required when non-interactive shell is detected",
@@ -90,11 +98,30 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd.Flags().
 		BoolVarP(&opts.IncludeReplicas, "include-replicas", "r", false, "delete replica indices too")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the delete request without sending it")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
 
 func runDeleteCmd(opts *DeleteOptions) error {
+	summary := map[string]any{
+		"action":          "delete_indices",
+		"indices":         opts.Indices,
+		"includeReplicas": opts.IncludeReplicas,
+		"wait":            opts.Wait,
+		"dryRun":          opts.DryRun,
+	}
+	if opts.DryRun {
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would delete %d indices", len(opts.Indices)),
+		)
+	}
+
 	client, err := opts.SearchClient()
 	if err != nil {
 		return err
@@ -218,14 +245,18 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	cs := opts.IO.ColorScheme()
+	if opts.PrintFlags.HasStructuredOutput() {
+		return opts.PrintFlags.Print(opts.IO, summary)
+	}
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(
+		_, err := fmt.Fprintf(
 			opts.IO.Out,
 			"%s Deleted %s %s\n",
 			cs.SuccessIcon(),
 			indexSingularOrPlural,
 			strings.Join(opts.Indices, ", "),
 		)
+		return err
 	}
 
 	return nil

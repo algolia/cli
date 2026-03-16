@@ -69,6 +69,18 @@ func TestNewDeleteCmd(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:     "--dry-run without tty",
+			cli:      "foo --object-ids 1 --dry-run",
+			tty:      false,
+			wantsErr: false,
+			wantsOpts: DeleteOptions{
+				DoConfirm: false,
+				Index:     "foo",
+				ObjectIDs: []string{"1"},
+				DryRun:    true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -106,6 +118,7 @@ func TestNewDeleteCmd(t *testing.T) {
 			assert.Equal(t, tt.wantsOpts.Index, opts.Index)
 			assert.Equal(t, tt.wantsOpts.ObjectIDs, opts.ObjectIDs)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
+			assert.Equal(t, tt.wantsOpts.DryRun, opts.DryRun)
 		})
 	}
 }
@@ -223,4 +236,23 @@ func Test_runDeleteCmd(t *testing.T) {
 			assert.Equal(t, tt.wantOut, out.String())
 		})
 	}
+}
+
+func Test_runDeleteCmd_dryRunJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	r.Register(
+		httpmock.REST("GET", "1/indexes/foo/1"),
+		httpmock.JSONResponse(search.GetObjectsResponse{}),
+	)
+
+	f, out := test.NewFactory(false, &r, nil, "")
+	cmd := NewDeleteCmd(f, nil)
+	out, err := test.Execute(cmd, "foo --object-ids 1 --dry-run --output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"delete_objects"`)
+	assert.Contains(t, out.String(), `"objectCount":1`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
 }

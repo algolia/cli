@@ -216,3 +216,18 @@ func Test_runExportCmd(t *testing.T) {
 		})
 	}
 }
+
+func Test_runImportCmd_dryRunJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"objectID":"test"}`)
+	cmd := NewImportCmd(f, nil)
+
+	out, err := test.Execute(cmd, "foo -F - --dry-run --output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"import_rules"`)
+	assert.Contains(t, out.String(), `"ruleCount":1`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
+}

@@ -27,6 +27,9 @@ type ImportOptions struct {
 	ClearExistingRules bool
 	Wait               bool
 	Scanner            *bufio.Scanner
+	File               string
+	DryRun             bool
+	PrintFlags         *cmdutil.PrintFlags
 
 	DoConfirm bool
 }
@@ -37,10 +40,10 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var confirm bool
-	var file string
 
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
@@ -70,7 +73,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 
-			if !confirm && opts.ClearExistingRules {
+			if !confirm && opts.ClearExistingRules && !opts.DryRun {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
 						"--confirm required when non-interactive shell is detected",
@@ -79,7 +82,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 				opts.DoConfirm = true
 			}
 
-			scanner, err := cmdutil.ScanFile(file, opts.IO.In)
+			scanner, err := cmdutil.ScanFile(opts.File, opts.IO.In)
 			if err != nil {
 				return err
 			}
@@ -96,7 +99,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the confirmation prompt.")
 
 	cmd.Flags().
-		StringVarP(&file, "file", "F", "", "Import rules from a `file` (use \"-\" to read from standard input)")
+		StringVarP(&opts.File, "file", "F", "", "Import rules from a `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
 	cmd.Flags().
@@ -104,12 +107,15 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd.Flags().
 		BoolVarP(&opts.ClearExistingRules, "clear-existing-rules", "c", false, "Delete existing rules before importing new ones")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the import request without sending it")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
 
 func runImportCmd(opts *ImportOptions) error {
-	if opts.DoConfirm {
+	if opts.DoConfirm && !opts.DryRun {
 		var confirmed bool
 		err := prompt.Confirm(
 			fmt.Sprintf(
@@ -124,11 +130,6 @@ func runImportCmd(opts *ImportOptions) error {
 		if !confirmed {
 			return nil
 		}
-	}
-
-	client, err := opts.SearchClient()
-	if err != nil {
-		return err
 	}
 
 	// Move the following code to another module?
@@ -158,6 +159,19 @@ func runImportCmd(opts *ImportOptions) error {
 
 		// If requested, only clear existing rules the first time
 		if count == batchSize {
+			totalCount += count
+			if opts.DryRun {
+				rules = make([]search.Rule, 0, batchSize)
+				opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Validated %d rules", totalCount))
+				count = 0
+				clearExistingRules = false
+				continue
+			}
+			client, err := opts.SearchClient()
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 			res, err := client.SaveRules(
 				client.NewApiSaveRulesRequest(opts.Index, rules).
 					WithClearExistingRules(clearExistingRules).
@@ -174,7 +188,6 @@ func runImportCmd(opts *ImportOptions) error {
 					return err
 				}
 			}
-			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d rules", totalCount))
 
 			rules = make([]search.Rule, 0, batchSize)
@@ -185,6 +198,14 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
+		if opts.DryRun {
+			goto finish
+		}
+		client, err := opts.SearchClient()
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
 		res, err := client.SaveRules(
 			client.NewApiSaveRulesRequest(opts.Index, rules).
 				WithForwardToReplicas(opts.ForwardToReplicas),
@@ -202,7 +223,12 @@ func runImportCmd(opts *ImportOptions) error {
 		}
 	}
 	// Clear rules if 0 rules are imported and the clear existing is set
-	if totalCount == 0 && opts.ClearExistingRules {
+	if totalCount == 0 && opts.ClearExistingRules && !opts.DryRun {
+		client, err := opts.SearchClient()
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
 		res, err := client.ClearRules(
 			client.NewApiClearRulesRequest(opts.Index).
 				WithForwardToReplicas(opts.ForwardToReplicas),
@@ -220,13 +246,36 @@ func runImportCmd(opts *ImportOptions) error {
 		}
 	}
 
+finish:
 	opts.IO.StopProgressIndicator()
 
 	if err := opts.Scanner.Err(); err != nil {
 		return err
 	}
 
+	summary := map[string]any{
+		"action":             "import_rules",
+		"index":              opts.Index,
+		"ruleCount":          totalCount,
+		"clearExistingRules": opts.ClearExistingRules,
+		"forwardToReplicas":  opts.ForwardToReplicas,
+		"wait":               opts.Wait,
+		"dryRun":             opts.DryRun,
+		"source":             opts.File,
+	}
+	if opts.DryRun {
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would import %d rules to %s", totalCount, opts.Index),
+		)
+	}
+
 	cs := opts.IO.ColorScheme()
+	if opts.PrintFlags.HasStructuredOutput() {
+		return opts.PrintFlags.Print(opts.IO, summary)
+	}
 	if opts.IO.IsStdoutTTY() {
 		fmt.Fprintf(
 			opts.IO.Out,
