@@ -9,24 +9,27 @@ import (
 )
 
 type Command struct {
-	Name        string
-	Description string
-	Usage       string
-	Aliases     []string
-	Examples    string
-	Slug        string
-	RunInWebCLI bool
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Usage       string   `json:"usage"`
+	Aliases     []string `json:"aliases,omitempty"`
+	Examples    string   `json:"examples,omitempty"`
+	Slug        string   `json:"slug,omitempty"`
+	RunInWebCLI bool     `json:"runInWebCLI,omitempty"`
+	CommandType string   `json:"commandType"`
 
-	Flags map[string][]Flag
+	Annotations map[string]string `json:"annotations,omitempty"`
 
-	SubCommands []Command
+	Flags map[string][]Flag `json:"flags,omitempty"`
+
+	SubCommands []Command `json:"subCommands,omitempty"`
 }
 
 type Flag struct {
-	Name        string
-	Shorthand   string
-	Description string
-	Default     string
+	Name        string `json:"name"`
+	Shorthand   string `json:"shorthand,omitempty"`
+	Description string `json:"description"`
+	Default     string `json:"default"`
 }
 
 func newFlag(flag *pflag.Flag) Flag {
@@ -61,6 +64,8 @@ func newCommand(cmd *cobra.Command) Command {
 		Aliases:     cmd.Aliases,
 		Examples:    cmd.Example,
 		RunInWebCLI: false,
+		CommandType: commandType(cmd),
+		Annotations: cmd.Annotations,
 	}
 	if value, ok := cmd.Annotations["runInWebCLI"]; ok && value != "" {
 		command.RunInWebCLI = true
@@ -89,6 +94,22 @@ func newCommand(cmd *cobra.Command) Command {
 	return command
 }
 
+func commandType(cmd *cobra.Command) string {
+	switch cmd.Name() {
+	case "tail":
+		return "stream"
+	case "search", "browse", "get", "list", "stats", "analyze", "describe", "schema", "open":
+		return "read"
+	case "create", "delete", "clear", "import", "update", "set", "save", "move", "copy", "crawl", "run", "pause", "reindex", "unblock", "remove", "add", "setdefault":
+		return "write"
+	default:
+		if cmd.HasAvailableSubCommands() {
+			return "namespace"
+		}
+		return "other"
+	}
+}
+
 func getCommands(cmd *cobra.Command) []Command {
 	var commands []Command
 	for _, c := range cmd.Commands() {
@@ -111,6 +132,49 @@ func getCommands(cmd *cobra.Command) []Command {
 	}
 
 	return commands
+}
+
+func describeCommand(cmd *cobra.Command) Command {
+	command := newCommand(cmd)
+	if cmd.HasAvailableSubCommands() {
+		command.SubCommands = getCommands(cmd)
+	}
+	return command
+}
+
+// DescribeCommand returns a machine-readable description of a command.
+func DescribeCommand(cmd *cobra.Command) Command {
+	return describeCommand(cmd)
+}
+
+// FindCommand resolves a command path against the provided root command.
+func FindCommand(root *cobra.Command, args []string) (*cobra.Command, error) {
+	current := root
+	for _, arg := range args {
+		next := findChildCommand(current, arg)
+		if next == nil {
+			return nil, cmdutil.FlagErrorf("unknown command %q for %q", arg, current.CommandPath())
+		}
+		current = next
+	}
+	return current, nil
+}
+
+func findChildCommand(cmd *cobra.Command, name string) *cobra.Command {
+	for _, child := range cmd.Commands() {
+		if child.Hidden || child.Name() == "help" {
+			continue
+		}
+		if child.Name() == name {
+			return child
+		}
+		for _, alias := range child.Aliases {
+			if alias == name {
+				return child
+			}
+		}
+	}
+	return nil
 }
 
 type Example struct {

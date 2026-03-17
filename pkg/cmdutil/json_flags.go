@@ -12,7 +12,7 @@ func (f *JSONPrintFlags) AllowedFormats() []string {
 	if f == nil {
 		return []string{}
 	}
-	return []string{"json"}
+	return []string{"json", "jsonl", "ndjson"}
 }
 
 type JSONPrintFlags struct{}
@@ -22,7 +22,7 @@ func (f *JSONPrintFlags) ToPrinter(outputFormat string) (printers.Printer, error
 
 	outputFormat = strings.ToLower(outputFormat)
 	switch outputFormat {
-	case "json":
+	case "json", "jsonl", "ndjson":
 		printer = &printers.JSONPrinter{}
 	default:
 		return nil, NoCompatiblePrinterError{

@@ -74,6 +74,14 @@ func runListCmd(opts *ListOptions) error {
 		return err
 	}
 
+	if opts.PrintFlags.HasStructuredOutput() {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
+	}
+
 	table := printers.NewTablePrinter(opts.IO)
 	if table.IsTTY() {
 		table.AddField("KEY", nil, nil)

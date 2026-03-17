@@ -53,6 +53,17 @@ func TestNewDeleteCmd(t *testing.T) {
 				Indices:   []string{"foo", "bar", "baz"},
 			},
 		},
+		{
+			name:     "single index, --dry-run, without tty",
+			cli:      "foo --dry-run",
+			tty:      false,
+			wantsErr: false,
+			wantsOpts: DeleteOptions{
+				DoConfirm: false,
+				Indices:   []string{"foo"},
+				DryRun:    true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -89,6 +100,7 @@ func TestNewDeleteCmd(t *testing.T) {
 
 			assert.Equal(t, tt.wantsOpts.Indices, opts.Indices)
 			assert.Equal(t, tt.wantsOpts.DoConfirm, opts.DoConfirm)
+			assert.Equal(t, tt.wantsOpts.DryRun, opts.DryRun)
 		})
 	}
 }
@@ -182,4 +194,17 @@ func Test_runDeleteCmd(t *testing.T) {
 			assert.Equal(t, tt.wantOut, out.String())
 		})
 	}
+}
+
+func Test_runDeleteCmd_dryRunJSON(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewDeleteCmd(f, nil)
+
+	out, err := test.Execute(cmd, "foo --dry-run --output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"delete_indices"`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
 }

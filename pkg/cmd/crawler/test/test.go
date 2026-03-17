@@ -81,6 +81,8 @@ func NewTestCmd(f *cmdutil.Factory, runF func(*TestOptions) error) *cobra.Comman
 	cmd.Flags().
 		StringVarP(&configFile, "config", "F", "", "The configuration file to use to override the crawler's configuration. (use \"-\" to read from standard input)")
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
