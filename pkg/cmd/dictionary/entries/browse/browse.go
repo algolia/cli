@@ -171,6 +171,9 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 		// If no entry is found in all the dictionaries
 		if hasNoEntries {
+			if opts.PrintFlags.HasStructuredOutput() {
+				break
+			}
 			if _, err = fmt.Fprintf(opts.IO.Out, "%s No entries found.\n\n", cs.WarningIcon()); err != nil {
 				return err
 			}

@@ -47,7 +47,7 @@ func Test_runOperationsCmd(t *testing.T) {
 			name:    "from stdin with invalid JSON",
 			cli:     "-F -",
 			stdin:   `{"action":"addObject","indexName":"index1","body":{"firstname":"Jimmie","lastname":"Barninger"}},`,
-			wantErr: "X Found 1 error (out of 1 operations) while parsing the file:\n  line 1: invalid character ',' after top-level value\n",
+			wantErr: "X Found 1 error (out of 1 operations) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n",
 		},
 
 		{
@@ -55,13 +55,13 @@ func Test_runOperationsCmd(t *testing.T) {
 			cli:  "-F -",
 			stdin: `{"action": "addObject","indexName":"index1"},
 			{"test": "bar"}`,
-			wantErr: "failed to prompt: EOF",
+			wantErr: "X Found 2 errors (out of 2 operations) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n  line 2: missing action\n",
 		},
 		{
 			name:    "from stdin with invalid JSON (1 operation) with --continue-on-error",
 			cli:     "-F - --continue-on-error",
 			stdin:   `{"action": "addObject"},`,
-			wantErr: "X Found 1 error (out of 1 operations) while parsing the file:\n  line 1: invalid character ',' after top-level value\n",
+			wantErr: "X Found 1 error (out of 1 operations) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n",
 		},
 		{
 			name: "from stdin with invalid JSON (2 objects) with --continue-on-error",
@@ -106,6 +106,39 @@ func Test_runOperationsCmd(t *testing.T) {
 	}
 }
 
+func Test_runOperationsCmd_nonInteractiveRequiresContinueOnError(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"action":"addObject","indexName":"index1"}
+{"test":"bar"}`)
+	cmd := NewOperationsCmd(f, nil)
+
+	_, err := test.Execute(cmd, "-F -", out)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	assert.EqualError(
+		t,
+		err,
+		"--continue-on-error required when non-interactive shell is detected and parsing errors are present",
+	)
+}
+
+func Test_runOperationsCmd_dryRunJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"action":"addObject","indexName":"index1","body":{"firstname":"Jimmie"}}`)
+	cmd := NewOperationsCmd(f, nil)
+
+	out, err := test.Execute(cmd, "-F - --dry-run --output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"batch_operations"`)
+	assert.Contains(t, out.String(), `"operationCount":1`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
+}
+
 func Test_ValidateBatchOperation(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -126,7 +159,7 @@ func Test_ValidateBatchOperation(t *testing.T) {
 			action:     "invalid",
 			body:       nil,
 			wantErr:    true,
-			wantErrMsg: "invalid action \"invalid\" (valid actions are addObject, updateObject, partialUpdateObject, partialUpdateObjectNoCreate and deleteObject)",
+			wantErrMsg: "invalid action \"invalid\" (valid actions are addObject, updateObject, partialUpdateObject, partialUpdateObjectNoCreate, deleteObject)",
 		},
 		{
 			name:       "missing objectID for deleteObject action",
@@ -158,11 +191,18 @@ func Test_ValidateBatchOperation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			batchOperation := search.MultipleBatchRequest{
-				Action: search.Action(tt.action),
+				Action:    search.Action(tt.action),
+				IndexName: "index1",
 			}
 			if tt.body != nil {
 				batchOperation.Body = tt.body
 			}
+			err := ValidateBatchOperation(batchOperation)
+			if tt.wantErr {
+				assert.EqualError(t, err, tt.wantErrMsg)
+				return
+			}
+			assert.NoError(t, err)
 		})
 	}
 }

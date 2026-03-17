@@ -57,3 +57,25 @@ func Test_runGetCmd(t *testing.T) {
 		})
 	}
 }
+
+func Test_runGetCmd_outputFlag(t *testing.T) {
+	name := "test"
+	r := httpmock.Registry{}
+	r.Register(
+		httpmock.REST("GET", "1/keys/foo"),
+		httpmock.JSONResponse(search.GetApiKeyResponse{
+			Value:       "foo",
+			Description: &name,
+			Acl:         []search.Acl{search.ACL_SEARCH},
+		}),
+	)
+
+	f, out := test.NewFactory(false, &r, nil, "")
+	cmd := NewGetCmd(f, nil)
+	out, err := test.Execute(cmd, "foo --output ndjson", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"value":"foo"`)
+}

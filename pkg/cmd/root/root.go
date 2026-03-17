@@ -24,6 +24,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	authcmd "github.com/algolia/cli/pkg/cmd/auth"
 	"github.com/algolia/cli/pkg/cmd/crawler"
+	"github.com/algolia/cli/pkg/cmd/describe"
 	"github.com/algolia/cli/pkg/cmd/dictionary"
 	"github.com/algolia/cli/pkg/cmd/events"
 	"github.com/algolia/cli/pkg/cmd/factory"
@@ -96,6 +97,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	// CLI related commands
 	cmd.AddCommand(authcmd.NewAuthCmd(f))
 	cmd.AddCommand(profile.NewProfileCmd(f))
+	cmd.AddCommand(describe.NewDescribeCmd(f))
 
 	// Convenience commands
 	cmd.AddCommand(open.NewOpenCmd(f))

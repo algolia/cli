@@ -55,6 +55,10 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 			Per default, the command will only analyze the first 1000 records. You can use the "--no-limit" flag to analyze all the records (this might take a while, depending on the number of records in your index).
 
 			You can also use the "--only" flag to only analyze a specific attribute. In this case, the command will display the frequency of the values for this attribute.
+
+			Because this command reads records through browse APIs, you can also use
+			--responseFields and --attributesToRetrieve to reduce the amount of data
+			pulled into the analysis flow.
 		`),
 		Example: heredoc.Doc(`
 			# Display records statistics for the "MOVIES" index for the first 1000 records
@@ -68,6 +72,9 @@ func NewAnalyzeCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Display records statistics for the "MOVIES" index with the "actors" attribute only
 			$ algolia index analyze MOVIES --only actors
+
+			# Analyze the "MOVIES" index while limiting the response payload
+			$ algolia index analyze MOVIES --responseFields hits,cursor --attributesToRetrieve title,actors
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

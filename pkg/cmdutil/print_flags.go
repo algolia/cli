@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
 )
 
@@ -58,6 +59,12 @@ func (f *PrintFlags) AllowedFormats() []string {
 	return ret
 }
 
+// HasStructuredOutput returns true when the command is configured to emit a
+// machine-readable format, either through an explicit flag or a default output.
+func (f *PrintFlags) HasStructuredOutput() bool {
+	return f != nil && f.OutputFormat != nil && strings.TrimSpace(*f.OutputFormat) != ""
+}
+
 func (f *PrintFlags) ToPrinter() (printers.Printer, error) {
 	outputFormat := ""
 	if f.OutputFormat != nil {
@@ -82,6 +89,15 @@ func (f *PrintFlags) ToPrinter() (printers.Printer, error) {
 		OutputFormat:   f.OutputFormat,
 		AllowedFormats: f.AllowedFormats(),
 	}
+}
+
+// Print renders a value with the configured printer.
+func (f *PrintFlags) Print(ios *iostreams.IOStreams, value interface{}) error {
+	p, err := f.ToPrinter()
+	if err != nil {
+		return err
+	}
+	return p.Print(ios, value)
 }
 
 func (f *PrintFlags) AddFlags(cmd *cobra.Command) {
