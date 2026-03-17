@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
+	"github.com/algolia/cli/pkg/cmd/factory"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -77,7 +79,7 @@ func runListCmd(opts *ListOptions) error {
 			apiKey = profile.AdminAPIKey // Legacy
 		}
 
-		client, err := search.NewClient(profile.ApplicationID, apiKey)
+		client, err := newSearchClient(profile, apiKey)
 		if err != nil {
 			table.AddField(err.Error(), nil, nil)
 		}
@@ -97,4 +99,18 @@ func runListCmd(opts *ListOptions) error {
 	}
 	opts.IO.StopProgressIndicator()
 	return table.Render()
+}
+
+func newSearchClient(profile *config.Profile, apiKey string) (*search.APIClient, error) {
+	hosts := factory.GetStatefulHosts(profile.GetSearchHosts())
+	if len(hosts) > 0 {
+		return search.NewClientWithConfig(search.SearchConfiguration{
+			Configuration: transport.Configuration{
+				AppID:  profile.ApplicationID,
+				ApiKey: apiKey,
+				Hosts:  hosts,
+			},
+		})
+	}
+	return search.NewClient(profile.ApplicationID, apiKey)
 }

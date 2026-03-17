@@ -3,6 +3,7 @@ package factory
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
@@ -60,7 +61,7 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClie
 		}
 
 		// Read custom hosts from flags, environment, or profile, or use default ones
-		hosts := getStatefulHosts(f.Config.Profile().GetSearchHosts())
+		hosts := GetStatefulHosts(f.Config.Profile().GetSearchHosts())
 		if len(hosts) > 0 {
 			clientConf.Configuration.Hosts = hosts
 		}
@@ -93,15 +94,26 @@ func getUserAgentInfo(appID string, apiKey string, appVersion string) (string, e
 	return client.GetConfiguration().UserAgent + fmt.Sprintf("; Algolia CLI (%s)", appVersion), nil
 }
 
-// getStatefulHosts reads the hosts information from the profile and turns into the right structure
-func getStatefulHosts(hosts []string) []transport.StatefulHost {
+// GetStatefulHosts reads the hosts information from the profile and turns into the right structure
+func GetStatefulHosts(hosts []string) []transport.StatefulHost {
 	var out []transport.StatefulHost
 	for _, host := range hosts {
-		// User might or might not provide the URL with `https://`
-		parsedURL, _ := url.Parse(host)
-		if parsedURL.Scheme == "" {
-			parsedURL.Scheme = "https"
+		host = strings.TrimSpace(host)
+		if host == "" {
+			continue
 		}
+
+		// Bare hostnames (no scheme) need a scheme prefix for url.Parse to
+		// correctly place the value in the Host field instead of Path.
+		if !strings.Contains(host, "://") {
+			host = "https://" + host
+		}
+
+		parsedURL, err := url.Parse(host)
+		if err != nil || parsedURL.Host == "" {
+			continue
+		}
+
 		statefulHost := transport.NewStatefulHost(
 			parsedURL.Scheme,
 			parsedURL.Host,
