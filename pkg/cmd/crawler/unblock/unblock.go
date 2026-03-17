@@ -22,6 +22,7 @@ type UnblockOptions struct {
 
 	ID        string
 	DoConfirm bool
+	DryRun    bool
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -32,6 +33,7 @@ func NewUnblockCmd(f *cmdutil.Factory, runF func(*UnblockOptions) error) *cobra.
 		IO:            f.IOStreams,
 		Config:        f.Config,
 		CrawlerClient: f.CrawlerClient,
+		PrintFlags:    cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	var confirm bool
@@ -57,7 +59,7 @@ func NewUnblockCmd(f *cmdutil.Factory, runF func(*UnblockOptions) error) *cobra.
 				return runF(opts)
 			}
 
-			if !confirm {
+			if !confirm && !opts.DryRun {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
 						"--confirm required when non-interactive shell is detected",
@@ -72,6 +74,8 @@ func NewUnblockCmd(f *cmdutil.Factory, runF func(*UnblockOptions) error) *cobra.
 
 	cmd.Flags().
 		BoolVarP(&confirm, "confirm", "y", false, "Skip the unblock crawler confirmation prompt")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the unblock request without sending it")
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -90,6 +94,22 @@ func runUnblockCmd(opts *UnblockOptions) error {
 	}
 	if crawler.BlockingTaskID == "" {
 		return fmt.Errorf("crawler %q is not blocked", opts.ID)
+	}
+
+	if opts.DryRun {
+		summary := map[string]any{
+			"action":        "unblock_crawler",
+			"id":            opts.ID,
+			"blockingError": crawler.BlockingError,
+			"dryRun":        true,
+		}
+
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would unblock crawler %s (%s)", crawler.Name, opts.ID),
+		)
 	}
 
 	if opts.DoConfirm {
