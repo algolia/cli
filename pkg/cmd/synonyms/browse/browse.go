@@ -81,17 +81,23 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
+	var printErr error
 	err = client.BrowseSynonyms(
 		opts.Index,
 		*search.NewEmptySearchSynonymsParams(),
 		search.WithAggregator(func(res any, _ error) {
+			if printErr != nil {
+				return
+			}
 			for _, synonym := range res.(*search.SearchSynonymsResponse).Hits {
-				p.Print(opts.IO, synonym)
+				if printErr = p.Print(opts.IO, synonym); printErr != nil {
+					return
+				}
 			}
 		}),
 	)
 	if err != nil {
 		return err
 	}
-	return nil
+	return printErr
 }

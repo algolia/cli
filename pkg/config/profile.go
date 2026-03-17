@@ -14,7 +14,7 @@ type Profile struct {
 
 	ApplicationID string   `mapstructure:"application_id"`
 	APIKey        string   `mapstructure:"api_key"`
-	AdminAPIKey   string   `mapstructure:"admin_api_key"` // Legacy
+	AdminAPIKey   string   `mapstructure:"admin_api_key"`
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
 	Default bool `mapstructure:"default"`

@@ -101,16 +101,16 @@ func runBrowseCmd(opts *BrowseOptions) error {
 		return err
 	}
 
+	var printErr error
 	err = client.BrowseObjects(
 		opts.Index,
 		opts.BrowseParams,
 		search.WithAggregator(func(res any, err error) {
-			if err != nil {
+			if err != nil || printErr != nil {
 				return
 			}
 			for _, hit := range res.(*search.BrowseResponse).Hits {
-				err := p.Print(opts.IO, hit)
-				if err != nil {
+				if printErr = p.Print(opts.IO, hit); printErr != nil {
 					return
 				}
 			}
@@ -119,5 +119,5 @@ func runBrowseCmd(opts *BrowseOptions) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return printErr
 }

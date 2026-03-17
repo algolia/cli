@@ -38,6 +38,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           CHOCOLATEY_API_KEY: ${{ secrets.CHOCOLATEY_API_KEY }}
+          ALGOLIA_DASHBOARD_URL: ${{ secrets.ALGOLIA_DASHBOARD_URL }}
+          ALGOLIA_API_URL: ${{ secrets.ALGOLIA_API_URL }}
+          ALGOLIA_OAUTH_CLIENT_ID: ${{ secrets.ALGOLIA_OAUTH_CLIENT_ID }}
+          ALGOLIA_OAUTH_SCOPE: ${{ secrets.ALGOLIA_OAUTH_SCOPE }}
       - name: Docs checkout
         uses: actions/checkout@v4
         with:
