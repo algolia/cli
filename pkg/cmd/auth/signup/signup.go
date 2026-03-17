@@ -1,6 +1,8 @@
 package signup
 
 import (
+	"fmt"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
@@ -34,6 +36,9 @@ func NewSignupCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.Code != "" && opts.CodeVerifier == "" {
+				return fmt.Errorf("--code-verifier is required when using --code")
+			}
 			return login.RunOAuthFlow(opts, true)
 		},
 	}
@@ -41,6 +46,9 @@ func NewSignupCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Name for the first application")
 	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
 	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the profile as the default")
+	cmd.Flags().BoolVar(&opts.PrintURL, "print-url", false, "Print the authorize URL and PKCE verifier, then exit (for non-interactive flows)")
+	cmd.Flags().StringVar(&opts.Code, "code", "", "Authorization code obtained from the authorize URL")
+	cmd.Flags().StringVar(&opts.CodeVerifier, "code-verifier", "", "PKCE code verifier from --print-url (required with --code)")
 
 	return cmd
 }

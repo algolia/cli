@@ -145,6 +145,10 @@ func ConfigureProfile(
 	}
 	profileName = strings.ToLower(profileName)
 
+	if exists, existingAppID := cfg.ApplicationIDForProfile(profileName); exists && existingAppID != appDetails.ID {
+		profileName = strings.ToLower(appDetails.Name + "-" + appDetails.ID)
+	}
+
 	profile := config.Profile{
 		Name:          profileName,
 		ApplicationID: appDetails.ID,

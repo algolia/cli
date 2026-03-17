@@ -167,18 +167,13 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 	return "", ErrCrawlerAPIKeyNotConfigured
 }
 
-// Add add a profile to the configuration
+// Add adds a profile to the configuration, preserving any existing profiles.
 func (p *Profile) Add() error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(p.GetFieldName("application_id"), p.ApplicationID)
 	runtimeViper.Set(p.GetFieldName("api_key"), p.APIKey)
 
-	err := p.write(runtimeViper)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return p.write(runtimeViper)
 }
 
 // write writes the configuration file
