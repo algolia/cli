@@ -22,6 +22,7 @@ import (
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
+	authcmd "github.com/algolia/cli/pkg/cmd/auth"
 	"github.com/algolia/cli/pkg/cmd/crawler"
 	"github.com/algolia/cli/pkg/cmd/dictionary"
 	"github.com/algolia/cli/pkg/cmd/events"
@@ -93,6 +94,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().BoolP("version", "v", false, "Get the version of the Algolia CLI")
 
 	// CLI related commands
+	cmd.AddCommand(authcmd.NewAuthCmd(f))
 	cmd.AddCommand(profile.NewProfileCmd(f))
 
 	// Convenience commands

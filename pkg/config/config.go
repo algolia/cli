@@ -24,6 +24,7 @@ type IConfig interface {
 	SetDefaultProfile(name string) error
 
 	ApplicationIDExists(appID string) (bool, string)
+	ApplicationIDForProfile(profileName string) (bool, string)
 
 	Profile() *Profile
 	Default() *Profile
@@ -182,6 +183,17 @@ func (c *Config) ApplicationIDExists(appID string) (bool, string) {
 	for _, profile := range c.ConfiguredProfiles() {
 		if profile.ApplicationID == appID {
 			return true, profile.Name
+		}
+	}
+
+	return false, ""
+}
+
+// ApplicationIDForProfile returns the application ID for a given profile name.
+func (c *Config) ApplicationIDForProfile(profileName string) (bool, string) {
+	for _, profile := range c.ConfiguredProfiles() {
+		if profile.Name == profileName {
+			return true, profile.ApplicationID
 		}
 	}
 
