@@ -26,6 +26,9 @@ type ImportOptions struct {
 	ReplaceExistingSynonyms bool
 	Wait                    bool
 	Scanner                 *bufio.Scanner
+	File                    string
+	DryRun                  bool
+	PrintFlags              *cmdutil.PrintFlags
 }
 
 // NewImportCmd creates and returns an import command for synonyms
@@ -34,9 +37,8 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
-
-	var file string
 
 	cmd := &cobra.Command{
 		Use:               "import <index> -F <file>",
@@ -69,7 +71,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
 
-			scanner, err := cmdutil.ScanFile(file, opts.IO.In)
+			scanner, err := cmdutil.ScanFile(opts.File, opts.IO.In)
 			if err != nil {
 				return err
 			}
@@ -84,7 +86,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	}
 
 	cmd.Flags().
-		StringVarP(&file, "file", "F", "", "Import synonyms from a `file` (use \"-\" to read from standard input)")
+		StringVarP(&opts.File, "file", "F", "", "Import synonyms from a `file` (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
 
 	cmd.Flags().
@@ -92,16 +94,14 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 	cmd.Flags().
 		BoolVarP(&opts.ReplaceExistingSynonyms, "replace-existing-synonyms", "r", false, "Replace existing synonyms in the index")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the import request without sending it")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
 
 func runImportCmd(opts *ImportOptions) error {
-	client, err := opts.SearchClient()
-	if err != nil {
-		return err
-	}
-
 	// Only clear existing synonyms on the first batch
 	clearExistingSynonyms := opts.ReplaceExistingSynonyms
 
@@ -130,7 +130,7 @@ func runImportCmd(opts *ImportOptions) error {
 			return fmt.Errorf("failed to parse JSON synonym on line %d: %s", count, err)
 		}
 
-		err = validateSynonym(synonym)
+		err := validateSynonym(synonym)
 		if err != nil {
 			opts.IO.StopProgressIndicator()
 			return fmt.Errorf("%s on line %d", err, count)
@@ -140,6 +140,19 @@ func runImportCmd(opts *ImportOptions) error {
 		count++
 
 		if count == batchSize {
+			totalCount += count
+			if opts.DryRun {
+				synonyms = make([]search.SynonymHit, 0, batchSize)
+				opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Validated %d synonyms", totalCount))
+				count = 0
+				clearExistingSynonyms = false
+				continue
+			}
+			client, err := opts.SearchClient()
+			if err != nil {
+				opts.IO.StopProgressIndicator()
+				return err
+			}
 			res, err := client.SaveSynonyms(
 				client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
 					WithReplaceExistingSynonyms(clearExistingSynonyms).
@@ -153,7 +166,6 @@ func runImportCmd(opts *ImportOptions) error {
 				taskIDs = append(taskIDs, res.TaskID)
 			}
 			synonyms = make([]search.SynonymHit, 0, batchSize)
-			totalCount += count
 			opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Imported %d synonyms", totalCount))
 			count = 0
 			clearExistingSynonyms = false
@@ -162,6 +174,14 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if count > 0 {
 		totalCount += count
+		if opts.DryRun {
+			goto finish
+		}
+		client, err := opts.SearchClient()
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
 		res, err := client.SaveSynonyms(
 			client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
 				WithForwardToReplicas(opts.ForwardToReplicas),
@@ -175,7 +195,12 @@ func runImportCmd(opts *ImportOptions) error {
 		}
 	}
 
-	if totalCount == 0 && opts.ReplaceExistingSynonyms {
+	if totalCount == 0 && opts.ReplaceExistingSynonyms && !opts.DryRun {
+		client, err := opts.SearchClient()
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
 		res, err := client.ClearSynonyms(
 			client.NewApiClearSynonymsRequest(opts.Index).
 				WithForwardToReplicas(opts.ForwardToReplicas),
@@ -190,6 +215,11 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	if len(taskIDs) > 0 {
+		client, err := opts.SearchClient()
+		if err != nil {
+			opts.IO.StopProgressIndicator()
+			return err
+		}
 		for _, taskID := range taskIDs {
 			_, err := client.WaitForTask(opts.Index, taskID)
 			if err != nil {
@@ -199,13 +229,36 @@ func runImportCmd(opts *ImportOptions) error {
 		}
 	}
 
+finish:
 	opts.IO.StopProgressIndicator()
 
 	if err := opts.Scanner.Err(); err != nil {
 		return err
 	}
 
+	summary := map[string]any{
+		"action":                  "import_synonyms",
+		"index":                   opts.Index,
+		"synonymCount":            totalCount,
+		"replaceExistingSynonyms": opts.ReplaceExistingSynonyms,
+		"forwardToReplicas":       opts.ForwardToReplicas,
+		"wait":                    opts.Wait,
+		"dryRun":                  opts.DryRun,
+		"source":                  opts.File,
+	}
+	if opts.DryRun {
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would import %d synonyms to %s", totalCount, opts.Index),
+		)
+	}
+
 	cs := opts.IO.ColorScheme()
+	if opts.PrintFlags.HasStructuredOutput() {
+		return opts.PrintFlags.Print(opts.IO, summary)
+	}
 	if opts.IO.IsStdoutTTY() {
 		fmt.Fprintf(
 			opts.IO.Out,

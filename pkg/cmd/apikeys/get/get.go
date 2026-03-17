@@ -56,6 +56,8 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 		},
 	}
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 

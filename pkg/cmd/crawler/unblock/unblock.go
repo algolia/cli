@@ -50,6 +50,9 @@ func NewUnblockCmd(f *cmdutil.Factory, runF func(*UnblockOptions) error) *cobra.
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ID = args[0]
+			if err := cmdutil.ValidateNoControlChars("crawler_id", opts.ID); err != nil {
+				return err
+			}
 			if runF != nil {
 				return runF(opts)
 			}
@@ -66,6 +69,9 @@ func NewUnblockCmd(f *cmdutil.Factory, runF func(*UnblockOptions) error) *cobra.
 			return runUnblockCmd(opts)
 		},
 	}
+
+	cmd.Flags().
+		BoolVarP(&confirm, "confirm", "y", false, "Skip the unblock crawler confirmation prompt")
 
 	return cmd
 }
