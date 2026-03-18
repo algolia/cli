@@ -19,8 +19,10 @@ type CreateOptions struct {
 
 	CrawlerClient func() (*crawler.Client, error)
 
-	Name   string
-	config crawler.Config
+	Name       string
+	config     crawler.Config
+	DryRun     bool
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewCreateCmd creates and returns a create command for Crawlers.
@@ -29,6 +31,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		IO:            f.IOStreams,
 		Config:        f.Config,
 		CrawlerClient: f.CrawlerClient,
+		PrintFlags:    cmdutil.NewPrintFlags(),
 	}
 
 	var configFile string
@@ -71,11 +74,29 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().
 		StringVarP(&configFile, "file", "F", "", "Path to the configuration file (use \"-\" to read from standard input)")
 	_ = cmd.MarkFlagRequired("file")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the create request without sending it")
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
 
 func runCreateCmd(opts *CreateOptions) error {
+	if opts.DryRun {
+		summary := map[string]any{
+			"action": "create_crawler",
+			"name":   opts.Name,
+			"config": opts.config,
+			"dryRun": true,
+		}
+
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would create Crawler %s", opts.Name),
+		)
+	}
+
 	client, err := opts.CrawlerClient()
 	if err != nil {
 		return err

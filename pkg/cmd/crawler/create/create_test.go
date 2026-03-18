@@ -19,7 +19,7 @@ import (
 
 func TestNewCreateCmd(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "config.json")
-	err := os.WriteFile(tmpFile, []byte("{\"enableReRanking\":false}"), 0o600)
+	err := os.WriteFile(tmpFile, []byte("{\"appId\":\"test-app\"}"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -36,7 +36,7 @@ func TestNewCreateCmd(t *testing.T) {
 			wantsErr: false,
 			wantsOpts: CreateOptions{
 				Name:   "my-crawler",
-				config: crawler.Config{},
+				config: crawler.Config{AppID: "test-app"},
 			},
 		},
 	}
@@ -121,4 +121,24 @@ func Test_runCreateCmd(t *testing.T) {
 			assert.Equal(t, tt.wantOut, out.String())
 		})
 	}
+}
+
+func Test_runCreateCmd_dryRunJSON(t *testing.T) {
+	tmpFile := filepath.Join(t.TempDir(), "config.json")
+	err := os.WriteFile(tmpFile, []byte("{\"appId\":\"test-app\"}"), 0o600)
+	require.NoError(t, err)
+
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, "")
+	cmd := NewCreateCmd(f, nil)
+
+	out, err = test.Execute(cmd, fmt.Sprintf("my-crawler -F '%s' --dry-run --output json", tmpFile), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"create_crawler"`)
+	assert.Contains(t, out.String(), `"name":"my-crawler"`)
+	assert.Contains(t, out.String(), `"config":{"appId":"test-app"}`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
 }

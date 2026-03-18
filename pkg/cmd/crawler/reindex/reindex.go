@@ -19,7 +19,9 @@ type ReindexOptions struct {
 
 	CrawlerClient func() (*crawler.Client, error)
 
-	IDs []string
+	IDs        []string
+	DryRun     bool
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewReindexCmd creates and returns a reindex command for Crawlers.
@@ -28,6 +30,7 @@ func NewReindexCmd(f *cmdutil.Factory, runF func(*ReindexOptions) error) *cobra.
 		IO:            f.IOStreams,
 		Config:        f.Config,
 		CrawlerClient: f.CrawlerClient,
+		PrintFlags:    cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:               "reindex <crawler_id>...",
@@ -54,10 +57,28 @@ func NewReindexCmd(f *cmdutil.Factory, runF func(*ReindexOptions) error) *cobra.
 		},
 	}
 
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the reindex request without sending it")
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
 func runReindexCmd(opts *ReindexOptions) error {
+	if opts.DryRun {
+		summary := map[string]any{
+			"action": "reindex_crawlers",
+			"ids":    opts.IDs,
+			"dryRun": true,
+		}
+
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would reindex %s", utils.Pluralize(len(opts.IDs), "crawler")),
+		)
+	}
+
 	client, err := opts.CrawlerClient()
 	if err != nil {
 		return err
