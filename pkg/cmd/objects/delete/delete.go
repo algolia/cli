@@ -28,8 +28,10 @@ type DeleteOptions struct {
 	DeleteParams  search.DeleteByParams
 	NdeleteParams int
 
-	DoConfirm bool
-	Wait      bool
+	DoConfirm  bool
+	Wait       bool
+	DryRun     bool
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewDeleteCmd creates and returns a delete command for index objects
@@ -40,6 +42,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -67,6 +70,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]
+			if err := cmdutil.ValidateNoControlChars("index", opts.Index); err != nil {
+				return err
+			}
 			deleteParams, err := cmdutil.FlagValuesMap(cmd.Flags(), cmdutil.DeleteByParams...)
 			if err != nil {
 				return err
@@ -86,8 +92,13 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			if len(opts.ObjectIDs) == 0 && opts.NdeleteParams == 0 {
 				return cmdutil.FlagErrorf("you must specify either --object-ids or a filter")
 			}
+			for _, objectID := range opts.ObjectIDs {
+				if err := cmdutil.ValidateNoControlChars("objectID", objectID); err != nil {
+					return err
+				}
+			}
 
-			if !confirm {
+			if !confirm && !opts.DryRun {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
 						"--confirm required when non-interactive shell is detected",
@@ -110,6 +121,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
 	cmd.Flags().
 		BoolVar(&opts.Wait, "wait", false, "Wait for all the operations to complete")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the delete request without sending it")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -168,6 +182,26 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		opts.Index,
 	)
 
+	summary := map[string]any{
+		"action":       "delete_objects",
+		"index":        opts.Index,
+		"objectIDs":    opts.ObjectIDs,
+		"filterCount":  opts.NdeleteParams,
+		"deleteParams": opts.DeleteParams,
+		"objectCount":  nbObjectsToDelete,
+		"wait":         opts.Wait,
+		"dryRun":       opts.DryRun,
+	}
+
+	if opts.DryRun {
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would delete %s", objectNbMessage),
+		)
+	}
+
 	if opts.DoConfirm {
 		var confirmed bool
 		err = prompt.Confirm(fmt.Sprintf("Delete %s?", objectNbMessage), &confirmed)
@@ -215,6 +249,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		opts.IO.StopProgressIndicator()
 	}
 
+	if opts.PrintFlags.HasStructuredOutput() {
+		return opts.PrintFlags.Print(opts.IO, summary)
+	}
 	if opts.IO.IsStdoutTTY() {
 		fmt.Fprintf(opts.IO.Out, "%s Successfully deleted %s\n", cs.SuccessIcon(), objectNbMessage)
 	}

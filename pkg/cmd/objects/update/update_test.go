@@ -41,20 +41,20 @@ func Test_runUpdateCmd(t *testing.T) {
 			name:    "from stdin with invalid JSON",
 			cli:     "foo -F -",
 			stdin:   `{"objectID": "foo"},`,
-			wantErr: "X Found 1 error (out of 1 objects) while parsing the file:\n  line 1: invalid character ',' after top-level value\n",
+			wantErr: "X Found 1 error (out of 1 objects) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n",
 		},
 		{
 			name: "from stdin with invalid JSON (multiple objects)",
 			cli:  "foo -F -",
 			stdin: `{"objectID": "foo"},
 			{"test": "bar"}`,
-			wantErr: "X Found 2 errors (out of 2 objects) while parsing the file:\n  line 1: invalid character ',' after top-level value\n  line 2: objectID is required\n",
+			wantErr: "X Found 2 errors (out of 2 objects) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n  line 2: objectID is required\n",
 		},
 		{
 			name:    "from stdin with invalid JSON (1 object) with --continue-on-error",
 			cli:     "foo -F - --continue-on-error",
 			stdin:   `{"objectID": "foo"},`,
-			wantErr: "X Found 1 error (out of 1 objects) while parsing the file:\n  line 1: invalid character ',' after top-level value\n",
+			wantErr: "X Found 1 error (out of 1 objects) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n",
 		},
 		{
 			name: "from stdin with invalid JSON (2 objects) with --continue-on-error",
@@ -97,4 +97,37 @@ func Test_runUpdateCmd(t *testing.T) {
 			assert.Contains(t, out.String(), tt.wantOut)
 		})
 	}
+}
+
+func Test_runUpdateCmd_nonInteractiveRequiresContinueOnError(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"objectID":"ok"}
+{"test":"bar"}`)
+	cmd := NewUpdateCmd(f, nil)
+
+	_, err := test.Execute(cmd, "foo -F -", out)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	assert.EqualError(
+		t,
+		err,
+		"--continue-on-error required when non-interactive shell is detected and parsing errors are present",
+	)
+}
+
+func Test_runUpdateCmd_dryRunJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"objectID":"foo"}`)
+	cmd := NewUpdateCmd(f, nil)
+
+	out, err := test.Execute(cmd, "foo -F - --dry-run --output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"update_objects"`)
+	assert.Contains(t, out.String(), `"objectCount":1`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
 }

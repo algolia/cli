@@ -35,6 +35,8 @@ type ImportOptions struct {
 	Scanner *bufio.Scanner
 
 	ContinueOnError bool
+	DryRun          bool
+	PrintFlags      *cmdutil.PrintFlags
 }
 
 // NewImportCmd creates and returns an import command for dictionary
@@ -43,6 +45,7 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -94,6 +97,9 @@ func NewImportCmd(f *cmdutil.Factory, runF func(*ImportOptions) error) *cobra.Co
 		BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete before returning")
 	cmd.Flags().
 		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue importing entries even if some entries are invalid.")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the import request without sending it")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -130,12 +136,9 @@ func runImportCmd(opts *ImportOptions) error {
 		var entry search.DictionaryEntry
 
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			errors = append(errors, fmt.Errorf("line %d: %s", currentLine, err).Error())
+			errors = append(errors, fmt.Errorf("line %d: invalid JSON: %s", currentLine, err).Error())
 			continue
 		}
-
-		fmt.Printf("TYPE: %v\n", opts.DictionaryType)
-		fmt.Printf("ENTRY: %v\n", entry)
 
 		dictionaryEntry, err := createDictionaryEntry(opts.DictionaryType, entry)
 		if err != nil {
@@ -164,10 +167,26 @@ func runImportCmd(opts *ImportOptions) error {
 		return fmt.Errorf("%s No entries found in the file", cs.FailureIcon())
 	}
 
+	summary := map[string]any{
+		"action":           "import_dictionary_entries",
+		"dictionary":       opts.DictionaryType,
+		"entryCount":       len(entries),
+		"wait":             opts.Wait,
+		"dryRun":           opts.DryRun,
+		"continueOnError":  opts.ContinueOnError,
+		"parsedEntryCount": totalEntries,
+		"source":           opts.File,
+	}
+
 	// Ask for confirmation if there are errors
 	if len(errors) > 0 {
 		if !opts.ContinueOnError {
-			fmt.Print(errorMsg)
+			if !opts.IO.CanPrompt() {
+				return cmdutil.FlagErrorf(
+					"--continue-on-error required when non-interactive shell is detected and parsing errors are present",
+				)
+			}
+			fmt.Fprint(opts.IO.ErrOut, errorMsg)
 
 			var confirmed bool
 			err = prompt.Confirm("Do you want to continue?", &confirmed)
@@ -178,6 +197,19 @@ func runImportCmd(opts *ImportOptions) error {
 				return nil
 			}
 		}
+	}
+
+	if opts.DryRun {
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf(
+				"Dry run: would import %d entries into %s",
+				len(entries),
+				opts.DictionaryType,
+			),
+		)
 	}
 
 	// Import entries
@@ -217,15 +249,19 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(
-		opts.IO.Out,
-		"%s Successfully imported %s entries on %s in %v\n",
-		cs.SuccessIcon(),
-		cs.Bold(fmt.Sprint(len(entries))),
-		cs.Bold(string(opts.DictionaryType)),
-		time.Since(elapsed),
+	summary["elapsed"] = time.Since(elapsed).String()
+	return cmdutil.PrintRunSummary(
+		opts.IO,
+		opts.PrintFlags,
+		summary,
+		fmt.Sprintf(
+			"%s Successfully imported %s entries on %s in %v",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(len(entries))),
+			cs.Bold(string(opts.DictionaryType)),
+			time.Since(elapsed),
+		),
 	)
-	return err
 }
 
 func createDictionaryEntry(

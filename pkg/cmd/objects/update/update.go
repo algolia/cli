@@ -34,6 +34,8 @@ type UpdateOptions struct {
 	Scanner *bufio.Scanner
 
 	ContinueOnError bool
+	DryRun          bool
+	PrintFlags      *cmdutil.PrintFlags
 }
 
 // NewUpdateCmd creates and returns an update command for index objects
@@ -42,6 +44,7 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -98,6 +101,9 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 
 	cmd.Flags().
 		BoolVarP(&opts.ContinueOnError, "continue-on-error", "C", false, "Continue updating records even if some are invalid.")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the update request without sending it")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -135,7 +141,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 
 		var obj map[string]any
 		if err := json.Unmarshal([]byte(line), &obj); err != nil {
-			errors = append(errors, fmt.Errorf("line %d: %s", currentLine, err).Error())
+			errors = append(errors, fmt.Errorf("line %d: invalid JSON: %s", currentLine, err).Error())
 			continue
 		}
 		if err = IsValidUpdate(obj); err != nil {
@@ -165,10 +171,27 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		return fmt.Errorf("%s No objects found in the file", cs.FailureIcon())
 	}
 
+	summary := map[string]any{
+		"action":            "update_objects",
+		"index":             opts.Index,
+		"objectCount":       len(objects),
+		"createIfNotExists": opts.CreateIfNotExists,
+		"wait":              opts.Wait,
+		"dryRun":            opts.DryRun,
+		"continueOnError":   opts.ContinueOnError,
+		"parsedObjectCount": totalObjects,
+		"source":            opts.File,
+	}
+
 	// Ask for confirmation if there are errors
 	if len(errors) > 0 {
 		if !opts.ContinueOnError {
-			fmt.Print(errorMsg)
+			if !opts.IO.CanPrompt() {
+				return cmdutil.FlagErrorf(
+					"--continue-on-error required when non-interactive shell is detected and parsing errors are present",
+				)
+			}
+			fmt.Fprint(opts.IO.ErrOut, errorMsg)
 
 			var confirmed bool
 			err = prompt.Confirm("Do you want to continue?", &confirmed)
@@ -179,6 +202,19 @@ func runUpdateCmd(opts *UpdateOptions) error {
 				return nil
 			}
 		}
+	}
+
+	if opts.DryRun {
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf(
+				"Dry run: would update %d objects on %s",
+				len(objects),
+				opts.Index,
+			),
+		)
 	}
 
 	// Update the objects
@@ -213,15 +249,19 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
-	_, err = fmt.Fprintf(
-		opts.IO.Out,
-		"%s Successfully updated %s objects on %s in %v\n",
-		cs.SuccessIcon(),
-		cs.Bold(fmt.Sprint(len(objects))),
-		cs.Bold(opts.Index),
-		time.Since(elapsed),
+	summary["elapsed"] = time.Since(elapsed).String()
+	return cmdutil.PrintRunSummary(
+		opts.IO,
+		opts.PrintFlags,
+		summary,
+		fmt.Sprintf(
+			"%s Successfully updated %s objects on %s in %v",
+			cs.SuccessIcon(),
+			cs.Bold(fmt.Sprint(len(objects))),
+			cs.Bold(opts.Index),
+			time.Since(elapsed),
+		),
 	)
-	return err
 }
 
 // IsAllowedOperation checks if the `_operation` value is allowed

@@ -1,0 +1,18 @@
+# Runtime schema should be machine-readable
+exec algolia describe search
+! stderr .
+stdout -count=1 '"schemaVersion":"v1"'
+stdout -count=1 '"name":"algolia search"'
+stdout -count=1 '"responseFields"'
+stdout -count=1 '"attributesToRetrieve"'
+
+# Dry-run should validate and preview without mutating
+stdin update.jsonl
+exec algolia objects update test-agent-ready --file - --dry-run --output json
+! stderr .
+stdout -count=1 '"action":"update_objects"'
+stdout -count=1 '"dryRun":true'
+stdout -count=1 '"objectCount":1'
+
+-- update.jsonl --
+{"objectID":"test-agent-ready","name":"preview"}
