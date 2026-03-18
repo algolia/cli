@@ -23,7 +23,7 @@ func EnsureAuthenticated(
 	cs := io.ColorScheme()
 	fmt.Fprintf(io.Out, "%s %s\n", cs.WarningIcon(), err)
 
-	return RunInteractiveOAuth(io, client, false, nil)
+	return RunOAuth(io, client, false, true)
 }
 
 // ReauthenticateIfExpired checks if err is a session-expired error from the API.
@@ -41,5 +41,5 @@ func ReauthenticateIfExpired(
 	ClearToken()
 	fmt.Fprintf(io.Out, "%s Session expired.\n", cs.WarningIcon())
 
-	return RunInteractiveOAuth(io, client, false, nil)
+	return RunOAuth(io, client, false, true)
 }

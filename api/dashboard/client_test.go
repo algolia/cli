@@ -26,13 +26,13 @@ func TestAuthorizeURL(t *testing.T) {
 		OAuthScope:   "scope:test",
 	}
 
-	url := client.AuthorizeURL("test-challenge")
+	url := client.AuthorizeURL("test-challenge", "http://localhost:12345")
 	assert.Contains(t, url, "https://dashboard.example.com/2/oauth/authorize?")
 	assert.Contains(t, url, "client_id=my-client-id")
 	assert.Contains(t, url, "response_type=code")
 	assert.Contains(t, url, "code_challenge=test-challenge")
 	assert.Contains(t, url, "code_challenge_method=S256")
-	assert.Contains(t, url, "redirect_uri=urn")
+	assert.Contains(t, url, "redirect_uri=http")
 }
 
 func TestAuthorizationCodeGrant_Success(t *testing.T) {
@@ -64,7 +64,7 @@ func TestAuthorizationCodeGrant_Success(t *testing.T) {
 	ts, client := newTestClient(mux)
 	defer ts.Close()
 
-	resp, err := client.AuthorizationCodeGrant("auth-code-123", "verifier-xyz")
+	resp, err := client.AuthorizationCodeGrant("auth-code-123", "verifier-xyz", "http://localhost:12345")
 	require.NoError(t, err)
 	assert.Equal(t, "access-token-123", resp.AccessToken)
 	assert.Equal(t, "refresh-token-456", resp.RefreshToken)
@@ -84,7 +84,7 @@ func TestAuthorizationCodeGrant_InvalidGrant(t *testing.T) {
 	ts, client := newTestClient(mux)
 	defer ts.Close()
 
-	_, err := client.AuthorizationCodeGrant("expired-code", "verifier")
+	_, err := client.AuthorizationCodeGrant("expired-code", "verifier", "http://localhost:12345")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Authorization code has expired")
 }

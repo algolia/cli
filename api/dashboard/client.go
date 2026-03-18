@@ -83,24 +83,24 @@ func NewClientWithHTTPClient(clientID string, httpClient *http.Client) *Client {
 }
 
 // AuthorizeURL builds the OAuth 2.0 authorization URL for the browser-based sign-in flow.
-func (c *Client) AuthorizeURL(codeChallenge string) string {
-	return c.buildAuthorizeURL(codeChallenge, nil)
+func (c *Client) AuthorizeURL(codeChallenge, redirectURI string) string {
+	return c.buildAuthorizeURL(codeChallenge, redirectURI, nil)
 }
 
 // SignupAuthorizeURL builds an OAuth 2.0 authorization URL that opens the
 // sign-up page instead of the default sign-in page.
-func (c *Client) SignupAuthorizeURL(codeChallenge string) string {
-	return c.buildAuthorizeURL(codeChallenge, map[string]string{"screen": "signup"})
+func (c *Client) SignupAuthorizeURL(codeChallenge, redirectURI string) string {
+	return c.buildAuthorizeURL(codeChallenge, redirectURI, map[string]string{"screen": "signup"})
 }
 
-func (c *Client) buildAuthorizeURL(codeChallenge string, extra map[string]string) string {
+func (c *Client) buildAuthorizeURL(codeChallenge, redirectURI string, extra map[string]string) string {
 	params := url.Values{
 		"client_id":             {c.ClientID},
 		"response_type":         {"code"},
 		"code_challenge":        {codeChallenge},
 		"code_challenge_method": {"S256"},
 		"scope":                 {c.OAuthScope},
-		"redirect_uri":          {"urn:ietf:wg:oauth:2.0:oob"},
+		"redirect_uri":          {redirectURI},
 	}
 	for k, v := range extra {
 		params.Set(k, v)
@@ -109,14 +109,14 @@ func (c *Client) buildAuthorizeURL(codeChallenge string, extra map[string]string
 }
 
 // AuthorizationCodeGrant exchanges an authorization code + PKCE code_verifier
-// for an access token.
-func (c *Client) AuthorizationCodeGrant(code, codeVerifier string) (*OAuthTokenResponse, error) {
+// for an access token. The redirectURI must match the one used in the authorize URL.
+func (c *Client) AuthorizationCodeGrant(code, codeVerifier, redirectURI string) (*OAuthTokenResponse, error) {
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
 		"client_id":     {c.ClientID},
 		"code":          {code},
 		"code_verifier": {codeVerifier},
-		"redirect_uri":  {"urn:ietf:wg:oauth:2.0:oob"},
+		"redirect_uri":  {redirectURI},
 	}
 
 	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/token", strings.NewReader(form.Encode()))

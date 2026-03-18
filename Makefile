@@ -61,7 +61,14 @@ api-specs-pr:
 # Build the binary
 build:
 	go generate ./...
-	go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=$(VERSION)" -o algolia cmd/algolia/main.go
+	go build -ldflags "\
+		-s -w \
+		-X=github.com/algolia/cli/pkg/version.Version=$(VERSION) \
+		-X=github.com/algolia/cli/api/dashboard.DefaultDashboardURL=$(ALGOLIA_DASHBOARD_URL) \
+		-X=github.com/algolia/cli/api/dashboard.DefaultAPIURL=$(ALGOLIA_API_URL) \
+		-X=github.com/algolia/cli/pkg/cmd/auth/login.DefaultOAuthClientID=$(ALGOLIA_OAUTH_CLIENT_ID) \
+		-X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$(ALGOLIA_OAUTH_SCOPE)'" \
+		-o algolia cmd/algolia/main.go
 .PHONY: build
 
 ## Install & uninstall tasks are here for use on *nix platform only.
