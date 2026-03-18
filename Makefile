@@ -61,7 +61,7 @@ api-specs-pr:
 # Build the binary
 build:
 	go generate ./...
-	go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=$(VERSION)" -o algolia cmd/algolia/main.go
+	go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=$(VERSION) -X=github.com/algolia/cli/pkg/config.DefaultSearchHosts=$(ALGOLIA_SEARCH_HOSTS)" -o algolia cmd/algolia/main.go
 .PHONY: build
 
 ## Install & uninstall tasks are here for use on *nix platform only.
