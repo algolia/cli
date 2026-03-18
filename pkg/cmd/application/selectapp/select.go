@@ -9,7 +9,6 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
-	"github.com/algolia/cli/pkg/cmd/auth/login"
 	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -70,7 +69,7 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 
 func runSelectCmd(opts *SelectOptions) error {
 	cs := opts.IO.ColorScheme()
-	client := opts.NewDashboardClient(login.OAuthClientID())
+	client := opts.NewDashboardClient(auth.OAuthClientID())
 
 	accessToken, err := auth.EnsureAuthenticated(opts.IO, client)
 	if err != nil {
