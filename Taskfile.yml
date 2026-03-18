@@ -1,5 +1,6 @@
 version: 3
 output: prefixed
+dotenv: [.env]
 vars:
   # The URL to the "old" Algolia docs repo
   docs_remote: https://github.com/algolia/doc.git
@@ -11,7 +12,16 @@ tasks:
   build:
     desc: Build the binary
     deps: [generate]
-    cmd: go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version={{ .VERSION }} -X=github.com/algolia/cli/pkg/config.DefaultSearchHosts=$ALGOLIA_SEARCH_HOSTS" -o algolia cmd/algolia/main.go
+    cmd: >-
+      go build -ldflags
+      "-s -w
+      -X github.com/algolia/cli/pkg/version.Version={{ .VERSION }}
+      -X github.com/algolia/cli/api/dashboard.DefaultDashboardURL=$ALGOLIA_DASHBOARD_URL
+      -X github.com/algolia/cli/api/dashboard.DefaultAPIURL=$ALGOLIA_API_URL
+      -X github.com/algolia/cli/pkg/config.DefaultSearchHosts=$ALGOLIA_SEARCH_HOSTS
+      -X github.com/algolia/cli/pkg/auth.DefaultOAuthClientID=$ALGOLIA_OAUTH_CLIENT_ID
+      -X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$ALGOLIA_OAUTH_SCOPE'"
+      -o algolia cmd/algolia/main.go
     vars:
       VERSION: '{{ .VERSION | default "main" }}'
   test:
@@ -26,7 +36,6 @@ tasks:
       To run them, create a `.env` file with the `ALGOLIA_APPLICATION_ID`
       and `ALGOLIA_API_KEY` credentials.
     cmd: go test ./e2e -tags=e2e
-    dotenv: [.env]
   lint:
     desc: Lint code
     cmd: golangci-lint run

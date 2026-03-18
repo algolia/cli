@@ -49,6 +49,15 @@ func (c *ConfigStub) ApplicationIDExists(appID string) (bool, string) {
 	return false, ""
 }
 
+func (c *ConfigStub) ApplicationIDForProfile(profileName string) (bool, string) {
+	for _, profile := range c.ConfiguredProfiles() {
+		if profile.Name == profileName {
+			return true, profile.ApplicationID
+		}
+	}
+	return false, ""
+}
+
 func (c *ConfigStub) RemoveProfile(name string) error {
 	for i, profile := range c.ConfiguredProfiles() {
 		if profile.Name == name {

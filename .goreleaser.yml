@@ -16,7 +16,12 @@ builds:
       binary: algolia
       main: ./cmd/algolia/main.go
       ldflags:
-        - -s -w -X github.com/algolia/cli/pkg/version.Version={{.Version}}
+        - -s -w
+          -X github.com/algolia/cli/pkg/version.Version={{.Version}}
+          -X github.com/algolia/cli/api/dashboard.DefaultDashboardURL={{ .Env.ALGOLIA_DASHBOARD_URL }}
+          -X github.com/algolia/cli/api/dashboard.DefaultAPIURL={{ .Env.ALGOLIA_API_URL }}
+          -X github.com/algolia/cli/pkg/auth.DefaultOAuthClientID={{ .Env.ALGOLIA_OAUTH_CLIENT_ID }}
+          -X github.com/algolia/cli/api/dashboard.DefaultOAuthScope={{ .Env.ALGOLIA_OAUTH_SCOPE }}
     id: macos
     goos: [darwin]
     goarch: [amd64, arm64]
