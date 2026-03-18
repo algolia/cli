@@ -11,7 +11,7 @@ tasks:
   build:
     desc: Build the binary
     deps: [generate]
-    cmd: go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version={{ .VERSION }}" -o algolia cmd/algolia/main.go
+    cmd: go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version={{ .VERSION }} -X=github.com/algolia/cli/pkg/config.DefaultSearchHosts=$ALGOLIA_SEARCH_HOSTS" -o algolia cmd/algolia/main.go
     vars:
       VERSION: '{{ .VERSION | default "main" }}'
   test:
