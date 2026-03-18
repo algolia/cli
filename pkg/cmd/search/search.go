@@ -39,7 +39,12 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:             "Search an index",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.IndexNames(opts.SearchClient),
-		Long:              `Search for records in your index.`,
+		Long: heredoc.Doc(`
+			Search for records in your index.
+
+			To keep responses small and predictable, use flags like --responseFields
+			and --attributesToRetrieve to limit what the API returns.
+		`),
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
 			"acls":        "search",
@@ -59,6 +64,9 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Search for records in the "MOVIES" index matching the query "toy story" and only export the results to a .json file
 			$ algolia search MOVIES --query "toy story" --output="jsonpath={$.Hits}" > movies.json
+
+			# Search for records in the "MOVIES" index while keeping the response small
+			$ algolia search MOVIES --query "toy story" --responseFields hits,nbHits,page --attributesToRetrieve title,overview
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Index = args[0]

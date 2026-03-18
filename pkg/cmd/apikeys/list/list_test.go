@@ -62,3 +62,35 @@ func Test_runListCmd(t *testing.T) {
 		})
 	}
 }
+
+func Test_runListCmd_outputJSON(t *testing.T) {
+	oldNowFn := nowFn
+	nowFn = func() time.Time { return time.Unix(1735689600, 0) } // 2025-01-01T00:00:00Z
+	t.Cleanup(func() { nowFn = oldNowFn })
+
+	name := "test"
+	r := httpmock.Registry{}
+	r.Register(
+		httpmock.REST("GET", "1/keys"),
+		httpmock.JSONResponse(search.ListApiKeysResponse{
+			Keys: []search.GetApiKeyResponse{
+				{
+					Value:       "foo",
+					Description: &name,
+					Acl:         []search.Acl{search.ACL_SEARCH},
+					CreatedAt:   1577836800,
+				},
+			},
+		}),
+	)
+
+	f, out := test.NewFactory(false, &r, nil, "")
+	cmd := NewListCmd(f, nil)
+	out, err := test.Execute(cmd, "--output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"keys":[`)
+	assert.Contains(t, out.String(), `"value":"foo"`)
+}

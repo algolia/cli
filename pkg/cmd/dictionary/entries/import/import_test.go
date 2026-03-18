@@ -54,7 +54,7 @@ func Test_runImportCmd(t *testing.T) {
 			cli:  "stopwords -F -",
 			stdin: `{"word":"test","objectID":"test"},
 			{"language":"fr","objectID":"testFr"}`,
-			wantErr: "X Found 2 errors (out of 2 entries) while parsing the file:\n  line 1: invalid character ',' after top-level value\n  line 2: word is missing\n",
+			wantErr: "X Found 2 errors (out of 2 entries) while parsing the file:\n  line 1: invalid JSON: invalid character ',' after top-level value\n  line 2: word is missing\n",
 		},
 		{
 			name:    "from stdin with invalid JSON (1 entry) with --continue-on-error",
@@ -103,4 +103,37 @@ func Test_runImportCmd(t *testing.T) {
 			assert.Contains(t, out.String(), tt.wantOut)
 		})
 	}
+}
+
+func Test_runImportCmd_nonInteractiveRequiresContinueOnError(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"language":"en","word":"test","objectID":"ok"}
+{"language":"fr","objectID":"missing-word"}`)
+	cmd := NewImportCmd(f, nil)
+
+	_, err := test.Execute(cmd, "stopwords -F -", out)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	assert.EqualError(
+		t,
+		err,
+		"--continue-on-error required when non-interactive shell is detected and parsing errors are present",
+	)
+}
+
+func Test_runImportCmd_dryRunJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	f, out := test.NewFactory(false, &r, nil, `{"language":"en","word":"test","objectID":"test"}`)
+	cmd := NewImportCmd(f, nil)
+
+	out, err := test.Execute(cmd, "stopwords -F - --dry-run --output json", out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Contains(t, out.String(), `"action":"import_dictionary_entries"`)
+	assert.Contains(t, out.String(), `"entryCount":1`)
+	assert.Contains(t, out.String(), `"dryRun":true`)
 }
