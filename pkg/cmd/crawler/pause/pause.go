@@ -19,7 +19,9 @@ type PauseOptions struct {
 
 	CrawlerClient func() (*crawler.Client, error)
 
-	IDs []string
+	IDs        []string
+	DryRun     bool
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewPauseCmd creates and returns a pause command for Crawlers.
@@ -28,6 +30,7 @@ func NewPauseCmd(f *cmdutil.Factory, runF func(*PauseOptions) error) *cobra.Comm
 		IO:            f.IOStreams,
 		Config:        f.Config,
 		CrawlerClient: f.CrawlerClient,
+		PrintFlags:    cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:               "pause <crawler_id>...",
@@ -54,10 +57,28 @@ func NewPauseCmd(f *cmdutil.Factory, runF func(*PauseOptions) error) *cobra.Comm
 		},
 	}
 
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the pause request without sending it")
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
 func runPauseCmd(opts *PauseOptions) error {
+	if opts.DryRun {
+		summary := map[string]any{
+			"action": "pause_crawlers",
+			"ids":    opts.IDs,
+			"dryRun": true,
+		}
+
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would pause %s", utils.Pluralize(len(opts.IDs), "crawler")),
+		)
+	}
+
 	client, err := opts.CrawlerClient()
 	if err != nil {
 		return err

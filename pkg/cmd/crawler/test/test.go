@@ -23,6 +23,7 @@ type TestOptions struct {
 	ID     string
 	URL    string
 	config *crawler.Config
+	DryRun bool
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -80,6 +81,7 @@ func NewTestCmd(f *cmdutil.Factory, runF func(*TestOptions) error) *cobra.Comman
 
 	cmd.Flags().
 		StringVarP(&configFile, "config", "F", "", "The configuration file to use to override the crawler's configuration. (use \"-\" to read from standard input)")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Validate and preview the test request without sending it")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -87,6 +89,23 @@ func NewTestCmd(f *cmdutil.Factory, runF func(*TestOptions) error) *cobra.Comman
 }
 
 func runTestCmd(opts *TestOptions) error {
+	if opts.DryRun {
+		summary := map[string]any{
+			"action": "test_crawler",
+			"id":     opts.ID,
+			"url":    opts.URL,
+			"config": opts.config,
+			"dryRun": true,
+		}
+
+		return cmdutil.PrintRunSummary(
+			opts.IO,
+			opts.PrintFlags,
+			summary,
+			fmt.Sprintf("Dry run: would test URL %s on crawler %s", opts.URL, opts.ID),
+		)
+	}
+
 	client, err := opts.CrawlerClient()
 	if err != nil {
 		return err
