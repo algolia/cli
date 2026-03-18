@@ -8,7 +8,6 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
-	"github.com/algolia/cli/pkg/cmd/auth/login"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -55,7 +54,7 @@ func runLogoutCmd(opts *LogoutOptions) error {
 		return nil
 	}
 
-	client := opts.NewDashboardClient(login.OAuthClientID())
+	client := opts.NewDashboardClient(auth.OAuthClientID())
 
 	if stored.AccessToken != "" {
 		if err := client.RevokeToken(stored.AccessToken); err != nil {

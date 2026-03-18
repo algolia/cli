@@ -2,12 +2,30 @@ package auth
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/iostreams"
 )
+
+// DefaultOAuthClientID is injected at build time via ldflags.
+// Override with ALGOLIA_OAUTH_CLIENT_ID environment variable for local development.
+var DefaultOAuthClientID = ""
+
+// OAuthClientID returns the OAuth client ID, preferring the ALGOLIA_OAUTH_CLIENT_ID
+// environment variable over the compiled-in default (set via ldflags).
+func OAuthClientID() string {
+	if v := os.Getenv("ALGOLIA_OAUTH_CLIENT_ID"); v != "" {
+		return v
+	}
+	if DefaultOAuthClientID == "" {
+		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_OAUTH_CLIENT_ID is not set and no default was compiled in")
+		os.Exit(1)
+	}
+	return DefaultOAuthClientID
+}
 
 // RunOAuth runs the OAuth PKCE flow with a local callback server and returns
 // a valid access token. A local HTTP server is started on a random port to

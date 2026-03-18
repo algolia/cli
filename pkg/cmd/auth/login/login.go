@@ -2,7 +2,6 @@ package login
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
@@ -17,23 +16,6 @@ import (
 	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
 )
-
-// DefaultOAuthClientID is injected at build time via ldflags.
-// Override with ALGOLIA_OAUTH_CLIENT_ID environment variable for local development.
-var DefaultOAuthClientID = ""
-
-// OAuthClientID returns the OAuth client ID, preferring the ALGOLIA_OAUTH_CLIENT_ID
-// environment variable over the compiled-in default (set via ldflags).
-func OAuthClientID() string {
-	if v := os.Getenv("ALGOLIA_OAUTH_CLIENT_ID"); v != "" {
-		return v
-	}
-	if DefaultOAuthClientID == "" {
-		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_OAUTH_CLIENT_ID is not set and no default was compiled in")
-		os.Exit(1)
-	}
-	return DefaultOAuthClientID
-}
 
 // LoginOptions holds all options for the login command.
 type LoginOptions struct {
@@ -109,7 +91,7 @@ func runLoginCmd(opts *LoginOptions) error {
 // If signup is true, the browser opens to the sign-up page instead of sign-in.
 func RunOAuthFlow(opts *LoginOptions, signup bool) error {
 	cs := opts.IO.ColorScheme()
-	client := opts.NewDashboardClient(OAuthClientID())
+	client := opts.NewDashboardClient(auth.OAuthClientID())
 
 	openBrowser := !opts.NoBrowser
 	accessToken, err := auth.RunOAuth(opts.IO, client, signup, openBrowser)
