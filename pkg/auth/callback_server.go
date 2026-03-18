@@ -85,7 +85,7 @@ func StartCallbackServer() (redirectURI string, result <-chan CallbackResult, er
 	ch := make(chan CallbackResult, 1)
 
 	mux := http.NewServeMux()
-	srv := &http.Server{Handler: mux}
+	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
