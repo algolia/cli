@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/MakeNowJust/heredoc"
@@ -203,14 +202,7 @@ func Execute() exitCode {
 	}
 
 	// Run the command.
-	start := time.Now()
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-	duration := time.Since(start)
-
-	if shouldEmitRunSummary() {
-		emitRunSummary(stderr, ctx, cmd, err, duration)
-	}
-
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
