@@ -388,6 +388,58 @@ func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, descripti
 	return key, nil
 }
 
+func (c *Client) GetCrawlerMe(accessToken string) (*CrawlerUserData, error) {
+	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/crawler/me", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("crawler me failed with status: %d", resp.StatusCode)
+	}
+
+	var meResp CrawlerMeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&meResp); err != nil {
+		return nil, fmt.Errorf("failed to parse crawler response: %w", err)
+	}
+
+	return &meResp.Data, nil
+}
+
+func (c *Client) GetCrawlerAPIKey(accessToken string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/crawler/api_key", nil)
+	if err != nil {
+		return "", err
+	}
+
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("crawler api key failed with status: %d", resp.StatusCode)
+	}
+
+	var apiKeyResp CrawlerAPIKeyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiKeyResp); err != nil {
+		return "", fmt.Errorf("failed to parse crawler response: %w", err)
+	}
+
+	return apiKeyResp.Data.APIKey, nil
+}
+
 func (c *Client) setAPIHeaders(req *http.Request, accessToken string) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.api+json")

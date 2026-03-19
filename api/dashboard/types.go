@@ -111,6 +111,24 @@ type CreateAPIKeyResponse struct {
 	Data APIKeyResource `json:"data"`
 }
 
+type CrawlerUserData struct {
+	ID string `json:"id"`
+}
+
+type CrawlerMeResponse struct {
+	Success bool            `json:"success"`
+	Data    CrawlerUserData `json:"data"`
+}
+
+type CrawlerAPIKeyData struct {
+	APIKey string `json:"apiKey"`
+}
+
+type CrawlerAPIKeyResponse struct {
+	Success bool              `json:"success"`
+	Data    CrawlerAPIKeyData `json:"data"`
+}
+
 // toApplication flattens a JSON:API resource into a simple Application.
 func (r *ApplicationResource) toApplication() Application {
 	return Application{

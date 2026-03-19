@@ -26,6 +26,8 @@ type IConfig interface {
 	ApplicationIDExists(appID string) (bool, string)
 	ApplicationIDForProfile(profileName string) (bool, string)
 
+	SetCrawlerAuth(profileName, crawlerUserID, crawlerAPIKey string) error
+
 	Profile() *Profile
 	Default() *Profile
 }
@@ -148,16 +150,12 @@ func (c *Config) RemoveProfile(name string) error {
 
 // SetDefaultProfile set the default profile
 func (c *Config) SetDefaultProfile(name string) error {
-	runtimeViper := viper.GetViper()
-
-	// Below is necessary if the config file was just created
-	runtimeViper.SetConfigType("toml")
-	err := runtimeViper.ReadInConfig()
+	configuration, err := c.read()
 	if err != nil {
 		return err
 	}
 
-	configs := runtimeViper.AllSettings()
+	configs := configuration.AllSettings()
 
 	found := false
 
@@ -175,7 +173,7 @@ func (c *Config) SetDefaultProfile(name string) error {
 		return fmt.Errorf("profile '%s' not found", name)
 	}
 
-	return c.write(runtimeViper)
+	return c.write(configuration)
 }
 
 // ApplicationIDExists check if an application ID exists in any profiles
@@ -198,6 +196,47 @@ func (c *Config) ApplicationIDForProfile(profileName string) (bool, string) {
 	}
 
 	return false, ""
+}
+
+// SetCrawlerAuth sets the config properties for crawler public api
+func (c *Config) SetCrawlerAuth(profile, crawlerUserID, crawlerAPIKey string) error {
+	configuration, err := c.read()
+	if err != nil {
+		return err
+	}
+
+	profiles := configuration.AllSettings()
+
+	found := false
+
+	for profileName := range profiles {
+		runtimeViper := viper.GetViper()
+
+		if profileName == profile {
+			found = true
+			runtimeViper.Set(profileName+".crawler_user_id", crawlerUserID)
+			runtimeViper.Set(profileName+".crawler_api_key", crawlerAPIKey)
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("profile '%s' not found", profile)
+	}
+
+	return c.write(configuration)
+}
+
+// read reads the configuration file and returns its runtime
+func (c *Config) read() (*viper.Viper, error) {
+	runtimeViper := viper.GetViper()
+
+	runtimeViper.SetConfigType("toml")
+	err := runtimeViper.ReadInConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return runtimeViper, nil
 }
 
 // write writes the configuration file
