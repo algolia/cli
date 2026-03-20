@@ -1,18 +1,14 @@
 package agent
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/chzyer/readline"
-	"github.com/creack/pty"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -59,21 +55,6 @@ type completionRequest struct {
 	Messages []message `json:"messages"`
 }
 
-// sseEvent represents a parsed SSE data payload.
-type sseEvent struct {
-	Type      string          `json:"type"`
-	ID        string          `json:"id,omitempty"`
-	MessageID string          `json:"messageId,omitempty"`
-	Delta     string          `json:"delta,omitempty"`
-	ToolName  string          `json:"toolName,omitempty"`
-	Input     json.RawMessage `json:"input,omitempty"`
-}
-
-// suggestCommandInput represents the input for the suggestCommand tool.
-type suggestCommandInput struct {
-	Command string `json:"command"`
-}
-
 func NewAgentCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &AgentOptions{
 		IO:      f.IOStreams,
@@ -85,7 +66,7 @@ func NewAgentCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agent",
 		Short: "Chat with an AI agent that suggests Algolia CLI commands",
-		Long:  "Interactive chat with an AI agent that advises CLI commands for your use case. The agent only prints suggestions — it does not execute commands.",
+		Long:  "Interactive chat with an AI agent that can suggest and execute Algolia CLI commands for your use case.",
 		Example: heredoc.Doc(`
 			$ algolia agent
 		`),
@@ -196,6 +177,12 @@ func runAgent(opts *AgentOptions) error {
 				break
 			}
 
+			if isBlockedCommand(result.Command) {
+				fmt.Fprintf(out, "%s %s\n", cs.Bold("Suggested command:"), cs.Cyan(result.Command))
+				fmt.Fprintln(out)
+				break
+			}
+
 			if isSafeCommand(result.Command) {
 				fmt.Fprintf(out, "%s\n", cs.Gray(fmt.Sprintf("\033[3mRunning %s\033[0m", result.Command)))
 			} else {
@@ -221,6 +208,8 @@ func runAgent(opts *AgentOptions) error {
 			fmt.Fprintln(out)
 			cmdOutput, cmdErr := executeCommand(result.Command)
 			msgCounter++
+			cmdOutput = compactJSON(cmdOutput)
+			cmdOutput = truncateOutput(cmdOutput, 10)
 			outputText := fmt.Sprintf("Command `%s` was executed.\nOutput:\n\n%s\n", result.Command, cmdOutput)
 			if cmdErr != nil {
 				outputText += fmt.Sprintf("\nError: %s", cmdErr)
@@ -273,7 +262,8 @@ func sendCompletion(opts *AgentOptions, conversationID string, messages []messag
 	req.Header.Set("x-algolia-application-id", opts.AppID)
 	req.Header.Set("X-Algolia-API-Key", opts.APIKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return completionResult{}, fmt.Errorf("request failed: %w", err)
 	}
@@ -286,199 +276,6 @@ func sendCompletion(opts *AgentOptions, conversationID string, messages []messag
 	return parseSSEStream(resp.Body)
 }
 
-// completionResult holds the parsed response from the SSE stream.
-type completionResult struct {
-	Text      string
-	MessageID string
-	Command   string // optional, from suggestCommand tool
-}
-
-// parseSSEStream reads an SSE stream and collects text deltas.
-func parseSSEStream(r io.Reader) (completionResult, error) {
-	var res completionResult
-	var textBuf strings.Builder
-	scanner := bufio.NewScanner(r)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-		data := strings.TrimPrefix(line, "data: ")
-		if data == "[DONE]" {
-			break
-		}
-
-		var event sseEvent
-		if err := json.Unmarshal([]byte(data), &event); err != nil {
-			continue
-		}
-		switch event.Type {
-		case "start":
-			res.MessageID = event.MessageID
-		case "text-delta":
-			textBuf.WriteString(event.Delta)
-		case "tool-input-available":
-			if event.ToolName == "suggestCommand" {
-				var input suggestCommandInput
-				if err := json.Unmarshal(event.Input, &input); err == nil {
-					res.Command = input.Command
-				}
-			}
-		}
-	}
-
-	res.Text = textBuf.String()
-	return res, nil
-}
-
-// validateCommand checks that a command string does not contain dangerous shell metacharacters.
-func validateCommand(command string) error {
-	for _, pattern := range []string{"&&", "||", ";", "$(", "`"} {
-		if strings.Contains(command, pattern) {
-			return fmt.Errorf("command contains disallowed shell operator: %s", pattern)
-		}
-	}
-	return nil
-}
-
-// safeCommands lists read-only command prefixes that can be auto-run without confirmation.
-var safeCommands = []string{
-	"profile list",
-	"application list",
-	"indices list",
-	"apikeys list",
-	"search ",
-	"objects browse",
-	"settings get",
-	"rules browse",
-	"synonyms browse",
-	"dictionary settings get",
-	"dictionary entries browse",
-	"describe",
-	"open",
-	"events tail",
-	"crawler list",
-	"crawler get",
-	"crawler stats",
-	"indices config export",
-	"indices analyze",
-}
-
-// isSafeCommand checks if a command is read-only and can be auto-run.
-func isSafeCommand(command string) bool {
-	// Strip the leading "algolia " to get the subcommand.
-	sub := strings.TrimPrefix(command, "algolia ")
-	if sub == command {
-		return false
-	}
-	for _, safe := range safeCommands {
-		if strings.HasPrefix(sub, safe) {
-			return true
-		}
-	}
-	return false
-}
-
-// executeCommand runs a command string inside a PTY so that the child process
-// sees a real terminal (IsTerminal returns true). Output is tee'd to the user's
-// terminal and captured for the agent context.
-func executeCommand(command string) (string, error) {
-	if command == "" {
-		return "", fmt.Errorf("empty command")
-	}
-	if err := validateCommand(command); err != nil {
-		return "", err
-	}
-	command = replaceAlgoliaBinary(command)
-	cmd := exec.Command("sh", "-c", command)
-	cmd.Env = append(os.Environ(), "PAGER=cat")
-
-	ptmx, err := pty.Start(cmd)
-	if err != nil {
-		return "", fmt.Errorf("failed to start command: %w", err)
-	}
-	defer ptmx.Close()
-
-	// Tee PTY output to both the real terminal and a buffer.
-	var buf bytes.Buffer
-	_, _ = io.Copy(io.MultiWriter(os.Stdout, &buf), ptmx)
-
-	_ = cmd.Wait()
-	return strings.TrimSpace(stripANSI(buf.String())), nil
-}
-
-// stripANSI removes ANSI escape sequences from a string and simulates
-// carriage return behavior (overwrites the current line).
-func stripANSI(s string) string {
-	var lines []string
-	var cur strings.Builder
-	i := 0
-	for i < len(s) {
-		if s[i] == '\033' {
-			// Skip CSI sequences: ESC [ ... final byte
-			if i+1 < len(s) && s[i+1] == '[' {
-				j := i + 2
-				for j < len(s) && s[j] >= 0x20 && s[j] <= 0x3F {
-					j++
-				}
-				if j < len(s) {
-					j++ // skip final byte
-				}
-				i = j
-				continue
-			}
-			// Skip other ESC sequences (ESC + one byte)
-			i += 2
-			continue
-		}
-		if s[i] == '\r' {
-			// \r\n is a normal newline, not a spinner overwrite.
-			if i+1 < len(s) && s[i+1] == '\n' {
-				lines = append(lines, cur.String())
-				cur.Reset()
-				i += 2
-				continue
-			}
-			// Standalone \r: discard current line content (spinner overwrite)
-			cur.Reset()
-			i++
-			continue
-		}
-		if s[i] == '\n' {
-			lines = append(lines, cur.String())
-			cur.Reset()
-			i++
-			continue
-		}
-		cur.WriteByte(s[i])
-		i++
-	}
-	if cur.Len() > 0 {
-		lines = append(lines, cur.String())
-	}
-	// Filter out empty lines from spinner artifacts.
-	var result []string
-	for _, l := range lines {
-		if strings.TrimSpace(l) != "" {
-			result = append(result, l)
-		}
-	}
-	return strings.Join(result, "\n")
-}
-
-// replaceAlgoliaBinary replaces "algolia" at command positions with the actual binary path
-// (e.g. "./algolia" in dev). Only replaces at the start and after pipes.
-func replaceAlgoliaBinary(command string) string {
-	bin := os.Args[0]
-	if bin == "algolia" {
-		return command
-	}
-	if strings.HasPrefix(command, "algolia ") {
-		command = bin + command[len("algolia"):]
-	}
-	command = strings.ReplaceAll(command, "| algolia ", "| "+bin+" ")
-	return command
-}
 
 func newConversationID() (string, error) {
 	id, err := uuid.NewRandom()
