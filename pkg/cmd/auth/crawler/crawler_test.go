@@ -31,6 +31,7 @@ func Test_runCrawlerCmd_UsesDefaultProfile(t *testing.T) {
 	err := runCrawlerCmd(&CrawlerOptions{
 		IO:                 io,
 		config:             cfg,
+		OAuthClientID:      func() string { return "test-client-id" },
 		NewDashboardClient: newDashboardTestClient(server),
 		GetValidToken: func(client *dashboard.Client) (string, error) {
 			return "token-1", nil
@@ -59,6 +60,7 @@ func Test_runCrawlerCmd_UsesExplicitProfile(t *testing.T) {
 	err := runCrawlerCmd(&CrawlerOptions{
 		IO:                 io,
 		config:             cfg,
+		OAuthClientID:      func() string { return "test-client-id" },
 		NewDashboardClient: newDashboardTestClient(server),
 		GetValidToken: func(client *dashboard.Client) (string, error) {
 			return "token-2", nil

@@ -15,14 +15,16 @@ import (
 type CrawlerOptions struct {
 	IO                 *iostreams.IOStreams
 	config             config.IConfig
+	OAuthClientID      func() string
 	NewDashboardClient func(clientID string) *dashboard.Client
 	GetValidToken      func(client *dashboard.Client) (string, error)
 }
 
 func NewCrawlerCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &CrawlerOptions{
-		IO:     f.IOStreams,
-		config: f.Config,
+		IO:            f.IOStreams,
+		config:        f.Config,
+		OAuthClientID: auth.OAuthClientID,
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
 		},
@@ -43,7 +45,7 @@ func NewCrawlerCmd(f *cmdutil.Factory) *cobra.Command {
 
 func runCrawlerCmd(opts *CrawlerOptions) error {
 	cs := opts.IO.ColorScheme()
-	dashboardClient := opts.NewDashboardClient(auth.OAuthClientID())
+	dashboardClient := opts.NewDashboardClient(opts.OAuthClientID())
 
 	accessToken, err := opts.GetValidToken(dashboardClient)
 	if err != nil {
