@@ -9,10 +9,11 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-const algoliaBlue = "3369e7"
+// algoliaBlue is the Algolia Blue brand color.
+const algoliaBlue = "3970ff"
 
 // renderMarkdown converts a markdown string into ANSI-styled terminal output.
-// It handles: headers, bold, inline code, fenced code blocks, and tables.
+// It handles: headers, bold, italic, inline code, fenced code blocks, and tables.
 func renderMarkdown(cs *iostreams.ColorScheme, text string) string {
 	lines := strings.Split(text, "\n")
 	var out []string
@@ -60,10 +61,13 @@ func renderMarkdown(cs *iostreams.ColorScheme, text string) string {
 // Bold regex: **text**
 var boldRe = regexp.MustCompile(`\*\*(.+?)\*\*`)
 
+// Italic regex: *text* (but not **text**)
+var italicRe = regexp.MustCompile(`(?:^|[^*])\*([^*]+?)\*(?:[^*]|$)`)
+
 // Inline code regex: `text`
 var codeRe = regexp.MustCompile("`([^`]+)`")
 
-// renderInline applies bold and inline code styling to a single line.
+// renderInline applies bold, italic, and inline code styling to a single line.
 func renderInline(cs *iostreams.ColorScheme, line string) string {
 	line = boldRe.ReplaceAllStringFunc(line, func(match string) string {
 		inner := boldRe.FindStringSubmatch(match)[1]
@@ -72,6 +76,18 @@ func renderInline(cs *iostreams.ColorScheme, line string) string {
 	line = codeRe.ReplaceAllStringFunc(line, func(match string) string {
 		inner := codeRe.FindStringSubmatch(match)[1]
 		return cs.HexToRGB(algoliaBlue, inner)
+	})
+	line = italicRe.ReplaceAllStringFunc(line, func(match string) string {
+		inner := italicRe.FindStringSubmatch(match)[1]
+		prefix := ""
+		suffix := ""
+		if len(match) > 0 && match[0] != '*' {
+			prefix = string(match[0])
+		}
+		if len(match) > 0 && match[len(match)-1] != '*' {
+			suffix = string(match[len(match)-1])
+		}
+		return prefix + cs.Gray(inner) + suffix
 	})
 	return line
 }
