@@ -409,7 +409,18 @@ func (c *Client) GetCrawlerUser(accessToken string) (*DashboardCrawlerUserData, 
 			return nil, fmt.Errorf("failed to parse crawler response: %w", err)
 		}
 
-		return nil, fmt.Errorf("failed to get crawler user data: %s", errResp.Message)
+		if len(errResp.Errors) == 0 {
+			return nil, fmt.Errorf("failed to get crawler user data: unknown crawler error")
+		}
+
+		crawlerError := errResp.Errors[0]
+
+		message := crawlerError.Title
+		if crawlerError.Detail != nil && *crawlerError.Detail != "" {
+			message = *crawlerError.Detail
+		}
+
+		return nil, fmt.Errorf("failed to get crawler user data: %s", message)
 	}
 
 	var userResp DashboardCrawlerUserResponse

@@ -88,7 +88,7 @@ func Test_runCrawlerCmd_ReturnsCrawlerAPIError(t *testing.T) {
 		require.Equal(t, "/1/crawler/user", r.URL.Path)
 
 		w.WriteHeader(http.StatusForbidden)
-		_, err := fmt.Fprint(w, `{"success":false,"code":403,"message":"crawler access denied"}`)
+		_, err := fmt.Fprint(w, `{"errors":[{"status":"Forbidden","title":"Forbidden","detail":"crawler access denied"}]}`)
 		require.NoError(t, err)
 	}))
 	t.Cleanup(server.Close)

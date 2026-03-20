@@ -125,9 +125,13 @@ type DashboardCrawlerUserResponse struct {
 }
 
 type DashboardCrawlerErrorResponse struct {
-	Success bool   `json:"success"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Errors []DashboardCrawlerError `json:"errors"`
+}
+
+type DashboardCrawlerError struct {
+	Status string  `json:"status"`
+	Title  string  `json:"title"`
+	Detail *string `json:"detail"`
 }
 
 // toApplication flattens a JSON:API resource into a simple Application.

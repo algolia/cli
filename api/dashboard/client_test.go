@@ -229,10 +229,13 @@ func TestGetCrawlerUser_HTTPError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/crawler/user", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
+		detail := "forbidden"
 		require.NoError(t, json.NewEncoder(w).Encode(DashboardCrawlerErrorResponse{
-			Success: false,
-			Code:    http.StatusForbidden,
-			Message: "forbidden",
+			Errors: []DashboardCrawlerError{{
+				Status: http.StatusText(http.StatusForbidden),
+				Title:  "Forbidden",
+				Detail: &detail,
+			}},
 		}))
 	})
 
@@ -242,6 +245,28 @@ func TestGetCrawlerUser_HTTPError(t *testing.T) {
 	_, err := client.GetCrawlerUser("test-token")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get crawler user data: forbidden")
+	assert.NotContains(t, err.Error(), "403")
+}
+
+func TestGetCrawlerUser_HTTPErrorWithoutDetail(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/crawler/user", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		require.NoError(t, json.NewEncoder(w).Encode(DashboardCrawlerErrorResponse{
+			Errors: []DashboardCrawlerError{{
+				Status: http.StatusText(http.StatusForbidden),
+				Title:  "Forbidden",
+				Detail: nil,
+			}},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.GetCrawlerUser("test-token")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get crawler user data: Forbidden")
 	assert.NotContains(t, err.Error(), "403")
 }
 
