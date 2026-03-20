@@ -1,12 +1,20 @@
 package test
 
 import (
+	"fmt"
+
 	"github.com/algolia/cli/pkg/config"
 )
+
+type CrawlerAuth struct {
+	UserID string
+	APIKey string
+}
 
 type ConfigStub struct {
 	CurrentProfile config.Profile
 	profiles       []*config.Profile
+	CrawlerAuth    map[string]CrawlerAuth
 }
 
 func (c *ConfigStub) InitConfig() {}
@@ -16,7 +24,13 @@ func (c *ConfigStub) Profile() *config.Profile {
 }
 
 func (c *ConfigStub) Default() *config.Profile {
-	return &c.CurrentProfile
+	for _, profile := range c.ConfiguredProfiles() {
+		if profile.Default {
+			return profile
+		}
+	}
+
+	return nil
 }
 
 func (c *ConfigStub) ConfiguredProfiles() []*config.Profile {
@@ -77,6 +91,25 @@ func (c *ConfigStub) SetDefaultProfile(name string) error {
 		}
 	}
 	return nil
+}
+
+func (c *ConfigStub) SetCrawlerAuth(name, crawlerUserID, crawlerAPIKey string) error {
+	for _, profile := range c.ConfiguredProfiles() {
+		if profile.Name == name {
+			if c.CrawlerAuth == nil {
+				c.CrawlerAuth = map[string]CrawlerAuth{}
+			}
+
+			c.CrawlerAuth[name] = CrawlerAuth{
+				UserID: crawlerUserID,
+				APIKey: crawlerAPIKey,
+			}
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("profile '%s' not found", name)
 }
 
 func NewConfigStubWithProfiles(p []*config.Profile) *ConfigStub {
