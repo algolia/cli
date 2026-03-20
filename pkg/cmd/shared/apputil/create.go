@@ -101,29 +101,44 @@ func PromptRegion(
 }
 
 // CreateAndFetchApplication creates an application (with region retry) and
-// fetches its full details including API keys.
+// generates an API key for it.
 func CreateAndFetchApplication(
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	accessToken, region, appName string,
 ) (*dashboard.Application, error) {
-	if appName == "" {
-		appName = "My First Application"
-	}
-
 	app, _, err := CreateApplicationWithRetry(io, client, accessToken, region, appName)
 	if err != nil {
 		return nil, err
 	}
 
-	io.StartProgressIndicatorWithLabel("Fetching API keys")
-	appDetails, err := client.GetApplication(accessToken, app.ID)
-	io.StopProgressIndicator()
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch application details: %w", err)
+	if err := EnsureAPIKey(io, client, accessToken, app); err != nil {
+		return nil, err
 	}
 
-	return appDetails, nil
+	return app, nil
+}
+
+// EnsureAPIKey generates a write API key for the application.
+// Callers should skip this if the local profile already has a key.
+func EnsureAPIKey(
+	io *iostreams.IOStreams,
+	client *dashboard.Client,
+	accessToken string,
+	app *dashboard.Application,
+) error {
+	cs := io.ColorScheme()
+	io.StartProgressIndicatorWithLabel("Generating API key")
+	apiKey, err := client.CreateAPIKey(accessToken, app.ID, dashboard.WriteACL, "Algolia CLI")
+	io.StopProgressIndicator()
+	if err != nil {
+		return fmt.Errorf("failed to generate API key: %w", err)
+	}
+
+	app.APIKey = apiKey
+	fmt.Fprintf(io.Out, "%s API key generated for application %s\n",
+		cs.SuccessIcon(), cs.Bold(app.ID))
+	return nil
 }
 
 // ConfigureProfile creates a CLI profile from application details and

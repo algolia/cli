@@ -79,15 +79,20 @@ func runListCmd(opts *ListOptions) error {
 			apiKey = profile.AdminAPIKey // Legacy
 		}
 
-		client, err := newSearchClient(profile, apiKey)
-		if err != nil {
-			table.AddField(err.Error(), nil, nil)
-		}
-		res, err := client.ListIndices(client.NewApiListIndicesRequest())
-		if err != nil {
-			table.AddField(err.Error(), nil, nil)
+		if apiKey == "" || profile.ApplicationID == "" {
+			table.AddField("N/A", nil, nil)
 		} else {
-			table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
+			client, err := newSearchClient(profile, apiKey)
+			if err != nil {
+				table.AddField(err.Error(), nil, nil)
+			} else {
+				res, err := client.ListIndices(client.NewApiListIndicesRequest())
+				if err != nil {
+					table.AddField(err.Error(), nil, nil)
+				} else {
+					table.AddField(fmt.Sprintf("%d", len(res.Items)), nil, nil)
+				}
+			}
 		}
 
 		if profile.Default {
