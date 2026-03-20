@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -121,7 +122,9 @@ func runAgent(opts *AgentOptions) error {
 		}
 		history = append(history, userMsg)
 
+		opts.IO.StartProgressIndicator()
 		assistantText, assistantID, err := sendCompletion(opts, history)
+		opts.IO.StopProgressIndicator()
 		if err != nil {
 			fmt.Fprintf(opts.IO.ErrOut, "Error: %s\n", err)
 			// Remove the failed user message from history.
@@ -179,10 +182,15 @@ func sendCompletion(opts *AgentOptions, messages []message) (string, string, err
 		return "", "", fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
-	// Parse SSE stream and collect text deltas.
+	return parseSSEStream(resp.Body)
+}
+
+// parseSSEStream reads an SSE stream and collects text deltas.
+// Returns the assembled text and the server-generated message ID.
+func parseSSEStream(r io.Reader) (string, string, error) {
 	var result strings.Builder
 	var messageID string
-	scanner := bufio.NewScanner(resp.Body)
+	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if !strings.HasPrefix(line, "data: ") {
