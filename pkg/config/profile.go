@@ -9,6 +9,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+// DefaultSearchHosts can be set at build time via ldflags, e.g.
+// -X github.com/algolia/cli/pkg/config.DefaultSearchHosts=host1,host2
+var DefaultSearchHosts string
+
 type Profile struct {
 	Name string
 
@@ -122,6 +126,10 @@ func (p *Profile) GetSearchHosts() []string {
 		if hosts != nil {
 			return hosts
 		}
+	}
+
+	if DefaultSearchHosts != "" {
+		return strings.Split(DefaultSearchHosts, ",")
 	}
 
 	return nil
