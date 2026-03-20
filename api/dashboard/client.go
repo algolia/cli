@@ -389,7 +389,7 @@ func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, descripti
 }
 
 // GetCrawlerUser gets the crawler API user data for the current authenticated user
-func (c *Client) GetCrawlerUser(accessToken string) (*CrawlerUserData, error) {
+func (c *Client) GetCrawlerUser(accessToken string) (*DashboardCrawlerUserData, error) {
 	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/crawler/user", nil)
 	if err != nil {
 		return nil, err
@@ -404,10 +404,15 @@ func (c *Client) GetCrawlerUser(accessToken string) (*CrawlerUserData, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("crawler user failed with status: %d", resp.StatusCode)
+		var errResp DashboardCrawlerErrorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			return nil, fmt.Errorf("failed to parse crawler response: %w", err)
+		}
+
+		return nil, fmt.Errorf("failed to get crawler user data: %s", errResp.Message)
 	}
 
-	var userResp CrawlerUserResponse
+	var userResp DashboardCrawlerUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&userResp); err != nil {
 		return nil, fmt.Errorf("failed to parse crawler response: %w", err)
 	}

@@ -74,6 +74,40 @@ func Test_runCrawlerCmd_UsesExplicitProfile(t *testing.T) {
 	assert.Contains(t, stdout.String(), "configured for profile: target")
 }
 
+func Test_runCrawlerCmd_ReturnsCrawlerAPIError(t *testing.T) {
+	io, _, stdout, _ := iostreams.Test()
+	io.SetStdoutTTY(true)
+
+	cfg := test.NewConfigStubWithProfiles([]*config.Profile{
+		{Name: "target"},
+	})
+	cfg.CurrentProfile.Name = "target"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "Bearer token-3", r.Header.Get("Authorization"))
+		require.Equal(t, "/1/crawler/user", r.URL.Path)
+
+		w.WriteHeader(http.StatusForbidden)
+		_, err := fmt.Fprint(w, `{"success":false,"code":403,"message":"crawler access denied"}`)
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	err := runCrawlerCmd(&CrawlerOptions{
+		IO:                 io,
+		config:             cfg,
+		OAuthClientID:      func() string { return "test-client-id" },
+		NewDashboardClient: newDashboardTestClient(server),
+		GetValidToken: func(client *dashboard.Client) (string, error) {
+			return "token-3", nil
+		},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get crawler user data: crawler access denied")
+	assert.Empty(t, cfg.CrawlerAuth)
+	assert.Empty(t, stdout.String())
+}
+
 func newCrawlerTestServer(t *testing.T, token, userID, apiKey string) *httptest.Server {
 	t.Helper()
 

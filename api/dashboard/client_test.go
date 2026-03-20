@@ -204,8 +204,8 @@ func TestGetCrawlerUser_Success(t *testing.T) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 
-		require.NoError(t, json.NewEncoder(w).Encode(CrawlerUserResponse{
-			Data: CrawlerUserData{
+		require.NoError(t, json.NewEncoder(w).Encode(DashboardCrawlerUserResponse{
+			Data: DashboardCrawlerUserData{
 				ID:     "crawler-user-id",
 				Email:  "crawler@example.com",
 				Name:   "Crawler User",
@@ -229,6 +229,11 @@ func TestGetCrawlerUser_HTTPError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/crawler/user", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
+		require.NoError(t, json.NewEncoder(w).Encode(DashboardCrawlerErrorResponse{
+			Success: false,
+			Code:    http.StatusForbidden,
+			Message: "forbidden",
+		}))
 	})
 
 	ts, client := newTestClient(mux)
@@ -236,13 +241,30 @@ func TestGetCrawlerUser_HTTPError(t *testing.T) {
 
 	_, err := client.GetCrawlerUser("test-token")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "crawler user failed with status: 403")
+	assert.Contains(t, err.Error(), "failed to get crawler user data: forbidden")
+	assert.NotContains(t, err.Error(), "403")
 }
 
 func TestGetCrawlerUser_InvalidJSON(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/crawler/user", func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte(`{"data":`))
+		require.NoError(t, err)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.GetCrawlerUser("test-token")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse crawler response")
+}
+
+func TestGetCrawlerUser_HTTPErrorInvalidJSON(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/crawler/user", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, err := w.Write([]byte(`{"message":`))
 		require.NoError(t, err)
 	})
 
