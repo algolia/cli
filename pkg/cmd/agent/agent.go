@@ -209,7 +209,6 @@ func runAgent(opts *AgentOptions) error {
 			cmdOutput, cmdErr := executeCommand(result.Command)
 			msgCounter++
 			cmdOutput = compactJSON(cmdOutput)
-			cmdOutput = truncateOutput(cmdOutput, 10)
 			outputText := fmt.Sprintf("Command `%s` was executed.\nOutput:\n\n%s\n", result.Command, cmdOutput)
 			if cmdErr != nil {
 				outputText += fmt.Sprintf("\nError: %s", cmdErr)
@@ -275,7 +274,6 @@ func sendCompletion(opts *AgentOptions, conversationID string, messages []messag
 
 	return parseSSEStream(resp.Body)
 }
-
 
 func newConversationID() (string, error) {
 	id, err := uuid.NewRandom()

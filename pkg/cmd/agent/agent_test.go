@@ -207,28 +207,6 @@ func TestReplaceAlgoliaBinary(t *testing.T) {
 	})
 }
 
-func TestTruncateOutput(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		maxLines int
-		want     string
-	}{
-		{name: "short output unchanged", input: "line1\nline2", maxLines: 10, want: "line1\nline2"},
-		{name: "truncates at limit", input: "1\n2\n3\n4\n5", maxLines: 3, want: "1\n2\n3\n[... 2 more lines truncated]"},
-		{name: "single line", input: "hello", maxLines: 10, want: "hello"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := truncateOutput(tt.input, tt.maxLines)
-			if got != tt.want {
-				t.Errorf("truncateOutput() = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestEnvOrDefault(t *testing.T) {
 	tests := []struct {
 		name       string

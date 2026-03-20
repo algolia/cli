@@ -41,6 +41,36 @@ var safeCommands = []string{
 	"indices analyze",
 }
 
+// jsonOutputCommands lists command prefixes that support the -o json flag.
+var jsonOutputCommands = []string{
+	"profile list",
+	"application list",
+	"indices list",
+	"apikeys list",
+	"settings get",
+	"crawler list",
+	"crawler get",
+	"crawler stats",
+	"indices analyze",
+}
+
+// forceJSONOutput appends -o json to the command if it supports it and doesn't already have it.
+func forceJSONOutput(command string) string {
+	if strings.Contains(command, " -o ") || strings.Contains(command, " --output ") {
+		return command
+	}
+	sub := strings.TrimPrefix(command, "algolia ")
+	if sub == command {
+		return command
+	}
+	for _, prefix := range jsonOutputCommands {
+		if strings.HasPrefix(sub, prefix) {
+			return command + " -o json"
+		}
+	}
+	return command
+}
+
 // isSafeCommand checks if a command is read-only and can be auto-run.
 func isSafeCommand(command string) bool {
 	// Strip the leading "algolia " to get the subcommand.
@@ -70,10 +100,38 @@ func isBlockedCommand(command string) bool {
 	return false
 }
 
+// requiredFlags maps command prefixes to flags that must be present when run from the agent.
+var requiredFlags = map[string][]string{
+	"auth login":         {"--no-browser", "--app-name"},
+	"auth signup":        {"--no-browser", "--app-name"},
+	"application create": {"--region"},
+}
+
+// validateRequiredFlags checks that commands include required flags when run from the agent.
+func validateRequiredFlags(command string) error {
+	sub := strings.TrimPrefix(command, "algolia ")
+	if sub == command {
+		return nil
+	}
+	for prefix, flags := range requiredFlags {
+		if strings.HasPrefix(sub, prefix) {
+			for _, flag := range flags {
+				if !strings.Contains(command, flag) {
+					return fmt.Errorf("%s requires %s when run from the agent", prefix, flag)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // validateCommand checks that a command string does not contain dangerous shell metacharacters.
 func validateCommand(command string) error {
 	if isBlockedCommand(command) {
 		return fmt.Errorf("command is not allowed from the agent")
+	}
+	if err := validateRequiredFlags(command); err != nil {
+		return err
 	}
 	for _, pattern := range []string{"&&", "||", ";", "$(", "`"} {
 		if strings.Contains(command, pattern) {
@@ -93,11 +151,12 @@ func executeCommand(command string) (string, error) {
 	if err := validateCommand(command); err != nil {
 		return "", err
 	}
+	command = forceJSONOutput(command)
 	command = replaceAlgoliaBinary(command)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
-	cmd.Env = append(os.Environ(), "PAGER=cat")
+	cmd.Env = append(os.Environ(), "PAGER=cat", "ALGOLIA_NO_PROMPT=1")
 
 	ptmx, err := pty.Start(cmd)
 	if err != nil {

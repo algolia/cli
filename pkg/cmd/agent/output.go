@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -106,15 +105,4 @@ func compactJSON(s string) string {
 	}
 
 	return strings.Join(result, "\n")
-}
-
-// truncateOutput limits the output to maxLines non-empty lines.
-// If truncated, appends a note indicating how many lines were omitted.
-func truncateOutput(s string, maxLines int) string {
-	lines := strings.Split(s, "\n")
-	if len(lines) <= maxLines {
-		return s
-	}
-	truncated := strings.Join(lines[:maxLines], "\n")
-	return truncated + fmt.Sprintf("\n[... %d more lines truncated]", len(lines)-maxLines)
 }
