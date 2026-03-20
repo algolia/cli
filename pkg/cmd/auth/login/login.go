@@ -122,10 +122,8 @@ func RunOAuthFlow(opts *LoginOptions, signup bool) error {
 			return err
 		}
 
-		opts.IO.StartProgressIndicatorWithLabel("Fetching application details")
-		appDetails, err = client.GetApplication(accessToken, app.ID)
-		opts.IO.StopProgressIndicator()
-		if err != nil {
+		appDetails = app
+		if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
 			return err
 		}
 	}
