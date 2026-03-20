@@ -337,6 +337,57 @@ func (c *Client) ListRegions(accessToken string) ([]Region, error) {
 	return regionsResp.RegionCodes, nil
 }
 
+// WriteACL is the set of permissions for API keys created by the CLI.
+var WriteACL = []string{
+	"search", "browse", "seeUnretrievableAttributes", "listIndexes",
+	"analytics", "logs", "addObject", "deleteObject", "deleteIndex",
+	"settings", "editSettings", "recommendation",
+}
+
+// CreateAPIKey creates a new API key with the given ACL for the specified application.
+func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, description string) (string, error) {
+	payload := CreateAPIKeyRequest{ACL: acl, Description: description}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	endpoint := fmt.Sprintf("%s/1/applications/%s/api-keys", c.APIURL, url.PathEscape(appID))
+	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	c.setAPIHeaders(req, accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("create API key request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read API key response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("create API key failed with status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var keyResp CreateAPIKeyResponse
+	if err := json.Unmarshal(respBody, &keyResp); err != nil {
+		return "", fmt.Errorf("failed to parse API key response: %w (body: %s)", err, string(respBody))
+	}
+
+	key := keyResp.Data.Attributes.Value
+	if key == "" {
+		return "", fmt.Errorf("API key creation succeeded but no key was returned in the response: %s", string(respBody))
+	}
+
+	return key, nil
+}
+
 func (c *Client) setAPIHeaders(req *http.Request, accessToken string) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.api+json")

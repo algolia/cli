@@ -88,6 +88,29 @@ type OAuthErrorResponse struct {
 	ErrorDescription string `json:"error_description"`
 }
 
+// CreateAPIKeyRequest is the payload for POST /1/applications/{application_id}/api-keys.
+type CreateAPIKeyRequest struct {
+	ACL         []string `json:"acl"`
+	Description string   `json:"description"`
+}
+
+// APIKeyResource is a JSON:API resource wrapper for an API key.
+type APIKeyResource struct {
+	ID         string           `json:"id"`
+	Type       string           `json:"type"`
+	Attributes APIKeyAttributes `json:"attributes"`
+}
+
+// APIKeyAttributes contains the actual API key fields.
+type APIKeyAttributes struct {
+	Value string `json:"value"`
+}
+
+// CreateAPIKeyResponse is the JSON:API response from POST /1/applications/{application_id}/api-keys.
+type CreateAPIKeyResponse struct {
+	Data APIKeyResource `json:"data"`
+}
+
 // toApplication flattens a JSON:API resource into a simple Application.
 func (r *ApplicationResource) toApplication() Application {
 	return Application{
