@@ -207,21 +207,12 @@ func (c *Config) SetCrawlerAuth(profile, crawlerUserID, crawlerAPIKey string) er
 
 	profiles := configuration.AllSettings()
 
-	found := false
-
-	for profileName := range profiles {
-		runtimeViper := viper.GetViper()
-
-		if profileName == profile {
-			found = true
-			runtimeViper.Set(profileName+".crawler_user_id", crawlerUserID)
-			runtimeViper.Set(profileName+".crawler_api_key", crawlerAPIKey)
-		}
-	}
-
-	if !found {
+	if _, exists := profiles[profile]; !exists {
 		return fmt.Errorf("profile '%s' not found", profile)
 	}
+
+	configuration.Set(profile+".crawler_user_id", crawlerUserID)
+	configuration.Set(profile+".crawler_api_key", crawlerAPIKey)
 
 	return c.write(configuration)
 }
