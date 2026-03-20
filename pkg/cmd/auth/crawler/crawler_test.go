@@ -81,11 +81,8 @@ func newCrawlerTestServer(t *testing.T, token, userID, apiKey string) *httptest.
 		require.Equal(t, "Bearer "+token, r.Header.Get("Authorization"))
 
 		switch r.URL.Path {
-		case "/1/crawler/me":
-			_, err := fmt.Fprintf(w, `{"success":true,"data":{"id":%q}}`, userID)
-			require.NoError(t, err)
-		case "/1/crawler/api_key":
-			_, err := fmt.Fprintf(w, `{"success":true,"data":{"apiKey":%q}}`, apiKey)
+		case "/1/crawler/user":
+			_, err := fmt.Fprintf(w, `{"data":{"id":%q,"email":"crawler@example.com","name":"Crawler User","apiKey":%q}}`, userID, apiKey)
 			require.NoError(t, err)
 		default:
 			t.Fatalf("unexpected path: %s", r.URL.Path)

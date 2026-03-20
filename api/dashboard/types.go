@@ -111,22 +111,17 @@ type CreateAPIKeyResponse struct {
 	Data APIKeyResource `json:"data"`
 }
 
+// CrawlerUserData contains the user information from the crawler API
 type CrawlerUserData struct {
-	ID string `json:"id"`
-}
-
-type CrawlerMeResponse struct {
-	Success bool            `json:"success"`
-	Data    CrawlerUserData `json:"data"`
-}
-
-type CrawlerAPIKeyData struct {
+	ID     string `json:"id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
 	APIKey string `json:"apiKey"`
 }
 
-type CrawlerAPIKeyResponse struct {
-	Success bool              `json:"success"`
-	Data    CrawlerAPIKeyData `json:"data"`
+// CrawlerUserResponse is the JSON:API response from GET /1/crawler/user
+type CrawlerUserResponse struct {
+	Data CrawlerUserData `json:"data"`
 }
 
 // toApplication flattens a JSON:API resource into a simple Application.

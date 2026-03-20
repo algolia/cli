@@ -53,13 +53,7 @@ func runCrawlerCmd(opts *CrawlerOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching crawler information")
-	crawlerUserData, err := dashboardClient.GetCrawlerMe(accessToken)
-	if err != nil {
-		opts.IO.StopProgressIndicator()
-		return err
-	}
-
-	crawlerAPIKey, err := dashboardClient.GetCrawlerAPIKey(accessToken)
+	crawlerUserData, err := dashboardClient.GetCrawlerUser(accessToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -77,7 +71,7 @@ func runCrawlerCmd(opts *CrawlerOptions) error {
 		return fmt.Errorf("no profile selected and no default profile configured")
 	}
 
-	if err = opts.config.SetCrawlerAuth(currentProfileName, crawlerUserData.ID, crawlerAPIKey); err != nil {
+	if err = opts.config.SetCrawlerAuth(currentProfileName, crawlerUserData.ID, crawlerUserData.APIKey); err != nil {
 		return err
 	}
 
