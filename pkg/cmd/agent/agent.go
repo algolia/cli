@@ -53,10 +53,17 @@ type completionRequest struct {
 
 // sseEvent represents a parsed SSE data payload.
 type sseEvent struct {
-	Type      string `json:"type"`
-	ID        string `json:"id,omitempty"`
-	MessageID string `json:"messageId,omitempty"`
-	Delta     string `json:"delta,omitempty"`
+	Type      string          `json:"type"`
+	ID        string          `json:"id,omitempty"`
+	MessageID string          `json:"messageId,omitempty"`
+	Delta     string          `json:"delta,omitempty"`
+	ToolName  string          `json:"toolName,omitempty"`
+	Input     json.RawMessage `json:"input,omitempty"`
+}
+
+// suggestCommandInput represents the input for the suggestCommand tool.
+type suggestCommandInput struct {
+	Command string `json:"command"`
 }
 
 func NewAgentCmd(f *cmdutil.Factory) *cobra.Command {
@@ -126,7 +133,7 @@ func runAgent(opts *AgentOptions) error {
 		history = append(history, userMsg)
 
 		opts.IO.StartProgressIndicator()
-		assistantText, assistantID, err := sendCompletion(opts, history)
+		result, err := sendCompletion(opts, history)
 		opts.IO.StopProgressIndicator()
 		if err != nil {
 			fmt.Fprintf(opts.IO.ErrOut, "Error: %s\n", err)
@@ -137,15 +144,21 @@ func runAgent(opts *AgentOptions) error {
 
 		fmt.Fprintln(out, separator)
 		fmt.Fprintln(out)
-		fmt.Fprintln(out, renderMarkdown(opts.IO.ColorScheme(), assistantText))
-		fmt.Fprintln(out)
+		if result.Text != "" {
+			fmt.Fprintln(out, renderMarkdown(opts.IO.ColorScheme(), result.Text))
+			fmt.Fprintln(out)
+		}
+		if result.Command != "" {
+			fmt.Fprintf(out, "%s %s\n", cs.Bold("Suggested command:"), cs.Cyan(result.Command))
+			fmt.Fprintln(out)
+		}
 		fmt.Fprintln(out, separator)
 
 		history = append(history, message{
-			ID:   assistantID,
+			ID:   result.MessageID,
 			Role: "assistant",
 			Parts: []part{
-				{Type: "text", Text: assistantText},
+				{Type: "text", Text: result.Text},
 			},
 		})
 	}
@@ -154,8 +167,7 @@ func runAgent(opts *AgentOptions) error {
 }
 
 // sendCompletion sends the conversation to Agent Studio and streams the response.
-// Returns the assistant text and the server-generated message ID.
-func sendCompletion(opts *AgentOptions, messages []message) (string, string, error) {
+func sendCompletion(opts *AgentOptions, messages []message) (completionResult, error) {
 	url := fmt.Sprintf(
 		"https://%s.algolia.net/agent-studio/1/agents/%s/completions?stream=true&compatibilityMode=ai-sdk-5",
 		opts.AppID, opts.AgentID,
@@ -166,12 +178,12 @@ func sendCompletion(opts *AgentOptions, messages []message) (string, string, err
 	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to marshal request: %w", err)
+		return completionResult{}, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", url, strings.NewReader(string(body)))
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create request: %w", err)
+		return completionResult{}, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-algolia-application-id", opts.AppID)
@@ -179,22 +191,28 @@ func sendCompletion(opts *AgentOptions, messages []message) (string, string, err
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("request failed: %w", err)
+		return completionResult{}, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("unexpected status: %s", resp.Status)
+		return completionResult{}, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
 	return parseSSEStream(resp.Body)
 }
 
+// completionResult holds the parsed response from the SSE stream.
+type completionResult struct {
+	Text      string
+	MessageID string
+	Command   string // optional, from suggestCommand tool
+}
+
 // parseSSEStream reads an SSE stream and collects text deltas.
-// Returns the assembled text and the server-generated message ID.
-func parseSSEStream(r io.Reader) (string, string, error) {
-	var result strings.Builder
-	var messageID string
+func parseSSEStream(r io.Reader) (completionResult, error) {
+	var res completionResult
+	var textBuf strings.Builder
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -212,13 +230,21 @@ func parseSSEStream(r io.Reader) (string, string, error) {
 		}
 		switch event.Type {
 		case "start":
-			messageID = event.MessageID
+			res.MessageID = event.MessageID
 		case "text-delta":
-			result.WriteString(event.Delta)
+			textBuf.WriteString(event.Delta)
+		case "tool-input-available":
+			if event.ToolName == "suggestCommand" {
+				var input suggestCommandInput
+				if err := json.Unmarshal(event.Input, &input); err == nil {
+					res.Command = input.Command
+				}
+			}
 		}
 	}
 
-	return result.String(), messageID, nil
+	res.Text = textBuf.String()
+	return res, nil
 }
 
 func envOrDefault(key, defaultVal string) string {

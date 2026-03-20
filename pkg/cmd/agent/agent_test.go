@@ -8,10 +8,11 @@ import (
 
 func TestParseSSEStream(t *testing.T) {
 	tests := []struct {
-		name      string
-		input     string
-		wantText  string
-		wantMsgID string
+		name        string
+		input       string
+		wantText    string
+		wantMsgID   string
+		wantCommand string
 	}{
 		{
 			name: "parses a complete stream with start and text-delta events",
@@ -53,20 +54,33 @@ func TestParseSSEStream(t *testing.T) {
 			wantText:  "before",
 			wantMsgID: "",
 		},
+		{
+			name: "parses suggestCommand tool call",
+			input: "data: {\"type\":\"start\",\"messageId\":\"msg_456\"}\n" +
+				"data: {\"type\":\"text-delta\",\"delta\":\"Try this:\"}\n" +
+				"data: {\"type\":\"tool-input-available\",\"toolName\":\"suggestCommand\",\"input\":{\"command\":\"algolia search MOVIES\"}}\n" +
+				"data: [DONE]\n",
+			wantText:    "Try this:",
+			wantMsgID:   "msg_456",
+			wantCommand: "algolia search MOVIES",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := strings.NewReader(tt.input)
-			gotText, gotMsgID, err := parseSSEStream(r)
+			result, err := parseSSEStream(r)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if gotText != tt.wantText {
-				t.Errorf("text = %q, want %q", gotText, tt.wantText)
+			if result.Text != tt.wantText {
+				t.Errorf("text = %q, want %q", result.Text, tt.wantText)
 			}
-			if gotMsgID != tt.wantMsgID {
-				t.Errorf("messageID = %q, want %q", gotMsgID, tt.wantMsgID)
+			if result.MessageID != tt.wantMsgID {
+				t.Errorf("messageID = %q, want %q", result.MessageID, tt.wantMsgID)
+			}
+			if result.Command != tt.wantCommand {
+				t.Errorf("command = %q, want %q", result.Command, tt.wantCommand)
 			}
 		})
 	}
