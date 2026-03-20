@@ -63,11 +63,14 @@ build:
 	go generate ./...
 	go build -ldflags "\
 		-s -w \
-		-X=github.com/algolia/cli/pkg/version.Version=$(VERSION) \
-		-X=github.com/algolia/cli/api/dashboard.DefaultDashboardURL=$(ALGOLIA_DASHBOARD_URL) \
-		-X=github.com/algolia/cli/api/dashboard.DefaultAPIURL=$(ALGOLIA_API_URL) \
-		-X=github.com/algolia/cli/pkg/auth.DefaultOAuthClientID=$(ALGOLIA_OAUTH_CLIENT_ID) \
-		-X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$(ALGOLIA_OAUTH_SCOPE)'" \
+		-X github.com/algolia/cli/pkg/version.Version=$(VERSION) \
+		-X github.com/algolia/cli/api/dashboard.DefaultDashboardURL=$(ALGOLIA_DASHBOARD_URL) \
+		-X github.com/algolia/cli/api/dashboard.DefaultAPIURL=$(ALGOLIA_API_URL) \
+		-X github.com/algolia/cli/pkg/auth.DefaultOAuthClientID=$(ALGOLIA_OAUTH_CLIENT_ID) \
+		-X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$(ALGOLIA_OAUTH_SCOPE)' \
+		-X github.com/algolia/cli/pkg/cmd/agent.DefaultAgentID=$(ALGOLIA_AGENT_ID) \
+		-X github.com/algolia/cli/pkg/cmd/agent.DefaultAgentAppID=$(ALGOLIA_AGENT_APP_ID) \
+		-X 'github.com/algolia/cli/pkg/cmd/agent.DefaultAgentAPIKey=$(ALGOLIA_AGENT_API_KEY)'" \
 		-o algolia cmd/algolia/main.go
 .PHONY: build
 

@@ -42,6 +42,9 @@ jobs:
           ALGOLIA_API_URL: ${{ secrets.ALGOLIA_API_URL }}
           ALGOLIA_OAUTH_CLIENT_ID: ${{ secrets.ALGOLIA_OAUTH_CLIENT_ID }}
           ALGOLIA_OAUTH_SCOPE: ${{ secrets.ALGOLIA_OAUTH_SCOPE }}
+          ALGOLIA_AGENT_ID: ${{ secrets.ALGOLIA_AGENT_ID }}
+          ALGOLIA_AGENT_APP_ID: ${{ secrets.ALGOLIA_AGENT_APP_ID }}
+          ALGOLIA_AGENT_API_KEY: ${{ secrets.ALGOLIA_AGENT_API_KEY }}
       - name: Docs checkout
         uses: actions/checkout@v4
         with:
