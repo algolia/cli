@@ -4,7 +4,6 @@ package root
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +13,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/MakeNowJust/heredoc"
@@ -121,56 +119,6 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-// runSummary is the JSON object written to stderr when observability env vars are set.
-type runSummary struct {
-	Event        string `json:"event"`
-	InvocationID string `json:"invocation_id"`
-	Command      string `json:"command"`
-	Status       string `json:"status"`
-	DurationMs   int64  `json:"duration_ms"`
-	Error        string `json:"error,omitempty"`
-}
-
-func shouldEmitRunSummary() bool {
-	return os.Getenv("ALGOLIA_CLI_NON_INTERACTIVE") == "1" ||
-		os.Getenv("ALGOLIA_CLI_OBSERVABILITY") == "1"
-}
-
-func emitRunSummary(stderr io.Writer, ctx context.Context, cmd *cobra.Command, runErr error, duration time.Duration) {
-	meta := telemetry.GetEventMetadata(ctx)
-	invocationID := ""
-	if meta != nil {
-		invocationID = meta.InvocationID
-	}
-	commandPath := ""
-	if meta != nil && meta.CommandPath != "" {
-		commandPath = meta.CommandPath
-	}
-	if commandPath == "" && cmd != nil {
-		commandPath = cmd.CommandPath()
-	}
-	status := "ok"
-	errMsg := ""
-	if runErr != nil {
-		status = "error"
-		errMsg = runErr.Error()
-		if len(errMsg) > 500 {
-			errMsg = errMsg[:497] + "..."
-		}
-	}
-	s := runSummary{
-		Event:        "cli_run",
-		InvocationID: invocationID,
-		Command:      commandPath,
-		Status:       status,
-		DurationMs:   duration.Milliseconds(),
-		Error:        errMsg,
-	}
-	enc := json.NewEncoder(stderr)
-	enc.SetEscapeHTML(false)
-	_ = enc.Encode(s)
-}
-
 func Execute() exitCode {
 	hasDebug := os.Getenv("DEBUG") != ""
 	hasTelemetry := os.Getenv("ALGOLIA_CLI_TELEMETRY") != "0"
@@ -256,14 +204,7 @@ func Execute() exitCode {
 	}
 
 	// Run the command.
-	start := time.Now()
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-	duration := time.Since(start)
-
-	if shouldEmitRunSummary() {
-		emitRunSummary(stderr, ctx, cmd, err, duration)
-	}
-
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
