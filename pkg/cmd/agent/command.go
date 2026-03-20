@@ -43,11 +43,9 @@ var safeCommands = []string{
 
 // jsonOutputCommands lists command prefixes that support the -o json flag.
 var jsonOutputCommands = []string{
-	"profile list",
 	"application list",
 	"indices list",
 	"apikeys list",
-	"settings get",
 	"crawler list",
 	"crawler get",
 	"crawler stats",
