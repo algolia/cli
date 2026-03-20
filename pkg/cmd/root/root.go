@@ -21,9 +21,9 @@ import (
 
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/agent"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	authcmd "github.com/algolia/cli/pkg/cmd/auth"
-	"github.com/algolia/cli/pkg/cmd/agent"
 	"github.com/algolia/cli/pkg/cmd/crawler"
 	"github.com/algolia/cli/pkg/cmd/describe"
 	"github.com/algolia/cli/pkg/cmd/dictionary"

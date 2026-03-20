@@ -92,8 +92,11 @@ func runAgent(opts *AgentOptions) error {
 	out := opts.IO.Out
 	scanner := bufio.NewScanner(os.Stdin)
 
+	cs := opts.IO.ColorScheme()
+	separator := cs.Gray(strings.Repeat("─", opts.IO.TerminalWidth()))
+
 	fmt.Fprintln(out, "Algolia CLI Agent (type \"exit\" to quit)")
-	fmt.Fprintln(out)
+	fmt.Fprintln(out, separator)
 
 	var history []message
 	msgCounter := 0
@@ -132,9 +135,11 @@ func runAgent(opts *AgentOptions) error {
 			continue
 		}
 
+		fmt.Fprintln(out, separator)
 		fmt.Fprintln(out)
 		fmt.Fprintln(out, renderMarkdown(opts.IO.ColorScheme(), assistantText))
 		fmt.Fprintln(out)
+		fmt.Fprintln(out, separator)
 
 		history = append(history, message{
 			ID:   assistantID,
