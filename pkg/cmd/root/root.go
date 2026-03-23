@@ -21,6 +21,7 @@ import (
 
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/agent"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/application"
 	authcmd "github.com/algolia/cli/pkg/cmd/auth"
@@ -102,6 +103,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	// Convenience commands
 	cmd.AddCommand(open.NewOpenCmd(f))
+	cmd.AddCommand(agent.NewAgentCmd(f))
 
 	// API related commands
 	cmd.AddCommand(application.NewApplicationCmd(f))

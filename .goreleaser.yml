@@ -22,6 +22,9 @@ builds:
           -X github.com/algolia/cli/api/dashboard.DefaultAPIURL={{ .Env.ALGOLIA_API_URL }}
           -X github.com/algolia/cli/pkg/auth.DefaultOAuthClientID={{ .Env.ALGOLIA_OAUTH_CLIENT_ID }}
           -X github.com/algolia/cli/api/dashboard.DefaultOAuthScope={{ .Env.ALGOLIA_OAUTH_SCOPE }}
+          -X github.com/algolia/cli/pkg/cmd/agent.DefaultAgentID={{ .Env.ALGOLIA_AGENT_ID }}
+          -X github.com/algolia/cli/pkg/cmd/agent.DefaultAgentAppID={{ .Env.ALGOLIA_AGENT_APP_ID }}
+          -X github.com/algolia/cli/pkg/cmd/agent.DefaultAgentAPIKey={{ .Env.ALGOLIA_AGENT_API_KEY }}
     id: macos
     goos: [darwin]
     goarch: [amd64, arm64]

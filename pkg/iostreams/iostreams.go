@@ -397,6 +397,7 @@ func System() *IOStreams {
 		is256enabled: assumeTrueColor || Is256ColorSupported(),
 		hasTrueColor: assumeTrueColor || IsTrueColorSupported(),
 		pagerCommand: os.Getenv("PAGER"),
+		neverPrompt:  os.Getenv("ALGOLIA_NO_PROMPT") == "1",
 		ttySize:      ttySize,
 	}
 
