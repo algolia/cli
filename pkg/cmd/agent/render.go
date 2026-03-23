@@ -14,14 +14,6 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-// algoliaBlue is the Algolia Blue brand color.
-const algoliaBlue = "3970ff"
-
-// algoliaLightBlue is a lighter blue for placeholders.
-const algoliaLightBlue = "00aeff"
-
-// algoliaTeal is the Java teal for flags.
-const algoliaTeal = "1cc7d0"
 
 // renderMarkdown converts a markdown string into ANSI-styled terminal output
 // by parsing it with goldmark and walking the AST.
@@ -98,10 +90,10 @@ func renderNode(out *strings.Builder, cs *iostreams.ColorScheme, n ast.Node, sou
 			if idx := strings.Index(line, "#"); idx >= 0 {
 				cmd := line[:idx]
 				comment := line[idx:]
-				out.WriteString(cs.HexToRGB(algoliaBlue, cmd))
+				out.WriteString(cs.Blue(cmd))
 				out.WriteString(cs.Green(comment))
 			} else {
-				out.WriteString(cs.HexToRGB(algoliaBlue, line))
+				out.WriteString(cs.Blue(line))
 			}
 			out.WriteString("\n")
 		}
@@ -158,18 +150,14 @@ func colorCodeSpan(cs *iostreams.ColorScheme, code string) string {
 	last := 0
 	for _, match := range codeTokenRe.FindAllStringIndex(code, -1) {
 		if match[0] > last {
-			out.WriteString(cs.HexToRGB(algoliaBlue, code[last:match[0]]))
+			out.WriteString(cs.Blue(code[last:match[0]]))
 		}
 		token := code[match[0]:match[1]]
-		if strings.HasPrefix(token, "<") || strings.HasPrefix(token, "[") {
-			out.WriteString(cs.HexToRGB(algoliaLightBlue, token))
-		} else {
-			out.WriteString(cs.HexToRGB(algoliaTeal, token))
-		}
+		out.WriteString(cs.Cyan(token))
 		last = match[1]
 	}
 	if last < len(code) {
-		out.WriteString(cs.HexToRGB(algoliaBlue, code[last:]))
+		out.WriteString(cs.Blue(code[last:]))
 	}
 	return out.String()
 }
