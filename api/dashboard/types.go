@@ -42,9 +42,27 @@ type Application struct {
 	APIKey string `json:"api_key,omitempty"`
 }
 
+// PaginationMeta contains page-based pagination metadata.
+type PaginationMeta struct {
+	TotalCount  int `json:"total_count"`
+	PerPage     int `json:"per_page"`
+	CurrentPage int `json:"current_page"`
+	TotalPages  int `json:"total_pages"`
+}
+
+// PaginationLinks contains pagination URLs.
+type PaginationLinks struct {
+	First string `json:"first"`
+	Last  string `json:"last"`
+	Prev  string `json:"prev"`
+	Next  string `json:"next"`
+}
+
 // ApplicationsResponse is the JSON:API response from GET /1/applications.
 type ApplicationsResponse struct {
-	Data []ApplicationResource `json:"data"`
+	Data  []ApplicationResource `json:"data"`
+	Meta  PaginationMeta        `json:"meta"`
+	Links PaginationLinks       `json:"links"`
 }
 
 // SingleApplicationResponse is the JSON:API response from GET /1/application/:id.

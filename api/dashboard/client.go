@@ -204,39 +204,50 @@ func (c *Client) RevokeToken(token string) error {
 	return nil
 }
 
-// ListApplications returns all applications for the authenticated user.
+// ListApplications returns all applications for the authenticated user,
+// following pagination to fetch every page.
 func (c *Client) ListApplications(accessToken string) ([]Application, error) {
-	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/applications", nil)
-	if err != nil {
-		return nil, err
-	}
-	c.setAPIHeaders(req, accessToken)
+	var allApps []Application
+	page := 1
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("list applications request failed: %w", err)
-	}
-	defer resp.Body.Close()
+	for {
+		endpoint := fmt.Sprintf("%s/1/applications?page=%d", c.APIURL, page)
+		req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+		c.setAPIHeaders(req, accessToken)
 
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, ErrSessionExpired
+		resp, err := c.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("list applications request failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, ErrSessionExpired
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("list applications failed with status: %d", resp.StatusCode)
+		}
+
+		var appsResp ApplicationsResponse
+		if err := json.NewDecoder(resp.Body).Decode(&appsResp); err != nil {
+			return nil, fmt.Errorf("failed to parse applications response: %w", err)
+		}
+
+		for i := range appsResp.Data {
+			allApps = append(allApps, appsResp.Data[i].toApplication())
+		}
+
+		if appsResp.Meta.CurrentPage >= appsResp.Meta.TotalPages {
+			break
+		}
+		page++
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("list applications failed with status: %d", resp.StatusCode)
-	}
-
-	var appsResp ApplicationsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&appsResp); err != nil {
-		return nil, fmt.Errorf("failed to parse applications response: %w", err)
-	}
-
-	apps := make([]Application, len(appsResp.Data))
-	for i := range appsResp.Data {
-		apps[i] = appsResp.Data[i].toApplication()
-	}
-
-	return apps, nil
+	return allApps, nil
 }
 
 // GetApplication returns a single application by its ID.

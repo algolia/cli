@@ -123,8 +123,10 @@ func RunOAuthFlow(opts *LoginOptions, signup bool) error {
 		}
 
 		appDetails = app
-		if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
-			return err
+		if !reuseExistingAPIKey(opts.Config, appDetails) {
+			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -134,6 +136,18 @@ func RunOAuthFlow(opts *LoginOptions, signup bool) error {
 	}
 
 	return apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default)
+}
+
+// reuseExistingAPIKey checks if a local profile already has an API key for
+// the given application. If so, it sets app.APIKey and returns true.
+func reuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
+	for _, p := range cfg.ConfiguredProfiles() {
+		if p.ApplicationID == app.ID && p.APIKey != "" {
+			app.APIKey = p.APIKey
+			return true
+		}
+	}
+	return false
 }
 
 func selectApplication(opts *LoginOptions, apps []dashboard.Application, interactive bool) (*dashboard.Application, error) {
