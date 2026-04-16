@@ -152,8 +152,6 @@ func runTailCmd(opts *TailOptions) error {
 		windowStart = windowEnd.Add(-Interval)
 		<-ticker.C
 	}
-
-	return nil
 }
 
 func unseenEvents(events []insights.EventWrapper, seenRequestIDs map[string]time.Time) []insights.EventWrapper {
