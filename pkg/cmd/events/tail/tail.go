@@ -113,10 +113,15 @@ func runTailCmd(opts *TailOptions) error {
 		fmt.Fprint(opts.IO.Out, "\nWaiting for events... Press Ctrl+C to stop.\n")
 	}
 
-	c := time.Tick(Interval)
-	for t := range c {
-		utc := t.UTC()
-		events, err := client.GetEvents(utc.Add(-1*time.Second), utc, 1000)
+	ticker := time.NewTicker(Interval)
+	defer ticker.Stop()
+
+	windowStart := time.Now().UTC().Add(-Interval)
+	seenRequestIDs := map[string]time.Time{}
+
+	for {
+		windowEnd := time.Now().UTC()
+		events, err := client.GetEvents(windowStart, windowEnd, 1000)
 		if err != nil {
 			if strings.Contains(err.Error(), "The log processing region does not match") {
 				cs := opts.IO.ColorScheme()
@@ -127,9 +132,12 @@ func runTailCmd(opts *TailOptions) error {
 				`, cs.FailureIcon(), opts.Region)
 				return errors.New(errDetails)
 			}
+
+			return err
 		}
 
-		for _, event := range events.Events {
+		pruneSeenRequestIDs(seenRequestIDs, windowStart.Add(-Interval))
+		for _, event := range unseenEvents(events.Events, seenRequestIDs) {
 			if p != nil {
 				if err := p.Print(opts.IO, event); err != nil {
 					return err
@@ -140,9 +148,37 @@ func runTailCmd(opts *TailOptions) error {
 				}
 			}
 		}
+
+		windowStart = windowEnd.Add(-Interval)
+		<-ticker.C
 	}
 
 	return nil
+}
+
+func unseenEvents(events []insights.EventWrapper, seenRequestIDs map[string]time.Time) []insights.EventWrapper {
+	freshEvents := make([]insights.EventWrapper, 0, len(events))
+	for _, event := range events {
+		requestID := event.RequestID
+		if requestID != "" {
+			if _, ok := seenRequestIDs[requestID]; ok {
+				continue
+			}
+			seenRequestIDs[requestID] = event.Event.Timestamp.Time
+		}
+
+		freshEvents = append(freshEvents, event)
+	}
+
+	return freshEvents
+}
+
+func pruneSeenRequestIDs(seenRequestIDs map[string]time.Time, cutoff time.Time) {
+	for requestID, timestamp := range seenRequestIDs {
+		if timestamp.Before(cutoff) {
+			delete(seenRequestIDs, requestID)
+		}
+	}
 }
 
 func printEvent(io *iostreams.IOStreams, event insights.EventWrapper) error {
