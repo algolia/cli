@@ -29,7 +29,7 @@ func OAuthClientID() string {
 
 // RunOAuth runs the OAuth PKCE flow with a local callback server and returns
 // a valid access token. A local HTTP server is started on a random port to
-// receive the authorization code via redirect — no copy-paste required.
+// receive the authorization code via redirect - no copy-paste required.
 //
 // When openBrowser is true the authorize URL is opened automatically;
 // otherwise only the URL is printed (useful when the browser can't be

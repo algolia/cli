@@ -129,6 +129,29 @@ type CreateAPIKeyResponse struct {
 	Data APIKeyResource `json:"data"`
 }
 
+// DashboardCrawlerUserData contains the user information from the crawler API
+type DashboardCrawlerUserData struct {
+	ID     string `json:"id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
+	APIKey string `json:"apiKey"`
+}
+
+// DashboardCrawlerUserResponse is the JSON:API response from GET /1/crawler/user
+type DashboardCrawlerUserResponse struct {
+	Data DashboardCrawlerUserData `json:"data"`
+}
+
+type DashboardCrawlerErrorResponse struct {
+	Errors []DashboardCrawlerError `json:"errors"`
+}
+
+type DashboardCrawlerError struct {
+	Status string  `json:"status"`
+	Title  string  `json:"title"`
+	Detail *string `json:"detail"`
+}
+
 // toApplication flattens a JSON:API resource into a simple Application.
 func (r *ApplicationResource) toApplication() Application {
 	return Application{
