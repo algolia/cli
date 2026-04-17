@@ -31,6 +31,7 @@ func NewClient(appID, apiKey string, region algoliaInsights.Region) (*Client, er
 			ApiKey:    apiKey,
 			UserAgent: userAgent,
 		},
+		Region: region,
 	}
 	client, err := algoliaInsights.NewClientWithConfig(clientConfig)
 	if err != nil {
