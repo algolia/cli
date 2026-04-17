@@ -137,7 +137,7 @@ func runTailCmd(opts *TailOptions) error {
 		}
 
 		pruneSeenRequestIDs(seenRequestIDs, windowStart.Add(-Interval))
-		for _, event := range unseenEvents(events.Events, seenRequestIDs) {
+		for _, event := range unseenEvents(events.Events, seenRequestIDs, windowEnd) {
 			if p != nil {
 				if err := p.Print(opts.IO, event); err != nil {
 					return err
@@ -154,7 +154,7 @@ func runTailCmd(opts *TailOptions) error {
 	}
 }
 
-func unseenEvents(events []insights.EventWrapper, seenRequestIDs map[string]time.Time) []insights.EventWrapper {
+func unseenEvents(events []insights.EventWrapper, seenRequestIDs map[string]time.Time, seenAt time.Time) []insights.EventWrapper {
 	freshEvents := make([]insights.EventWrapper, 0, len(events))
 	for _, event := range events {
 		requestID := event.RequestID
@@ -162,7 +162,7 @@ func unseenEvents(events []insights.EventWrapper, seenRequestIDs map[string]time
 			if _, ok := seenRequestIDs[requestID]; ok {
 				continue
 			}
-			seenRequestIDs[requestID] = event.Event.Timestamp.Time
+			seenRequestIDs[requestID] = seenAt
 		}
 
 		freshEvents = append(freshEvents, event)

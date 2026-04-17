@@ -11,6 +11,7 @@ import (
 
 func TestUnseenEventsSkipsDuplicateRequestIDs(t *testing.T) {
 	now := time.Now().UTC()
+	seenAt := now.Add(10 * time.Second)
 	seenRequestIDs := map[string]time.Time{}
 	events := []insights.EventWrapper{
 		{
@@ -36,20 +37,21 @@ func TestUnseenEventsSkipsDuplicateRequestIDs(t *testing.T) {
 		},
 	}
 
-	freshEvents := unseenEvents(events, seenRequestIDs)
+	freshEvents := unseenEvents(events, seenRequestIDs, seenAt)
 
 	require.Len(t, freshEvents, 2)
 	require.Equal(t, "first", freshEvents[0].Event.EventName)
 	require.Equal(t, "second", freshEvents[1].Event.EventName)
-	require.Contains(t, seenRequestIDs, "req-1")
-	require.Contains(t, seenRequestIDs, "req-2")
+	require.Equal(t, seenAt, seenRequestIDs["req-1"])
+	require.Equal(t, seenAt, seenRequestIDs["req-2"])
 }
 
 func TestUnseenEventsKeepsEventsWithoutRequestID(t *testing.T) {
+	seenAt := time.Now().UTC()
 	freshEvents := unseenEvents([]insights.EventWrapper{
 		{Event: insights.Event{EventName: "first"}},
 		{Event: insights.Event{EventName: "second"}},
-	}, map[string]time.Time{})
+	}, map[string]time.Time{}, seenAt)
 
 	require.Len(t, freshEvents, 2)
 }
