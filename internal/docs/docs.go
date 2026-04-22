@@ -118,15 +118,7 @@ func getCommands(cmd *cobra.Command) []Command {
 		}
 		command := newCommand(c)
 		if c.HasAvailableSubCommands() {
-			for _, s := range c.Commands() {
-				sub := newCommand(s)
-				if s.HasAvailableSubCommands() {
-					for _, sus := range s.Commands() {
-						sub.SubCommands = append(sub.SubCommands, newCommand(sus))
-					}
-				}
-				command.SubCommands = append(command.SubCommands, sub)
-			}
+			command.SubCommands = getCommands(c)
 		}
 		commands = append(commands, command)
 	}

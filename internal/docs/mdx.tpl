@@ -4,72 +4,49 @@ title: |-
   {{ .Name }}
 description: |-
   {{ .Description }}
-slug: tools/cli/commands/{{ .Slug }}
+slug: {{ .Slug }}
 ---
-{{ if .SubCommands }}{{ range $subCommand := .SubCommands }}{{ if $subCommand.SubCommands }}{{ range $susCommand := $subCommand.SubCommands}}
-## {{ $susCommand.Name }}
-
-{{ $susCommand.Description }}
-
-### Usage
-
-`{{ $susCommand.Usage }}`
-
-{{ $examples := getExamples $susCommand }}{{ if $examples }}
-### Examples
-{{ range $example := $examples }}{{ $example.Desc }}
-
-```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
-{{ $example.Code }}
-```
-{{ end }}{{ end }}{{ range $flagKey, $flagSlice := $susCommand.Flags }}{{ if $flagSlice }}
-### Flags 
-{{ range $flag := $flagSlice }}
-- {{ if $flag.Shorthand }}`-{{ $flag.Shorthand }}`, {{ end }}`--{{ $flag.Name }}`: {{ $flag.Description }}
-{{ end }}{{ end }}{{ end }}{{ end }}
-{{ else }}
-## {{ $subCommand.Name }}
-
-{{ $subCommand.Description }}
-
-### Usage
-
-`{{ $subCommand.Usage }}`
-
-{{ $examples := getExamples $subCommand }}
-{{ if $examples }}
-### Examples
-{{ range $example := $examples }}
-{{ $example.Desc }}
-
-```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
-{{ $example.Code }}
-```
-{{ end }}
+{{ if .Description }}
+{{ .Description }}
 {{ end }}
 
-{{ range $flagKey, $flagSlice := $subCommand.Flags }}
-{{ if $flagSlice }}
-### Flags 
-{{ range $flag := $flagSlice }}
-- {{ if $flag.Shorthand }}`-{{ $flag.Shorthand }}`, {{ end }}`--{{ $flag.Name }}`: {{ $flag.Description }}
-{{ end }}{{ end }}{{ end }}{{ end}}{{ end }}
-{{ else }}## {{ .Name }}
-
-### Usage
+## Usage
 
 `{{ .Usage }}`
-{{ $examples := getExamples . }}{{ if $examples }}
-### Examples
+
+{{ if .Aliases }}
+## Aliases
+
+{{ range $alias := .Aliases -}}
+- `{{ $alias }}`
+{{ end }}
+{{ end }}
+
+{{ if .SubPages }}
+## Subcommands
+
+{{ range $subPage := .SubPages -}}
+- [`{{ $subPage.Name }}`](/{{ $subPage.Slug }}): {{ $subPage.Description }}
+{{ end }}
+{{ end }}
+
+{{ $examples := getExamples .Command }}{{ if $examples }}
+## Examples
 {{ range $example := $examples }}
 {{ $example.Desc }}
 
-```sh {{ if $example.WebCLICommand }}command="{{$example.WebCLICommand}}"{{ end }}
+```sh{{ if $example.WebCLICommand }} command="{{$example.WebCLICommand}}"{{ end }}
 {{ $example.Code }}
 ```
-{{ end }}{{ end }}
-{{ range $flagKey, $flagSlice := .Flags }}
-### {{ $flagKey }}
-{{ range $flag := $flagSlice }}
+{{ end }}
+{{ end }}
+
+{{ range $flagKey, $flagSlice := .Flags -}}
+{{ if $flagSlice }}
+## {{ $flagKey }}
+
+{{ range $flag := $flagSlice -}}
 - {{ if $flag.Shorthand }}`-{{ $flag.Shorthand }}`, {{ end }}`--{{ $flag.Name }}`: {{ $flag.Description }}
-{{ end }}{{ end }}{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}

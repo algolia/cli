@@ -2,12 +2,12 @@ version: 3
 output: prefixed
 dotenv: [.env]
 vars:
-  # The URL to the "old" Algolia docs repo
-  docs_remote: https://github.com/algolia/doc.git
-  # The temporary folder for the generated YML files
+  # The URL to the current Algolia docs repo
+  docs_remote: https://github.com/algolia/docs-new.git
   docs_local: docs
-  cli_ref_path: app_data/cli/commands
-  yml_folder: tmp
+  cli_ref_path: doc/tools/cli/commands
+  # The temporary folder for the generated MDX files
+  docs_output_dir: tmp
 tasks:
   build:
     desc: Build the binary
@@ -103,23 +103,23 @@ tasks:
     internal: true
     cmd: git clone --depth=1 {{ .docs_remote }} {{ .docs_local }}
   generate-command-reference:
-    desc: Generate updated YML files for the CLI command reference
+    desc: Generate updated MDX files for the CLI command reference
     internal: true
-    cmd: go run ./cmd/docs --app_data-path {{ .yml_folder }}
+    cmd: go run ./cmd/docs --app_data-path {{ .docs_output_dir }} --target new
   update-command-reference:
-    desc: Add the updated YML files to the docs
+    desc: Add the updated MDX files to the docs
     summary: |
       This task clones the Algolia docs repo,
-      adds the updated CLI reference yml files to it,
+      adds the updated CLI reference mdx files to it,
       and pushes a new PR to the GitHub repo.
     internal: true
     cmds:
       - |
         git -C {{ .docs_local }} checkout -B chore/cli-$(git rev-parse --short HEAD)
-        git -C {{ .docs_local }} rm "{{ .cli_ref_path }}/*.yml"
+        rm -rf {{ .docs_local }}/{{ .cli_ref_path }}
         mkdir -p {{ .docs_local }}/{{ .cli_ref_path }}
-        mv {{ .yml_folder }}/*.yml {{ .docs_local }}/{{ .cli_ref_path }}/
-        git -C {{ .docs_local }} add "{{ .cli_ref_path }}/*.yml"
+        mv {{ .docs_output_dir }}/* {{ .docs_local }}/{{ .cli_ref_path }}/
+        git -C {{ .docs_local }} add -A {{ .cli_ref_path }}
         git -C {{ .docs_local }} commit --message 'chore: Update CLI command reference'
     env:
       GIT_COMMITTER_NAME: algolia-ci
@@ -129,4 +129,4 @@ tasks:
   cleanup:
     desc: Cleanup the docs files
     internal: true
-    cmd: rm -rf {{ .docs_local }} {{ .yml_folder }} || true
+    cmd: rm -rf {{ .docs_local }} {{ .docs_output_dir }} || true
