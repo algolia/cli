@@ -105,7 +105,7 @@ tasks:
   generate-command-reference:
     desc: Generate updated MDX files for the CLI command reference
     internal: true
-    cmd: go run ./cmd/docs --app_data-path {{ .docs_output_dir }} --target new
+    cmd: go run ./cmd/docs --app_data-path {{ .docs_output_dir }}
   update-command-reference:
     desc: Add the updated MDX files to the docs
     summary: |

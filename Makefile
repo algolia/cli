@@ -24,7 +24,7 @@ docs-commands-data: docs
 	git -C $(DOCS_FOLDER) pull --ff-only origin $(DOCS_BRANCH)
 	rm -rf "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)"
 	mkdir -p "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)"
-	go run ./cmd/docs --app_data-path "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)" --target new
+	go run ./cmd/docs --app_data-path "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)"
 	git -C $(DOCS_FOLDER) add -A "$(DOCS_GENERATED_PATH)"
 
 .PHONY: docs-pr

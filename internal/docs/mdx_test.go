@@ -74,6 +74,56 @@ func TestGenMdxTreeWritesNestedCommandPages(t *testing.T) {
 	require.Contains(t, listContent, "`-F`, `--format`")
 }
 
+func TestGenMdxTreeSupportsCodeOnlyExamples(t *testing.T) {
+	root := &cobra.Command{
+		Use:   "algolia",
+		Short: "Algolia CLI",
+		Example: `
+$ algolia search MOVIES --query "toy story"
+$ algolia objects browse MOVIES
+`,
+	}
+
+	dir := t.TempDir()
+	require.NoError(t, GenMdxTree(root, dir))
+
+	rootContent := readTestFile(t, filepath.Join(dir, "index.mdx"))
+	require.Contains(t, rootContent, "## Examples")
+	require.Contains(t, rootContent, "algolia search MOVIES --query \"toy story\"")
+	require.Contains(t, rootContent, "algolia objects browse MOVIES")
+}
+
+func TestExamplesListParsesMixedExampleFormats(t *testing.T) {
+	cmd := Command{
+		Examples: `
+# Describe a command
+$ algolia describe search
+
+$ algolia auth logout
+$ algolia profile list
+
+# Wrapped command
+$ algolia search MOVIES \
+  --query "toy story"
+`,
+	}
+
+	examples := cmd.ExamplesList()
+	require.Len(t, examples, 4)
+
+	require.Equal(t, "Describe a command", examples[0].Desc)
+	require.Equal(t, "algolia describe search", examples[0].Code)
+
+	require.Empty(t, examples[1].Desc)
+	require.Equal(t, "algolia auth logout", examples[1].Code)
+
+	require.Empty(t, examples[2].Desc)
+	require.Equal(t, "algolia profile list", examples[2].Code)
+
+	require.Equal(t, "Wrapped command", examples[3].Desc)
+	require.Equal(t, "algolia search MOVIES \\\n--query \"toy story\"", examples[3].Code)
+}
+
 func readTestFile(t *testing.T, path string) string {
 	t.Helper()
 

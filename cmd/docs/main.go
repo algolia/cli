@@ -30,14 +30,8 @@ func run(args []string) error {
 		"Path directory where you want generate documentation data files",
 	)
 	help := flags.BoolP("help", "h", false, "Help about any command")
-	target := flags.StringP("target", "T", "new", "target old or new documentation website")
-
 	if err := flags.Parse(args); err != nil {
 		return err
-	}
-
-	if *target != "old" && *target != "new" {
-		return fmt.Errorf("error: --target can only be 'old' or 'new' ('new' by default)")
 	}
 
 	if *help {
@@ -60,14 +54,8 @@ func run(args []string) error {
 		return err
 	}
 
-	if *target == "old" {
-		if err := docs.GenYamlTree(rootCmd, *dir); err != nil {
-			return err
-		}
-	} else {
-		if err := docs.GenMdxTree(rootCmd, *dir); err != nil {
-			return err
-		}
+	if err := docs.GenMdxTree(rootCmd, *dir); err != nil {
+		return err
 	}
 
 	return nil
