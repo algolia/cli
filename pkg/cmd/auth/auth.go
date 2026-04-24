@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/auth/crawler"
 	"github.com/algolia/cli/pkg/cmd/auth/login"
 	"github.com/algolia/cli/pkg/cmd/auth/logout"
 	"github.com/algolia/cli/pkg/cmd/auth/signup"
@@ -22,6 +23,7 @@ func NewAuthCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(login.NewLoginCmd(f))
 	cmd.AddCommand(logout.NewLogoutCmd(f))
 	cmd.AddCommand(signup.NewSignupCmd(f))
+	cmd.AddCommand(crawler.NewCrawlerCmd(f))
 
 	return cmd
 }
