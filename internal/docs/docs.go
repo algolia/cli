@@ -118,15 +118,7 @@ func getCommands(cmd *cobra.Command) []Command {
 		}
 		command := newCommand(c)
 		if c.HasAvailableSubCommands() {
-			for _, s := range c.Commands() {
-				sub := newCommand(s)
-				if s.HasAvailableSubCommands() {
-					for _, sus := range s.Commands() {
-						sub.SubCommands = append(sub.SubCommands, newCommand(sus))
-					}
-				}
-				command.SubCommands = append(command.SubCommands, sub)
-			}
+			command.SubCommands = getCommands(c)
 		}
 		commands = append(commands, command)
 	}
@@ -184,20 +176,23 @@ type Example struct {
 }
 
 func (cmd Command) ExamplesList() []Example {
-	var examples []Example
-	examplesRaw := strings.Split(cmd.Examples, "#")
-	for _, example := range examplesRaw {
-		example = strings.TrimSpace(example)
-		if len(example) == 0 {
-			continue
-		}
-		exampleLines := strings.Split(example, "\n")
+	type exampleBuilder struct {
+		desc      string
+		codeLines []string
+	}
 
-		code := strings.ReplaceAll(exampleLines[1], "$", "")
-		code = strings.TrimSpace(code)
+	var examples []Example
+	current := exampleBuilder{}
+
+	flush := func() {
+		code := strings.TrimSpace(strings.Join(current.codeLines, "\n"))
+		if code == "" {
+			current = exampleBuilder{}
+			return
+		}
 
 		formattedExample := Example{
-			Desc: strings.Replace(exampleLines[0], "#", "", 1),
+			Desc: current.desc,
 			Code: code,
 		}
 		if cmd.RunInWebCLI &&
@@ -210,6 +205,40 @@ func (cmd Command) ExamplesList() []Example {
 		}
 
 		examples = append(examples, formattedExample)
+		current = exampleBuilder{}
 	}
+
+	for _, rawLine := range strings.Split(cmd.Examples, "\n") {
+		line := strings.TrimSpace(rawLine)
+		if line == "" {
+			if len(current.codeLines) > 0 {
+				flush()
+			}
+			continue
+		}
+
+		switch {
+		case strings.HasPrefix(line, "#"):
+			flush()
+			current.desc = strings.TrimSpace(strings.TrimPrefix(line, "#"))
+		case strings.HasPrefix(line, "$"):
+			if current.desc == "" && len(current.codeLines) > 0 {
+				flush()
+			}
+			current.codeLines = append(
+				current.codeLines,
+				strings.TrimSpace(strings.TrimPrefix(line, "$")),
+			)
+		case len(current.codeLines) > 0:
+			current.codeLines = append(current.codeLines, line)
+		case current.desc == "":
+			current.desc = line
+		default:
+			current.desc += "\n" + line
+		}
+	}
+
+	flush()
+
 	return examples
 }

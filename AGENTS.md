@@ -1,12 +1,15 @@
 # AGENTS.md
+
 Guidance for coding agents working in `github.com/algolia/cli`.
 
 ## Scope
+
 - Applies to the whole repository.
 - Prefer small, local changes over broad refactors.
 - Follow existing Go + Cobra CLI patterns.
 
 ## Repository Facts
+
 - Language: Go.
 - Module: `github.com/algolia/cli`.
 - Go version: `1.23.0`; toolchain: `go1.23.4`.
@@ -15,17 +18,20 @@ Guidance for coding agents working in `github.com/algolia/cli`.
 - Command tree: `pkg/cmd/...`.
 
 ## Cursor / Copilot Rules
+
 - No `.cursor/rules/` directory was found.
 - No `.cursorrules` file was found.
 - No `.github/copilot-instructions.md` file was found.
 - Use this file plus the existing codebase as the repo-specific source of truth.
 
 ## Tooling
+
 - Preferred toolchain is listed in `devbox.json`.
 - Common tools expected here: `go`, `task`, `golangci-lint`, `gofumpt`, `golines`, `gh`, `curl`.
 - E2E tests require `ALGOLIA_APPLICATION_ID` and `ALGOLIA_API_KEY` in the environment or root `.env`.
 
 ## Build Commands
+
 Preferred:
 
 ```sh
@@ -42,6 +48,7 @@ go build -v ./...
 - CI also checks `go build -v ./...`.
 
 ## Test Commands
+
 All unit tests:
 
 ```sh
@@ -92,12 +99,13 @@ golines -w pkg cmd test internal api e2e
 ```sh
 go generate ./...
 go run ./cmd/docs --app_data-path tmp
-go run ./cmd/docs --app_data-path tmp --target new
+go run ./cmd/docs --app_data-path tmp
 ```
 
 Run generation when changing generated flags or API-spec-derived code.
 
 ## Fast Local Verification
+
 For substantial changes, prefer this order:
 
 ```sh
@@ -110,6 +118,7 @@ task build
 Use narrower verification for small edits.
 
 ## Architecture Guidelines
+
 - Add CLI commands under `pkg/cmd/<domain>`.
 - Construct commands with `New...Cmd` functions.
 - Keep option structs close to their commands.
@@ -118,22 +127,27 @@ Use narrower verification for small edits.
 - Keep docs-generation logic in `internal/docs` and `cmd/docs`.
 
 ## Code Style
+
 ### Imports
+
 - Use standard Go grouping: stdlib, third-party, local module.
 - Let `gofumpt` handle ordering and spacing.
 - Avoid aliases unless they prevent collisions or materially improve clarity.
 
 ### Formatting
+
 - Run `gofumpt` on all modified Go files.
 - Run `golines` if wrapping becomes awkward.
 - Preserve existing multiline layout for structs, literals, and signatures.
 
 ### Types And Structs
+
 - Prefer explicit structs for command options and helper state.
 - Keep exported APIs minimal.
 - Use `any` only where JSON-like dynamic values are genuinely needed.
 
 ### Naming
+
 - Exported names: PascalCase.
 - Unexported names: camelCase.
 - Command constructors: `NewXCmd`.
@@ -141,6 +155,7 @@ Use narrower verification for small edits.
 - Match surrounding test naming, commonly `Test_runXCmd`, `TestNewXCmd`, or `Test_Feature`.
 
 ### Cobra Conventions
+
 - Use `RunE`, not `Run`, for command handlers.
 - Validate args with `cobra.ExactArgs`, `cobra.MinimumNArgs`, or repo validators.
 - Use `ValidArgsFunction` when completion helpers already exist.
@@ -148,6 +163,7 @@ Use narrower verification for small edits.
 - Use heredocs for multiline examples and help text.
 
 ### Error Handling
+
 - Return errors instead of exiting except in true entrypoints like `main()`.
 - Wrap with `%w` when the original cause matters.
 - Use plain `return err` when extra context adds no value.
@@ -156,17 +172,20 @@ Use narrower verification for small edits.
 - Stop progress indicators on all error paths after starting them.
 
 ### I/O And UX
+
 - Use factory-provided `IOStreams` for stdout, stderr, TTY checks, colors, and progress indicators.
 - Keep non-TTY output deterministic and script-friendly.
 - Use structured output helpers for commands that support `--output`.
 - Preserve dry-run behavior: validate, summarize, and avoid side effects.
 
 ### Config And Clients
+
 - Read config through `config.IConfig`.
 - Acquire API clients from injected functions like `SearchClient` and `CrawlerClient`.
 - Do not hardcode credentials, hosts, or profile logic.
 
 ### Testing Style
+
 - Prefer table-driven tests for flags, output modes, and edge cases.
 - Use `test.NewFactory(...)` and `test.Execute(...)` for command tests.
 - Stub API calls with `pkg/httpmock`.
@@ -175,6 +194,7 @@ Use narrower verification for small edits.
 - For E2E, add new `txtar` cases under `e2e/testscripts/<area>` and register them in `e2e/e2e_test.go`.
 
 ## Change Guidance
+
 - Check for an existing helper before adding a new utility.
 - If flag surfaces or generated spec flags change, run `go generate ./...`.
 - If command help or command trees change, consider whether docs generation should be rerun.

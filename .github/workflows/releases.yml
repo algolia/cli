@@ -45,7 +45,7 @@ jobs:
       - name: Docs checkout
         uses: actions/checkout@v4
         with:
-          repository: algolia/doc
+          repository: algolia/docs-new
           path: docs
           fetch-depth: 0
           token: ${{secrets.GORELEASER_GITHUB_TOKEN}}

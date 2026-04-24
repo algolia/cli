@@ -9,32 +9,23 @@ test:
 	go test ./... -p 1
 .PHONY: test
 
-## Build & publish the old documentation
-VARIATION ?= old
-ifeq ($(VARIATION),old)
-DOCS_FOLDER = docs
-DOCS_GENERATED_PATH = app_data/cli/commands
-DOCS_REPO_URL = git@github.com:algolia/doc.git
-DOCS_BRANCH = master
-DOCS_EXTENSION = yml
-else ifeq ($(VARIATION),new)
-DOCS_FOLDER = new-world-docs
-DOCS_GENERATED_PATH = apps/docs/content/pages/tools/cli/commands
-DOCS_REPO_URL = https://github.com/algolia/new-world-docs.git
+## Build & publish the CLI documentation
+DOCS_FOLDER ?= docs
+DOCS_GENERATED_PATH = doc/tools/cli/commands
+DOCS_REPO_URL = https://github.com/algolia/docs-new.git
 DOCS_BRANCH = main
-DOCS_EXTENSION = mdx
-endif
 
 docs:
 	git clone $(DOCS_REPO_URL) "$@"
 
 .PHONY: docs-commands-data
 docs-commands-data: docs
-	git -C $(DOCS_FOLDER) pull
 	git -C $(DOCS_FOLDER) checkout $(DOCS_BRANCH)
-	git -C $(DOCS_FOLDER) rm '$(DOCS_GENERATED_PATH)/*.$(DOCS_EXTENSION)' 2>/dev/null || true
-	go run ./cmd/docs --app_data-path $(DOCS_FOLDER)/$(DOCS_GENERATED_PATH) --target $(VARIATION)
-	git -C $(DOCS_FOLDER) add '$(DOCS_GENERATED_PATH)/*.$(DOCS_EXTENSION)'
+	git -C $(DOCS_FOLDER) pull --ff-only origin $(DOCS_BRANCH)
+	rm -rf "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)"
+	mkdir -p "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)"
+	go run ./cmd/docs --app_data-path "$(DOCS_FOLDER)/$(DOCS_GENERATED_PATH)"
+	git -C $(DOCS_FOLDER) add -A "$(DOCS_GENERATED_PATH)"
 
 .PHONY: docs-pr
 docs-pr: docs-commands-data
