@@ -133,6 +133,45 @@ func TestListApplications_Success(t *testing.T) {
 	assert.Equal(t, "APP1", apps[0].ID)
 }
 
+func TestListApplications_Paginated(t *testing.T) {
+	mux := http.NewServeMux()
+	callCount := 0
+
+	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		page := r.URL.Query().Get("page")
+
+		switch page {
+		case "2":
+			require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
+				Data: []ApplicationResource{
+					{ID: "APP3", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP3", Name: "Third App"}},
+				},
+				Meta: PaginationMeta{TotalCount: 3, PerPage: 2, CurrentPage: 2, TotalPages: 2},
+			}))
+		default:
+			require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
+				Data: []ApplicationResource{
+					{ID: "APP1", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "First App"}},
+					{ID: "APP2", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP2", Name: "Second App"}},
+				},
+				Meta: PaginationMeta{TotalCount: 3, PerPage: 2, CurrentPage: 1, TotalPages: 2},
+			}))
+		}
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	apps, err := client.ListApplications("test-token")
+	require.NoError(t, err)
+	assert.Len(t, apps, 3)
+	assert.Equal(t, "APP1", apps[0].ID)
+	assert.Equal(t, "APP2", apps[1].ID)
+	assert.Equal(t, "APP3", apps[2].ID)
+	assert.Equal(t, 2, callCount)
+}
+
 func TestListApplications_Unauthorized(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
