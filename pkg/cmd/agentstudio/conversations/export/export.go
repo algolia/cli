@@ -2,6 +2,7 @@ package export
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
@@ -66,18 +67,29 @@ func runExportCmd(opts *ExportOptions) error {
 	if err != nil {
 		return err
 	}
+	defer body.Close()
 
 	if opts.Output != "" {
-		if err := os.WriteFile(opts.Output, body, 0o644); err != nil {
+		// 0600: conversation exports may contain user PII / prompts.
+		f, err := os.OpenFile(opts.Output, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+		if err != nil {
 			return err
+		}
+		n, copyErr := io.Copy(f, body)
+		closeErr := f.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		if closeErr != nil {
+			return closeErr
 		}
 		if opts.IO.IsStdoutTTY() {
 			cs := opts.IO.ColorScheme()
-			fmt.Fprintf(opts.IO.Out, "%s Wrote %d bytes to %s\n", cs.SuccessIcon(), len(body), opts.Output)
+			fmt.Fprintf(opts.IO.Out, "%s Wrote %d bytes to %s\n", cs.SuccessIcon(), n, opts.Output)
 		}
 		return nil
 	}
 
-	_, err = opts.IO.Out.Write(body)
+	_, err = io.Copy(opts.IO.Out, body)
 	return err
 }

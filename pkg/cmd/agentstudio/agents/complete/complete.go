@@ -1,6 +1,8 @@
 package complete
 
 import (
+	"io"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
@@ -9,6 +11,11 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 )
+
+var validCompatibilityModes = map[string]bool{
+	"ai-sdk-4": true,
+	"ai-sdk-5": true,
+}
 
 type CompleteOptions struct {
 	Config config.IConfig
@@ -47,6 +54,12 @@ func NewCompleteCmd(f *cmdutil.Factory, runF func(*CompleteOptions) error) *cobr
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]
+			if !validCompatibilityModes[opts.CompatibilityMode] {
+				return cmdutil.FlagErrorf(
+					"invalid --compatibility-mode %q: must be one of ai-sdk-4, ai-sdk-5",
+					opts.CompatibilityMode,
+				)
+			}
 			if err := cmdutil.MergeFileAndFlagsInto(opts.IO, opts.File, cmd, cmdutil.AgentCompletionRequest, &opts.Body); err != nil {
 				return err
 			}
@@ -80,12 +93,10 @@ func runCompleteCmd(opts *CompleteOptions) error {
 	if err != nil {
 		return err
 	}
-	_, err = opts.IO.Out.Write(body)
-	if err != nil {
+	defer body.Close()
+
+	if _, err := io.Copy(opts.IO.Out, body); err != nil {
 		return err
-	}
-	if len(body) > 0 && body[len(body)-1] != '\n' {
-		_, _ = opts.IO.Out.Write([]byte("\n"))
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package agentstudio
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -111,10 +112,13 @@ func TestCreateCompletion_RawBody(t *testing.T) {
 
 	convID := "conv-1"
 	stream := false
-	body, err := c.CreateCompletion("a1", AgentCompletionRequest{ID: &convID}, CompletionParams{
+	rc, err := c.CreateCompletion("a1", AgentCompletionRequest{ID: &convID}, CompletionParams{
 		CompatibilityMode: "ai-sdk-5",
 		Stream:            &stream,
 	})
+	require.NoError(t, err)
+	defer rc.Close()
+	body, err := io.ReadAll(rc)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"answer":"hello"}`, string(body))
 }

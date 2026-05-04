@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -172,7 +173,7 @@ func (c *Client) ListAgents(page, limit int) (*PaginatedAgentsResponse, error) {
 
 func (c *Client) GetAgent(id string) (*Agent, error) {
 	var res Agent
-	if err := c.request(&res, http.MethodGet, fmt.Sprintf("1/agents/%s", id), nil, nil); err != nil {
+	if err := c.request(&res, http.MethodGet, fmt.Sprintf("1/agents/%s", url.PathEscape(id)), nil, nil); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -188,19 +189,19 @@ func (c *Client) CreateAgent(req AgentConfigCreate) (*Agent, error) {
 
 func (c *Client) UpdateAgent(id string, req AgentConfigUpdate) (*Agent, error) {
 	var res Agent
-	if err := c.request(&res, http.MethodPatch, fmt.Sprintf("1/agents/%s", id), req, nil); err != nil {
+	if err := c.request(&res, http.MethodPatch, fmt.Sprintf("1/agents/%s", url.PathEscape(id)), req, nil); err != nil {
 		return nil, err
 	}
 	return &res, nil
 }
 
 func (c *Client) DeleteAgent(id string) error {
-	return c.request(nil, http.MethodDelete, fmt.Sprintf("1/agents/%s", id), nil, nil)
+	return c.request(nil, http.MethodDelete, fmt.Sprintf("1/agents/%s", url.PathEscape(id)), nil, nil)
 }
 
 func (c *Client) DuplicateAgent(id string) (*Agent, error) {
 	var res Agent
-	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/duplicate", id), nil, nil); err != nil {
+	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/duplicate", url.PathEscape(id)), nil, nil); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -208,7 +209,7 @@ func (c *Client) DuplicateAgent(id string) (*Agent, error) {
 
 func (c *Client) PublishAgent(id string) (*Agent, error) {
 	var res Agent
-	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/publish", id), nil, nil); err != nil {
+	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/publish", url.PathEscape(id)), nil, nil); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -216,7 +217,7 @@ func (c *Client) PublishAgent(id string) (*Agent, error) {
 
 func (c *Client) UnpublishAgent(id string) (*Agent, error) {
 	var res Agent
-	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/unpublish", id), nil, nil); err != nil {
+	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/unpublish", url.PathEscape(id)), nil, nil); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -233,10 +234,12 @@ type CompletionParams struct {
 	Cache             *bool  // default true on the server
 }
 
-// CreateCompletion invokes an agent. When stream=false the response is a JSON
-// document; when stream=true (server default) the body is SSE bytes. Either
-// way the raw bytes are returned for the caller to print.
-func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest, params CompletionParams) ([]byte, error) {
+// CreateCompletion invokes an agent and returns the response body as an
+// io.ReadCloser. The caller MUST close the returned reader. When stream=true
+// (server default) the body is SSE bytes that arrive incrementally; when
+// stream=false it is a single JSON document. Either way the body is streamed
+// so we never buffer the full response in memory.
+func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest, params CompletionParams) (io.ReadCloser, error) {
 	q := map[string]string{
 		"compatibilityMode": params.CompatibilityMode,
 	}
@@ -247,7 +250,7 @@ func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest, pa
 		q["cache"] = strconv.FormatBool(*params.Cache)
 	}
 
-	r, err := c.buildRequest(http.MethodPost, fmt.Sprintf("1/agents/%s/completions", agentID), req, q)
+	r, err := c.buildRequest(http.MethodPost, fmt.Sprintf("1/agents/%s/completions", url.PathEscape(agentID)), req, q)
 	if err != nil {
 		return nil, err
 	}
@@ -255,25 +258,22 @@ func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest, pa
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 		var errResp ErrResponse
 		_ = json.Unmarshal(body, &errResp)
 		return nil, fmt.Errorf("agentstudio: POST 1/agents/%s/completions -> %d %s", agentID, resp.StatusCode, formatErr(errResp))
 	}
-	return body, nil
+	return resp.Body, nil
 }
 
 // Conversations ----------------------------------------------------------
 
 func (c *Client) ListConversations(agentID string, page, limit int) (*PaginatedConversationsResponse, error) {
 	var res PaginatedConversationsResponse
-	if err := c.request(&res, http.MethodGet, fmt.Sprintf("1/agents/%s/conversations", agentID), nil, paginationParams(page, limit)); err != nil {
+	if err := c.request(&res, http.MethodGet, fmt.Sprintf("1/agents/%s/conversations", url.PathEscape(agentID)), nil, paginationParams(page, limit)); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -281,25 +281,26 @@ func (c *Client) ListConversations(agentID string, page, limit int) (*PaginatedC
 
 func (c *Client) GetConversation(agentID, convID string) (*Conversation, error) {
 	var res Conversation
-	if err := c.request(&res, http.MethodGet, fmt.Sprintf("1/agents/%s/conversations/%s", agentID, convID), nil, nil); err != nil {
+	if err := c.request(&res, http.MethodGet, fmt.Sprintf("1/agents/%s/conversations/%s", url.PathEscape(agentID), url.PathEscape(convID)), nil, nil); err != nil {
 		return nil, err
 	}
 	return &res, nil
 }
 
 func (c *Client) DeleteConversation(agentID, convID string) error {
-	return c.request(nil, http.MethodDelete, fmt.Sprintf("1/agents/%s/conversations/%s", agentID, convID), nil, nil)
+	return c.request(nil, http.MethodDelete, fmt.Sprintf("1/agents/%s/conversations/%s", url.PathEscape(agentID), url.PathEscape(convID)), nil, nil)
 }
 
 func (c *Client) DeleteAllConversations(agentID string) error {
-	return c.request(nil, http.MethodDelete, fmt.Sprintf("1/agents/%s/conversations", agentID), nil, nil)
+	return c.request(nil, http.MethodDelete, fmt.Sprintf("1/agents/%s/conversations", url.PathEscape(agentID)), nil, nil)
 }
 
-// ExportConversations returns the raw response body. The spec does not
-// constrain the type so we leave it to the caller to write the bytes (the
-// dashboard call returns an attachment).
-func (c *Client) ExportConversations(agentID string) ([]byte, error) {
-	r, err := c.buildRequest(http.MethodGet, fmt.Sprintf("1/agents/%s/conversations/export", agentID), nil, nil)
+// ExportConversations returns the raw response body as a stream. The caller
+// MUST close the returned reader. The spec does not constrain the response
+// type (the dashboard call returns an attachment), so the body is streamed
+// directly to avoid buffering large exports in memory.
+func (c *Client) ExportConversations(agentID string) (io.ReadCloser, error) {
+	r, err := c.buildRequest(http.MethodGet, fmt.Sprintf("1/agents/%s/conversations/export", url.PathEscape(agentID)), nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -307,18 +308,14 @@ func (c *Client) ExportConversations(agentID string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 
 	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 		var errResp ErrResponse
 		_ = json.Unmarshal(body, &errResp)
 		return nil, fmt.Errorf("agentstudio: GET conversations/export -> %d %s", resp.StatusCode, formatErr(errResp))
 	}
 
-	return body, nil
+	return resp.Body, nil
 }
