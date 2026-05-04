@@ -16,9 +16,12 @@ type CompleteOptions struct {
 
 	AgentStudioClient func() (*agentstudio.Client, error)
 
-	AgentID string
-	File    string
-	Body    agentstudio.AgentCompletionRequest
+	AgentID           string
+	File              string
+	Body              agentstudio.AgentCompletionRequest
+	CompatibilityMode string
+	Stream            bool
+	Cache             bool
 }
 
 func NewCompleteCmd(f *cmdutil.Factory, runF func(*CompleteOptions) error) *cobra.Command {
@@ -55,6 +58,9 @@ func NewCompleteCmd(f *cmdutil.Factory, runF func(*CompleteOptions) error) *cobr
 	}
 
 	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "Completion request JSON `file` (use \"-\" for stdin)")
+	cmd.Flags().StringVar(&opts.CompatibilityMode, "compatibility-mode", "ai-sdk-5", "API compatibility mode. One of: ai-sdk-4, ai-sdk-5")
+	cmd.Flags().BoolVar(&opts.Stream, "stream", false, "Stream the response as SSE bytes instead of waiting for the full JSON body")
+	cmd.Flags().BoolVar(&opts.Cache, "cache", true, "Allow the API to return cached responses")
 	cmdutil.AddAgentCompletionRequestFlags(cmd)
 	return cmd
 }
@@ -65,7 +71,11 @@ func runCompleteCmd(opts *CompleteOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Running completion")
-	body, err := client.CreateCompletion(opts.AgentID, opts.Body)
+	body, err := client.CreateCompletion(opts.AgentID, opts.Body, agentstudio.CompletionParams{
+		CompatibilityMode: opts.CompatibilityMode,
+		Stream:            &opts.Stream,
+		Cache:             &opts.Cache,
+	})
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

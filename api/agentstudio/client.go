@@ -220,14 +220,49 @@ func (c *Client) UnpublishAgent(id string) (*Agent, error) {
 
 // Completions ------------------------------------------------------------
 
-// CreateCompletion invokes an agent. The response shape is unconstrained in
-// the spec (the endpoint may stream), so the raw JSON body is returned.
-func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest) (json.RawMessage, error) {
-	var res json.RawMessage
-	if err := c.request(&res, http.MethodPost, fmt.Sprintf("1/agents/%s/completions", agentID), req, nil); err != nil {
+// CompletionParams carries the query-string options for CreateCompletion.
+// CompatibilityMode is required by the API; the rest are optional and default
+// to the API's defaults when zero-valued.
+type CompletionParams struct {
+	CompatibilityMode string // "ai-sdk-4" | "ai-sdk-5" (required)
+	Stream            *bool  // default true on the server; set false for non-streaming JSON
+	Cache             *bool  // default true on the server
+}
+
+// CreateCompletion invokes an agent. When stream=false the response is a JSON
+// document; when stream=true (server default) the body is SSE bytes. Either
+// way the raw bytes are returned for the caller to print.
+func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest, params CompletionParams) ([]byte, error) {
+	q := map[string]string{
+		"compatibilityMode": params.CompatibilityMode,
+	}
+	if params.Stream != nil {
+		q["stream"] = strconv.FormatBool(*params.Stream)
+	}
+	if params.Cache != nil {
+		q["cache"] = strconv.FormatBool(*params.Cache)
+	}
+
+	r, err := c.buildRequest(http.MethodPost, fmt.Sprintf("1/agents/%s/completions", agentID), req, q)
+	if err != nil {
 		return nil, err
 	}
-	return res, nil
+	resp, err := c.client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		var errResp ErrResponse
+		_ = json.Unmarshal(body, &errResp)
+		return nil, fmt.Errorf("agentstudio: POST 1/agents/%s/completions -> %d %s", agentID, resp.StatusCode, formatDetail(errResp.Detail))
+	}
+	return body, nil
 }
 
 // Conversations ----------------------------------------------------------

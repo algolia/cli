@@ -98,6 +98,8 @@ func TestCreateCompletion_RawBody(t *testing.T) {
 	ts, c := newTestClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/1/agents/a1/completions", r.URL.Path)
+		assert.Equal(t, "ai-sdk-5", r.URL.Query().Get("compatibilityMode"))
+		assert.Equal(t, "false", r.URL.Query().Get("stream"))
 		var req AgentCompletionRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
 		require.NotNil(t, req.ID)
@@ -108,7 +110,11 @@ func TestCreateCompletion_RawBody(t *testing.T) {
 	defer ts.Close()
 
 	convID := "conv-1"
-	body, err := c.CreateCompletion("a1", AgentCompletionRequest{ID: &convID})
+	stream := false
+	body, err := c.CreateCompletion("a1", AgentCompletionRequest{ID: &convID}, CompletionParams{
+		CompatibilityMode: "ai-sdk-5",
+		Stream:            &stream,
+	})
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"answer":"hello"}`, string(body))
 }
