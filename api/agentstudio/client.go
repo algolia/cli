@@ -67,7 +67,7 @@ func (c *Client) request(
 	if resp.StatusCode >= 400 {
 		var errResp ErrResponse
 		_ = unmarshalTo(resp, &errResp)
-		return fmt.Errorf("agentstudio: %s %s -> %d %s", method, path, resp.StatusCode, formatDetail(errResp.Detail))
+		return fmt.Errorf("agentstudio: %s %s -> %d %s", method, path, resp.StatusCode, formatErr(errResp))
 	}
 
 	if res != nil {
@@ -123,26 +123,30 @@ func unmarshalTo(r *http.Response, v interface{}) error {
 	return json.NewDecoder(r.Body).Decode(v)
 }
 
-// formatDetail renders a FastAPI `detail` field for human consumption.
-// If detail is a JSON string, return it; if it's an array, join entries; else
-// return the raw JSON.
-func formatDetail(raw json.RawMessage) string {
-	if len(raw) == 0 {
+// formatErr renders an error response for human consumption. Prefers
+// `message` (used by /completions), falls back to `detail` (used by CRUD
+// endpoints), where detail may be a JSON string, an array of validation
+// entries, or arbitrary JSON.
+func formatErr(e ErrResponse) string {
+	if e.Message != "" {
+		return e.Message
+	}
+	if len(e.Detail) == 0 {
 		return ""
 	}
 	var s string
-	if err := json.Unmarshal(raw, &s); err == nil {
+	if err := json.Unmarshal(e.Detail, &s); err == nil {
 		return s
 	}
 	var entries []map[string]any
-	if err := json.Unmarshal(raw, &entries); err == nil {
+	if err := json.Unmarshal(e.Detail, &entries); err == nil {
 		var parts []string
-		for _, e := range entries {
-			parts = append(parts, fmt.Sprintf("%v", e))
+		for _, en := range entries {
+			parts = append(parts, fmt.Sprintf("%v", en))
 		}
 		return strings.Join(parts, "; ")
 	}
-	return string(raw)
+	return string(e.Detail)
 }
 
 func paginationParams(page, limit int) map[string]string {
@@ -260,7 +264,7 @@ func (c *Client) CreateCompletion(agentID string, req AgentCompletionRequest, pa
 	if resp.StatusCode >= 400 {
 		var errResp ErrResponse
 		_ = json.Unmarshal(body, &errResp)
-		return nil, fmt.Errorf("agentstudio: POST 1/agents/%s/completions -> %d %s", agentID, resp.StatusCode, formatDetail(errResp.Detail))
+		return nil, fmt.Errorf("agentstudio: POST 1/agents/%s/completions -> %d %s", agentID, resp.StatusCode, formatErr(errResp))
 	}
 	return body, nil
 }
@@ -313,7 +317,7 @@ func (c *Client) ExportConversations(agentID string) ([]byte, error) {
 	if resp.StatusCode >= 400 {
 		var errResp ErrResponse
 		_ = json.Unmarshal(body, &errResp)
-		return nil, fmt.Errorf("agentstudio: GET conversations/export -> %d %s", resp.StatusCode, formatDetail(errResp.Detail))
+		return nil, fmt.Errorf("agentstudio: GET conversations/export -> %d %s", resp.StatusCode, formatErr(errResp))
 	}
 
 	return body, nil

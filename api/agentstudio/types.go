@@ -99,9 +99,11 @@ type PaginatedConversationsResponse struct {
 	Pagination PaginationMetadata `json:"pagination"`
 }
 
-// ErrResponse models the FastAPI-style validation envelope. `Detail` may be a
-// string (auth/permission errors) or an array of structured error entries
-// (validation errors).
+// ErrResponse models the error envelope. The completions endpoint returns
+// `{message}` while CRUD endpoints return the FastAPI-style `{detail}`
+// (string for auth errors, array for validation errors). We surface
+// whichever is set.
 type ErrResponse struct {
-	Detail json.RawMessage `json:"detail,omitempty"`
+	Detail  json.RawMessage `json:"detail,omitempty"`
+	Message string          `json:"message,omitempty"`
 }

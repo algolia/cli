@@ -119,12 +119,18 @@ func TestCreateCompletion_RawBody(t *testing.T) {
 	assert.JSONEq(t, `{"answer":"hello"}`, string(body))
 }
 
-func TestFormatDetail_String(t *testing.T) {
-	out := formatDetail(json.RawMessage(`"plain message"`))
+func TestFormatErr_DetailString(t *testing.T) {
+	out := formatErr(ErrResponse{Detail: json.RawMessage(`"plain message"`)})
 	assert.Equal(t, "plain message", out)
 }
 
-func TestFormatDetail_Array(t *testing.T) {
-	out := formatDetail(json.RawMessage(`[{"loc":["body","name"],"msg":"required","type":"missing"}]`))
+func TestFormatErr_DetailArray(t *testing.T) {
+	out := formatErr(ErrResponse{Detail: json.RawMessage(`[{"loc":["body","name"],"msg":"required","type":"missing"}]`)})
 	assert.Contains(t, out, "required")
+}
+
+func TestFormatErr_MessagePreferred(t *testing.T) {
+	// /completions returns {"message": "..."} instead of {"detail": ...}
+	out := formatErr(ErrResponse{Message: "Authentication failed for OpenAI"})
+	assert.Equal(t, "Authentication failed for OpenAI", out)
 }
