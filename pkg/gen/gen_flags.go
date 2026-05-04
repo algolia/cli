@@ -5,10 +5,9 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"go/format"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"strings"
 	"text/template"
@@ -35,30 +34,44 @@ type SpecFlag struct {
 }
 
 const (
-	searchSpecFile = "../../../api/specs/search.yml"
-	pathTemplate   = "../../gen/flags.go.tpl"
-	pathName       = "flags.go.tpl"
-	pathOutput     = "../../cmdutil/spec_flags.go"
+	pathTemplate = "../../gen/flags.go.tpl"
+	pathName     = "flags.go.tpl"
 )
 
+// SpecConfig describes a single OpenAPI document and which schemas to flatten
+// into Cobra flag bindings.
+type SpecConfig struct {
+	File       string   // path to the spec, relative to pkg/gen
+	Schemas    []string // top-level component schema names
+	DocLinks   bool     // append Algolia search-API doc links to descriptions
+	OutputPath string   // generated Go file (relative to pkg/gen)
+}
+
+var specs = []SpecConfig{
+	{
+		File: "../../../api/specs/search.yml",
+		Schemas: []string{
+			"searchParamsObject",
+			"browseParamsObject",
+			"indexSettings",
+			"deleteByParams",
+		},
+		DocLinks:   true,
+		OutputPath: "../../cmdutil/spec_flags.go",
+	},
+	{
+		File: "../../../api/specs/agent-studio.json",
+		Schemas: []string{
+			"AgentConfigCreate",
+			"AgentCompletionRequest",
+		},
+		DocLinks:   false,
+		OutputPath: "../../cmdutil/agent_studio_flags.go",
+	},
+}
+
 func main() {
-	// This is the script that generates the `flags.go` file from the
-	// OpenAPI spec file.
-
-	specNames := []string{
-		"searchParamsObject",
-		"browseParamsObject",
-		"indexSettings",
-		"deleteByParams",
-	}
-	templateData, err := getTemplateData(specNames)
-	if err != nil {
-		panic(err)
-	}
-
-	// Load the template with a custom function map
 	tmpl := template.Must(template.
-		// Note that the template name MUST match the file name
 		New(pathName).
 		Funcs(template.FuncMap{
 			"capitalize": func(s string) string {
@@ -67,24 +80,26 @@ func main() {
 		}).
 		ParseFiles(pathTemplate))
 
-	// Execute the template
-	var result bytes.Buffer
-	err = tmpl.Execute(&result, templateData)
-	if err != nil {
-		panic(err)
-	}
+	for _, spec := range specs {
+		data, err := getTemplateData(spec)
+		if err != nil {
+			panic(fmt.Errorf("loading %s: %w", spec.File, err))
+		}
 
-	// Format the output of the template execution
-	formatted, err := format.Source(result.Bytes())
-	if err != nil {
-		panic(err)
-	}
+		var result bytes.Buffer
+		if err := tmpl.Execute(&result, data); err != nil {
+			panic(err)
+		}
 
-	// Write the formatted source code to disk
-	fmt.Printf("writing %s\n", pathOutput)
-	err = ioutil.WriteFile(pathOutput, formatted, 0o644)
-	if err != nil {
-		panic(err)
+		formatted, err := format.Source(result.Bytes())
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("writing %s\n", spec.OutputPath)
+		if err := os.WriteFile(spec.OutputPath, formatted, 0o644); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -130,76 +145,127 @@ func loadSpecs(specFile, specName string) (map[string]*openapi3.Schema, error) {
 	return loadProperties(schemaRef), nil
 }
 
-// This is the function that loads the OpenAPI 3.0 spec file and
-// returns the data for the template.
-func getTemplateData(specNames []string) (TemplateData, error) {
-	data := &TemplateData{
-		SpecFlags: make(map[string]*SpecFlags),
-	}
-	for _, specName := range specNames {
-		specParams, err := loadSpecs(searchSpecFile, specName)
+// getTemplateData loads all flags for a single SpecConfig.
+func getTemplateData(spec SpecConfig) (TemplateData, error) {
+	data := TemplateData{SpecFlags: make(map[string]*SpecFlags)}
+	for _, name := range spec.Schemas {
+		params, err := loadSpecs(spec.File, name)
 		if err != nil {
-			return *data, err
+			return data, err
 		}
-		data.SpecFlags[specName] = getFlags(specParams)
+		data.SpecFlags[name] = getFlags(params, spec.DocLinks)
 	}
-	return *data, nil
+	return data, nil
 }
 
 // getFlags returns the flags for the given spec.
-func getFlags(params map[string]*openapi3.Schema) *SpecFlags {
-	flags := &SpecFlags{
-		Flags: make(map[string]*SpecFlag),
-	}
+func getFlags(params map[string]*openapi3.Schema, withDocLinks bool) *SpecFlags {
+	flags := &SpecFlags{Flags: make(map[string]*SpecFlag)}
 	for name, param := range params {
-		flags.Flags[name] = getFlag(name, param)
+		flags.Flags[name] = getFlag(name, param, withDocLinks)
 	}
 	return flags
 }
 
-// GetGoType returns the Go type for the given OpenAPI 3.0 schema.
+// unwrapNullable handles OpenAPI 3.1 `anyOf: [T, {type: null}]` nullability.
+// When a schema has no Type set but its AnyOf contains exactly one non-null
+// branch and one explicit null branch, return the non-null branch. Otherwise
+// return the input unchanged.
+func unwrapNullable(s *openapi3.Schema) *openapi3.Schema {
+	if s == nil || s.Type != nil || len(s.AnyOf) == 0 {
+		return s
+	}
+	var nonNull *openapi3.Schema
+	for _, branch := range s.AnyOf {
+		if branch == nil || branch.Value == nil {
+			continue
+		}
+		if branch.Value.Type != nil && branch.Value.Type.Is("null") {
+			continue
+		}
+		if nonNull != nil {
+			return s // more than one non-null branch — leave as-is
+		}
+		nonNull = branch.Value
+	}
+	if nonNull == nil {
+		return s
+	}
+	return nonNull
+}
+
+// schemaTypeString returns the primary OpenAPI type for a schema, accounting
+// for the v0.135 *Types representation. Returns "" if no concrete type is set.
+func schemaTypeString(s *openapi3.Schema) string {
+	if s == nil || s.Type == nil {
+		return ""
+	}
+	for _, t := range *s.Type {
+		if t != "" && t != "null" {
+			return t
+		}
+	}
+	return ""
+}
+
+// GetGoType returns the Go type for the given OpenAPI 3.0/3.1 schema.
 func GetGoType(param *openapi3.Schema) string {
-	SpecTypeGoType := map[string]string{
+	param = unwrapNullable(param)
+	specTypeGoType := map[string]string{
 		"string":  "string",
 		"integer": "int",
 		"number":  "float64",
 		"boolean": "bool",
 	}
-	if param.Type == "array" {
+	t := schemaTypeString(param)
+	if t == "array" && param.Items != nil && param.Items.Value != nil {
 		return "[]" + GetGoType(param.Items.Value)
 	}
-	return SpecTypeGoType[param.Type]
+	return specTypeGoType[t]
 }
 
 // getFlag returns the flag for the given parameter.
-func getFlag(name string, param *openapi3.Schema) *SpecFlag {
+func getFlag(name string, param *openapi3.Schema, withDocLinks bool) *SpecFlag {
+	param = unwrapNullable(param)
+	t := schemaTypeString(param)
+
 	subType := ""
-	if param.Type == "array" {
-		subType = param.Items.Value.Type
-	} else {
-		subType = ""
+	if t == "array" && param.Items != nil && param.Items.Value != nil {
+		subType = schemaTypeString(unwrapNullable(param.Items.Value))
+	}
+
+	// Arrays of unions / objects can't be modeled as typed slices; fall through
+	// to the JSONVar branch in the template by clearing the type.
+	if t == "array" && subType != "string" && subType != "integer" && subType != "number" {
+		t = ""
 	}
 
 	var categories []string
-	if param.ExtensionProps.Extensions["x-categories"] != nil {
-		json.Unmarshal(
-			param.ExtensionProps.Extensions["x-categories"].(json.RawMessage),
-			&categories,
-		)
+	if raw, ok := param.Extensions["x-categories"]; ok {
+		switch v := raw.(type) {
+		case []any:
+			for _, item := range v {
+				if s, ok := item.(string); ok {
+					categories = append(categories, s)
+				}
+			}
+		case []string:
+			categories = append(categories, v...)
+		}
 	}
 
 	flag := &SpecFlag{
 		Def:        param.Default,
-		Type:       param.Type,
+		Type:       t,
 		GoType:     GetGoType(param),
-		Usage:      getDescription(name, param),
+		Usage:      getDescription(name, param, withDocLinks),
 		SubType:    subType,
 		Categories: categories,
 	}
 
 	if param.OneOf != nil {
 		for _, oneOf := range param.OneOf {
-			flag.OneOf = append(flag.OneOf, oneOf.Value.Type)
+			flag.OneOf = append(flag.OneOf, schemaTypeString(unwrapNullable(oneOf.Value)))
 		}
 	}
 
@@ -236,12 +302,11 @@ func replaceMarkdownLinks(text string) string {
 
 // getDescription returns the short description for the given parameter.
 // It's the first sentence of the parameter description followed by possible values if it's an enum,
-// followed by a link to the API param reference page
-func getDescription(name string, param *openapi3.Schema) string {
-	withLink := true
+// followed by a link to the API param reference page when withDocLinks is true.
+func getDescription(name string, param *openapi3.Schema, withDocLinks bool) string {
 	// These params don't have an API reference page
 	if name == "semanticSearch" || name == "cursor" || name == "reRankingApplyFilter" {
-		withLink = false
+		withDocLinks = false
 	}
 
 	description := shortDescription(param.Description)
@@ -250,13 +315,13 @@ func getDescription(name string, param *openapi3.Schema) string {
 	if param.Enum != nil {
 		choices := make([]string, len(param.Enum))
 		for i, e := range param.Enum {
-			choices[i] = e.(string)
+			choices[i] = fmt.Sprintf("%v", e)
 		}
 		description = fmt.Sprintf("%s One of: %v.", description, strings.Join(choices, ", "))
 	}
 
 	// Add link to the API param reference page
-	if withLink {
+	if withDocLinks {
 		link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
 		description = fmt.Sprintf("%s\nSee: %s", description, link)
 	}

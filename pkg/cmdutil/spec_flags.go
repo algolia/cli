@@ -341,9 +341,12 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage/`))
 	cmd.Flags().Var(ignorePlurals, "ignorePlurals", heredoc.Doc(`Treat singular, plurals, and other forms of declensions as equivalent.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ignorePlurals/`))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
-	insideBoundingBox := NewJSONVar([]string{"string", "null", "array"}...)
+	insideBoundingBox := NewJSONVar([]string{"string", "", "array"}...)
 	cmd.Flags().Var(insideBoundingBox, "insideBoundingBox", heredoc.Doc(`.
 See: https://www.algolia.com/doc/api-reference/api-parameters/insideBoundingBox/`))
+	insidePolygon := NewJSONVar([]string{}...)
+	cmd.Flags().Var(insidePolygon, "insidePolygon", heredoc.Doc(`Coordinates of a polygon in which to search.
+See: https://www.algolia.com/doc/api-reference/api-parameters/insidePolygon/`))
 	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
 	cmd.Flags().Int("length", 0, heredoc.Doc(`Number of hits to retrieve (used in combination with offset).
 See: https://www.algolia.com/doc/api-reference/api-parameters/length/`))
@@ -380,7 +383,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/offset/`))
 	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Filters to promote or demote records in the search results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalFilters/`))
 	cmd.Flags().SetAnnotation("optionalFilters", "Categories", []string{"Filtering"})
-	optionalWords := NewJSONVar([]string{"string", "null", "array"}...)
+	optionalWords := NewJSONVar([]string{"string", "", "array"}...)
 	cmd.Flags().Var(optionalWords, "optionalWords", heredoc.Doc(`Words that should be considered optional when found in the query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalWords/`))
 	cmd.Flags().Int("page", 0, heredoc.Doc(`Page of search results to retrieve.
@@ -404,7 +407,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/queryType/`))
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Determines the order in which Algolia returns your results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"", "null"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"", ""}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`.`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Relevancy threshold below which less relevant results aren't included in the results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
@@ -480,9 +483,12 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/facetFilters/`))
 	cmd.Flags().String("filters", "", heredoc.Doc(`Filter expression to only include items that match the filter criteria in the response.
 See: https://www.algolia.com/doc/api-reference/api-parameters/filters/`))
 	cmd.Flags().SetAnnotation("filters", "Categories", []string{"Filtering"})
-	insideBoundingBox := NewJSONVar([]string{"string", "null", "array"}...)
+	insideBoundingBox := NewJSONVar([]string{"string", "", "array"}...)
 	cmd.Flags().Var(insideBoundingBox, "insideBoundingBox", heredoc.Doc(`.
 See: https://www.algolia.com/doc/api-reference/api-parameters/insideBoundingBox/`))
+	insidePolygon := NewJSONVar([]string{}...)
+	cmd.Flags().Var(insidePolygon, "insidePolygon", heredoc.Doc(`Coordinates of a polygon in which to search.
+See: https://www.algolia.com/doc/api-reference/api-parameters/insidePolygon/`))
 	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
 	numericFilters := NewJSONVar([]string{"array", "string"}...)
 	cmd.Flags().Var(numericFilters, "numericFilters", heredoc.Doc(`Filter by numeric facets.
@@ -615,7 +621,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/mode/`))
 	cmd.Flags().StringSlice("numericAttributesForFiltering", []string{}, heredoc.Doc(`Numeric attributes that can be used as numerical filters.
 See: https://www.algolia.com/doc/api-reference/api-parameters/numericAttributesForFiltering/`))
 	cmd.Flags().SetAnnotation("numericAttributesForFiltering", "Categories", []string{"Performance"})
-	optionalWords := NewJSONVar([]string{"string", "null", "array"}...)
+	optionalWords := NewJSONVar([]string{"string", "", "array"}...)
 	cmd.Flags().Var(optionalWords, "optionalWords", heredoc.Doc(`Words that should be considered optional when found in the query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalWords/`))
 	cmd.Flags().Int("paginationLimitedTo", 1000, heredoc.Doc(`Maximum number of search results that can be obtained through pagination.
@@ -629,7 +635,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/queryType/`))
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Determines the order in which Algolia returns your results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"", "null"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"", ""}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`.`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Relevancy threshold below which less relevant results aren't included in the results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
@@ -789,9 +795,12 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/hitsPerPage/`))
 	cmd.Flags().Var(ignorePlurals, "ignorePlurals", heredoc.Doc(`Treat singular, plurals, and other forms of declensions as equivalent.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ignorePlurals/`))
 	cmd.Flags().SetAnnotation("ignorePlurals", "Categories", []string{"Languages"})
-	insideBoundingBox := NewJSONVar([]string{"string", "null", "array"}...)
+	insideBoundingBox := NewJSONVar([]string{"string", "", "array"}...)
 	cmd.Flags().Var(insideBoundingBox, "insideBoundingBox", heredoc.Doc(`.
 See: https://www.algolia.com/doc/api-reference/api-parameters/insideBoundingBox/`))
+	insidePolygon := NewJSONVar([]string{}...)
+	cmd.Flags().Var(insidePolygon, "insidePolygon", heredoc.Doc(`Coordinates of a polygon in which to search.
+See: https://www.algolia.com/doc/api-reference/api-parameters/insidePolygon/`))
 	cmd.Flags().SetAnnotation("insidePolygon", "Categories", []string{"Geo-Search"})
 	cmd.Flags().Int("length", 0, heredoc.Doc(`Number of hits to retrieve (used in combination with offset).
 See: https://www.algolia.com/doc/api-reference/api-parameters/length/`))
@@ -828,7 +837,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/offset/`))
 	cmd.Flags().Var(optionalFilters, "optionalFilters", heredoc.Doc(`Filters to promote or demote records in the search results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalFilters/`))
 	cmd.Flags().SetAnnotation("optionalFilters", "Categories", []string{"Filtering"})
-	optionalWords := NewJSONVar([]string{"string", "null", "array"}...)
+	optionalWords := NewJSONVar([]string{"string", "", "array"}...)
 	cmd.Flags().Var(optionalWords, "optionalWords", heredoc.Doc(`Words that should be considered optional when found in the query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/optionalWords/`))
 	cmd.Flags().Int("page", 0, heredoc.Doc(`Page of search results to retrieve.
@@ -852,7 +861,7 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/queryType/`))
 	cmd.Flags().StringSlice("ranking", []string{"typo", "geo", "words", "filters", "proximity", "attribute", "exact", "custom"}, heredoc.Doc(`Determines the order in which Algolia returns your results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/ranking/`))
 	cmd.Flags().SetAnnotation("ranking", "Categories", []string{"Ranking"})
-	reRankingApplyFilter := NewJSONVar([]string{"", "null"}...)
+	reRankingApplyFilter := NewJSONVar([]string{"", ""}...)
 	cmd.Flags().Var(reRankingApplyFilter, "reRankingApplyFilter", heredoc.Doc(`.`))
 	cmd.Flags().Int("relevancyStrictness", 100, heredoc.Doc(`Relevancy threshold below which less relevant results aren't included in the results.
 See: https://www.algolia.com/doc/api-reference/api-parameters/relevancyStrictness/`))
