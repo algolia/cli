@@ -97,7 +97,7 @@ func main() {
 		}
 
 		fmt.Printf("writing %s\n", spec.OutputPath)
-		if err := os.WriteFile(spec.OutputPath, formatted, 0o644); err != nil {
+		if err := os.WriteFile(spec.OutputPath, formatted, 0o600); err != nil {
 			panic(err)
 		}
 	}
