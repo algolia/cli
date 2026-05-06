@@ -116,17 +116,18 @@ func runTestCmd(opts *TestOptions) error {
 		return err
 	}
 
-	if opts.DryRun {
-		// Treat as structured if --no-stream + caller piped (i.e. user
-		// asked for JSON output explicitly via --no-stream). For the
-		// human dry-run we always show the body — same shape as create.
-		return shared.PrintDryRun(opts.IO, cmdutil.NewPrintFlags(), false,
-			"test_completion", "POST /1/agents/test/completions", "", body, nil)
-	}
-
+	// Validate --compatibility BEFORE the dry-run short-circuit. An
+	// invalid value would produce an invalid request, so previewing a
+	// "valid-looking" body for it is misleading. Same rationale as
+	// rejecting --input + --message together at flag-parse time.
 	mode, err := shared.NormalizeCompatibility(opts.Compatibility)
 	if err != nil {
 		return err
+	}
+
+	if opts.DryRun {
+		return shared.PrintDryRun(opts.IO, cmdutil.NewPrintFlags(), false,
+			"test_completion", "POST /1/agents/test/completions", "", body, nil)
 	}
 
 	client, err := opts.AgentStudioClient()

@@ -126,6 +126,42 @@ Use narrower verification for small edits.
 - Put shared command logic in focused helper packages, usually `pkg/cmdutil`.
 - Keep docs-generation logic in `internal/docs` and `cmd/docs`.
 
+## Agent Studio (`pkg/cmd/agents/...`, `api/agentstudio/`)
+
+Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `test`, `run`. Backend source of truth: `github.com/algolia/conversational-ai`.
+
+### API client (`api/agentstudio/`)
+
+- Auth: standard Algolia headers (`X-Algolia-Application-Id`, `X-Algolia-API-Key`). No bearer tokens. Comes from the active profile via `*cmdutil.Factory.AgentStudioClient`.
+- Base URL resolution priority: per-profile `agent_studio_url` → env `ALGOLIA_AGENT_STUDIO_URL` → build-time `agentstudio.DefaultBaseURL` (set via `ldflags`, mirrors `dashboard.DefaultDashboardURL`) → cluster-proxy fallback `https://{appID}.algolia.net/agent-studio`. The cluster proxy already does region routing — don't add a `Region` field.
+- Errors: `*APIError` with `StatusCode`, `Detail`, optional `Sentinel`. The detail extractor prefers structured FastAPI `detail[].msg` arrays over the generic `message` field — backends that return both pair them as `{"message":"Input is invalid, see detail/body:","detail":[{"msg":"..."}]}` and the structured form is the actionable one.
+- `CreateAgent` / `UpdateAgent` accept `json.RawMessage` bodies on purpose. The backend's `AgentConfigCreate` schema is large, deeply validated, and evolves often. The CLI is a pass-through; the backend validates; our 422-detail surfacing makes errors actionable.
+- `Completions(...)` returns the raw `*http.Response`. Caller checks `Content-Type` (`text/event-stream` → `ParseStream`; else copy verbatim). One method, two output shapes.
+
+### Streaming (`api/agentstudio/sse.go`)
+
+The wire format is **not** standard SSE. Two protocols, both served as `text/event-stream`:
+
+- **v5 (CLI default)**: standard SSE — `data: <json>\n\n`, `data: [DONE]` sentinel.
+- **v4**: line-delimited bespoke — `<type-code>:<json>\n` per line, no terminator. Type codes: `0` = text, `9` = tool-call, `d` = finish-message, etc. (see `v4TypeNames` in `sse.go`).
+
+`ParseStream` sniffs the line prefix and emits a normalized `StreamEvent{Type, Data, Raw}` for both. `compatibilityMode` is a **required** server-side query parameter — the CLI defaults to v5 and exposes `--compatibility v4|v5`.
+
+Streaming output convention: NDJSON to stdout regardless of TTY, one `{"type":"...","data":{...}}` per line. Plays well with `jq -r 'select(.type=="text-delta") | .data.delta'`. Don't fork rendering between TTY/non-TTY for streaming responses.
+
+### Dry-run convention
+
+`agents create / update / delete / test / run` all support `--dry-run`. Two output modes:
+
+- **Human (default)**: print `Dry run: would <METHOD> <PATH>` followed by the resolved JSON body (pretty-printed for the body preview).
+- **Structured (only when `--output` is explicitly set)**: emit `{"action":"...","request":"...","source":"...","bytes":N,"body":<...>,"dryRun":true,...}`. Gate this on `cmd.Flags().Changed("output")`, **not** on `PrintFlags.HasStructuredOutput()` — using the latter would let `WithDefaultOutput("json")` from the success path silently steal the human dry-run output.
+
+Shared helpers live in `pkg/cmd/agents/shared/` (`PrintDryRun`, `BuildMessages`, `ReadJSONFile`, `MarshalCompletionBody`, `RenderCompletion`, `NormalizeCompatibility`). Extract on second use, not pre-emptively.
+
+### Telemetry
+
+Existing `pkg/telemetry` model is **one event (`"Command Invoked"`) per invocation** from root, with `{command: cmd.CommandPath(), flags: [<changed flag names>]}`. That already attributes per-verb (`algolia agents create`) and surfaces `--dry-run` (it's in `flags`). Don't add bespoke per-verb telemetry events — it would diverge from convention for one feature only. Outcome (success/error) is a separate, all-commands refactor.
+
 ## Code Style
 
 ### Imports

@@ -104,15 +104,17 @@ func runRunCmd(opts *RunOptions) error {
 		return err
 	}
 
+	// Validate --compatibility before the dry-run short-circuit; same
+	// rationale as in `agents test`.
+	mode, err := shared.NormalizeCompatibility(opts.Compatibility)
+	if err != nil {
+		return err
+	}
+
 	if opts.DryRun {
 		return shared.PrintDryRun(opts.IO, cmdutil.NewPrintFlags(), false,
 			"run_completion", fmt.Sprintf("POST /1/agents/%s/completions", opts.AgentID),
 			"", body, map[string]any{"agentId": opts.AgentID})
-	}
-
-	mode, err := shared.NormalizeCompatibility(opts.Compatibility)
-	if err != nil {
-		return err
 	}
 
 	client, err := opts.AgentStudioClient()
