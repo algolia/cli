@@ -157,6 +157,81 @@ func readAllString(t *testing.T, r io.Reader) string {
 	return strings.TrimSpace(string(b))
 }
 
+func TestCompletions_QueryFlagsAndSecureUserToken(t *testing.T) {
+	// Phase 5: validates the new --no-cache / --no-memory / --no-analytics
+	// / --secure-user-token plumbing all the way through the wire.
+	//
+	// Polarity matters here: the No*-fields are inverted from the
+	// backend's query polarity (see CompletionOptions godoc). A `false`
+	// value MUST omit the param — sending `cache=true` would still
+	// match server defaults, but sending `memory=true` would 422 (the
+	// `memory` schema only allows {const false, null}). This is the
+	// regression net for that.
+	cases := []struct {
+		name    string
+		opts    CompletionOptions
+		wantHas map[string]string // params that must equal a value
+		wantNot []string          // params that must be ABSENT
+		wantHdr string            // expected X-Algolia-Secure-User-Token; "" = absent
+	}{
+		{
+			name:    "all defaults: only stream + compatibilityMode set",
+			opts:    CompletionOptions{Stream: true},
+			wantHas: map[string]string{"stream": "true", "compatibilityMode": "ai-sdk-5"},
+			wantNot: []string{"cache", "memory", "analytics"},
+			wantHdr: "",
+		},
+		{
+			name:    "--no-cache only",
+			opts:    CompletionOptions{Stream: true, NoCache: true},
+			wantHas: map[string]string{"cache": "false"},
+			wantNot: []string{"memory", "analytics"},
+		},
+		{
+			name:    "--no-memory only (the most semantically constrained)",
+			opts:    CompletionOptions{Stream: true, NoMemory: true},
+			wantHas: map[string]string{"memory": "false"},
+			wantNot: []string{"cache", "analytics"},
+		},
+		{
+			name:    "--no-analytics only",
+			opts:    CompletionOptions{Stream: true, NoAnalytics: true},
+			wantHas: map[string]string{"analytics": "false"},
+			wantNot: []string{"cache", "memory"},
+		},
+		{
+			name:    "all three negative + secure user token header",
+			opts:    CompletionOptions{Stream: true, NoCache: true, NoMemory: true, NoAnalytics: true, SecureUserToken: "ey.signed.jwt"},
+			wantHas: map[string]string{"cache": "false", "memory": "false", "analytics": "false"},
+			wantHdr: "ey.signed.jwt",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/1/agents/test/completions", func(w http.ResponseWriter, r *http.Request) {
+				for k, v := range tc.wantHas {
+					assert.Equal(t, v, r.URL.Query().Get(k), "query param %q", k)
+				}
+				for _, k := range tc.wantNot {
+					assert.False(t, r.URL.Query().Has(k), "query param %q must be absent", k)
+				}
+				assert.Equal(t, tc.wantHdr, r.Header.Get("X-Algolia-Secure-User-Token"))
+
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{}`))
+			})
+			_, c := newTestClient(t, mux)
+
+			resp, err := c.Completions(context.Background(), "test",
+				json.RawMessage(`{"messages":[{"role":"user","content":"x"}]}`), tc.opts)
+			require.NoError(t, err)
+			_ = resp.Body.Close()
+		})
+	}
+}
+
 func TestCompletions_BodyContentRoundTrip(t *testing.T) {
 	// Confirms we POST exactly the bytes we were handed (no re-encode).
 	wire := `{"messages":[{"role":"user","content":"x"}],"id":"conv-1"}`

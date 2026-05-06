@@ -1,0 +1,33 @@
+# `agents cache invalidate` — flag-validation + dry-run contract.
+# None of these hit the network: the failing cases trip cobra/our own
+# validators before client construction; the passing case uses --dry-run.
+#
+# Ungated: runs whenever the standard ALGOLIA_APPLICATION_ID +
+# ALGOLIA_API_KEY are present.
+
+# `cache` parent without verb prints help (cobra default for groups
+# with no Run; exits 0).
+exec algolia agents cache
+stdout 'invalidate'
+
+# `invalidate` requires <agent-id> positional
+! exec algolia agents cache invalidate
+stderr 'requires exactly 1 argument'
+
+# Non-TTY without --confirm is refused (matches `agents delete` rule)
+! exec algolia agents cache invalidate abc-123
+stderr '--confirm required'
+
+# --dry-run skips the confirm requirement and prints the would-be call
+exec algolia agents cache invalidate abc-123 --dry-run
+! stderr .
+stdout 'Dry run: would DELETE /1/agents/abc-123/cache'
+stdout 'all cached completions for this agent'
+! stdout '\?before='
+
+# --dry-run with --before describes the bounded scope and includes the
+# query string in the previewed URL
+exec algolia agents cache invalidate abc-123 --before 2026-01-15 --dry-run
+! stderr .
+stdout 'Dry run: would DELETE /1/agents/abc-123/cache\?before=2026-01-15'
+stdout 'before 2026-01-15'

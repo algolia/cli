@@ -128,9 +128,9 @@ Use narrower verification for small edits.
 
 ## Agent Studio (`pkg/cmd/agents/...`, `api/agentstudio/`)
 
-Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `try`, `run`. Backend source of truth: `github.com/algolia/conversational-ai`.
+Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `try`, `run`. Sub-groups: `cache` (`invalidate`). Backend source of truth: `github.com/algolia/conversational-ai`.
 
-**Naming note**: `try` (not `test`) — see "On `--dry-run`" below for why. All other verbs are single-word lowercase to match the CLI-wide convention; no hyphenated subcommand names exist anywhere in the tree.
+**Naming note**: `try` (not `test`) — see "On `--dry-run`" below for why. All flat verbs are single-word lowercase to match the CLI-wide convention; no hyphenated subcommand names exist anywhere in the tree. Sub-groups (`cache`, future `providers` / `conversations` / `keys` / `domains`) read as noun-then-verb (`agents cache invalidate`) — also a single word per token.
 
 ### API client (`api/agentstudio/`)
 
@@ -139,6 +139,9 @@ Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `upda
 - Errors: `*APIError` with `StatusCode`, `Detail`, optional `Sentinel`. The detail extractor prefers structured FastAPI `detail[].msg` arrays over the generic `message` field — backends that return both pair them as `{"message":"Input is invalid, see detail/body:","detail":[{"msg":"..."}]}` and the structured form is the actionable one.
 - `CreateAgent` / `UpdateAgent` accept `json.RawMessage` bodies on purpose. The backend's `AgentConfigCreate` schema is large, deeply validated, and evolves often. The CLI is a pass-through; the backend validates; our 422-detail surfacing makes errors actionable.
 - `Completions(...)` returns the raw `*http.Response`. Caller checks `Content-Type` (`text/event-stream` → `ParseStream`; else copy verbatim). One method, two output shapes.
+- `CompletionOptions.No*` fields (`NoCache`, `NoMemory`, `NoAnalytics`) are **inverted** from the backend's query polarity. Two reasons: the backend defaults all three to true (only the negative is interesting at the CLI), and `memory` in particular has an `anyOf [{const false}, {type null}]` schema — sending `memory=true` would 422. Therefore the wire form omits the param when the No* field is false, and sends `<param>=false` when true. Polarity is enforced end-to-end by `TestCompletions_QueryFlagsAndSecureUserToken` in `api/agentstudio/completions_test.go`.
+- `CompletionOptions.SecureUserToken` populates the `X-Algolia-Secure-User-Token` header when non-empty. It carries a signed JWT scoping the conversation/memory/analytics partition to a specific end-user (see `rag/dependencies/secure_user_token.py` in the backend). Empty means no header — `X-Algolia-User-ID` fallback applies.
+- `InvalidateAgentCache(id, before)` calls `DELETE /1/agents/{id}/cache?before=YYYY-MM-DD` (query omitted when `before` is empty). Date format validation is **deliberately not done client-side** — the backend's Pydantic parser is the source of truth, and our 422 surfacing turns malformed input into an actionable message verbatim. Mirroring the parser in Go would create silent skew.
 
 ### Streaming (`api/agentstudio/sse.go`)
 
@@ -150,6 +153,21 @@ The wire format is **not** standard SSE. Two protocols, both served as `text/eve
 `ParseStream` sniffs the line prefix and emits a normalized `StreamEvent{Type, Data, Raw}` for both. `compatibilityMode` is a **required** server-side query parameter — the CLI defaults to v5 and exposes `--compatibility v4|v5`.
 
 Streaming output convention: NDJSON to stdout regardless of TTY, one `{"type":"...","data":{...}}` per line. Plays well with `jq -r 'select(.type=="text-delta") | .data.delta'`. Don't fork rendering between TTY/non-TTY for streaming responses.
+
+### Completion runtime knobs (`agents try` / `agents run`)
+
+Both commands expose the same set of completion-time flags, mapping directly to backend query params + headers:
+
+| Flag | Wire | Default | Notes |
+|---|---|---|---|
+| `--no-stream` | `?stream=false` | stream | Buffered single-JSON response instead of SSE |
+| `--compatibility v4\|v5` | `?compatibilityMode=ai-sdk-{4,5}` | v5 | **Required** server-side; CLI promotes empty → v5 |
+| `--no-cache` | `?cache=false` | cache on | Bypasses backend completion cache for this call |
+| `--no-memory` | `?memory=false` | memory on | Disables agent memory retrieval/write for this call |
+| `--no-analytics` | `?analytics=false` | analytics on | Skips Agent Studio analytics for this call |
+| `--secure-user-token <jwt>` | `X-Algolia-Secure-User-Token` header | (omitted) | Signed JWT, end-user scoping |
+
+The flag set is intentionally duplicated across `try.go` and `run.go` rather than extracted into a `RegisterCompletionFlags` shared helper — there are exactly two consumers and the duplication is mechanical (8 lines per command). If a third consumer appears, extract following the "second use" rule (same as `PrintDryRun` / `NormalizeCompatibility`).
 
 ### On `--dry-run`
 

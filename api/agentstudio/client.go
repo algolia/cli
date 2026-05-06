@@ -130,19 +130,46 @@ func (c *Client) ListAgents(ctx context.Context, params ListAgentsParams) (*Pagi
 	return &out, nil
 }
 
-// CompletionOptions configures Completions(...) query parameters.
+// CompletionOptions configures Completions(...) query parameters and
+// per-request headers.
 //
 // Stream maps to ?stream=true|false; the default zero value (false) gives
 // a buffered single-JSON response. Set explicitly via the command layer
-// (`agents test` / `agents run` set Stream=true unless --no-stream).
+// (`agents try` / `agents run` set Stream=true unless --no-stream).
 //
 // Compatibility maps to ?compatibilityMode=ai-sdk-4|ai-sdk-5. The backend
 // requires this query param (no server-side default), so empty here is
 // promoted to CompatV5 — its frames are standard SSE with [DONE], easier
 // to parse defensively than v4's `<type>:<json>\n` line format.
+//
+// NoCache, NoMemory, and NoAnalytics are inverted from the backend's
+// query-param polarity for two reasons:
+//
+//   - The backend defaults all three to true; only the negated case is
+//     interesting from the CLI surface.
+//   - The flag layer ships them as `--no-cache`/`--no-memory`/`--no-analytics`
+//     so the option fields keep that polarity end-to-end.
+//
+// When a No*-field is false (the zero value) the corresponding query
+// param is omitted entirely, which matches the backend's "default ON"
+// behavior. The `memory` schema in particular is `anyOf [{const: false},
+// {type: null}]` — false is the ONLY valid passable value, so always
+// emitting `memory=true` would be a server-side validation error.
+//
+// SecureUserToken populates the X-Algolia-Secure-User-Token header when
+// non-empty. It carries a signed JWT that scopes the conversation /
+// memory / analytics partition to a specific end-user; required by the
+// backend whenever a feature behind SecureUserTokenDep is enabled (see
+// rag/dependencies/secure_user_token.py in algolia/conversational-ai).
+// Empty here means no header is sent — the existing X-Algolia-User-ID
+// fallback applies.
 type CompletionOptions struct {
-	Stream        bool
-	Compatibility CompatibilityMode
+	Stream          bool
+	Compatibility   CompatibilityMode
+	NoCache         bool
+	NoMemory        bool
+	NoAnalytics     bool
+	SecureUserToken string
 }
 
 // Completions calls POST /1/agents/{agentID}/completions and returns the
@@ -191,6 +218,19 @@ func (c *Client) Completions(
 	q := url.Values{}
 	q.Set("stream", boolToWire(opts.Stream))
 	q.Set("compatibilityMode", string(mode))
+	// Only emit the negative cases — backend defaults match the omitted
+	// state, so adding `cache=true`/`analytics=true` would be wire noise,
+	// and `memory=true` would actually be a 422 (the schema only allows
+	// `false` or null). See CompletionOptions godoc for the full reasoning.
+	if opts.NoCache {
+		q.Set("cache", "false")
+	}
+	if opts.NoMemory {
+		q.Set("memory", "false")
+	}
+	if opts.NoAnalytics {
+		q.Set("analytics", "false")
+	}
 
 	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(agentID) + "/completions?" + q.Encode()
 
@@ -200,6 +240,9 @@ func (c *Client) Completions(
 	}
 	c.setHeaders(req)
 	req.Header.Set("Content-Type", "application/json")
+	if opts.SecureUserToken != "" {
+		req.Header.Set("X-Algolia-Secure-User-Token", opts.SecureUserToken)
+	}
 	// Preferred Accept: streaming responses come back as text/event-stream
 	// (both v4 and v5); buffered ones as application/json. Listing both
 	// is safe — the server picks based on ?stream and we inspect the
@@ -258,6 +301,48 @@ func (c *Client) UpdateAgent(ctx context.Context, id string, body json.RawMessag
 	}
 	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id)
 	return c.doAgentMutation(ctx, http.MethodPatch, endpoint, body, "update agent")
+}
+
+// InvalidateAgentCache calls DELETE /1/agents/{id}/cache. The backend
+// removes cached completion responses for this agent.
+//
+// `before` is an optional YYYY-MM-DD date string. When non-empty, only
+// cache entries created strictly before that date are invalidated
+// (exclusive). When empty, all cache entries for the agent are wiped.
+//
+// The format is intentionally not pre-parsed in Go — the backend
+// accepts the literal string and returns a 422 with a structured detail
+// on a malformed value, which our extractDetail surfaces unchanged. Any
+// client-side date parsing here would diverge from whatever Pydantic
+// version the backend ships and create silent skew.
+//
+// Returns nil on the backend's HTTP 204 No Content. Wraps the standard
+// 4xx/5xx APIError otherwise.
+func (c *Client) InvalidateAgentCache(ctx context.Context, id, before string) error {
+	if strings.TrimSpace(id) == "" {
+		return fmt.Errorf("agent studio: agent id is required")
+	}
+
+	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id) + "/cache"
+	if before != "" {
+		q := url.Values{}
+		q.Set("before", before)
+		endpoint += "?" + q.Encode()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("agent studio: invalidate agent cache: %w", err)
+	}
+	defer resp.Body.Close()
+
+	return checkResponse(resp)
 }
 
 // DeleteAgent calls DELETE /1/agents/{id}.

@@ -22,12 +22,16 @@ type RunOptions struct {
 
 	AgentStudioClient func() (*agentstudio.Client, error)
 
-	AgentID       string
-	InputFile     string
-	Message       string
-	NoStream      bool
-	Compatibility string
-	DryRun        bool
+	AgentID         string
+	InputFile       string
+	Message         string
+	NoStream        bool
+	Compatibility   string
+	NoCache         bool
+	NoMemory        bool
+	NoAnalytics     bool
+	SecureUserToken string
+	DryRun          bool
 }
 
 func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command {
@@ -80,6 +84,11 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 	cmd.Flags().BoolVar(&opts.NoStream, "no-stream", false, "Request a buffered JSON response instead of SSE")
 	cmd.Flags().
 		StringVar(&opts.Compatibility, "compatibility", "", "Streaming protocol: v4 (ai-sdk-4) or v5 (ai-sdk-5, default)")
+	cmd.Flags().BoolVar(&opts.NoCache, "no-cache", false, "Bypass the backend completion cache (default: cache enabled)")
+	cmd.Flags().BoolVar(&opts.NoMemory, "no-memory", false, "Disable agent memory for this completion (default: memory enabled)")
+	cmd.Flags().BoolVar(&opts.NoAnalytics, "no-analytics", false, "Skip Agent Studio analytics for this completion (default: analytics enabled)")
+	cmd.Flags().
+		StringVar(&opts.SecureUserToken, "secure-user-token", "", "Signed JWT scoping the conversation/memory/analytics partition to an end-user (X-Algolia-Secure-User-Token)")
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Print the resolved request body without calling the API")
 
@@ -130,8 +139,12 @@ func runRunCmd(opts *RunOptions) error {
 	defer stop()
 
 	resp, err := client.Completions(ctx, opts.AgentID, body, agentstudio.CompletionOptions{
-		Stream:        !opts.NoStream,
-		Compatibility: mode,
+		Stream:          !opts.NoStream,
+		Compatibility:   mode,
+		NoCache:         opts.NoCache,
+		NoMemory:        opts.NoMemory,
+		NoAnalytics:     opts.NoAnalytics,
+		SecureUserToken: opts.SecureUserToken,
 	})
 	if err != nil {
 		return err

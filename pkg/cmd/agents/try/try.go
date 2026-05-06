@@ -30,11 +30,15 @@ type TryOptions struct {
 
 	AgentStudioClient func() (*agentstudio.Client, error)
 
-	ConfigFile    string
-	InputFile     string
-	Message       string
-	NoStream      bool
-	Compatibility string
+	ConfigFile      string
+	InputFile       string
+	Message         string
+	NoStream        bool
+	Compatibility   string
+	NoCache         bool
+	NoMemory        bool
+	NoAnalytics     bool
+	SecureUserToken string
 }
 
 func NewTryCmd(f *cmdutil.Factory, runF func(*TryOptions) error) *cobra.Command {
@@ -101,6 +105,11 @@ func NewTryCmd(f *cmdutil.Factory, runF func(*TryOptions) error) *cobra.Command 
 	cmd.Flags().BoolVar(&opts.NoStream, "no-stream", false, "Request a buffered JSON response instead of SSE")
 	cmd.Flags().
 		StringVar(&opts.Compatibility, "compatibility", "", "Streaming protocol: v4 (ai-sdk-4) or v5 (ai-sdk-5, default)")
+	cmd.Flags().BoolVar(&opts.NoCache, "no-cache", false, "Bypass the backend completion cache (default: cache enabled)")
+	cmd.Flags().BoolVar(&opts.NoMemory, "no-memory", false, "Disable agent memory for this completion (default: memory enabled)")
+	cmd.Flags().BoolVar(&opts.NoAnalytics, "no-analytics", false, "Skip Agent Studio analytics for this completion (default: analytics enabled)")
+	cmd.Flags().
+		StringVar(&opts.SecureUserToken, "secure-user-token", "", "Signed JWT scoping the conversation/memory/analytics partition to an end-user (X-Algolia-Secure-User-Token)")
 
 	cmd.MarkFlagsMutuallyExclusive("input", "message")
 
@@ -144,8 +153,12 @@ func runTryCmd(opts *TryOptions) error {
 	defer stop()
 
 	resp, err := client.Completions(ctx, "test", body, agentstudio.CompletionOptions{
-		Stream:        !opts.NoStream,
-		Compatibility: mode,
+		Stream:          !opts.NoStream,
+		Compatibility:   mode,
+		NoCache:         opts.NoCache,
+		NoMemory:        opts.NoMemory,
+		NoAnalytics:     opts.NoAnalytics,
+		SecureUserToken: opts.SecureUserToken,
 	})
 	if err != nil {
 		return err

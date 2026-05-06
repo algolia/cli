@@ -223,6 +223,93 @@ func TestLifecycle_RejectsEmptyID(t *testing.T) {
 	}
 }
 
+func TestInvalidateAgentCache(t *testing.T) {
+	cases := []struct {
+		name       string
+		id         string
+		before     string
+		serverFn   func(t *testing.T) http.HandlerFunc
+		wantErr    string // substring; "" = expect success
+		isSentinel error
+	}{
+		{
+			name:   "no before -> DELETE without query",
+			id:     "abc-123",
+			before: "",
+			serverFn: func(t *testing.T) http.HandlerFunc {
+				return func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, http.MethodDelete, r.Method)
+					assert.Equal(t, "", r.URL.RawQuery, "no before -> no query string")
+					w.WriteHeader(http.StatusNoContent)
+				}
+			},
+		},
+		{
+			name:   "with before -> DELETE with ?before",
+			id:     "abc-123",
+			before: "2026-01-15",
+			serverFn: func(t *testing.T) http.HandlerFunc {
+				return func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, http.MethodDelete, r.Method)
+					assert.Equal(t, "2026-01-15", r.URL.Query().Get("before"))
+					w.WriteHeader(http.StatusNoContent)
+				}
+			},
+		},
+		{
+			name:   "404 from backend surfaces as ErrNotFound",
+			id:     "missing",
+			before: "",
+			serverFn: func(t *testing.T) http.HandlerFunc {
+				return func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusNotFound)
+					_, _ = w.Write([]byte(`{"detail":"Agent not found"}`))
+				}
+			},
+			wantErr:    "Agent not found",
+			isSentinel: ErrNotFound,
+		},
+		{
+			name:   "422 with structured detail (e.g. malformed before) surfaces backend message verbatim",
+			id:     "abc-123",
+			before: "not-a-date",
+			serverFn: func(t *testing.T) http.HandlerFunc {
+				return func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					_, _ = w.Write([]byte(`{"detail":[{"msg":"Input should be a valid date in YYYY-MM-DD format","loc":["query","before"]}]}`))
+				}
+			},
+			wantErr: "valid date",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/1/agents/"+tc.id+"/cache", tc.serverFn(t))
+			_, c := newTestClient(t, mux)
+
+			err := c.InvalidateAgentCache(context.Background(), tc.id, tc.before)
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantErr)
+			if tc.isSentinel != nil {
+				assert.True(t, errors.Is(err, tc.isSentinel))
+			}
+		})
+	}
+}
+
+func TestInvalidateAgentCache_RejectsEmptyID(t *testing.T) {
+	_, c := newTestClient(t, http.NewServeMux())
+	err := c.InvalidateAgentCache(context.Background(), "  ", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "agent id is required")
+}
+
 func TestLifecycle_NotFound(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/missing/publish", func(w http.ResponseWriter, _ *http.Request) {

@@ -149,6 +149,37 @@ func Test_runTryCmd_CompatibilityV4(t *testing.T) {
 	assert.Contains(t, result.String(), `"text"`)
 }
 
+func Test_runTryCmd_ForwardsCompletionFlagsToWire(t *testing.T) {
+	// One end-to-end check that all four Phase 5 flags map onto the
+	// expected query params + header. Exhaustive matrix lives in
+	// api/agentstudio/completions_test.go; this test exists so a
+	// regression in the cobra→opts→client wiring (forgetting one
+	// field, transposing No* polarity, etc.) is caught at the cmd
+	// layer.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/agents/test/completions", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "false", r.URL.Query().Get("cache"))
+		assert.Equal(t, "false", r.URL.Query().Get("memory"))
+		assert.Equal(t, "false", r.URL.Query().Get("analytics"))
+		assert.Equal(t, "ey.signed.jwt", r.Header.Get("X-Algolia-Secure-User-Token"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"role":"assistant","content":"ok"}`))
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
+
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioClient = newClientForServer(t, ts)
+
+	cmd := NewTryCmd(f, nil)
+	_, err := test.Execute(cmd,
+		"-c "+cfgPath+" -m hi --no-stream --no-cache --no-memory --no-analytics --secure-user-token ey.signed.jwt",
+		out)
+	require.NoError(t, err)
+}
+
 func Test_runTryCmd_RejectsInvalidCompatibility(t *testing.T) {
 	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")

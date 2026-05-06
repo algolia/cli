@@ -57,6 +57,23 @@ stdout -count=1 '"messages"'
 ! exec algolia agents try -c cfg.json -m hi --dry-run
 stderr 'unknown flag'
 
+# ---------------------------------------------------------------------
+# Phase 5 completion runtime flags wire into the dry-run preview body
+# without changing it (they're query params + a header, not body
+# fields). Same for `agents try` which does NOT echo them via
+# --dry-run because it has no --dry-run. The body preview must remain
+# stable across these flag combos so users can diff configs cleanly.
+# ---------------------------------------------------------------------
+exec algolia agents run 11111111-1111-1111-1111-111111111111 -m hi --no-cache --no-memory --no-analytics --secure-user-token ey.signed.jwt --dry-run
+! stderr .
+stdout -count=1 'Dry run: would POST /1/agents/11111111-1111-1111-1111-111111111111/completions'
+stdout -count=1 '"content": "hi"'
+# completion-runtime knobs are wire-only; never in the body
+! stdout '"cache"'
+! stdout '"memory"'
+! stdout '"analytics"'
+! stdout 'secure-user-token'
+
 -- cfg.json --
 {"name":"e2e-create-stub","instructions":"e2e","widgetType":"filterSuggestions","enableAlgoliaMcp":false}
 

@@ -87,6 +87,34 @@ func Test_runRunCmd_RequiresAgentID(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_runRunCmd_ForwardsCompletionFlagsToWire(t *testing.T) {
+	// One end-to-end check that all four Phase 5 flags map onto the
+	// expected query params + header. Exhaustive matrix lives in
+	// api/agentstudio/completions_test.go; this exists so a regression
+	// in the cobra→opts→client wiring (forgetting one field,
+	// transposing No* polarity, etc.) is caught at the cmd layer.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/agents/abc-123/completions", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "false", r.URL.Query().Get("cache"))
+		assert.Equal(t, "false", r.URL.Query().Get("memory"))
+		assert.Equal(t, "false", r.URL.Query().Get("analytics"))
+		assert.Equal(t, "ey.signed.jwt", r.Header.Get("X-Algolia-Secure-User-Token"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"role":"assistant","content":"ok"}`))
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioClient = newClientForServer(t, ts)
+
+	cmd := NewRunCmd(f, nil)
+	_, err := test.Execute(cmd,
+		"abc-123 -m hi --no-stream --no-cache --no-memory --no-analytics --secure-user-token ey.signed.jwt",
+		out)
+	require.NoError(t, err)
+}
+
 func Test_runRunCmd_PropagatesAPIError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/missing/completions", func(w http.ResponseWriter, _ *http.Request) {

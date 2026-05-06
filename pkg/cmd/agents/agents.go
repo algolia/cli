@@ -4,6 +4,7 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/agents/cache"
 	"github.com/algolia/cli/pkg/cmd/agents/create"
 	deletecmd "github.com/algolia/cli/pkg/cmd/agents/delete"
 	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
@@ -63,6 +64,7 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(duplicate.NewDuplicateCmd(f, nil))
 	cmd.AddCommand(trycmd.NewTryCmd(f, nil))
 	cmd.AddCommand(run.NewRunCmd(f, nil))
+	cmd.AddCommand(cache.NewCacheCmd(f))
 
 	return cmd
 }
