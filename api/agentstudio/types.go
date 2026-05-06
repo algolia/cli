@@ -262,3 +262,35 @@ type SecretKeyPatch struct {
 	Name     *string   `json:"name,omitempty"`
 	AgentIDs *[]string `json:"agentIds,omitempty"`
 }
+
+// FeedbackCreate is the POST body for /1/feedback. Vote is 0
+// (downvote) or 1 (upvote); enforced at the CLI layer.
+type FeedbackCreate struct {
+	MessageID string   `json:"messageId"`
+	AgentID   string   `json:"agentId"`
+	Vote      int      `json:"vote"`
+	Tags      []string `json:"tags,omitempty"`
+	Notes     string   `json:"notes,omitempty"`
+}
+
+// Feedback mirrors FeedbackResponse.
+type Feedback struct {
+	ID        string    `json:"id"`
+	AgentID   string    `json:"agentId"`
+	MessageID string    `json:"messageId"`
+	Vote      int       `json:"vote"`
+	Tags      []string  `json:"tags"`
+	Notes     *string   `json:"notes"`
+	Model     *string   `json:"model"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// UserDataResponse mirrors GET /1/user-data/{user_token}. Inner items
+// are passed through as raw JSON because their schemas are evolving
+// (conversation messages are a discriminated role union, memories
+// have an unspecified shape).
+type UserDataResponse struct {
+	Conversations []json.RawMessage `json:"conversations"`
+	Memories      []json.RawMessage `json:"memories"`
+}

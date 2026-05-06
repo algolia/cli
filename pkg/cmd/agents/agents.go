@@ -11,6 +11,7 @@ import (
 	deletecmd "github.com/algolia/cli/pkg/cmd/agents/delete"
 	"github.com/algolia/cli/pkg/cmd/agents/domains"
 	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
+	"github.com/algolia/cli/pkg/cmd/agents/feedback"
 	"github.com/algolia/cli/pkg/cmd/agents/get"
 	"github.com/algolia/cli/pkg/cmd/agents/keys"
 	"github.com/algolia/cli/pkg/cmd/agents/list"
@@ -20,6 +21,7 @@ import (
 	trycmd "github.com/algolia/cli/pkg/cmd/agents/try"
 	"github.com/algolia/cli/pkg/cmd/agents/unpublish"
 	"github.com/algolia/cli/pkg/cmd/agents/update"
+	"github.com/algolia/cli/pkg/cmd/agents/userdata"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -75,6 +77,8 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(conversations.NewConversationsCmd(f))
 	cmd.AddCommand(domains.NewDomainsCmd(f))
 	cmd.AddCommand(keys.NewKeysCmd(f))
+	cmd.AddCommand(feedback.NewFeedbackCmd(f))
+	cmd.AddCommand(userdata.NewUserDataCmd(f))
 
 	return cmd
 }

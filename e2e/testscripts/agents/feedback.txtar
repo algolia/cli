@@ -1,0 +1,24 @@
+# `agents feedback` — flag-validation + dry-run contract.
+
+exec algolia agents feedback
+stdout 'create'
+
+! exec algolia agents feedback create
+stderr '--agent-id is required'
+
+! exec algolia agents feedback create --agent-id a
+stderr '--message-id is required'
+
+! exec algolia agents feedback create --agent-id a --message-id m
+stderr '--vote is required'
+
+! exec algolia agents feedback create --agent-id a --message-id m --vote 5
+stderr 'must be 0 or 1'
+
+! exec algolia agents feedback create --agent-id a --message-id m --vote 1 --tags x,x,x,x,x,x,x,x,x,x,x
+stderr 'at most 10'
+
+exec algolia agents feedback create --agent-id a --message-id m --vote 0 --dry-run
+! stderr .
+stdout 'Dry run: would POST /1/feedback'
+stdout '"vote": 0'
