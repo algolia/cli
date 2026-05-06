@@ -24,7 +24,6 @@ type PurgeOptions struct {
 	AgentID   string
 	StartDate string
 	EndDate   string
-	All       bool
 	DryRun    bool
 	DoConfirm bool
 }
@@ -37,33 +36,37 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 	var confirm bool
 
 	cmd := &cobra.Command{
-		Use:   "purge <agent-id> (--all | --start-date YYYY-MM-DD | --end-date YYYY-MM-DD) [--confirm]",
-		Short: "Bulk-delete conversations for an agent",
+		Use:   "purge <agent-id> (--start-date YYYY-MM-DD | --end-date YYYY-MM-DD) [--confirm]",
+		Short: "Bulk-delete conversations for an agent within a date range",
 		Long: heredoc.Doc(`
 			Bulk-delete persisted conversations for an agent.
 
-			GUARDRAIL: the backend's DELETE /conversations endpoint with
-			no date filter wipes EVERY conversation for the agent. To
-			make that opt-in (so a typo can never trigger it), the CLI
-			refuses to send a dateless purge unless --all is passed
-			explicitly.
+			At least one of --start-date / --end-date is REQUIRED.
+			Background: the OpenAPI spec marks both query params as
+			optional and reads as if dateless DELETE wipes everything,
+			but the live backend rejects dateless requests with
+			"400 At least one filter is required." The CLI surfaces
+			this as a flag-level error rather than a server round-trip.
 
-			With --start-date and/or --end-date the range is forwarded
-			verbatim (YYYY-MM-DD; backend validates and 422s on bad input).
+			If you genuinely want to wipe every conversation for an
+			agent, pass an open-ended range — e.g.
+			"--start-date 1970-01-01" or "--end-date 9999-12-31".
+			Both bounds are forwarded verbatim (YYYY-MM-DD; backend
+			validates and 422s on bad input).
 
 			Like "agents delete", interactive use prompts and
 			non-interactive use requires --confirm. --dry-run previews
 			the URL and bypasses both.
 		`),
 		Example: heredoc.Doc(`
-			# Purge a date range (no --all needed because filter is set)
+			# Purge a specific month
 			$ algolia agents conversations purge <agent-id> --start-date 2026-01-01 --end-date 2026-01-31
 
-			# Wipe everything (requires explicit --all + confirmation)
-			$ algolia agents conversations purge <agent-id> --all -y
+			# Purge everything from a given date onwards (open-ended)
+			$ algolia agents conversations purge <agent-id> --start-date 2026-01-01 -y
 
 			# Preview without sending
-			$ algolia agents conversations purge <agent-id> --all --dry-run
+			$ algolia agents conversations purge <agent-id> --start-date 2026-01-01 --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -72,15 +75,10 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 			if opts.AgentID == "" {
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
-			hasFilter := opts.StartDate != "" || opts.EndDate != ""
-			if !opts.All && !hasFilter {
+			if opts.StartDate == "" && opts.EndDate == "" {
 				return cmdutil.FlagErrorf(
-					"refusing to purge ALL conversations for an agent: pass --all explicitly, or restrict with --start-date / --end-date",
-				)
-			}
-			if opts.All && hasFilter {
-				return cmdutil.FlagErrorf(
-					"--all is mutually exclusive with --start-date / --end-date",
+					"at least one of --start-date / --end-date is required " +
+						"(backend rejects dateless purge with 400 \"At least one filter is required\")",
 				)
 			}
 			if !confirm && !opts.DryRun {
@@ -100,15 +98,13 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 
 	cmd.Flags().StringVar(&opts.StartDate, "start-date", "", "Purge conversations >= date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&opts.EndDate, "end-date", "", "Purge conversations <= date (YYYY-MM-DD)")
-	cmd.Flags().
-		BoolVar(&opts.All, "all", false, "Purge every conversation for this agent (mutually exclusive with date filters)")
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be purged without calling the API")
 	return cmd
 }
 
 func runPurgeCmd(opts *PurgeOptions) error {
-	scope := purgeScope(opts.StartDate, opts.EndDate, opts.All)
+	scope := purgeScope(opts.StartDate, opts.EndDate)
 
 	if opts.DryRun {
 		q := url.Values{}
@@ -165,10 +161,8 @@ func runPurgeCmd(opts *PurgeOptions) error {
 	return nil
 }
 
-func purgeScope(start, end string, all bool) string {
+func purgeScope(start, end string) string {
 	switch {
-	case all:
-		return "ALL conversations"
 	case start != "" && end != "":
 		return fmt.Sprintf("between %s and %s", start, end)
 	case start != "":

@@ -192,14 +192,11 @@ For `cache/` (1 verb) and `config/` (2 verbs) the per-file split is unnecessary;
 Two distinct verbs share the underlying HTTP method (`DELETE`), but the blast radius is different by orders of magnitude:
 
 - `delete <agent-id> <conv-id>` — surgical, one conversation. Mistype the conv ID and you nuke an unrelated conversation; same risk profile as `agents delete`.
-- `purge <agent-id> [--all | --start-date | --end-date]` — bulk. Can wipe every conversation for the agent in one call.
+- `purge <agent-id> --start-date | --end-date` — bulk. Wipes every conversation in the date range.
 
-Two guardrails on purge that the wire-level client deliberately doesn't enforce (so the client mirrors the spec):
+**Spec vs. reality on `purge`**: the OpenAPI spec marks both `startDate` and `endDate` as `required: false`, which reads as "dateless DELETE wipes everything." The live backend disagrees — it rejects dateless DELETE with `400 "At least one filter is required."` (caught during Phase 7 live vet against staging EU). The CLI mirrors backend reality, **not** the spec: at least one of `--start-date` / `--end-date` is required at the flag layer. If you genuinely want to wipe every conversation, pass an open-ended bound (`--start-date 1970-01-01` or `--end-date 9999-12-31`). The error message points users at the backend constraint so future spec drift is debuggable.
 
-1. **Dateless purge requires `--all`**. Backend behaviour: `DELETE /conversations` with no `startDate`/`endDate` deletes EVERYTHING. The CLI refuses that unless `--all` is passed explicitly. A typo (`--start-dat 2026-01-01`) would otherwise silently turn a date-range purge into a wipe-all.
-2. **`--all` is mutually exclusive with date filters**. Mixing them is almost certainly a misunderstanding; reject early with a clear message.
-
-Both flow through the same `--confirm` / non-TTY-refuses-without-it rule as `agents delete`. `--dry-run` previews the URL with its query string and labels the scope (`scope: ALL conversations` vs `scope: between A and B`).
+Both verbs flow through the same `--confirm` / non-TTY-refuses-without-it rule as `agents delete`. `--dry-run` previews the URL with its query string and labels the scope (`scope: between A and B`, `scope: from A onwards`, etc.).
 
 ### Streaming (`api/agentstudio/sse.go`)
 
