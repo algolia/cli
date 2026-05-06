@@ -132,6 +132,44 @@ Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `upda
 
 **Naming note**: `try` (not `test`) — see "On `--dry-run`" below for why. All flat verbs are single-word lowercase to match the CLI-wide convention; no hyphenated subcommand names exist anywhere in the tree. Sub-groups (`cache`, `providers`, `config`, future `conversations` / `keys` / `domains`) read as noun-then-verb (`agents cache invalidate`, `agents providers create`) — also a single word per token. `providers` is plural to match every other listable resource group in the CLI tree (`apikeys`, `objects`, `rules`); `config` is singular because there's exactly one config record per app.
 
+### File organisation
+
+Both layers mirror the OpenAPI spec's tag boundaries — one source file (and one test file) per API tag. Adding a new resource is a single new file plus a single new test file:
+
+```
+api/agentstudio/
+  client.go          ← Config, Client, NewClient, setHeaders, checkResponse, extractDetail, sentinelFor (infra only)
+  agents.go          ← Agents tag (CRUD + lifecycle + InvalidateAgentCache)
+  completions.go     ← Completions tag (Completions + boolToWire)
+  providers.go       ← Providers tag (CRUD + 2 model-discovery routes)
+  configuration.go   ← Configurations tag
+  sse.go             ← cross-cutting helper (StreamEvent parser, both AI SDK v4 and v5 shapes)
+  host.go            ← BaseURL resolution (profile → env → ldflag → cluster-proxy fallback)
+  errors.go          ← APIError, sentinel errors
+  types.go           ← shared response types (Agent, Provider, ApplicationConfig, PaginationMetadata, ProviderName constants)
+```
+
+Tests follow the same pairing — `agents_test.go`, `completions_test.go`, etc. `client_test.go` keeps the `newTestClient` harness plus infra-only tests (NewClient validation, `checkResponse` error mapping, ctx cancellation). The error-mapping suite uses `ListAgents` as a vehicle because it's the simplest GET; that's intentional and the file header calls it out.
+
+For the cmd layer, top-level verbs each own a subpackage (`pkg/cmd/agents/{list,get,create,update,delete,publish,unpublish,duplicate,try,run}/`) — that pattern is inherited from the wider CLI codebase. Sub-groups (`cache/`, `providers/`, `config/`) keep all their verbs in **one package** but **one file per verb**:
+
+```
+pkg/cmd/agents/providers/
+  providers.go   ← NewProvidersCmd parent + readBody/ctxOrBackground/relTimeOrDash helpers
+  list.go        ← list verb
+  get.go         ← get verb
+  create.go      ← create verb
+  update.go      ← update verb
+  delete.go      ← delete verb
+  models.go      ← models verb (handles both /1/providers/models and /1/providers/{id}/models)
+  mask.go        ← MaskInput helper (shared by list/get/create/update)
+  <verb>_test.go ← one test file per verb; helpers in providers_test.go
+```
+
+Same package keeps internal helpers (`MaskInput`, `readBody`, `ctxOrBackground`) accessible without exporting; per-file split keeps each verb under ~200 LOC. **Don't** promote sub-group verbs to per-verb subpackages — they're tightly coupled with shared internals; the directory churn buys nothing.
+
+For `cache/` (1 verb) and `config/` (2 verbs) the per-file split is unnecessary; they live in one file each.
+
 ### API client (`api/agentstudio/`)
 
 - Auth: standard Algolia headers (`X-Algolia-Application-Id`, `X-Algolia-API-Key`). No bearer tokens. Comes from the active profile via `*cmdutil.Factory.AgentStudioClient`.

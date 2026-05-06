@@ -1,8 +1,18 @@
 package agentstudio
 
+// Tests for the cross-cutting infrastructure in client.go: NewClient
+// validation, header injection, error mapping (checkResponse +
+// extractDetail + sentinelFor), and context cancellation. Per-tag
+// method tests live in <tag>_test.go (agents_test.go,
+// completions_test.go, providers_test.go, configuration_test.go).
+//
+// The error-mapping and ctx-cancellation tests use ListAgents as a
+// vehicle: it's the simplest GET endpoint in the package and exercising
+// it keeps the assertions concrete. They are infra tests, not method
+// tests — moving them to agents_test.go would obscure their intent.
+
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +22,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newTestClient is the shared httptest harness for every *_test.go in
+// this package. Lives here because client.go owns Client construction.
 func newTestClient(t *testing.T, handler http.Handler) (*httptest.Server, *Client) {
 	t.Helper()
 	ts := httptest.NewServer(handler)
@@ -59,59 +71,7 @@ func TestNewClient_TrimsTrailingSlashAndDefaults(t *testing.T) {
 	assert.Equal(t, http.DefaultClient, c.httpClient)
 }
 
-func TestListAgents_Success(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "APP123", r.Header.Get(HeaderApplicationID))
-		assert.Equal(t, "key-abc", r.Header.Get(HeaderAPIKey))
-		assert.Equal(t, "cli-test", r.Header.Get(HeaderUserID))
-		assert.Equal(t, "application/json", r.Header.Get("Accept"))
-
-		assert.Equal(t, "2", r.URL.Query().Get("page"))
-		assert.Equal(t, "25", r.URL.Query().Get("limit"))
-		assert.Equal(t, "prov-1", r.URL.Query().Get("providerId"))
-
-		require.NoError(t, json.NewEncoder(w).Encode(PaginatedAgentsResponse{
-			Data: []Agent{{
-				ID:           "11111111-1111-1111-1111-111111111111",
-				Name:         "Concierge",
-				Status:       StatusDraft,
-				Instructions: "Be helpful.",
-			}},
-			Pagination: PaginationMetadata{
-				Page: 2, Limit: 25, TotalCount: 1, TotalPages: 1,
-			},
-		}))
-	})
-
-	_, c := newTestClient(t, mux)
-
-	got, err := c.ListAgents(context.Background(), ListAgentsParams{
-		Page:       2,
-		Limit:      25,
-		ProviderID: "prov-1",
-	})
-	require.NoError(t, err)
-	require.Len(t, got.Data, 1)
-	assert.Equal(t, "Concierge", got.Data[0].Name)
-	assert.Equal(t, StatusDraft, got.Data[0].Status)
-	assert.Equal(t, 25, got.Pagination.Limit)
-}
-
-func TestListAgents_OmitsZeroParams(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
-		assert.Empty(t, r.URL.RawQuery, "expected no query params for zero-valued params")
-		_, _ = w.Write([]byte(`{"data":[],"pagination":{"page":1,"limit":10,"totalCount":0,"totalPages":0}}`))
-	})
-
-	_, c := newTestClient(t, mux)
-	_, err := c.ListAgents(context.Background(), ListAgentsParams{})
-	require.NoError(t, err)
-}
-
-func TestListAgents_ErrorMapping(t *testing.T) {
+func TestCheckResponse_ErrorMapping(t *testing.T) {
 	tests := []struct {
 		name         string
 		status       int
@@ -208,8 +168,7 @@ func TestListAgents_ErrorMapping(t *testing.T) {
 	}
 }
 
-func TestListAgents_ContextCancellation(t *testing.T) {
-	// Server intentionally never responds; we cancel client-side.
+func TestRequest_ContextCancellation(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents", func(_ http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
@@ -224,7 +183,7 @@ func TestListAgents_ContextCancellation(t *testing.T) {
 	assert.True(t, errors.Is(err, context.Canceled), "got %v", err)
 }
 
-func TestListAgents_OmitsUserIDHeaderWhenEmpty(t *testing.T) {
+func TestSetHeaders_OmitsUserIDWhenEmpty(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
 		assert.Empty(t, r.Header.Get(HeaderUserID))

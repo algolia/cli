@@ -1,13 +1,10 @@
 package agentstudio
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
-	"strconv"
 	"strings"
 )
 
@@ -17,10 +14,8 @@ import (
 // and rate-limiting only — it is NOT an authorization signal and MUST
 // NOT be used for access decisions. The backend's signed equivalent
 // (X-Algolia-Secure-User-Token, see common/models/secure_user_token.py
-// in algolia/conversational-ai) is required by the streaming
-// /completions endpoint and will be added in a later phase once the
-// minting endpoint is reachable from the CLI's OAuth identity (Track A
-// in tmp/agent_studio_plan.md).
+// in algolia/conversational-ai) is wired into the streaming
+// /completions endpoint via CompletionOptions.SecureUserToken.
 const (
 	HeaderApplicationID = "X-Algolia-Application-Id"
 	HeaderAPIKey        = "X-Algolia-API-Key" //nolint:gosec // header name, not a credential
@@ -58,6 +53,17 @@ type Config struct {
 
 // Client talks to the Agent Studio backend.
 //
+// Methods are organised by API tag (one source file per tag):
+//
+//   - agents.go        — Agents tag (CRUD, lifecycle, cache invalidation)
+//   - completions.go   — Completions tag (streaming + buffered)
+//   - providers.go     — Providers tag (CRUD + model discovery)
+//   - configuration.go — Configurations tag (app-wide settings)
+//
+// This file only carries the cross-cutting pieces (Config, Client,
+// NewClient, header injection, error mapping) so adding a new resource
+// is a single new file plus a single new test file.
+//
 // All methods accept a context for cancellation and propagate request
 // failures as *APIError (which wraps the appropriate sentinel error so
 // errors.Is works).
@@ -87,387 +93,6 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 
 	return &Client{cfg: cfg, httpClient: cfg.HTTPClient}, nil
-}
-
-// ListAgents calls GET /1/agents with optional pagination/filter params.
-func (c *Client) ListAgents(ctx context.Context, params ListAgentsParams) (*PaginatedAgentsResponse, error) {
-	q := url.Values{}
-	if params.Page > 0 {
-		q.Set("page", strconv.Itoa(params.Page))
-	}
-	if params.Limit > 0 {
-		q.Set("limit", strconv.Itoa(params.Limit))
-	}
-	if params.ProviderID != "" {
-		q.Set("providerId", params.ProviderID)
-	}
-
-	endpoint := c.cfg.BaseURL + "/1/agents"
-	if encoded := q.Encode(); encoded != "" {
-		endpoint += "?" + encoded
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	c.setHeaders(req)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("agent studio: list agents: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if err := checkResponse(resp); err != nil {
-		return nil, err
-	}
-
-	var out PaginatedAgentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("agent studio: decode list agents response: %w", err)
-	}
-	return &out, nil
-}
-
-// CompletionOptions configures Completions(...) query parameters and
-// per-request headers.
-//
-// Stream maps to ?stream=true|false; the default zero value (false) gives
-// a buffered single-JSON response. Set explicitly via the command layer
-// (`agents try` / `agents run` set Stream=true unless --no-stream).
-//
-// Compatibility maps to ?compatibilityMode=ai-sdk-4|ai-sdk-5. The backend
-// requires this query param (no server-side default), so empty here is
-// promoted to CompatV5 — its frames are standard SSE with [DONE], easier
-// to parse defensively than v4's `<type>:<json>\n` line format.
-//
-// NoCache, NoMemory, and NoAnalytics are inverted from the backend's
-// query-param polarity for two reasons:
-//
-//   - The backend defaults all three to true; only the negated case is
-//     interesting from the CLI surface.
-//   - The flag layer ships them as `--no-cache`/`--no-memory`/`--no-analytics`
-//     so the option fields keep that polarity end-to-end.
-//
-// When a No*-field is false (the zero value) the corresponding query
-// param is omitted entirely, which matches the backend's "default ON"
-// behavior. The `memory` schema in particular is `anyOf [{const: false},
-// {type: null}]` — false is the ONLY valid passable value, so always
-// emitting `memory=true` would be a server-side validation error.
-//
-// SecureUserToken populates the X-Algolia-Secure-User-Token header when
-// non-empty. It carries a signed JWT that scopes the conversation /
-// memory / analytics partition to a specific end-user; required by the
-// backend whenever a feature behind SecureUserTokenDep is enabled (see
-// rag/dependencies/secure_user_token.py in algolia/conversational-ai).
-// Empty here means no header is sent — the existing X-Algolia-User-ID
-// fallback applies.
-type CompletionOptions struct {
-	Stream          bool
-	Compatibility   CompatibilityMode
-	NoCache         bool
-	NoMemory        bool
-	NoAnalytics     bool
-	SecureUserToken string
-}
-
-// Completions calls POST /1/agents/{agentID}/completions and returns the
-// raw HTTP response. The caller is responsible for:
-//
-//   - Closing resp.Body in all paths.
-//   - Inspecting resp.Header.Get("Content-Type") to decide whether to
-//     stream-parse via ParseStream (Content-Type: text/event-stream) or
-//     to json.Decode the body once (any other Content-Type).
-//
-// agentID is either a real UUID or the literal string "test" — the
-// backend special-cases "test" to mean "no agent is persisted; use the
-// AgentTestConfiguration in the request body" (rag/routers/v1/
-// agents_completion.py uses Union[uuid.UUID, Literal["test"]]).
-//
-// body must be a valid AgentCompletionRequest JSON document. The CLI is
-// a pass-through (same rationale as CreateAgent/UpdateAgent): the
-// request schema includes a discriminated `messages` union and a
-// vendored `algolia.searchParameters` shape that evolves often. Server
-// 422s surface the structured FastAPI detail via extractDetail.
-//
-// Cancellation is the caller's job: pass a ctx that is cancelled on
-// SIGINT and the underlying transport will tear down the request mid-
-// stream cleanly.
-func (c *Client) Completions(
-	ctx context.Context,
-	agentID string,
-	body json.RawMessage,
-	opts CompletionOptions,
-) (*http.Response, error) {
-	if strings.TrimSpace(agentID) == "" {
-		return nil, fmt.Errorf("agent studio: completions: agent id is required (or use \"test\")")
-	}
-	if len(body) == 0 {
-		return nil, fmt.Errorf("agent studio: completions: body is required")
-	}
-	if !json.Valid(body) {
-		return nil, fmt.Errorf("agent studio: completions: body is not valid JSON")
-	}
-
-	mode := opts.Compatibility
-	if mode == "" {
-		mode = CompatV5
-	}
-
-	q := url.Values{}
-	q.Set("stream", boolToWire(opts.Stream))
-	q.Set("compatibilityMode", string(mode))
-	// Only emit the negative cases — backend defaults match the omitted
-	// state, so adding `cache=true`/`analytics=true` would be wire noise,
-	// and `memory=true` would actually be a 422 (the schema only allows
-	// `false` or null). See CompletionOptions godoc for the full reasoning.
-	if opts.NoCache {
-		q.Set("cache", "false")
-	}
-	if opts.NoMemory {
-		q.Set("memory", "false")
-	}
-	if opts.NoAnalytics {
-		q.Set("analytics", "false")
-	}
-
-	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(agentID) + "/completions?" + q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(body)))
-	if err != nil {
-		return nil, err
-	}
-	c.setHeaders(req)
-	req.Header.Set("Content-Type", "application/json")
-	if opts.SecureUserToken != "" {
-		req.Header.Set("X-Algolia-Secure-User-Token", opts.SecureUserToken)
-	}
-	// Preferred Accept: streaming responses come back as text/event-stream
-	// (both v4 and v5); buffered ones as application/json. Listing both
-	// is safe — the server picks based on ?stream and we inspect the
-	// Content-Type on return.
-	req.Header.Set("Accept", "text/event-stream, application/json")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("agent studio: completions: %w", err)
-	}
-
-	if err := checkResponse(resp); err != nil {
-		// checkResponse only drains a 64 KiB prefix for the error detail;
-		// it does NOT close the body. We have to do it here to release
-		// the underlying connection back to the transport pool.
-		_ = resp.Body.Close()
-		return nil, err
-	}
-	return resp, nil
-}
-
-// boolToWire renders Go bools as the lowercase strings the FastAPI
-// Query() bool coercion expects (it accepts case-insensitively but the
-// canonical form is lowercase).
-func boolToWire(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
-}
-
-// CreateAgent calls POST /1/agents with the supplied request body.
-//
-// The body is sent as opaque JSON: the AgentConfigCreate schema in
-// algolia/conversational-ai is large, deeply validated, and evolves
-// frequently (8+ fields, nested ToolConfig, free-form config dict). The
-// CLI is a pass-through — it lets users supply the JSON, the backend
-// validates, our 422 surfacing makes errors actionable. Mirroring the
-// schema in Go would lie about parity and force a release every time the
-// backend adds a field.
-func (c *Client) CreateAgent(ctx context.Context, body json.RawMessage) (*Agent, error) {
-	if len(body) == 0 {
-		return nil, fmt.Errorf("agent studio: create agent: body is required")
-	}
-	return c.doAgentMutation(ctx, http.MethodPost, c.cfg.BaseURL+"/1/agents", body, "create agent")
-}
-
-// UpdateAgent calls PATCH /1/agents/{id} with the supplied partial body.
-// See CreateAgent for the rationale behind json.RawMessage.
-func (c *Client) UpdateAgent(ctx context.Context, id string, body json.RawMessage) (*Agent, error) {
-	if strings.TrimSpace(id) == "" {
-		return nil, fmt.Errorf("agent studio: agent id is required")
-	}
-	if len(body) == 0 {
-		return nil, fmt.Errorf("agent studio: update agent: body is required")
-	}
-	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id)
-	return c.doAgentMutation(ctx, http.MethodPatch, endpoint, body, "update agent")
-}
-
-// InvalidateAgentCache calls DELETE /1/agents/{id}/cache. The backend
-// removes cached completion responses for this agent.
-//
-// `before` is an optional YYYY-MM-DD date string. When non-empty, only
-// cache entries created strictly before that date are invalidated
-// (exclusive). When empty, all cache entries for the agent are wiped.
-//
-// The format is intentionally not pre-parsed in Go — the backend
-// accepts the literal string and returns a 422 with a structured detail
-// on a malformed value, which our extractDetail surfaces unchanged. Any
-// client-side date parsing here would diverge from whatever Pydantic
-// version the backend ships and create silent skew.
-//
-// Returns nil on the backend's HTTP 204 No Content. Wraps the standard
-// 4xx/5xx APIError otherwise.
-func (c *Client) InvalidateAgentCache(ctx context.Context, id, before string) error {
-	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("agent studio: agent id is required")
-	}
-
-	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id) + "/cache"
-	if before != "" {
-		q := url.Values{}
-		q.Set("before", before)
-		endpoint += "?" + q.Encode()
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
-	if err != nil {
-		return err
-	}
-	c.setHeaders(req)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("agent studio: invalidate agent cache: %w", err)
-	}
-	defer resp.Body.Close()
-
-	return checkResponse(resp)
-}
-
-// DeleteAgent calls DELETE /1/agents/{id}.
-//
-// Returns nil on the backend's HTTP 204 No Content. The backend
-// soft-deletes (the row stays in the DB with a deleted flag), so this is
-// reversible at the platform level — but the CLI exposes it as a
-// terminal action; recovery is a backend-side ops concern.
-func (c *Client) DeleteAgent(ctx context.Context, id string) error {
-	if strings.TrimSpace(id) == "" {
-		return fmt.Errorf("agent studio: agent id is required")
-	}
-	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
-	if err != nil {
-		return err
-	}
-	c.setHeaders(req)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("agent studio: delete agent: %w", err)
-	}
-	defer resp.Body.Close()
-
-	return checkResponse(resp)
-}
-
-// PublishAgent calls POST /1/agents/{id}/publish. Backend transitions the
-// agent's status from draft to published; returns the updated Agent.
-func (c *Client) PublishAgent(ctx context.Context, id string) (*Agent, error) {
-	return c.doAgentLifecycle(ctx, id, "publish")
-}
-
-// UnpublishAgent calls POST /1/agents/{id}/unpublish.
-func (c *Client) UnpublishAgent(ctx context.Context, id string) (*Agent, error) {
-	return c.doAgentLifecycle(ctx, id, "unpublish")
-}
-
-// DuplicateAgent calls POST /1/agents/{id}/duplicate. Returns the newly
-// created Agent (which has its own ID).
-func (c *Client) DuplicateAgent(ctx context.Context, id string) (*Agent, error) {
-	return c.doAgentLifecycle(ctx, id, "duplicate")
-}
-
-// doAgentLifecycle is the shared implementation for publish/unpublish/duplicate.
-// All three are POST /1/agents/{id}/<verb> with no body, returning Agent.
-func (c *Client) doAgentLifecycle(ctx context.Context, id, verb string) (*Agent, error) {
-	if strings.TrimSpace(id) == "" {
-		return nil, fmt.Errorf("agent studio: agent id is required")
-	}
-	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id) + "/" + verb
-	return c.doAgentMutation(ctx, http.MethodPost, endpoint, nil, verb+" agent")
-}
-
-// doAgentMutation issues an HTTP request with optional JSON body, expects
-// a JSON Agent response, and is shared by Create/Update/Publish/Unpublish/Duplicate.
-// errLabel is used to scope error messages (e.g., "create agent").
-func (c *Client) doAgentMutation(
-	ctx context.Context,
-	method, endpoint string,
-	body json.RawMessage,
-	errLabel string,
-) (*Agent, error) {
-	var reqBody io.Reader
-	if body != nil {
-		reqBody = strings.NewReader(string(body))
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, reqBody)
-	if err != nil {
-		return nil, err
-	}
-	c.setHeaders(req)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("agent studio: %s: %w", errLabel, err)
-	}
-	defer resp.Body.Close()
-
-	if err := checkResponse(resp); err != nil {
-		return nil, err
-	}
-
-	var out Agent
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("agent studio: decode %s response: %w", errLabel, err)
-	}
-	return &out, nil
-}
-
-// GetAgent calls GET /1/agents/{id}.
-func (c *Client) GetAgent(ctx context.Context, id string) (*Agent, error) {
-	if strings.TrimSpace(id) == "" {
-		return nil, fmt.Errorf("agent studio: agent id is required")
-	}
-
-	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, err
-	}
-	c.setHeaders(req)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("agent studio: get agent: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if err := checkResponse(resp); err != nil {
-		return nil, err
-	}
-
-	var out Agent
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, fmt.Errorf("agent studio: decode get agent response: %w", err)
-	}
-	return &out, nil
 }
 
 func (c *Client) setHeaders(req *http.Request) {
