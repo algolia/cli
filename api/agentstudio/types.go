@@ -294,3 +294,11 @@ type UserDataResponse struct {
 	Conversations []json.RawMessage `json:"conversations"`
 	Memories      []json.RawMessage `json:"memories"`
 }
+
+// StatusResponse mirrors GET /status. Values are nullable; "version"
+// and "migration_revision" are populated in deployed builds.
+type StatusResponse map[string]*string
+
+// ModelDefaults mirrors GET /1/providers/models/defaults — a map of
+// provider type → recommended default model name.
+type ModelDefaults map[string]string

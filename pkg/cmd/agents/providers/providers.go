@@ -52,6 +52,7 @@ func NewProvidersCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(newUpdateCmd(f, nil))
 	cmd.AddCommand(newDeleteCmd(f, nil))
 	cmd.AddCommand(newModelsCmd(f, nil))
+	cmd.AddCommand(newDefaultsCmd(f, nil))
 	return cmd
 }
 

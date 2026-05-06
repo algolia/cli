@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
 	"github.com/algolia/cli/pkg/cmd/agents/feedback"
 	"github.com/algolia/cli/pkg/cmd/agents/get"
+	internalcmd "github.com/algolia/cli/pkg/cmd/agents/internal"
 	"github.com/algolia/cli/pkg/cmd/agents/keys"
 	"github.com/algolia/cli/pkg/cmd/agents/list"
 	"github.com/algolia/cli/pkg/cmd/agents/providers"
@@ -79,6 +80,7 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(keys.NewKeysCmd(f))
 	cmd.AddCommand(feedback.NewFeedbackCmd(f))
 	cmd.AddCommand(userdata.NewUserDataCmd(f))
+	cmd.AddCommand(internalcmd.NewInternalCmd(f))
 
 	return cmd
 }
