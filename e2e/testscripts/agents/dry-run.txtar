@@ -1,8 +1,12 @@
-# Dry-run paths for `agents` are exhaustively unit-tested already; this
-# script is the contract test that proves the same shape holds when
-# wired through the full cobra tree under the e2e binary. None of these
-# commands hit the network — `--dry-run` short-circuits before client
-# construction.
+# Dry-run paths for `agents create / update / delete / run` are
+# exhaustively unit-tested already; this script is the contract test
+# that proves the same shape holds when wired through the full cobra
+# tree under the e2e binary. None of these commands hit the network —
+# `--dry-run` short-circuits before client construction.
+#
+# `agents try` does NOT have a `--dry-run` flag — the whole command is
+# the dry-run in the conversational-ai sense (unsaved-config completion
+# via the agent_id="test" route). See AGENTS.md → "On `--dry-run`".
 #
 # Ungated: runs whenever the standard ALGOLIA_APPLICATION_ID +
 # ALGOLIA_API_KEY are present (same as the rest of the e2e suite).
@@ -35,26 +39,8 @@ stdout -count=1 'Dry run: would PATCH /1/agents/00000000-0000-0000-0000-00000000
 stdout -count=1 '"name": "e2e-update-stub"'
 
 # ---------------------------------------------------------------------
-# test --dry-run reads the messages file from stdin (-) and the
-# config from a file
-# ---------------------------------------------------------------------
-stdin msg.json
-exec algolia agents test -c cfg.json -i - --dry-run
-! stderr .
-stdout -count=1 'Dry run: would POST /1/agents/test/completions'
-stdout -count=1 '"role": "user"'
-stdout -count=1 '"content": "hi from e2e"'
-
-# ---------------------------------------------------------------------
-# test --dry-run with --message convenience wraps the text correctly
-# ---------------------------------------------------------------------
-exec algolia agents test -c cfg.json -m 'one-shot from e2e' --dry-run
-! stderr .
-stdout -count=1 '"content": "one-shot from e2e"'
-
-# ---------------------------------------------------------------------
 # run <id> --dry-run includes the id in the path and does NOT include
-# a `configuration` field (only `agents test` sends configuration —
+# a `configuration` field (only `agents try` sends configuration —
 # `agents run` uses the persisted agent's config)
 # ---------------------------------------------------------------------
 exec algolia agents run 11111111-1111-1111-1111-111111111111 -m hi --dry-run
@@ -64,23 +50,15 @@ stdout -count=1 '"messages"'
 ! stdout 'configuration'
 
 # ---------------------------------------------------------------------
-# Negative paths: invalid flag combinations should fail before any
-# work happens
+# `agents try` has no --dry-run flag (the whole command is the
+# dry-run). Confirm the flag is rejected so a future regression that
+# re-adds it is caught.
 # ---------------------------------------------------------------------
-
-# test rejects neither --input nor --message
-! exec algolia agents test -c cfg.json --dry-run
-stderr 'one of --input or --message is required'
-
-# test rejects an invalid --compatibility value
-! exec algolia agents test -c cfg.json -m hi --compatibility v9 --dry-run
-stderr 'invalid --compatibility'
+! exec algolia agents try -c cfg.json -m hi --dry-run
+stderr 'unknown flag'
 
 -- cfg.json --
 {"name":"e2e-create-stub","instructions":"e2e","widgetType":"filterSuggestions","enableAlgoliaMcp":false}
 
 -- patch.json --
 {"name":"e2e-update-stub","instructions":"e2e patched"}
-
--- msg.json --
-[{"role":"user","content":"hi from e2e"}]

@@ -11,7 +11,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/agents/list"
 	"github.com/algolia/cli/pkg/cmd/agents/publish"
 	"github.com/algolia/cli/pkg/cmd/agents/run"
-	testcmd "github.com/algolia/cli/pkg/cmd/agents/test"
+	trycmd "github.com/algolia/cli/pkg/cmd/agents/try"
 	"github.com/algolia/cli/pkg/cmd/agents/unpublish"
 	"github.com/algolia/cli/pkg/cmd/agents/update"
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -61,7 +61,7 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(publish.NewPublishCmd(f, nil))
 	cmd.AddCommand(unpublish.NewUnpublishCmd(f, nil))
 	cmd.AddCommand(duplicate.NewDuplicateCmd(f, nil))
-	cmd.AddCommand(testcmd.NewTestCmd(f, nil))
+	cmd.AddCommand(trycmd.NewTryCmd(f, nil))
 	cmd.AddCommand(run.NewRunCmd(f, nil))
 
 	return cmd

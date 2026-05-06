@@ -128,7 +128,9 @@ Use narrower verification for small edits.
 
 ## Agent Studio (`pkg/cmd/agents/...`, `api/agentstudio/`)
 
-Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `test`, `run`. Backend source of truth: `github.com/algolia/conversational-ai`.
+Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `try`, `run`. Backend source of truth: `github.com/algolia/conversational-ai`.
+
+**Naming note**: `try` (not `test`) — see "On `--dry-run`" below for why. All other verbs are single-word lowercase to match the CLI-wide convention; no hyphenated subcommand names exist anywhere in the tree.
 
 ### API client (`api/agentstudio/`)
 
@@ -149,12 +151,16 @@ The wire format is **not** standard SSE. Two protocols, both served as `text/eve
 
 Streaming output convention: NDJSON to stdout regardless of TTY, one `{"type":"...","data":{...}}` per line. Plays well with `jq -r 'select(.type=="text-delta") | .data.delta'`. Don't fork rendering between TTY/non-TTY for streaming responses.
 
-### Dry-run convention
+### On `--dry-run`
 
-`agents create / update / delete / test / run` all support `--dry-run`. Two output modes:
+Two distinct concepts share the name and they MUST NOT be conflated:
 
-- **Human (default)**: print `Dry run: would <METHOD> <PATH>` followed by the resolved JSON body (pretty-printed for the body preview).
-- **Structured (only when `--output` is explicitly set)**: emit `{"action":"...","request":"...","source":"...","bytes":N,"body":<...>,"dryRun":true,...}`. Gate this on `cmd.Flags().Changed("output")`, **not** on `PrintFlags.HasStructuredOutput()` — using the latter would let `WithDefaultOutput("json")` from the success path silently steal the human dry-run output.
+- **CLI-side `--dry-run` flag** on `agents create / update / delete / run`: standard CLI preview convention (matches `objects/update --dry-run`). Validates the request, prints what would be sent, makes no HTTP call. Two output modes:
+  - **Human (default)**: `Dry run: would <METHOD> <PATH>` followed by the pretty-printed JSON body.
+  - **Structured (only when `--output` is explicitly set)**: `{"action":"...","request":"...","source":"...","bytes":N,"body":<...>,"dryRun":true,...}`. Gate on `cmd.Flags().Changed("output")`, **not** on `PrintFlags.HasStructuredOutput()` — using the latter would let `WithDefaultOutput("json")` from the success path silently steal the human dry-run output.
+- **Conversational-ai-side "dry-run" semantics** = run a real completion against a configuration that hasn't been persisted. The backend exposes this via the `agent_id="test"` route (`AgentTestConfiguration` in the body). The CLI surfaces it as the `agents try` command (NOT named `test` to avoid pytest/unit-test connotations and to read naturally as "experiment without commitment").
+
+Why `agents try` has no `--dry-run` flag: the whole command IS the dry-run. Adding a CLI-level `--dry-run` on top would be "dry-run a dry-run." If you want to inspect the body the CLI would POST without calling the backend, build the JSON yourself — the wire shape is `{"messages":[...], "configuration":{...}}` and is documented in `pkg/cmd/agents/shared/completion.go:CompletionRequest`. The e2e in `e2e/testscripts/agents/dry-run.txtar` includes a regression assertion that `agents try --dry-run` is rejected as an unknown flag, so a future contributor doesn't add it back without seeing this rationale.
 
 Shared helpers live in `pkg/cmd/agents/shared/` (`PrintDryRun`, `BuildMessages`, `ReadJSONFile`, `MarshalCompletionBody`, `RenderCompletion`, `NormalizeCompatibility`). Extract on second use, not pre-emptively.
 
