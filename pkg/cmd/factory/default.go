@@ -9,6 +9,7 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
+	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -23,6 +24,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
+	f.AgentStudioClient = agentStudioClient(f, appVersion)
 
 	return f
 }
@@ -70,6 +72,42 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClie
 	}
 }
 
+func agentStudioClient(f *cmdutil.Factory, appVersion string) func() (*agentstudio.Client, error) {
+	return func() (*agentstudio.Client, error) {
+		profile := f.Config.Profile()
+		appID, err := profile.GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := profile.GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		baseURL, err := resolveAgentStudioBaseURL(
+			profile.GetAgentStudioURL(),
+			agentstudio.DefaultBaseURL,
+			appID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		userID := "cli"
+		if profile.Name != "" {
+			userID = "cli-" + profile.Name
+		}
+
+		return agentstudio.NewClient(agentstudio.Config{
+			BaseURL:       baseURL,
+			ApplicationID: appID,
+			APIKey:        apiKey,
+			UserID:        userID,
+			UserAgent:     fmt.Sprintf("algolia-cli/%s agentstudio", appVersion),
+		})
+	}
+}
+
 func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
 	return func() (*crawler.Client, error) {
 		userID, err := f.Config.Profile().GetCrawlerUserID()
@@ -83,6 +121,26 @@ func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
 
 		return crawler.NewClient(userID, APIKey), nil
 	}
+}
+
+// resolveAgentStudioBaseURL picks the Agent Studio base URL from, in order:
+//   - profileOverride (env var ALGOLIA_AGENT_STUDIO_URL or the profile's
+//     agent_studio_url field — both surfaced via Profile.GetAgentStudioURL),
+//   - buildDefault (the package-level agentstudio.DefaultBaseURL set via
+//     ldflags by `task build` from $ALGOLIA_AGENT_STUDIO_URL),
+//   - the cluster-proxy fallback https://<appID>.algolia.net/agent-studio.
+//
+// Extracted from agentStudioClient so the priority chain is exercised in
+// isolation by tests without needing a config mock.
+func resolveAgentStudioBaseURL(profileOverride, buildDefault, appID string) (string, error) {
+	override := profileOverride
+	if override == "" {
+		override = buildDefault
+	}
+	return agentstudio.ResolveHost(agentstudio.HostOptions{
+		Override:      override,
+		ApplicationID: appID,
+	})
 }
 
 // getUserAgentInfo returns the standard user agent info plus Algolia CLI

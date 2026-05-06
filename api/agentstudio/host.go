@@ -10,6 +10,21 @@ import (
 	"strings"
 )
 
+// DefaultBaseURL is the build-time default for the Agent Studio base URL.
+// It is set via ldflags by `task build`:
+//
+//	-X github.com/algolia/cli/api/agentstudio.DefaultBaseURL=$ALGOLIA_AGENT_STUDIO_URL
+//
+// Empty by default so production builds fall through to the cluster-proxy
+// URL (https://<appID>.algolia.net/agent-studio). Internal beta builds set
+// it to https://agent-studio.staging.eu.algolia.com via .env so the
+// resulting binary "just works" against the staging backend without
+// per-command flags or env vars.
+//
+// Runtime overrides win: ALGOLIA_AGENT_STUDIO_URL or a profile's
+// agent_studio_url field both take precedence over this default.
+var DefaultBaseURL string
+
 // Environments accepted by ResolveHost.
 const (
 	EnvProd    = "prod"

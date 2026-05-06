@@ -168,6 +168,19 @@ func TestListAgents_ErrorMapping(t *testing.T) {
 			wantSentinel: ErrServer,
 			wantDetail:   "<html>upstream broke</html>",
 		},
+		{
+			// Regression for live behaviour: when the backend pairs a generic
+			// "Input is invalid, see detail/body:" message with a structured
+			// detail array, the structured msg wins.
+			name:   "422 with both message and detail prefers structured detail.msg",
+			status: http.StatusUnprocessableEntity,
+			body: `{
+				"message":"Input is invalid, see detail/body:",
+				"detail":[{"loc":["path","agent_id"],"msg":"Input should be a valid UUID","type":"uuid_parsing"}]
+			}`,
+			wantSentinel: nil,
+			wantDetail:   "Input should be a valid UUID",
+		},
 	}
 
 	for _, tc := range tests {

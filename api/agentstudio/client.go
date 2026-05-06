@@ -130,6 +130,37 @@ func (c *Client) ListAgents(ctx context.Context, params ListAgentsParams) (*Pagi
 	return &out, nil
 }
 
+// GetAgent calls GET /1/agents/{id}.
+func (c *Client) GetAgent(ctx context.Context, id string) (*Agent, error) {
+	if strings.TrimSpace(id) == "" {
+		return nil, fmt.Errorf("agent studio: agent id is required")
+	}
+
+	endpoint := c.cfg.BaseURL + "/1/agents/" + url.PathEscape(id)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("agent studio: get agent: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if err := checkResponse(resp); err != nil {
+		return nil, err
+	}
+
+	var out Agent
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, fmt.Errorf("agent studio: decode get agent response: %w", err)
+	}
+	return &out, nil
+}
+
 func (c *Client) setHeaders(req *http.Request) {
 	req.Header.Set(HeaderApplicationID, c.cfg.ApplicationID)
 	req.Header.Set(HeaderAPIKey, c.cfg.APIKey)
@@ -159,9 +190,16 @@ func checkResponse(resp *http.Response) error {
 
 // extractDetail pulls a human-readable message from the response body.
 //
-// The backend returns errors in two main shapes:
-//   - FastAPI default: {"detail": "..."} or {"detail": [{"msg":"..."}, ...]}
-//   - common.exceptions.ClientError: {"message": "..."}
+// The backend returns errors in three observed shapes:
+//   - FastAPI validation: {"detail":[{"msg":"...","loc":[...]}, ...]}
+//     (often paired with a generic message like "Input is invalid, see
+//     detail/body:" — we must prefer the structured detail).
+//   - FastAPI default:    {"detail":"..."}
+//   - Algolia ClientError: {"message":"..."}
+//
+// Priority is structured detail > string detail > message > raw body, so
+// we never return a "see detail/body:" pointer when the actual detail is
+// right there.
 func extractDetail(body []byte) string {
 	if len(body) == 0 {
 		return ""
@@ -169,7 +207,6 @@ func extractDetail(body []byte) string {
 
 	var generic map[string]any
 	if err := json.Unmarshal(body, &generic); err != nil {
-		// Not JSON; return the raw body trimmed.
 		s := strings.TrimSpace(string(body))
 		if len(s) > 512 {
 			return s[:512] + "…"
@@ -177,21 +214,23 @@ func extractDetail(body []byte) string {
 		return s
 	}
 
-	if msg, ok := generic["message"].(string); ok && msg != "" {
-		return msg
-	}
-
 	switch d := generic["detail"].(type) {
-	case string:
-		return d
 	case []any:
 		if len(d) > 0 {
 			if first, ok := d[0].(map[string]any); ok {
-				if msg, ok := first["msg"].(string); ok {
+				if msg, ok := first["msg"].(string); ok && msg != "" {
 					return msg
 				}
 			}
 		}
+	case string:
+		if d != "" {
+			return d
+		}
+	}
+
+	if msg, ok := generic["message"].(string); ok && msg != "" {
+		return msg
 	}
 
 	return ""
