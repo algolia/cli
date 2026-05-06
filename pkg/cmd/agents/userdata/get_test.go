@@ -57,3 +57,11 @@ func Test_runGetCmd_RequiresToken(t *testing.T) {
 	_, err := test.Execute(cmd, "get", out)
 	require.Error(t, err)
 }
+
+func Test_runGetCmd_RejectsSlashInToken(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewUserDataCmd(f)
+	_, err := test.Execute(cmd, `get ab/cd`, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `contains "/"`)
+}

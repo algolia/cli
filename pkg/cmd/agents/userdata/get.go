@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -36,6 +37,9 @@ func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 			opts.Ctx = cmd.Context()
 			if opts.UserToken == "" {
 				return cmdutil.FlagErrorf("user-token must not be empty")
+			}
+			if strings.Contains(opts.UserToken, "/") {
+				return cmdutil.FlagErrorf("%s", rejectSlashMsg)
 			}
 			if runF != nil {
 				return runF(opts)

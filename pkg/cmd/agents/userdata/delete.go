@@ -3,6 +3,7 @@ package userdata
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -37,6 +38,9 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			opts.Ctx = cmd.Context()
 			if opts.UserToken == "" {
 				return cmdutil.FlagErrorf("user-token must not be empty")
+			}
+			if strings.Contains(opts.UserToken, "/") {
+				return cmdutil.FlagErrorf("%s", rejectSlashMsg)
 			}
 			if !confirm && !opts.DryRun {
 				if !opts.IO.CanPrompt() {

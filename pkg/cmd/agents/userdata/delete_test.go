@@ -19,6 +19,14 @@ func Test_runDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "--confirm required")
 }
 
+func Test_runDeleteCmd_RejectsSlashInToken(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewUserDataCmd(f)
+	_, err := test.Execute(cmd, `delete ab/cd -y`, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `contains "/"`)
+}
+
 func Test_runDeleteCmd_DryRun(t *testing.T) {
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewUserDataCmd(f)
