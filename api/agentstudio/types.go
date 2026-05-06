@@ -207,3 +207,18 @@ type ExportConversationsParams struct {
 	StartDate string
 	EndDate   string
 }
+
+// AllowedDomain mirrors AllowedDomainResponse.
+type AllowedDomain struct {
+	ID        string    `json:"id"`
+	AppID     string    `json:"appId"`
+	AgentID   string    `json:"agentId"`
+	Domain    string    `json:"domain"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// AllowedDomainListResponse is the un-paginated list shape for domains.
+type AllowedDomainListResponse struct {
+	Domains []AllowedDomain `json:"domains"`
+}

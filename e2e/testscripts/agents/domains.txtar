@@ -1,0 +1,43 @@
+# `agents domains` — flag-validation + dry-run contract.
+
+exec algolia agents domains
+stdout 'list'
+stdout 'get'
+stdout 'create'
+stdout 'delete'
+stdout 'bulk-insert'
+stdout 'bulk-delete'
+
+! exec algolia agents domains list
+stderr 'requires exactly 1 argument'
+
+! exec algolia agents domains get agent-1
+stderr 'requires exactly 2 argument'
+
+! exec algolia agents domains create agent-1
+stderr '--domain is required'
+
+exec algolia agents domains create agent-1 --domain https://x.test --dry-run
+! stderr .
+stdout 'Dry run: would POST /1/agents/agent-1/allowed-domains'
+stdout '"https://x.test"'
+
+! exec algolia agents domains delete agent-1 d1
+stderr '--confirm required'
+
+exec algolia agents domains delete agent-1 d1 --dry-run
+stdout 'Dry run: would DELETE /1/agents/agent-1/allowed-domains/d1'
+
+! exec algolia agents domains bulk-insert agent-1
+stderr 'provide at least one'
+
+exec algolia agents domains bulk-insert agent-1 --domain a --domain b --dry-run
+stdout 'Dry run: would POST /1/agents/agent-1/allowed-domains/bulk'
+stdout 'domains \(2\): a, b'
+
+! exec algolia agents domains bulk-delete agent-1 --domain-id d1
+stderr '--confirm required'
+
+exec algolia agents domains bulk-delete agent-1 --domain-id d1 --domain-id d2 --dry-run
+stdout 'Dry run: would DELETE /1/agents/agent-1/allowed-domains/bulk'
+stdout 'ids \(2\): d1, d2'
