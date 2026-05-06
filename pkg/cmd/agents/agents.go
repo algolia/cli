@@ -5,11 +5,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/agents/cache"
+	"github.com/algolia/cli/pkg/cmd/agents/config"
 	"github.com/algolia/cli/pkg/cmd/agents/create"
 	deletecmd "github.com/algolia/cli/pkg/cmd/agents/delete"
 	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
 	"github.com/algolia/cli/pkg/cmd/agents/get"
 	"github.com/algolia/cli/pkg/cmd/agents/list"
+	"github.com/algolia/cli/pkg/cmd/agents/providers"
 	"github.com/algolia/cli/pkg/cmd/agents/publish"
 	"github.com/algolia/cli/pkg/cmd/agents/run"
 	trycmd "github.com/algolia/cli/pkg/cmd/agents/try"
@@ -65,6 +67,8 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(trycmd.NewTryCmd(f, nil))
 	cmd.AddCommand(run.NewRunCmd(f, nil))
 	cmd.AddCommand(cache.NewCacheCmd(f))
+	cmd.AddCommand(providers.NewProvidersCmd(f))
+	cmd.AddCommand(config.NewConfigCmd(f))
 
 	return cmd
 }

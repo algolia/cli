@@ -128,9 +128,9 @@ Use narrower verification for small edits.
 
 ## Agent Studio (`pkg/cmd/agents/...`, `api/agentstudio/`)
 
-Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `try`, `run`. Sub-groups: `cache` (`invalidate`). Backend source of truth: `github.com/algolia/conversational-ai`.
+Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `update`, `delete`, `publish`, `unpublish`, `duplicate`, `try`, `run`. Sub-groups: `cache` (`invalidate`), `providers` (`list`/`get`/`create`/`update`/`delete`/`models`), `config` (`get`/`set`). Backend source of truth: `github.com/algolia/conversational-ai`.
 
-**Naming note**: `try` (not `test`) — see "On `--dry-run`" below for why. All flat verbs are single-word lowercase to match the CLI-wide convention; no hyphenated subcommand names exist anywhere in the tree. Sub-groups (`cache`, future `providers` / `conversations` / `keys` / `domains`) read as noun-then-verb (`agents cache invalidate`) — also a single word per token.
+**Naming note**: `try` (not `test`) — see "On `--dry-run`" below for why. All flat verbs are single-word lowercase to match the CLI-wide convention; no hyphenated subcommand names exist anywhere in the tree. Sub-groups (`cache`, `providers`, `config`, future `conversations` / `keys` / `domains`) read as noun-then-verb (`agents cache invalidate`, `agents providers create`) — also a single word per token. `providers` is plural to match every other listable resource group in the CLI tree (`apikeys`, `objects`, `rules`); `config` is singular because there's exactly one config record per app.
 
 ### API client (`api/agentstudio/`)
 
@@ -142,6 +142,9 @@ Top-level command group: `algolia agents`. Verbs: `list`, `get`, `create`, `upda
 - `CompletionOptions.No*` fields (`NoCache`, `NoMemory`, `NoAnalytics`) are **inverted** from the backend's query polarity. Two reasons: the backend defaults all three to true (only the negative is interesting at the CLI), and `memory` in particular has an `anyOf [{const false}, {type null}]` schema — sending `memory=true` would 422. Therefore the wire form omits the param when the No* field is false, and sends `<param>=false` when true. Polarity is enforced end-to-end by `TestCompletions_QueryFlagsAndSecureUserToken` in `api/agentstudio/completions_test.go`.
 - `CompletionOptions.SecureUserToken` populates the `X-Algolia-Secure-User-Token` header when non-empty. It carries a signed JWT scoping the conversation/memory/analytics partition to a specific end-user (see `rag/dependencies/secure_user_token.py` in the backend). Empty means no header — `X-Algolia-User-ID` fallback applies.
 - `InvalidateAgentCache(id, before)` calls `DELETE /1/agents/{id}/cache?before=YYYY-MM-DD` (query omitted when `before` is empty). Date format validation is **deliberately not done client-side** — the backend's Pydantic parser is the source of truth, and our 422 surfacing turns malformed input into an actionable message verbatim. Mirroring the parser in Go would create silent skew.
+- `ListProviders` / `GetProvider` / `CreateProvider` / `UpdateProvider` / `DeleteProvider` cover the `/1/providers` CRUD. Same `json.RawMessage` body convention as `CreateAgent` — the `input` subobject is a 6-way discriminated union (`openai` / `azure_openai` / `google_genai` / `deepseek` / `openai_compatible` / `anthropic`) with deeply-validated per-variant fields. Mirroring those structs in Go would lie about parity. The CLI passes through; the backend validates.
+- `ListProviderModels()` returns `map[string][]string` — the static catalog of "what models can each provider type expose" (used as a discoverability primitive before creating a provider). `ListModelsForProvider(id)` returns `json.RawMessage` because the spec leaves the response shape unspecified — empirically `[]string` (incl. account-specific entries like OpenAI fine-tunes / Azure deployments) but we don't pin it.
+- `GetConfiguration` / `UpdateConfiguration` cover `/1/configuration`. ACL is `logs`, **not** `settings` — the only field today (`maxRetentionDays`) governs log/conversation retention, hence the unusual ACL. Body shape kept as `json.RawMessage` for symmetry with the rest of the agents tree, even though the schema is a single int field — future fields will land here.
 
 ### Streaming (`api/agentstudio/sse.go`)
 
@@ -168,6 +171,17 @@ Both commands expose the same set of completion-time flags, mapping directly to 
 | `--secure-user-token <jwt>` | `X-Algolia-Secure-User-Token` header | (omitted) | Signed JWT, end-user scoping |
 
 The flag set is intentionally duplicated across `try.go` and `run.go` rather than extracted into a `RegisterCompletionFlags` shared helper — there are exactly two consumers and the duplication is mechanical (8 lines per command). If a third consumer appears, extract following the "second use" rule (same as `PrintDryRun` / `NormalizeCompatibility`).
+
+### Provider secret masking (`agents providers list/get/create/update`)
+
+Provider responses include `apiKey` literally (per `OpenAIProviderInput-Output` et al. in the spec). Without masking, `--output json` writes raw API keys to stdout, which routinely lands in CI logs, terminal scrollback, and shared pastes. Convention:
+
+- All four read/write commands mask `apiKey` to `"***"` by default in their success-path output.
+- Pass `--show-secret` to render verbatim (scripted exports, debugging).
+- Masking happens at the cmd layer (`pkg/cmd/agents/providers/mask.go:MaskInput`), not the client — the client returns the raw response so the cmd layer can opt out per-invocation.
+- `--dry-run` does **not** mask: the user authored the file and is being shown what THEY are about to send. Hiding it would break the "what would be sent" contract.
+- Three asterisks, no last-N preview. Goal is "impossible to copy by accident", not "allow last-4 lookup".
+- `secretFieldNames` in `mask.go` is the closed set; today it's just `apiKey`. Extend alphabetically when new credential fields land. Same convention will land for Phase 8 (`agents keys`); when it does, lift `MaskInput` into a shared helper following the second-use rule.
 
 ### On `--dry-run`
 
