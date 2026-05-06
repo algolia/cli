@@ -222,3 +222,43 @@ type AllowedDomain struct {
 type AllowedDomainListResponse struct {
 	Domains []AllowedDomain `json:"domains"`
 }
+
+// SecretKey mirrors SecretKeyResponse. Value is the vended secret —
+// always treat as sensitive.
+type SecretKey struct {
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Value      string     `json:"value"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	UpdatedAt  time.Time  `json:"updatedAt"`
+	LastUsedAt *time.Time `json:"lastUsedAt"`
+	IsDefault  bool       `json:"isDefault"`
+	AgentIDs   []string   `json:"agentIds"`
+}
+
+// PaginatedSecretKeysResponse is the standard paginated envelope.
+type PaginatedSecretKeysResponse struct {
+	Data       []SecretKey        `json:"data"`
+	Pagination PaginationMetadata `json:"pagination"`
+}
+
+// ListSecretKeysParams configures GET /1/secret-keys.
+type ListSecretKeysParams struct {
+	Page  int
+	Limit int
+}
+
+// SecretKeyCreate is the POST body. AgentIDs is optional; when empty
+// the field is omitted.
+type SecretKeyCreate struct {
+	Name     string   `json:"name"`
+	AgentIDs []string `json:"agentIds,omitempty"`
+}
+
+// SecretKeyPatch is the PATCH body. Both fields are pointers so a
+// nil value means "leave unchanged" while a zero value (empty string
+// / empty slice) is sent through to the backend.
+type SecretKeyPatch struct {
+	Name     *string   `json:"name,omitempty"`
+	AgentIDs *[]string `json:"agentIds,omitempty"`
+}

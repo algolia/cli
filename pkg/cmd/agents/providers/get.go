@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -76,7 +77,7 @@ func runGetCmd(opts *GetOptions) error {
 	}
 
 	if !opts.Show {
-		p.Input = MaskInput(p.Input)
+		p.Input = shared.MaskInput(p.Input)
 	}
 	return opts.PrintFlags.Print(opts.IO, p)
 }

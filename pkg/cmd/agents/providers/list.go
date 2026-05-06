@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
@@ -91,7 +92,7 @@ func runListCmd(opts *ListOptions) error {
 		// touch the cached *Provider on the backend; only what we hand
 		// to the printer.
 		for i := range res.Data {
-			res.Data[i].Input = MaskInput(res.Data[i].Input)
+			res.Data[i].Input = shared.MaskInput(res.Data[i].Input)
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/agents/domains"
 	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
 	"github.com/algolia/cli/pkg/cmd/agents/get"
+	"github.com/algolia/cli/pkg/cmd/agents/keys"
 	"github.com/algolia/cli/pkg/cmd/agents/list"
 	"github.com/algolia/cli/pkg/cmd/agents/providers"
 	"github.com/algolia/cli/pkg/cmd/agents/publish"
@@ -73,6 +74,7 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(config.NewConfigCmd(f))
 	cmd.AddCommand(conversations.NewConversationsCmd(f))
 	cmd.AddCommand(domains.NewDomainsCmd(f))
+	cmd.AddCommand(keys.NewKeysCmd(f))
 
 	return cmd
 }

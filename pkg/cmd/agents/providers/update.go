@@ -100,7 +100,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		return err
 	}
 	if !opts.Show {
-		p.Input = MaskInput(p.Input)
+		p.Input = shared.MaskInput(p.Input)
 	}
 	return opts.PrintFlags.Print(opts.IO, p)
 }
