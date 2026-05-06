@@ -4,8 +4,14 @@ import (
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/agents/create"
+	deletecmd "github.com/algolia/cli/pkg/cmd/agents/delete"
+	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
 	"github.com/algolia/cli/pkg/cmd/agents/get"
 	"github.com/algolia/cli/pkg/cmd/agents/list"
+	"github.com/algolia/cli/pkg/cmd/agents/publish"
+	"github.com/algolia/cli/pkg/cmd/agents/unpublish"
+	"github.com/algolia/cli/pkg/cmd/agents/update"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -47,6 +53,12 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(get.NewGetCmd(f, nil))
+	cmd.AddCommand(create.NewCreateCmd(f, nil))
+	cmd.AddCommand(update.NewUpdateCmd(f, nil))
+	cmd.AddCommand(deletecmd.NewDeleteCmd(f, nil))
+	cmd.AddCommand(publish.NewPublishCmd(f, nil))
+	cmd.AddCommand(unpublish.NewUnpublishCmd(f, nil))
+	cmd.AddCommand(duplicate.NewDuplicateCmd(f, nil))
 
 	return cmd
 }
