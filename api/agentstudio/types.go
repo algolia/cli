@@ -135,3 +135,75 @@ type ListProvidersParams struct {
 type ApplicationConfig struct {
 	MaxRetentionDays int `json:"maxRetentionDays"`
 }
+
+// Conversation mirrors ConversationBaseResponse from the backend (the
+// "lightweight, no messages" shape used in PaginatedConversationsResponse).
+//
+// Feedback and ConversationMetadata are kept as json.RawMessage:
+//
+//   - Feedback is `[]FeedbackResponse | null` and only populated when
+//     the caller passes ?includeFeedback=true. The FeedbackResponse
+//     schema has 7 fields with several anyOf nullables; the CLI does
+//     not introspect them, it only forwards. Typing them eagerly would
+//     be churn-prone for a feature `agents conversations list` only
+//     exposes via passthrough.
+//   - ConversationMetadata is currently a single nullable timestamp
+//     ({cachedAt: …}) but the schema name signals room to grow.
+//
+// Both are emitted with `omitempty` so default `--output json` for
+// list/get isn't bloated by trailing nulls.
+type Conversation struct {
+	ID                   string          `json:"id"`
+	AgentID              string          `json:"agentId"`
+	Title                *string         `json:"title,omitempty"`
+	CreatedAt            time.Time       `json:"createdAt"`
+	UpdatedAt            time.Time       `json:"updatedAt"`
+	LastActivityAt       *time.Time      `json:"lastActivityAt,omitempty"`
+	UserToken            *string         `json:"userToken,omitempty"`
+	IsFromDashboard      bool            `json:"isFromDashboard"`
+	MessageCount         int             `json:"messageCount"`
+	TotalInputTokens     int             `json:"totalInputTokens"`
+	TotalOutputTokens    int             `json:"totalOutputTokens"`
+	TotalTokens          int             `json:"totalTokens"`
+	Feedback             json.RawMessage `json:"feedback,omitempty"`
+	ConversationMetadata json.RawMessage `json:"conversationMetadata,omitempty"`
+}
+
+// PaginatedConversationsResponse mirrors PaginatedConversationsResponse.
+type PaginatedConversationsResponse struct {
+	Data       []Conversation     `json:"data"`
+	Pagination PaginationMetadata `json:"pagination"`
+}
+
+// ListConversationsParams configures GET /1/agents/{id}/conversations.
+//
+// StartDate/EndDate are YYYY-MM-DD strings sent verbatim — the backend
+// validates Pydantic-side (same passthrough convention as
+// InvalidateAgentCache.before).
+//
+// IncludeFeedback toggles ?includeFeedback (backend default: false).
+// FeedbackVote is a *int because nil = "no filter" while 0 ("downvote")
+// is a meaningful filter value. Backend constraint: 0 <= vote <= 1, and
+// the param is silently dropped unless includeFeedback=true is also set.
+type ListConversationsParams struct {
+	Page            int
+	Limit           int
+	StartDate       string
+	EndDate         string
+	IncludeFeedback bool
+	FeedbackVote    *int
+}
+
+// PurgeConversationsParams configures DELETE /1/agents/{id}/conversations.
+// Empty StartDate/EndDate = wipe everything (the CLI layer adds an
+// explicit `--all` guardrail; this struct is the wire shape only).
+type PurgeConversationsParams struct {
+	StartDate string
+	EndDate   string
+}
+
+// ExportConversationsParams configures GET /1/agents/{id}/conversations/export.
+type ExportConversationsParams struct {
+	StartDate string
+	EndDate   string
+}

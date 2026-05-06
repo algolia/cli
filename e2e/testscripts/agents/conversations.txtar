@@ -1,0 +1,90 @@
+# `agents conversations` — flag-validation + dry-run + guardrails.
+# None of these hit the network: failing cases trip cobra/our own
+# validators before client construction; passing cases use --dry-run.
+#
+# Ungated: runs whenever the standard ALGOLIA_APPLICATION_ID +
+# ALGOLIA_API_KEY are present.
+
+# `conversations` parent without verb prints help (cobra default for
+# groups with no Run; exits 0).
+exec algolia agents conversations
+stdout 'list'
+stdout 'get'
+stdout 'delete'
+stdout 'purge'
+stdout 'export'
+
+# ---------- list ----------
+
+# Requires <agent-id> positional
+! exec algolia agents conversations list
+stderr 'requires exactly 1 argument'
+
+# --feedback-vote without --include-feedback is refused (mirrors backend
+# constraint; reject early at the CLI for a clearer error message).
+! exec algolia agents conversations list agent-1 --feedback-vote 1
+stderr '--feedback-vote requires --include-feedback'
+
+# --feedback-vote outside 0|1 is refused
+! exec algolia agents conversations list agent-1 --include-feedback --feedback-vote 7
+stderr 'must be 0 \(down\) or 1 \(up\)'
+
+# ---------- get ----------
+
+# Requires both positionals
+! exec algolia agents conversations get agent-1
+stderr 'requires exactly 2 argument'
+
+# ---------- delete ----------
+
+# Requires both positionals
+! exec algolia agents conversations delete agent-1
+stderr 'requires exactly 2 argument'
+
+# Non-TTY without --confirm is refused (mirrors `agents delete`)
+! exec algolia agents conversations delete agent-1 c1
+stderr '--confirm required'
+
+# --dry-run bypasses the confirm requirement and prints the would-be call
+exec algolia agents conversations delete agent-1 c1 --dry-run
+! stderr .
+stdout 'Dry run: would DELETE /1/agents/agent-1/conversations/c1'
+
+# ---------- purge ----------
+
+# Requires <agent-id>
+! exec algolia agents conversations purge
+stderr 'requires exactly 1 argument'
+
+# Dateless purge without --all is refused (the most important guardrail
+# in this package — server-side dateless DELETE wipes EVERYTHING).
+! exec algolia agents conversations purge agent-1 -y
+stderr 'refusing to purge ALL conversations'
+
+# --all is mutually exclusive with --start-date / --end-date
+! exec algolia agents conversations purge agent-1 --all --start-date 2026-01-01 -y
+stderr 'mutually exclusive'
+
+# Non-TTY without --confirm is refused (even when scope is set)
+! exec algolia agents conversations purge agent-1 --all
+stderr '--confirm required'
+
+# Dry-run with date range previews URL with query string + scope label
+exec algolia agents conversations purge agent-1 --start-date 2026-01-01 --end-date 2026-01-31 --dry-run
+! stderr .
+stdout 'Dry run: would DELETE /1/agents/agent-1/conversations\?'
+stdout 'startDate=2026-01-01'
+stdout 'endDate=2026-01-31'
+stdout 'scope: between 2026-01-01 and 2026-01-31'
+
+# Dry-run with --all previews unscoped URL
+exec algolia agents conversations purge agent-1 --all --dry-run
+! stderr .
+stdout 'Dry run: would DELETE /1/agents/agent-1/conversations'
+stdout 'scope: ALL conversations'
+
+# ---------- export ----------
+
+# Requires <agent-id>
+! exec algolia agents conversations export
+stderr 'requires exactly 1 argument'

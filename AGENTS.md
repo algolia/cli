@@ -168,6 +168,8 @@ pkg/cmd/agents/providers/
 
 Same package keeps internal helpers (`MaskInput`, `readBody`, `ctxOrBackground`) accessible without exporting; per-file split keeps each verb under ~200 LOC. **Don't** promote sub-group verbs to per-verb subpackages — they're tightly coupled with shared internals; the directory churn buys nothing.
 
+`conversations/` (5 verbs) follows the same pattern: `conversations.go` (parent + helpers), `list.go`, `get.go`, `delete.go`, `purge.go`, `export.go`, with paired `<verb>_test.go`. The agent ID is positional first arg on every verb (matches `agents publish/run/cache invalidate`).
+
 For `cache/` (1 verb) and `config/` (2 verbs) the per-file split is unnecessary; they live in one file each.
 
 ### API client (`api/agentstudio/`)
@@ -183,6 +185,21 @@ For `cache/` (1 verb) and `config/` (2 verbs) the per-file split is unnecessary;
 - `ListProviders` / `GetProvider` / `CreateProvider` / `UpdateProvider` / `DeleteProvider` cover the `/1/providers` CRUD. Same `json.RawMessage` body convention as `CreateAgent` — the `input` subobject is a 6-way discriminated union (`openai` / `azure_openai` / `google_genai` / `deepseek` / `openai_compatible` / `anthropic`) with deeply-validated per-variant fields. Mirroring those structs in Go would lie about parity. The CLI passes through; the backend validates.
 - `ListProviderModels()` returns `map[string][]string` — the static catalog of "what models can each provider type expose" (used as a discoverability primitive before creating a provider). `ListModelsForProvider(id)` returns `json.RawMessage` because the spec leaves the response shape unspecified — empirically `[]string` (incl. account-specific entries like OpenAI fine-tunes / Azure deployments) but we don't pin it.
 - `GetConfiguration` / `UpdateConfiguration` cover `/1/configuration`. ACL is `logs`, **not** `settings` — the only field today (`maxRetentionDays`) governs log/conversation retention, hence the unusual ACL. Body shape kept as `json.RawMessage` for symmetry with the rest of the agents tree, even though the schema is a single int field — future fields will land here.
+- `ListConversations` / `GetConversation` / `DeleteConversation` / `PurgeConversations` / `ExportConversations` cover `/1/agents/{id}/conversations*`. Note the per-agent scope — every endpoint takes `{agent_id}` in the path. `GetConversation` returns `json.RawMessage` because `ConversationFullResponse.messages` is a discriminated union over message roles (system/user/assistant/tool); `ListConversations` returns the typed `PaginatedConversationsResponse` because the lightweight base shape (no messages) is stable. `ListConversationsParams.FeedbackVote` is `*int` because nil = no filter while 0 (downvote) is a meaningful filter — pointer/nil distinction matters here. `ExportConversations` returns `json.RawMessage` because the spec leaves the export response shape unspecified.
+
+### Conversations: `purge` vs `delete` (`agents conversations`)
+
+Two distinct verbs share the underlying HTTP method (`DELETE`), but the blast radius is different by orders of magnitude:
+
+- `delete <agent-id> <conv-id>` — surgical, one conversation. Mistype the conv ID and you nuke an unrelated conversation; same risk profile as `agents delete`.
+- `purge <agent-id> [--all | --start-date | --end-date]` — bulk. Can wipe every conversation for the agent in one call.
+
+Two guardrails on purge that the wire-level client deliberately doesn't enforce (so the client mirrors the spec):
+
+1. **Dateless purge requires `--all`**. Backend behaviour: `DELETE /conversations` with no `startDate`/`endDate` deletes EVERYTHING. The CLI refuses that unless `--all` is passed explicitly. A typo (`--start-dat 2026-01-01`) would otherwise silently turn a date-range purge into a wipe-all.
+2. **`--all` is mutually exclusive with date filters**. Mixing them is almost certainly a misunderstanding; reject early with a clear message.
+
+Both flow through the same `--confirm` / non-TTY-refuses-without-it rule as `agents delete`. `--dry-run` previews the URL with its query string and labels the scope (`scope: ALL conversations` vs `scope: between A and B`).
 
 ### Streaming (`api/agentstudio/sse.go`)
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/algolia/cli/pkg/cmd/agents/cache"
 	"github.com/algolia/cli/pkg/cmd/agents/config"
+	"github.com/algolia/cli/pkg/cmd/agents/conversations"
 	"github.com/algolia/cli/pkg/cmd/agents/create"
 	deletecmd "github.com/algolia/cli/pkg/cmd/agents/delete"
 	"github.com/algolia/cli/pkg/cmd/agents/duplicate"
@@ -69,6 +70,7 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(cache.NewCacheCmd(f))
 	cmd.AddCommand(providers.NewProvidersCmd(f))
 	cmd.AddCommand(config.NewConfigCmd(f))
+	cmd.AddCommand(conversations.NewConversationsCmd(f))
 
 	return cmd
 }
