@@ -139,6 +139,8 @@ echo "PID=$PID"
 
 ---
 
-## Report back
+## Report back (local only — do **not** commit)
 
-Add `docs/qa/anya_arg_friendly_providers_vet/REPORT.md` (date, commit SHA, pass/fail per section, backend 422 text if any) after live runs.
+Anya drops a short vet note under **`tmp/qa/anya_arg_friendly_providers_vet/`** (e.g. `REPORT.md`) for Catalin to read: date, commit SHA, pass/fail per section, backend 422 snippets if any.
+
+That path stays **out of git** (scratch / personal checkout). Nothing from Anya’s QA report belongs in PR commits—only the feature and the in-repo docs above.
