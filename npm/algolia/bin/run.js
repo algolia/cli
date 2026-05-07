@@ -3,27 +3,21 @@
 
 const { execFileSync } = require('child_process');
 
-const platforms = {
-  'darwin-x64':   () => require('@algolia/cli-darwin-x64'),
-  'darwin-arm64': () => require('@algolia/cli-darwin-arm64'),
-  'linux-x64':    () => require('@algolia/cli-linux-x64'),
-  'linux-arm64':  () => require('@algolia/cli-linux-arm64'),
-  'win32-x64':    () => require('@algolia/cli-win32-x64'),
-  'win32-arm64':  () => require('@algolia/cli-win32-arm64'),
-};
-
-const key = `${process.platform}-${process.arch}`;
-const loader = platforms[key];
-
-if (!loader) {
-  console.error(
-    `algolia: unsupported platform ${process.platform}/${process.arch}\n` +
-    `Install the appropriate platform package manually: npm install @algolia/cli-${key}`
-  );
-  process.exit(1);
+let binPath;
+switch (`${process.platform}-${process.arch}`) {
+  case 'darwin-x64':   ({ binPath } = require('@algolia/cli-darwin-x64'));   break;
+  case 'darwin-arm64': ({ binPath } = require('@algolia/cli-darwin-arm64')); break;
+  case 'linux-x64':    ({ binPath } = require('@algolia/cli-linux-x64'));    break;
+  case 'linux-arm64':  ({ binPath } = require('@algolia/cli-linux-arm64'));  break;
+  case 'win32-x64':    ({ binPath } = require('@algolia/cli-win32-x64'));    break;
+  case 'win32-arm64':  ({ binPath } = require('@algolia/cli-win32-arm64'));  break;
+  default:
+    console.error(
+      `algolia: unsupported platform ${process.platform}/${process.arch}\n` +
+      `Install the appropriate platform package manually: npm install @algolia/cli-${process.platform}-${process.arch}`
+    );
+    process.exit(1);
 }
-
-const { binPath } = loader();
 
 try {
   execFileSync(binPath, process.argv.slice(2), { stdio: 'inherit' });
