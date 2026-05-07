@@ -99,9 +99,9 @@ func marshalSimpleProviderCreate(name, providerName, baseURL, apiKey string) ([]
 	}
 
 	body := struct {
-		Name           string            `json:"name"`
-		ProviderName   string            `json:"providerName"`
-		Input          map[string]string `json:"input"`
+		Name         string            `json:"name"`
+		ProviderName string            `json:"providerName"`
+		Input        map[string]string `json:"input"`
 	}{
 		Name:         strings.TrimSpace(name),
 		ProviderName: pn,

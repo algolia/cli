@@ -132,4 +132,3 @@ func Test_runCreateCmd_FlagsUnsupportedProviderUsesF(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "use -F")
 }
-
