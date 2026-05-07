@@ -99,6 +99,21 @@ Two distinct concepts share the name:
 
 `agents try` therefore has no `--dry-run` flag — the whole command IS the dry-run. To preview the wire body without calling the backend, marshal `{"messages":[...], "configuration":{...}}` yourself. The dry-run e2e regression-asserts that `agents try --dry-run` is rejected.
 
+## Providers: `-F` vs flags
+
+`agents providers create` accepts either:
+
+- **`-F <file>`** — full `ProviderAuthenticationCreate` JSON (all `providerName` variants, including `azure_openai` and `openai_compatible`), or
+- **Flags** — `--name`, `--provider` (`openai` \| `anthropic` \| `google_genai` \| `deepseek`), plus exactly one of `--api-key`, `--api-key-stdin`, or `--api-key-env <VAR>`. Optional `--base-url` only for `openai` / `anthropic`.
+
+`-F` and the shortcut flags are **mutually exclusive**.
+
+`agents providers update <id>` accepts **`-F`** (patch JSON) **or** shortcut flags: any non-empty combination of `--name`, `--api-key` / `--api-key-stdin` / `--api-key-env`, and `--base-url`, with the same exclusivity rule against `-F`.
+
+Prefer **`--api-key-env`** or **`--api-key-stdin`** over **`--api-key`** (shell history). `--dry-run` still shows the resolved body unredacted so authors can verify what would be sent.
+
+Team sign-off and **Anya** QA checklist: [`docs/qa/arg_friendly_providers_SIGNOFF.md`](qa/arg_friendly_providers_SIGNOFF.md).
+
 ## Secret masking
 
 `apiKey` (provider input) and `value` (secret-keys) are masked to `"***"` by default. Pass `--show-secret` to render verbatim. Masking happens at the cmd layer (`pkg/cmd/agents/shared/mask.go`), not the client. `--dry-run` does **not** mask: the user authored the file and is being shown what THEY are about to send. Three asterisks, no last-N preview — goal is "impossible to copy by accident", not "allow last-4 lookup". `secretFieldNames` is the closed set; extend alphabetically when new credential fields land.
