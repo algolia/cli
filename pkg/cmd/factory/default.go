@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
@@ -23,6 +24,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
+	f.CompositionClient = compositionClient(f, appVersion)
 
 	return f
 }
@@ -82,6 +84,35 @@ func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
 		}
 
 		return crawler.NewClient(userID, APIKey), nil
+	}
+}
+
+func compositionClient(f *cmdutil.Factory, appVersion string) func() (*composition.APIClient, error) {
+	return func() (*composition.APIClient, error) {
+		appID, err := f.Config.Profile().GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := f.Config.Profile().GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		userAgent, err := getUserAgentInfo(appID, apiKey, appVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		clientConf := composition.CompositionConfiguration{
+			Configuration: transport.Configuration{
+				AppID:                           appID,
+				ApiKey:                          apiKey,
+				UserAgent:                       userAgent,
+				ExposeIntermediateNetworkErrors: true,
+			},
+		}
+
+		return composition.NewClientWithConfig(clientConf)
 	}
 }
 
