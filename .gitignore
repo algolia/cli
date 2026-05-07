@@ -17,6 +17,7 @@ vendor/
 
 # local build
 algolia
+algolia-beta
 
 .gocache/
 

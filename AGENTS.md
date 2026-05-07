@@ -38,6 +38,12 @@ Preferred:
 task build
 ```
 
+For a second binary next to a production install (same `.env` / ldflags as `build`, output `algolia-beta`, version string `main+beta` unless you pass `VERSION=…`):
+
+```sh
+task build-beta
+```
+
 ```sh
 go generate ./...
 go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=main" -o algolia cmd/algolia/main.go
@@ -45,6 +51,7 @@ go build -v ./...
 ```
 
 - `task build` runs generation first.
+- `task build-beta` runs the same steps and embeds the same defaults; only the output filename and default version string differ (`algolia-beta`, `main+beta`). Override with `VERSION=…` when needed.
 - CI also checks `go build -v ./...`.
 
 ## Test Commands
