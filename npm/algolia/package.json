@@ -1,0 +1,38 @@
+{
+  "name": "@algolia/cli",
+  "version": "5.8.2",
+  "description": "The official Algolia CLI — manage indices, records, API keys, and synonyms from the command line",
+  "bin": {
+    "algolia": "bin/run.js"
+  },
+  "files": [
+    "bin/run.js",
+    "README.md"
+  ],
+  "optionalDependencies": {
+    "@algolia/cli-darwin-x64": "0.0.0",
+    "@algolia/cli-darwin-arm64": "0.0.0",
+    "@algolia/cli-linux-x64": "0.0.0",
+    "@algolia/cli-linux-arm64": "0.0.0",
+    "@algolia/cli-win32-x64": "0.0.0",
+    "@algolia/cli-win32-arm64": "0.0.0"
+  },
+  "keywords": [
+    "algolia",
+    "cli",
+    "search",
+    "indices",
+    "records",
+    "api-keys",
+    "synonyms"
+  ],
+  "license": "MIT",
+  "homepage": "https://algolia.com/doc/tools/cli/",
+  "bugs": {
+    "url": "https://github.com/algolia/cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/algolia/cli.git"
+  }
+}

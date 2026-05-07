@@ -42,6 +42,16 @@ jobs:
           ALGOLIA_API_URL: ${{ secrets.ALGOLIA_API_URL }}
           ALGOLIA_OAUTH_CLIENT_ID: ${{ secrets.ALGOLIA_OAUTH_CLIENT_ID }}
           ALGOLIA_OAUTH_SCOPE: ${{ secrets.ALGOLIA_OAUTH_SCOPE }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish npm packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+        run: ./scripts/npm-publish.sh
       - name: Docs checkout
         uses: actions/checkout@v4
         with:
