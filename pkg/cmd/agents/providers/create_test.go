@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -26,10 +27,10 @@ func Test_runCreateCmd_RoundTripsBody(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	specPath := writeTempJSON(t, "spec.json", body)
+	specPath := sharedtest.WriteTempJSON(t, "spec.json", body)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "create -F "+specPath, out)
@@ -46,9 +47,13 @@ func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	specPath := writeTempJSON(t, "spec.json", `{"name":"x","providerName":"openai","input":{"apiKey":"sk-x"}}`)
+	specPath := sharedtest.WriteTempJSON(
+		t,
+		"spec.json",
+		`{"name":"x","providerName":"openai","input":{"apiKey":"sk-x"}}`,
+	)
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "create -F "+specPath+" --dry-run", out)
@@ -62,7 +67,7 @@ func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
 }
 
 func Test_runCreateCmd_RejectsInvalidJSON(t *testing.T) {
-	specPath := writeTempJSON(t, "spec.json", `{not json`)
+	specPath := sharedtest.WriteTempJSON(t, "spec.json", `{not json`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewProvidersCmd(f)
 	_, err := test.Execute(cmd, "create -F "+specPath+" --dry-run", out)

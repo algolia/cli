@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -61,7 +62,7 @@ func Test_runBulkInsertCmd_Live(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	_, err := test.Execute(cmd, "bulk-insert agent-1 --domain a --domain b", out)
 	require.NoError(t, err)
@@ -107,7 +108,7 @@ func Test_runBulkDeleteCmd_Live(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	_, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 -y", out)
 	require.NoError(t, err)
@@ -130,7 +131,7 @@ func Test_runBulkDeleteCmd_TTYReportsRemovedAndAbsent(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(true, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	result, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 --domain-id d2 --domain-id d-missing -y", out)
 	require.NoError(t, err)

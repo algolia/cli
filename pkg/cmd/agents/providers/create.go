@@ -83,7 +83,7 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	body, err := readBody(opts.File, opts.IO)
+	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func runCreateCmd(opts *CreateOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Creating provider")
 	p, err := client.CreateProvider(ctx, json.RawMessage(body))

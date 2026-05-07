@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -71,7 +72,7 @@ func runCreateCmd(opts *CreateOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Adding allowed domain")
-	d, err := client.CreateAllowedDomain(ctxOrBackground(opts.Ctx), opts.AgentID, opts.Domain)
+	d, err := client.CreateAllowedDomain(shared.OrBackground(opts.Ctx), opts.AgentID, opts.Domain)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

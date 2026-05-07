@@ -133,7 +133,11 @@ func TestGetConversation_OmitsIncludeFeedbackWhenFalse(t *testing.T) {
 		"/1/agents/agent-1/conversations/c1",
 		func(w http.ResponseWriter, r *http.Request) {
 			assert.Empty(t, r.URL.RawQuery)
-			_, _ = w.Write([]byte(`{"id":"c1","agentId":"agent-1","createdAt":"2026-01-15T00:00:00Z","updatedAt":"2026-01-15T00:01:00Z","messages":[]}`))
+			_, _ = w.Write(
+				[]byte(
+					`{"id":"c1","agentId":"agent-1","createdAt":"2026-01-15T00:00:00Z","updatedAt":"2026-01-15T00:01:00Z","messages":[]}`,
+				),
+			)
 		},
 	)
 	_, c := newTestClient(t, mux)

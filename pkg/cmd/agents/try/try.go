@@ -23,16 +23,8 @@ type TryOptions struct {
 
 	AgentStudioClient func() (*agentstudio.Client, error)
 
-	ConfigFile      string
-	InputFile       string
-	Message         string
-	NoStream        bool
-	Compatibility   string
-	NoCache         bool
-	NoMemory        bool
-	NoAnalytics     bool
-	SecureUserToken string
-	NDJSON          bool
+	ConfigFile string
+	shared.CompletionInputs
 }
 
 func NewTryCmd(f *cmdutil.Factory, runF func(*TryOptions) error) *cobra.Command {
@@ -87,22 +79,7 @@ func NewTryCmd(f *cmdutil.Factory, runF func(*TryOptions) error) *cobra.Command 
 	cmd.Flags().
 		StringVarP(&opts.ConfigFile, "config", "c", "", "JSON file with the agent configuration to try (use \"-\" for stdin)")
 	_ = cmd.MarkFlagRequired("config")
-	cmd.Flags().
-		StringVarP(&opts.InputFile, "input", "i", "", "JSON file with messages array (use \"-\" for stdin)")
-	cmd.Flags().
-		StringVarP(&opts.Message, "message", "m", "", "Single user message (convenience for one-shot prompts)")
-	cmd.Flags().BoolVar(&opts.NoStream, "no-stream", false, "Request a buffered JSON response instead of SSE")
-	cmd.Flags().
-		StringVar(&opts.Compatibility, "compatibility", "", "Streaming protocol: v4 (ai-sdk-4) or v5 (ai-sdk-5, default)")
-	cmd.Flags().BoolVar(&opts.NoCache, "no-cache", false, "Bypass the backend completion cache (default: cache enabled)")
-	cmd.Flags().BoolVar(&opts.NoMemory, "no-memory", false, "Disable agent memory for this completion (default: memory enabled)")
-	cmd.Flags().BoolVar(&opts.NoAnalytics, "no-analytics", false, "Skip Agent Studio analytics for this completion (default: analytics enabled)")
-	cmd.Flags().
-		StringVar(&opts.SecureUserToken, "secure-user-token", "", "Signed JWT scoping the conversation/memory/analytics partition to an end-user (X-Algolia-Secure-User-Token)")
-	cmd.Flags().
-		BoolVar(&opts.NDJSON, "ndjson", false, "Force NDJSON output even on a TTY (default on non-TTY; use this when you want machine-parseable events but also want to see them on screen)")
-
-	cmd.MarkFlagsMutuallyExclusive("input", "message")
+	shared.RegisterCompletionFlags(cmd, &opts.CompletionInputs)
 
 	return cmd
 }
@@ -134,11 +111,7 @@ func runTryCmd(opts *TryOptions) error {
 	}
 
 	// SIGINT cancels the in-flight request so the SSE stream tears down cleanly.
-	ctx := opts.Ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	ctx, stop := signal.NotifyContext(shared.OrBackground(opts.Ctx), os.Interrupt)
 	defer stop()
 
 	resp, err := client.Completions(ctx, "test", body, agentstudio.CompletionOptions{

@@ -5,36 +5,15 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
-
-func newClientForServer(t *testing.T, ts *httptest.Server) func() (*agentstudio.Client, error) {
-	t.Helper()
-	return func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
-}
-
-func writeTempJSON(t *testing.T, name, content string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), name)
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
-	return path
-}
 
 func Test_runTryCmd_StreamingHappyPath(t *testing.T) {
 	mux := http.NewServeMux()
@@ -56,10 +35,10 @@ func Test_runTryCmd_StreamingHappyPath(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"gpt-4o-mini"}`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"gpt-4o-mini"}`)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewTryCmd(f, nil)
 	result, err := test.Execute(cmd, "-c "+cfgPath+" -m hello", out)
@@ -82,10 +61,10 @@ func Test_runTryCmd_NoStreamReturnsBufferedJSON(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewTryCmd(f, nil)
 	result, err := test.Execute(cmd, "-c "+cfgPath+" -m hi --no-stream", out)
@@ -100,7 +79,7 @@ func Test_runTryCmd_NoStreamReturnsBufferedJSON(t *testing.T) {
 // AGENTS.md → "On `--dry-run`".
 
 func Test_runTryCmd_RejectsNeitherInputNorMessage(t *testing.T) {
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewTryCmd(f, nil)
 	_, err := test.Execute(cmd, "-c "+cfgPath, out)
@@ -109,8 +88,8 @@ func Test_runTryCmd_RejectsNeitherInputNorMessage(t *testing.T) {
 }
 
 func Test_runTryCmd_RejectsBothInputAndMessage(t *testing.T) {
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
-	msgPath := writeTempJSON(t, "msgs.json", `[{"role":"user","content":"x"}]`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
+	msgPath := sharedtest.WriteTempJSON(t, "msgs.json", `[{"role":"user","content":"x"}]`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewTryCmd(f, nil)
 	_, err := test.Execute(cmd, "-c "+cfgPath+" -i "+msgPath+" -m hi", out)
@@ -139,9 +118,9 @@ func Test_runTryCmd_CompatibilityV4(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewTryCmd(f, nil)
 	result, err := test.Execute(cmd, "-c "+cfgPath+" -m hi --compatibility v4", out)
@@ -168,10 +147,10 @@ func Test_runTryCmd_ForwardsCompletionFlagsToWire(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewTryCmd(f, nil)
 	_, err := test.Execute(cmd,
@@ -181,7 +160,7 @@ func Test_runTryCmd_ForwardsCompletionFlagsToWire(t *testing.T) {
 }
 
 func Test_runTryCmd_RejectsInvalidCompatibility(t *testing.T) {
-	cfgPath := writeTempJSON(t, "cfg.json", `{"model":"x"}`)
+	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewTryCmd(f, nil)
 	_, err := test.Execute(cmd, "-c "+cfgPath+" -m hi --compatibility v9", out)

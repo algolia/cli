@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -40,13 +41,17 @@ func Test_runUpdateCmd_LivePatch(t *testing.T) {
 		var got map[string]any
 		require.NoError(t, json.Unmarshal(body, &got))
 		assert.Equal(t, "renamed", got["name"])
-		_, _ = w.Write([]byte(`{"id":"id1","name":"renamed","value":"sk-real","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"id1","name":"renamed","value":"sk-real","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`,
+			),
+		)
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewKeysCmd(f)
 	result, err := test.Execute(cmd, `update id1 --name renamed`, out)
 	require.NoError(t, err)

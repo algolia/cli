@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -24,9 +25,9 @@ func Test_runUpdateCmd_HitsCorrectPath(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	patchPath := writeTempJSON(t, "patch.json", `{"name":"renamed"}`)
+	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"name":"renamed"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "update p1 -F "+patchPath, out)
@@ -36,7 +37,7 @@ func Test_runUpdateCmd_HitsCorrectPath(t *testing.T) {
 }
 
 func Test_runUpdateCmd_DryRunIncludesProviderID(t *testing.T) {
-	patchPath := writeTempJSON(t, "patch.json", `{"name":"renamed"}`)
+	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"name":"renamed"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "update p1 -F "+patchPath+" --dry-run", out)

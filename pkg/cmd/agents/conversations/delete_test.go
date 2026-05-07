@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -20,7 +21,7 @@ func Test_runDeleteCmd_DryRunSkipsAPI(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	result, err := test.Execute(cmd, "delete agent-1 c1 --dry-run", out)
@@ -46,7 +47,7 @@ func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "delete agent-1 missing -y", out)

@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -85,14 +85,11 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
 
-			if !confirm && !opts.DryRun {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf(
-						"--confirm required when non-interactive shell is detected",
-					)
-				}
-				opts.DoConfirm = true
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			if err != nil {
+				return err
 			}
+			opts.DoConfirm = doConfirm
 
 			if runF != nil {
 				return runF(opts)
@@ -103,7 +100,7 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 
 	cmd.Flags().
 		StringVar(&opts.Before, "before", "", "Drop entries strictly before this date (YYYY-MM-DD, exclusive)")
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
+	shared.AddConfirmFlag(cmd, &confirm)
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Print what would be invalidated without calling the API")
 
@@ -126,16 +123,16 @@ func runInvalidateCmd(opts *InvalidateOptions) error {
 	}
 
 	if opts.DoConfirm {
-		var confirmed bool
 		msg := fmt.Sprintf("Invalidate completion cache for agent %s?", opts.AgentID)
 		if opts.Before != "" {
 			msg = fmt.Sprintf("Invalidate completion cache for agent %s (entries before %s)?",
 				opts.AgentID, opts.Before)
 		}
-		if err := prompt.Confirm(msg, &confirmed); err != nil {
-			return fmt.Errorf("failed to prompt: %w", err)
+		ok, err := shared.Confirm(msg)
+		if err != nil {
+			return err
 		}
-		if !confirmed {
+		if !ok {
 			return nil
 		}
 	}
@@ -144,10 +141,7 @@ func runInvalidateCmd(opts *InvalidateOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := opts.Ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Invalidating agent cache")
 	err = client.InvalidateAgentCache(ctx, opts.AgentID, opts.Before)

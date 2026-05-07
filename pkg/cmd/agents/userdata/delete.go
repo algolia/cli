@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -42,19 +42,18 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			if strings.Contains(opts.UserToken, "/") {
 				return cmdutil.FlagErrorf("%s", rejectSlashMsg)
 			}
-			if !confirm && !opts.DryRun {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
-				}
-				opts.DoConfirm = true
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			if err != nil {
+				return err
 			}
+			opts.DoConfirm = doConfirm
 			if runF != nil {
 				return runF(opts)
 			}
 			return runDeleteCmd(opts)
 		},
 	}
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
+	shared.AddConfirmFlag(cmd, &confirm)
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be deleted without calling the API")
 	return cmd
 }
@@ -65,13 +64,13 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return nil
 	}
 	if opts.DoConfirm {
-		var ok bool
 		msg := fmt.Sprintf(
 			"Erase ALL conversations and memories for user token %q across every agent in this app? This cannot be undone.",
 			opts.UserToken,
 		)
-		if err := prompt.Confirm(msg, &ok); err != nil {
-			return fmt.Errorf("failed to prompt: %w", err)
+		ok, err := shared.Confirm(msg)
+		if err != nil {
+			return err
 		}
 		if !ok {
 			return nil
@@ -82,7 +81,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Erasing user data")
-	err = client.DeleteUserData(ctxOrBackground(opts.Ctx), opts.UserToken)
+	err = client.DeleteUserData(shared.OrBackground(opts.Ctx), opts.UserToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

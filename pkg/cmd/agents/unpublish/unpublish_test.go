@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -29,14 +29,7 @@ func Test_runUnpublishCmd(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewUnpublishCmd(f, nil)
 	result, err := test.Execute(cmd, "abc-123", out)

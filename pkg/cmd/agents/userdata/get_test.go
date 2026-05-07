@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -22,7 +23,7 @@ func Test_runGetCmd_Stdout(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewUserDataCmd(f)
 	result, err := test.Execute(cmd, "get tok1", out)
 	require.NoError(t, err)
@@ -42,7 +43,7 @@ func Test_runGetCmd_OutputFile(t *testing.T) {
 
 	dst := filepath.Join(t.TempDir(), "out.json")
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewUserDataCmd(f)
 	_, err := test.Execute(cmd, "get tok1 -o "+dst, out)
 	require.NoError(t, err)

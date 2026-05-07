@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
@@ -100,7 +101,7 @@ func runListCmd(opts *ListOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	params := agentstudio.ListConversationsParams{
 		Page:            opts.Page,

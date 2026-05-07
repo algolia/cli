@@ -3,7 +3,6 @@ package update
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -83,14 +82,9 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 }
 
 func runUpdateCmd(opts *UpdateOptions) error {
-	body, err := cmdutil.ReadFile(opts.File, opts.IO.In)
+	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
 	if err != nil {
-		return fmt.Errorf("failed to read patch body from %s: %w", shared.SourceLabel(opts.File), err)
-	}
-	body = shared.TrimUTF8BOM(body)
-
-	if !json.Valid(body) {
-		return cmdutil.FlagErrorf("patch body in %s is not valid JSON", shared.SourceLabel(opts.File))
+		return err
 	}
 
 	if opts.DryRun {

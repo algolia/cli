@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -23,14 +24,7 @@ func newCmdAgainst(
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "key-abc",
-			HTTPClient:    ts.Client(),
-		})
-	}
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	exec := func(args string) (*test.CmdInOut, error) {
 		cmd := NewGetCmd(f, nil)

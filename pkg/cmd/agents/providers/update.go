@@ -75,7 +75,7 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 }
 
 func runUpdateCmd(opts *UpdateOptions) error {
-	body, err := readBody(opts.File, opts.IO)
+	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Updating provider")
 	p, err := client.UpdateProvider(ctx, opts.ProviderID, json.RawMessage(body))

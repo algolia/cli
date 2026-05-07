@@ -75,7 +75,7 @@ func runListCmd(opts *ListOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching providers")
 	res, err := client.ListProviders(ctx, agentstudio.ListProvidersParams{

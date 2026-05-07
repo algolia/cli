@@ -22,17 +22,9 @@ type RunOptions struct {
 
 	AgentStudioClient func() (*agentstudio.Client, error)
 
-	AgentID         string
-	InputFile       string
-	Message         string
-	NoStream        bool
-	Compatibility   string
-	NoCache         bool
-	NoMemory        bool
-	NoAnalytics     bool
-	SecureUserToken string
-	NDJSON          bool
-	DryRun          bool
+	AgentID string
+	DryRun  bool
+	shared.CompletionInputs
 }
 
 func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command {
@@ -76,24 +68,9 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 		},
 	}
 
-	cmd.Flags().
-		StringVarP(&opts.InputFile, "input", "i", "", "JSON file with messages array (use \"-\" for stdin)")
-	cmd.Flags().
-		StringVarP(&opts.Message, "message", "m", "", "Single user message (convenience for one-shot prompts)")
-	cmd.Flags().BoolVar(&opts.NoStream, "no-stream", false, "Request a buffered JSON response instead of SSE")
-	cmd.Flags().
-		StringVar(&opts.Compatibility, "compatibility", "", "Streaming protocol: v4 (ai-sdk-4) or v5 (ai-sdk-5, default)")
-	cmd.Flags().BoolVar(&opts.NoCache, "no-cache", false, "Bypass the backend completion cache (default: cache enabled)")
-	cmd.Flags().BoolVar(&opts.NoMemory, "no-memory", false, "Disable agent memory for this completion (default: memory enabled)")
-	cmd.Flags().BoolVar(&opts.NoAnalytics, "no-analytics", false, "Skip Agent Studio analytics for this completion (default: analytics enabled)")
-	cmd.Flags().
-		StringVar(&opts.SecureUserToken, "secure-user-token", "", "Signed JWT scoping the conversation/memory/analytics partition to an end-user (X-Algolia-Secure-User-Token)")
-	cmd.Flags().
-		BoolVar(&opts.NDJSON, "ndjson", false, "Force NDJSON output even on a TTY (default on non-TTY; use this when you want machine-parseable events but also want to see them on screen)")
+	shared.RegisterCompletionFlags(cmd, &opts.CompletionInputs)
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Print the resolved request body without calling the API")
-
-	cmd.MarkFlagsMutuallyExclusive("input", "message")
 
 	return cmd
 }
@@ -129,11 +106,7 @@ func runRunCmd(opts *RunOptions) error {
 		return err
 	}
 
-	ctx := opts.Ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	ctx, stop := signal.NotifyContext(shared.OrBackground(opts.Ctx), os.Interrupt)
 	defer stop()
 
 	resp, err := client.Completions(ctx, opts.AgentID, body, agentstudio.CompletionOptions{

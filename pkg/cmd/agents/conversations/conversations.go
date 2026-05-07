@@ -1,7 +1,6 @@
 package conversations
 
 import (
-	"context"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
@@ -32,11 +31,4 @@ func NewConversationsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(newPurgeCmd(f, nil))
 	cmd.AddCommand(newExportCmd(f, nil))
 	return cmd
-}
-
-func ctxOrBackground(ctx context.Context) context.Context {
-	if ctx == nil {
-		return context.Background()
-	}
-	return ctx
 }

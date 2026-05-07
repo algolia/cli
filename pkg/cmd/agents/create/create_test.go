@@ -10,21 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
-
-func newClientForServer(t *testing.T, ts *httptest.Server) func() (*agentstudio.Client, error) {
-	t.Helper()
-	return func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
-}
 
 func Test_runCreateCmd_Success(t *testing.T) {
 	mux := http.NewServeMux()
@@ -44,7 +32,7 @@ func Test_runCreateCmd_Success(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, `{"name":"Concierge","instructions":"x"}`)
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCreateCmd(f, nil)
 	result, err := test.Execute(cmd, "-F -", out)
@@ -63,7 +51,7 @@ func Test_runCreateCmd_DryRunHuman(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, `{"name":"Concierge"}`)
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCreateCmd(f, nil)
 	result, err := test.Execute(cmd, "-F - --dry-run", out)
@@ -84,7 +72,7 @@ func Test_runCreateCmd_DryRunStructured(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, `{"name":"X"}`)
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCreateCmd(f, nil)
 	result, err := test.Execute(cmd, "-F - --dry-run --output json", out)

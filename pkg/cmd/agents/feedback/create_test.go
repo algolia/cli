@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -44,7 +45,7 @@ func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewFeedbackCmd(f)
 	result, err := test.Execute(cmd, "create --agent-id a --message-id m --vote 1 --dry-run", out)
 	require.NoError(t, err)
@@ -81,13 +82,17 @@ func Test_runCreateCmd_Live(t *testing.T) {
 		assert.Equal(t, "m1", got["messageId"])
 		assert.EqualValues(t, 1, got["vote"])
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"fb1","agentId":"a1","messageId":"m1","vote":1,"tags":[],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"fb1","agentId":"a1","messageId":"m1","vote":1,"tags":[],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
+			),
+		)
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewFeedbackCmd(f)
 	result, err := test.Execute(cmd, "create --agent-id a1 --message-id m1 --vote 1", out)
 	require.NoError(t, err)

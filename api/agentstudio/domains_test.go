@@ -39,7 +39,11 @@ func TestGetAllowedDomain_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/agent-1/allowed-domains/d1", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
-		_, _ = w.Write([]byte(`{"id":"d1","appId":"APP","agentId":"agent-1","domain":"x","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"d1","appId":"APP","agentId":"agent-1","domain":"x","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	got, err := c.GetAllowedDomain(context.Background(), "agent-1", "d1")
@@ -67,7 +71,11 @@ func TestCreateAllowedDomain_SendsBody(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		assert.JSONEq(t, `{"domain":"https://x.test"}`, string(body))
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"d1","appId":"APP","agentId":"agent-1","domain":"https://x.test","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"d1","appId":"APP","agentId":"agent-1","domain":"https://x.test","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	got, err := c.CreateAllowedDomain(context.Background(), "agent-1", "https://x.test")

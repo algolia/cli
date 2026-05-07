@@ -8,21 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
-
-func newClientForServer(t *testing.T, ts *httptest.Server) func() (*agentstudio.Client, error) {
-	t.Helper()
-	return func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
-}
 
 func Test_runInvalidateCmd_NoBefore_HitsBackendWithoutQuery(t *testing.T) {
 	mux := http.NewServeMux()
@@ -37,7 +25,7 @@ func Test_runInvalidateCmd_NoBefore_HitsBackendWithoutQuery(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	_, err := test.Execute(cmd, "invalidate abc-123 -y", out)
@@ -55,7 +43,7 @@ func Test_runInvalidateCmd_WithBefore_PassesQueryParam(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	_, err := test.Execute(cmd, "invalidate abc-123 --before 2026-01-15 -y", out)
@@ -71,7 +59,7 @@ func Test_runInvalidateCmd_DryRunSkipsAPI(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	result, err := test.Execute(cmd, "invalidate abc-123 --before 2026-01-15 --dry-run", out)
@@ -122,7 +110,7 @@ func Test_runInvalidateCmd_PropagatesAPIError(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	_, err := test.Execute(cmd, "invalidate missing -y", out)

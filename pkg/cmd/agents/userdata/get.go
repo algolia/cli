@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -58,7 +59,7 @@ func runGetCmd(opts *GetOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching user data")
-	res, err := client.GetUserData(ctxOrBackground(opts.Ctx), opts.UserToken)
+	res, err := client.GetUserData(shared.OrBackground(opts.Ctx), opts.UserToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

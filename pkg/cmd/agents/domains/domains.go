@@ -1,8 +1,6 @@
 package domains
 
 import (
-	"context"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
@@ -28,11 +26,4 @@ func NewDomainsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(newBulkInsertCmd(f, nil))
 	cmd.AddCommand(newBulkDeleteCmd(f, nil))
 	return cmd
-}
-
-func ctxOrBackground(ctx context.Context) context.Context {
-	if ctx == nil {
-		return context.Background()
-	}
-	return ctx
 }

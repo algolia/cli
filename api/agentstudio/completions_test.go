@@ -200,8 +200,14 @@ func TestCompletions_QueryFlagsAndSecureUserToken(t *testing.T) {
 			wantNot: []string{"cache", "memory"},
 		},
 		{
-			name:    "all three negative + secure user token header",
-			opts:    CompletionOptions{Stream: true, NoCache: true, NoMemory: true, NoAnalytics: true, SecureUserToken: "ey.signed.jwt"},
+			name: "all three negative + secure user token header",
+			opts: CompletionOptions{
+				Stream:          true,
+				NoCache:         true,
+				NoMemory:        true,
+				NoAnalytics:     true,
+				SecureUserToken: "ey.signed.jwt",
+			},
 			wantHas: map[string]string{"cache": "false", "memory": "false", "analytics": "false"},
 			wantHdr: "ey.signed.jwt",
 		},

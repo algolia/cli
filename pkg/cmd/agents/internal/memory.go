@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -81,7 +82,7 @@ func runMemoryCmd(opts *memoryOptions, pickCall func(*agentstudio.Client) memory
 		body = []byte(opts.body)
 	} else {
 		var err error
-		body, err = readJSONBody(opts.file, opts.io)
+		body, err = shared.ReadJSONFile(opts.io.In, opts.file)
 		if err != nil {
 			return err
 		}
@@ -103,7 +104,7 @@ func runMemoryCmd(opts *memoryOptions, pickCall func(*agentstudio.Client) memory
 	call := pickCall(client)
 
 	opts.io.StartProgressIndicatorWithLabel(fmt.Sprintf("Calling %s", opts.verb))
-	out, err := call(ctxOrBackground(opts.ctx), opts.agentID, json.RawMessage(body))
+	out, err := call(shared.OrBackground(opts.ctx), opts.agentID, json.RawMessage(body))
 	opts.io.StopProgressIndicator()
 	if err != nil {
 		return err

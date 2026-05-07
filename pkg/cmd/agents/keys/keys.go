@@ -1,8 +1,6 @@
 package keys
 
 import (
-	"context"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
@@ -30,13 +28,6 @@ func NewKeysCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(newUpdateCmd(f, nil))
 	cmd.AddCommand(newDeleteCmd(f, nil))
 	return cmd
-}
-
-func ctxOrBackground(ctx context.Context) context.Context {
-	if ctx == nil {
-		return context.Background()
-	}
-	return ctx
 }
 
 // maskKey returns a copy of k with Value redacted unless show is set.

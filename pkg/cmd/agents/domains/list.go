@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
@@ -55,7 +56,7 @@ func runListCmd(opts *ListOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching allowed domains")
-	res, err := client.ListAllowedDomains(ctxOrBackground(opts.Ctx), opts.AgentID)
+	res, err := client.ListAllowedDomains(shared.OrBackground(opts.Ctx), opts.AgentID)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
@@ -54,7 +55,7 @@ func runListCmd(opts *ListOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching secret keys")
-	res, err := client.ListSecretKeys(ctxOrBackground(opts.Ctx),
+	res, err := client.ListSecretKeys(shared.OrBackground(opts.Ctx),
 		agentstudio.ListSecretKeysParams{Page: opts.Page, Limit: opts.Limit})
 	opts.IO.StopProgressIndicator()
 	if err != nil {

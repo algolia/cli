@@ -23,7 +23,11 @@ func TestCreateFeedback_RoundTrip(t *testing.T) {
 		assert.Equal(t, "agent-1", got["agentId"])
 		assert.EqualValues(t, 1, got["vote"])
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"fb1","agentId":"agent-1","messageId":"msg-1","vote":1,"tags":["x"],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"fb1","agentId":"agent-1","messageId":"msg-1","vote":1,"tags":["x"],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	got, err := c.CreateFeedback(context.Background(), FeedbackCreate{
@@ -55,7 +59,11 @@ func TestCreateFeedback_OmitsEmptyOptionals(t *testing.T) {
 		assert.False(t, hasTags, "tags should be omitted when empty (body=%s)", string(body))
 		assert.False(t, hasNotes, "notes should be omitted when empty (body=%s)", string(body))
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"fb1","agentId":"a","messageId":"m","vote":0,"tags":[],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"fb1","agentId":"a","messageId":"m","vote":0,"tags":[],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	_, err := c.CreateFeedback(context.Background(), FeedbackCreate{

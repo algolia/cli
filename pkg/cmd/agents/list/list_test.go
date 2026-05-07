@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
-// newCmdAgainst stands up a httptest server, wires it to a fresh
-// agentstudio client on the standard test factory, and returns a runner
-// that executes `algolia agents list <args>` against that server.
+// newCmdAgainst wires a fresh agentstudio client (pointed at a
+// httptest server) onto the standard test factory and returns an
+// executor for `algolia agents list <args>`.
 func newCmdAgainst(
 	t *testing.T,
 	isTTY bool,
@@ -27,14 +27,7 @@ func newCmdAgainst(
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(isTTY, nil, nil, "")
-	f.AgentStudioClient = func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "key-abc",
-			HTTPClient:    ts.Client(),
-		})
-	}
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	return func(args string) (*test.CmdInOut, error) {
 		cmd := NewListCmd(f, nil)

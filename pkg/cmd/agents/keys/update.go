@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -62,9 +63,11 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 		},
 	}
 	cmd.Flags().StringVar(&opts.Name, "name", "", "New name (max 128)")
-	cmd.Flags().StringSliceVar(&opts.AgentIDs, "agent-id", nil, "Replace the agent allowlist (repeatable; pass --agent-id=\"\" to clear)")
+	cmd.Flags().
+		StringSliceVar(&opts.AgentIDs, "agent-id", nil, "Replace the agent allowlist (repeatable; pass --agent-id=\"\" to clear)")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
-	cmd.Flags().BoolVar(&opts.ShowSecret, "show-secret", false, "Reveal raw key value in the response (default redacted as ***)")
+	cmd.Flags().
+		BoolVar(&opts.ShowSecret, "show-secret", false, "Reveal raw key value in the response (default redacted as ***)")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
@@ -94,7 +97,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Updating secret key")
-	k, err := client.UpdateSecretKey(ctxOrBackground(opts.Ctx), opts.ID, patch)
+	k, err := client.UpdateSecretKey(shared.OrBackground(opts.Ctx), opts.ID, patch)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

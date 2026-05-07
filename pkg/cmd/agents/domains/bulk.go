@@ -13,7 +13,6 @@ import (
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -73,7 +72,8 @@ func newBulkInsertCmd(f *cmdutil.Factory, runF func(*BulkInsertOptions) error) *
 		},
 	}
 	cmd.Flags().StringSliceVar(&opts.Domains, "domain", nil, "Domain or pattern (repeatable)")
-	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "JSON file containing an array of strings (use \"-\" for stdin)")
+	cmd.Flags().
+		StringVarP(&opts.File, "file", "F", "", "JSON file containing an array of strings (use \"-\" for stdin)")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
@@ -91,7 +91,7 @@ func runBulkInsertCmd(opts *BulkInsertOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Bulk-inserting allowed domains")
-	res, err := client.BulkInsertAllowedDomains(ctxOrBackground(opts.Ctx), opts.AgentID, opts.Domains)
+	res, err := client.BulkInsertAllowedDomains(shared.OrBackground(opts.Ctx), opts.AgentID, opts.Domains)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -144,12 +144,11 @@ func newBulkDeleteCmd(f *cmdutil.Factory, runF func(*BulkDeleteOptions) error) *
 				}
 				opts.DomainIDs = vals
 			}
-			if !confirm && !opts.DryRun {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
-				}
-				opts.DoConfirm = true
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			if err != nil {
+				return err
 			}
+			opts.DoConfirm = doConfirm
 			if runF != nil {
 				return runF(opts)
 			}
@@ -158,7 +157,7 @@ func newBulkDeleteCmd(f *cmdutil.Factory, runF func(*BulkDeleteOptions) error) *
 	}
 	cmd.Flags().StringSliceVar(&opts.DomainIDs, "domain-id", nil, "Domain ID (repeatable)")
 	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "JSON file containing an array of IDs (use \"-\" for stdin)")
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
+	shared.AddConfirmFlag(cmd, &confirm)
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
 	return cmd
 }
@@ -171,10 +170,9 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 		return nil
 	}
 	if opts.DoConfirm {
-		var ok bool
-		msg := fmt.Sprintf("Delete %d allowed domain(s)?", len(opts.DomainIDs))
-		if err := prompt.Confirm(msg, &ok); err != nil {
-			return fmt.Errorf("failed to prompt: %w", err)
+		ok, err := shared.Confirm(fmt.Sprintf("Delete %d allowed domain(s)?", len(opts.DomainIDs)))
+		if err != nil {
+			return err
 		}
 		if !ok {
 			return nil
@@ -184,7 +182,7 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	// Backend returns 204 with no body on bulk delete, so it can't tell us
 	// which IDs actually existed. Pre-fetch the list to classify
@@ -228,11 +226,10 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 
 // readDomainsFromFile reads a JSON array of strings from file/stdin.
 func readDomainsFromFile(file string, ios *iostreams.IOStreams) ([]string, error) {
-	body, err := cmdutil.ReadFile(file, ios.In)
+	body, err := shared.ReadJSONFile(ios.In, file)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", shared.SourceLabel(file), err)
+		return nil, err
 	}
-	body = shared.TrimUTF8BOM(body)
 	var out []string
 	if err := json.Unmarshal(body, &out); err != nil {
 		return nil, cmdutil.FlagErrorf("%s: expected a JSON array of strings", shared.SourceLabel(file))

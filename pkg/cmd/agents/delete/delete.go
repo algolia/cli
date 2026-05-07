@@ -8,9 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -61,14 +61,11 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
 
-			if !confirm && !opts.DryRun {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf(
-						"--confirm required when non-interactive shell is detected",
-					)
-				}
-				opts.DoConfirm = true
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			if err != nil {
+				return err
 			}
+			opts.DoConfirm = doConfirm
 
 			if runF != nil {
 				return runF(opts)
@@ -77,7 +74,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 
-	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
+	shared.AddConfirmFlag(cmd, &confirm)
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Fetch and preview the agent without deleting it")
 
@@ -93,10 +90,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
-	ctx := opts.Ctx
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	ctx := shared.OrBackground(opts.Ctx)
 
 	// Pre-fetch so 404 surfaces cleanly and the prompt/dry-run can
 	// show name+status for sanity-check.
@@ -113,15 +107,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	if opts.DoConfirm {
-		var confirmed bool
-		err := prompt.Confirm(
-			fmt.Sprintf("Delete agent %q (%s)?", agent.Name, opts.AgentID),
-			&confirmed,
-		)
+		ok, err := shared.Confirm(fmt.Sprintf("Delete agent %q (%s)?", agent.Name, opts.AgentID))
 		if err != nil {
-			return fmt.Errorf("failed to prompt: %w", err)
+			return err
 		}
-		if !confirmed {
+		if !ok {
 			return nil
 		}
 	}

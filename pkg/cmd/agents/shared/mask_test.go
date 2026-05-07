@@ -12,9 +12,17 @@ func TestMaskInput(t *testing.T) {
 		name, in, want string
 	}{
 		{"empty", "", ""},
-		{"openai", `{"apiKey":"sk-abc","baseUrl":"https://api.openai.com"}`, `{"apiKey":"***","baseUrl":"https://api.openai.com"}`},
+		{
+			"openai",
+			`{"apiKey":"sk-abc","baseUrl":"https://api.openai.com"}`,
+			`{"apiKey":"***","baseUrl":"https://api.openai.com"}`,
+		},
 		{"anthropic", `{"apiKey":"sk-ant"}`, `{"apiKey":"***"}`},
-		{"azure", `{"apiKey":"k","azureEndpoint":"https://x","azureDeployment":"gpt-4","apiVersion":"v1"}`, `{"apiKey":"***","azureEndpoint":"https://x","azureDeployment":"gpt-4","apiVersion":"v1"}`},
+		{
+			"azure",
+			`{"apiKey":"k","azureEndpoint":"https://x","azureDeployment":"gpt-4","apiVersion":"v1"}`,
+			`{"apiKey":"***","azureEndpoint":"https://x","azureDeployment":"gpt-4","apiVersion":"v1"}`,
+		},
 		{"no-secret", `{"baseUrl":"https://x"}`, `{"baseUrl":"https://x"}`},
 		{"primitive-string", `"hello"`, `"hello"`},
 		{"primitive-array", `[1,2,3]`, `[1,2,3]`},

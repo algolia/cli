@@ -406,7 +406,11 @@ func TestInvalidateAgentCache(t *testing.T) {
 			serverFn: func(t *testing.T) http.HandlerFunc {
 				return func(w http.ResponseWriter, _ *http.Request) {
 					w.WriteHeader(http.StatusUnprocessableEntity)
-					_, _ = w.Write([]byte(`{"detail":[{"msg":"Input should be a valid date in YYYY-MM-DD format","loc":["query","before"]}]}`))
+					_, _ = w.Write(
+						[]byte(
+							`{"detail":[{"msg":"Input should be a valid date in YYYY-MM-DD format","loc":["query","before"]}]}`,
+						),
+					)
 				}
 			},
 			wantErr: "valid date",

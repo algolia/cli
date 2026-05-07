@@ -58,7 +58,11 @@ func TestCreateSecretKey_RoundTrip(t *testing.T) {
 		assert.Equal(t, "k1", got.Name)
 		assert.Equal(t, []string{"a1"}, got.AgentIDs)
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"id1","name":"k1","value":"sk-real","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":["a1"]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"id1","name":"k1","value":"sk-real","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":["a1"]}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	got, err := c.CreateSecretKey(context.Background(), SecretKeyCreate{Name: "k1", AgentIDs: []string{"a1"}})
@@ -82,7 +86,11 @@ func TestCreateSecretKey_OmitsAgentIDsWhenEmpty(t *testing.T) {
 		_, hasAgentIDs := got["agentIds"]
 		assert.False(t, hasAgentIDs, "agentIds should be omitted when empty (got body=%s)", string(body))
 		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte(`{"id":"id1","name":"k1","value":"v","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"id1","name":"k1","value":"v","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	_, err := c.CreateSecretKey(context.Background(), SecretKeyCreate{Name: "k1"})
@@ -105,7 +113,11 @@ func TestUpdateSecretKey_NameOnly(t *testing.T) {
 		assert.Equal(t, "renamed", got["name"])
 		_, hasAgentIDs := got["agentIds"]
 		assert.False(t, hasAgentIDs, "agentIds must be omitted when nil (body=%s)", string(body))
-		_, _ = w.Write([]byte(`{"id":"id1","name":"renamed","value":"v","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"id1","name":"renamed","value":"v","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	name := "renamed"
@@ -122,7 +134,11 @@ func TestUpdateSecretKey_EmptyAgentIDsClearsList(t *testing.T) {
 		v, hasAgentIDs := got["agentIds"]
 		assert.True(t, hasAgentIDs)
 		assert.Equal(t, []any{}, v)
-		_, _ = w.Write([]byte(`{"id":"id1","name":"n","value":"v","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"id1","name":"n","value":"v","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	empty := []string{}

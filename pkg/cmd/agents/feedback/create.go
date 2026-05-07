@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 )
@@ -103,7 +104,7 @@ func runCreateCmd(opts *CreateOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Submitting feedback")
-	fb, err := client.CreateFeedback(ctxOrBackground(opts.Ctx), body)
+	fb, err := client.CreateFeedback(shared.OrBackground(opts.Ctx), body)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

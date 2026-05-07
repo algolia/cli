@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
 
@@ -22,7 +23,7 @@ func Test_runExportCmd_StdoutPathPrettyPrints(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	result, err := test.Execute(cmd, "export agent-1", out)
@@ -45,7 +46,7 @@ func Test_runExportCmd_OutputFileWritesCompact(t *testing.T) {
 	outPath := filepath.Join(dir, "export.json")
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "export agent-1 -O "+outPath, out)
@@ -70,7 +71,7 @@ func Test_runExportCmd_PassesDateRange(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "export agent-1 --start-date 2026-01-01 --end-date 2026-01-31", out)

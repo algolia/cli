@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 )
@@ -52,7 +53,8 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Key name (required, max 128)")
 	cmd.Flags().StringSliceVar(&opts.AgentIDs, "agent-id", nil, "Restrict the key to specific agents (repeatable)")
 	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
-	cmd.Flags().BoolVar(&opts.ShowSecret, "show-secret", false, "Reveal raw key value in the response (default redacted as ***)")
+	cmd.Flags().
+		BoolVar(&opts.ShowSecret, "show-secret", false, "Reveal raw key value in the response (default redacted as ***)")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
@@ -69,7 +71,7 @@ func runCreateCmd(opts *CreateOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Creating secret key")
-	k, err := client.CreateSecretKey(ctxOrBackground(opts.Ctx), body)
+	k, err := client.CreateSecretKey(shared.OrBackground(opts.Ctx), body)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

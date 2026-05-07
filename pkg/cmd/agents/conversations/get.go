@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -82,7 +83,7 @@ func runGetCmd(opts *GetOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching conversation")
 	raw, err := client.GetConversation(ctx, opts.AgentID, opts.ConversationID, opts.IncludeFeedback)

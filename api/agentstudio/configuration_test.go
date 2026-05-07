@@ -65,7 +65,11 @@ func TestUpdateConfiguration_PropagatesValidationError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/configuration", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte(`{"detail":[{"msg":"maxRetentionDays must be one of [0, 30, 60, 90]","loc":["body","maxRetentionDays"]}]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"detail":[{"msg":"maxRetentionDays must be one of [0, 30, 60, 90]","loc":["body","maxRetentionDays"]}]}`,
+			),
+		)
 	})
 	_, c := newTestClient(t, mux)
 	_, err := c.UpdateConfiguration(context.Background(), json.RawMessage(`{"maxRetentionDays":45}`))

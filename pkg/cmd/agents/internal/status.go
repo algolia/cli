@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 )
@@ -47,7 +48,7 @@ func runStatusCmd(opts *StatusOptions) error {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Probing /status")
-	res, err := client.GetStatus(ctxOrBackground(opts.Ctx))
+	res, err := client.GetStatus(shared.OrBackground(opts.Ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

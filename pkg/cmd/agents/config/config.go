@@ -197,15 +197,9 @@ func runSetCmd(opts *SetOptions) error {
 
 func buildBody(opts *SetOptions) ([]byte, string, error) {
 	if opts.File != "" {
-		body, err := cmdutil.ReadFile(opts.File, opts.IO.In)
+		body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to read configuration body from %s: %w",
-				shared.SourceLabel(opts.File), err)
-		}
-		body = shared.TrimUTF8BOM(body)
-		if !json.Valid(body) {
-			return nil, "", cmdutil.FlagErrorf("configuration body in %s is not valid JSON",
-				shared.SourceLabel(opts.File))
+			return nil, "", err
 		}
 		return body, opts.File, nil
 	}

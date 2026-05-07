@@ -11,21 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
-
-func newClientForServer(t *testing.T, ts *httptest.Server) func() (*agentstudio.Client, error) {
-	t.Helper()
-	return func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
-}
 
 func Test_runRunCmd_StreamingHappyPath(t *testing.T) {
 	mux := http.NewServeMux()
@@ -49,7 +37,7 @@ func Test_runRunCmd_StreamingHappyPath(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewRunCmd(f, nil)
 	result, err := test.Execute(cmd, "abc-123 -m hello", out)
@@ -70,7 +58,7 @@ func Test_runRunCmd_DryRunIncludesAgentID(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewRunCmd(f, nil)
 	result, err := test.Execute(cmd, "abc-123 -m hi --dry-run", out)
@@ -106,7 +94,7 @@ func Test_runRunCmd_ForwardsCompletionFlagsToWire(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewRunCmd(f, nil)
 	_, err := test.Execute(cmd,
@@ -125,7 +113,7 @@ func Test_runRunCmd_PropagatesAPIError(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewRunCmd(f, nil)
 	_, err := test.Execute(cmd, "missing -m hi", out)

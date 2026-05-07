@@ -9,21 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
-
-func newClientForServer(t *testing.T, ts *httptest.Server) func() (*agentstudio.Client, error) {
-	t.Helper()
-	return func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
-}
 
 func agentJSON(name, status string) string {
 	return `{
@@ -59,7 +47,7 @@ func Test_runDeleteCmd_NonTTYWithConfirmDeletes(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewDeleteCmd(f, nil)
 	_, err := test.Execute(cmd, "abc-123 -y", out)
@@ -81,7 +69,7 @@ func Test_runDeleteCmd_DryRunDoesNotDelete(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewDeleteCmd(f, nil)
 	// --dry-run alone is enough; no --confirm needed because it's non-destructive.
@@ -104,7 +92,7 @@ func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewDeleteCmd(f, nil)
 	_, err := test.Execute(cmd, "missing -y", out)

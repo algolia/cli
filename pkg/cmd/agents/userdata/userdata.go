@@ -1,8 +1,6 @@
 package userdata
 
 import (
-	"context"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
@@ -26,13 +24,6 @@ func NewUserDataCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(newGetCmd(f, nil))
 	cmd.AddCommand(newDeleteCmd(f, nil))
 	return cmd
-}
-
-func ctxOrBackground(ctx context.Context) context.Context {
-	if ctx == nil {
-		return context.Background()
-	}
-	return ctx
 }
 
 // rejectSlashMsg is shown when a user-token contains "/". Gateway

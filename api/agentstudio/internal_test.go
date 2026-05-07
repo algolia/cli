@@ -47,7 +47,11 @@ func TestAgentMemorize_DoubledPath(t *testing.T) {
 		_, _ = w.Write([]byte(`{"savedMemories":[],"deletedIds":[],"deleteTaskIds":[],"message":"ok"}`))
 	})
 	_, c := newTestClient(t, mux)
-	out, err := c.AgentMemorize(context.Background(), "agent-1", json.RawMessage(`{"providerID":"p","model":"m","messages":[]}`))
+	out, err := c.AgentMemorize(
+		context.Background(),
+		"agent-1",
+		json.RawMessage(`{"providerID":"p","model":"m","messages":[]}`),
+	)
 	require.NoError(t, err)
 	assert.Contains(t, string(out), `"message":"ok"`)
 }
@@ -67,6 +71,10 @@ func TestAgentConsolidate_PassesThroughErrors(t *testing.T) {
 		_, _ = w.Write([]byte(`{"message":"Provider not found or invalid"}`))
 	})
 	_, c := newTestClient(t, mux)
-	_, err := c.AgentConsolidate(context.Background(), "agent-1", json.RawMessage(`{"providerID":"x","model":"m","messages":[]}`))
+	_, err := c.AgentConsolidate(
+		context.Background(),
+		"agent-1",
+		json.RawMessage(`{"providerID":"x","model":"m","messages":[]}`),
+	)
 	require.Error(t, err)
 }

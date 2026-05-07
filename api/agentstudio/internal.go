@@ -74,7 +74,11 @@ func (c *Client) AgentConsolidate(ctx context.Context, agentID string, body json
 	return c.doAgentMemoryOp(ctx, agentID, "consolidate", body)
 }
 
-func (c *Client) doAgentMemoryOp(ctx context.Context, agentID, verb string, body json.RawMessage) (json.RawMessage, error) {
+func (c *Client) doAgentMemoryOp(
+	ctx context.Context,
+	agentID, verb string,
+	body json.RawMessage,
+) (json.RawMessage, error) {
 	if strings.TrimSpace(agentID) == "" {
 		return nil, fmt.Errorf("agent studio: %s: agent id is required", verb)
 	}

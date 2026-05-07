@@ -67,7 +67,7 @@ func runGetCmd(opts *GetOptions) error {
 	if err != nil {
 		return err
 	}
-	ctx := ctxOrBackground(opts.Ctx)
+	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching provider")
 	p, err := client.GetProvider(ctx, opts.ProviderID)

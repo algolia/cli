@@ -5,35 +5,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
+	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
-
-func newClientForServer(t *testing.T, ts *httptest.Server) func() (*agentstudio.Client, error) {
-	t.Helper()
-	return func() (*agentstudio.Client, error) {
-		return agentstudio.NewClient(agentstudio.Config{
-			BaseURL:       ts.URL,
-			ApplicationID: "APP123",
-			APIKey:        "k",
-			HTTPClient:    ts.Client(),
-		})
-	}
-}
-
-func writeTempJSON(t *testing.T, name, content string) string {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), name)
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
-	return path
-}
 
 // ---------------------------------------------------------------------
 // get
@@ -49,7 +28,7 @@ func Test_runGetCmd_PrintsConfig(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	result, err := test.Execute(cmd, "get", out)
@@ -76,7 +55,7 @@ func Test_runSetCmd_RetentionDays_BuildsBodyAndPATCHes(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set --retention-days 30", out)
@@ -93,9 +72,9 @@ func Test_runSetCmd_File_RoundTripsBody(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	patchPath := writeTempJSON(t, "patch.json", `{"maxRetentionDays":90,"futureField":"x"}`)
+	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"maxRetentionDays":90,"futureField":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set -F "+patchPath, out)
@@ -111,7 +90,7 @@ func Test_runSetCmd_DryRunSkipsAPI(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	result, err := test.Execute(cmd, "set --retention-days 30 --dry-run", out)
@@ -130,7 +109,7 @@ func Test_runSetCmd_RejectsNeitherFlag(t *testing.T) {
 }
 
 func Test_runSetCmd_RejectsBothFlags(t *testing.T) {
-	patchPath := writeTempJSON(t, "patch.json", `{"maxRetentionDays":30}`)
+	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"maxRetentionDays":30}`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set --retention-days 30 -F "+patchPath, out)
@@ -145,13 +124,17 @@ func Test_runSetCmd_PropagatesValidationError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/configuration", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		_, _ = w.Write([]byte(`{"detail":[{"msg":"maxRetentionDays must be one of [0, 30, 60, 90]","loc":["body","maxRetentionDays"]}]}`))
+		_, _ = w.Write(
+			[]byte(
+				`{"detail":[{"msg":"maxRetentionDays must be one of [0, 30, 60, 90]","loc":["body","maxRetentionDays"]}]}`,
+			),
+		)
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = newClientForServer(t, ts)
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set --retention-days 45", out)
