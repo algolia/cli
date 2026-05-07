@@ -5,6 +5,7 @@ on:
       - "v*"
 permissions:
   contents: write # publishing releases
+  id-token: write # OIDC token for npm trusted publishing
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -49,7 +50,6 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Publish npm packages
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VERSION: ${{ github.ref_name }}
         run: ./scripts/npm-publish.sh
       - name: Docs checkout

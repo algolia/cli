@@ -46,7 +46,7 @@ for entry in "${PLATFORMS[@]}"; do
   fi
 
   npm --prefix "$NPM_DIR/$pkg" version --no-git-tag-version "$VERSION"
-  npm publish "$NPM_DIR/$pkg" --access public $DRY_RUN
+  npm publish "$NPM_DIR/$pkg" --access public --provenance $DRY_RUN
 done
 
 # Update coordinator package versions to match and publish
@@ -60,4 +60,4 @@ done
 npm --prefix "$NPM_DIR/algolia" version --no-git-tag-version "$VERSION"
 
 echo "Publishing @algolia/cli@$VERSION"
-npm publish "$NPM_DIR/algolia" --access public $DRY_RUN
+npm publish "$NPM_DIR/algolia" --access public --provenance $DRY_RUN
