@@ -16,12 +16,6 @@ import (
 )
 
 // NewConfigCmd is the parent for `algolia agents config <verb>`.
-//
-// Wraps the app-wide /1/configuration endpoints. Today the only
-// settable field is maxRetentionDays (data retention for conversations
-// and analytics). Kept as a sub-group rather than a flat command
-// because the backend's spec models it as a resource (PATCH semantics)
-// and future fields will land there. Same pattern as `agents cache`.
 func NewConfigCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -36,10 +30,6 @@ func NewConfigCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(newSetCmd(f, nil))
 	return cmd
 }
-
-// ---------------------------------------------------------------------
-// get
-// ---------------------------------------------------------------------
 
 type GetOptions struct {
 	IO  *iostreams.IOStreams
@@ -60,10 +50,8 @@ func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 		Use:   "get",
 		Short: "Show the current Agent Studio configuration",
 		Long: heredoc.Doc(`
-			Calls GET /1/configuration. Note: this endpoint requires the
-			` + "`logs`" + ` ACL on the API key, not ` + "`settings`" + ` — the
-			single field today (maxRetentionDays) governs log /
-			conversation retention, hence the unusual ACL.
+			Calls GET /1/configuration. Requires the ` + "`logs`" + ` ACL
+			(governs log/conversation retention).
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents config get
@@ -101,10 +89,6 @@ func runGetCmd(opts *GetOptions) error {
 	return opts.PrintFlags.Print(opts.IO, cfg)
 }
 
-// ---------------------------------------------------------------------
-// set
-// ---------------------------------------------------------------------
-
 type SetOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
@@ -112,10 +96,8 @@ type SetOptions struct {
 	AgentStudioClient func() (*agentstudio.Client, error)
 	PrintFlags        *cmdutil.PrintFlags
 
-	// RetentionDays is only meaningful when the --retention-days flag
-	// was actually set; the dispatcher checks cmd.Flags().Changed
-	// rather than the value to detect intent. 0 is a valid backend
-	// value (allowed set is [0, 30, 60, 90]).
+	// RetentionDays: 0 is a valid backend value, so intent is detected
+	// via cmd.Flags().Changed, not the value itself.
 	RetentionDays int
 	File          string
 	DryRun        bool
@@ -180,13 +162,6 @@ func newSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
 	opts.PrintFlags.AddFlags(cmd)
-
-	// pflag suppresses "(default ...)" for ints when DefValue == "0".
-	// Defaulting to 0 (the natural zero value) keeps the help text
-	// clean without bespoke override. The dispatcher distinguishes
-	// "user passed --retention-days 0" from "flag omitted" via
-	// cmd.Flags().Changed, not the value itself.
-
 	cmd.MarkFlagsMutuallyExclusive("retention-days", "file")
 	return cmd
 }
@@ -234,12 +209,8 @@ func buildBody(opts *SetOptions) ([]byte, string, error) {
 		}
 		return body, opts.File, nil
 	}
-	// Construct the body from --retention-days.
 	body, err := json.Marshal(map[string]any{"maxRetentionDays": opts.RetentionDays})
 	if err != nil {
-		// json.Marshal of a flat map cannot fail in practice. Defend
-		// against future schema changes that introduce non-marshalable
-		// fields.
 		return nil, "", fmt.Errorf("build body from --retention-days: %w", err)
 	}
 	return body, "--retention-days", nil

@@ -79,14 +79,7 @@ func (c *Client) GetProvider(ctx context.Context, id string) (*Provider, error) 
 	return &out, nil
 }
 
-// CreateProvider calls POST /1/providers with the supplied request body.
-//
-// The body is sent as opaque JSON: the ProviderAuthenticationCreate
-// schema has a discriminated `input` union (one per supported provider:
-// openai, azure_openai, google_genai, deepseek, openai_compatible,
-// anthropic) with deeply-validated per-variant fields. Same rationale
-// as CreateAgent — pass-through, backend validates, our 422 surfacing
-// makes errors actionable.
+// CreateProvider calls POST /1/providers. Body is opaque JSON; see docs/agents.md.
 func (c *Client) CreateProvider(ctx context.Context, body json.RawMessage) (*Provider, error) {
 	if len(body) == 0 {
 		return nil, fmt.Errorf("agent studio: create provider: body is required")
@@ -106,12 +99,7 @@ func (c *Client) UpdateProvider(ctx context.Context, id string, body json.RawMes
 	return c.doProviderMutation(ctx, http.MethodPatch, endpoint, body, "update provider")
 }
 
-// DeleteProvider calls DELETE /1/providers/{id}.
-//
-// Returns nil on the backend's HTTP 204 No Content. Backend behavior on
-// a provider that has agents pointing at it is the backend's call —
-// the CLI does not pre-check; the 4xx (if any) surfaces with the
-// backend's structured detail.
+// DeleteProvider calls DELETE /1/providers/{id}. Returns nil on 204.
 func (c *Client) DeleteProvider(ctx context.Context, id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("agent studio: provider id is required")
@@ -133,13 +121,8 @@ func (c *Client) DeleteProvider(ctx context.Context, id string) error {
 	return checkResponse(resp)
 }
 
-// ListProviderModels calls GET /1/providers/models and returns
-// available models grouped by provider name.
-//
-// Response shape: {"openai": ["gpt-4o", "gpt-4o-mini", ...], ...}.
-// This is the "what models can I configure" discoverability flow —
-// useful before creating a provider, doesn't require any provider to
-// be configured yet.
+// ListProviderModels calls GET /1/providers/models — the static catalog
+// of supported models per provider type. Useful before creating a provider.
 func (c *Client) ListProviderModels(ctx context.Context) (map[string][]string, error) {
 	endpoint := c.cfg.BaseURL + "/1/providers/models"
 
@@ -167,16 +150,8 @@ func (c *Client) ListProviderModels(ctx context.Context) (map[string][]string, e
 }
 
 // ListModelsForProvider calls GET /1/providers/{id}/models — the
-// "what models does THIS configured provider expose" flow. Different
-// from ListProviderModels because it can include account-specific
-// models (e.g. fine-tunes on OpenAI, Azure deployments) that the
-// generic listing wouldn't know about.
-//
-// Returns the raw response body so the cmd layer can pretty-print
-// without us assuming a shape — the spec leaves the success response
-// schema empty (likely []string but not pinned), and the CLI just
-// passes it through. If a future contributor confirms a stable shape,
-// upgrade the return type.
+// per-account catalog (includes fine-tunes, Azure deployments, etc).
+// Returns raw JSON because the spec leaves the response shape unpinned.
 func (c *Client) ListModelsForProvider(ctx context.Context, id string) (json.RawMessage, error) {
 	if strings.TrimSpace(id) == "" {
 		return nil, fmt.Errorf("agent studio: provider id is required")
@@ -206,11 +181,8 @@ func (c *Client) ListModelsForProvider(ctx context.Context, id string) (json.Raw
 	return body, nil
 }
 
-// readAllRawJSON reads the response body and validates it's syntactically
-// valid JSON before returning it. We do this so callers that pass the
-// bytes back to a json.RawMessage field don't risk holding malformed
-// content (the json.Encoder would later refuse it with a less obvious
-// error).
+// readAllRawJSON decodes resp.Body as a single JSON value, validating
+// well-formedness so json.Encoder downstream can't refuse it.
 func readAllRawJSON(resp *http.Response) (json.RawMessage, error) {
 	dec := json.NewDecoder(resp.Body)
 	var raw json.RawMessage
@@ -220,8 +192,6 @@ func readAllRawJSON(resp *http.Response) (json.RawMessage, error) {
 	return raw, nil
 }
 
-// doProviderMutation is the shared implementation for Create/Update.
-// Both are JSON-in/Provider-out with the same error shape.
 func (c *Client) doProviderMutation(
 	ctx context.Context,
 	method, endpoint string,

@@ -13,15 +13,8 @@ const (
 	StatusPublished AgentStatus = "published"
 )
 
-// Agent mirrors AgentWithVersionResponse from the Agent Studio backend.
-//
-// Wire format is camelCase (the backend uses Pydantic CamelModel, see
-// common/models/agent_config.py:AgentWithVersionResponse).
-//
-// Config and Tools are kept as raw JSON: the schemas are large, evolve
-// frequently, and are not yet stable enough to mirror in Go. CLI commands
-// that mutate them (create/update) accept user-supplied JSON files instead
-// of building structs in code.
+// Agent mirrors AgentWithVersionResponse. Config and Tools are kept as
+// raw JSON; see docs/agents.md ("Pass-through bodies").
 type Agent struct {
 	ID           string          `json:"id"`
 	Name         string          `json:"name"`
@@ -39,7 +32,7 @@ type Agent struct {
 	LastUsedAt   *time.Time      `json:"lastUsedAt,omitempty"`
 }
 
-// PaginationMetadata mirrors common/models/pagination_metadata.py.
+// PaginationMetadata is the standard paginated-response envelope.
 type PaginationMetadata struct {
 	Page       int `json:"page"`
 	Limit      int `json:"limit"`
@@ -47,32 +40,22 @@ type PaginationMetadata struct {
 	TotalPages int `json:"totalPages"`
 }
 
-// PaginatedAgentsResponse mirrors PaginatedAgentsResponse from the backend.
+// PaginatedAgentsResponse is the GET /1/agents response.
 type PaginatedAgentsResponse struct {
 	Data       []Agent            `json:"data"`
 	Pagination PaginationMetadata `json:"pagination"`
 }
 
-// ListAgentsParams configures GET /1/agents.
+// ListAgentsParams configures GET /1/agents. Page/Limit at 0 = server default.
 type ListAgentsParams struct {
-	// Page is 1-indexed; 0 means "use server default".
-	Page int
-	// Limit is items per page; 0 means "use server default" (currently 10).
-	Limit int
-	// ProviderID filters by provider authentication ID. Empty means no filter.
+	Page       int
+	Limit      int
 	ProviderID string
 }
 
-// ProviderName values mirror the backend's ProviderName enum
-// (rag/models/provider.py). These are exposed as constants rather than
-// a typed enum because:
-//   - The CLI passes the value through verbatim from user JSON.
-//   - The backend is the source of truth for which providers are
-//     supported on a given deployment (feature gates can disable
-//     subsets per app).
-//
-// Used only for documentation, validation hints, and the
-// `agents providers models` discoverability flow.
+// ProviderName values mirror the backend's ProviderName enum. Kept as
+// constants (not a typed enum) because the CLI passes the value through
+// verbatim from user JSON.
 const (
 	ProviderNameOpenAI           = "openai"
 	ProviderNameAzureOpenAI      = "azure_openai"
@@ -82,9 +65,7 @@ const (
 	ProviderNameAnthropic        = "anthropic"
 )
 
-// AllProviderNames is exported so the cmd layer can build help text and
-// flag-validation lists from a single source of truth. Keep in sync
-// with the backend's ProviderName enum.
+// AllProviderNames feeds help text and flag-validation lists.
 var AllProviderNames = []string{
 	ProviderNameOpenAI,
 	ProviderNameAzureOpenAI,
@@ -94,18 +75,8 @@ var AllProviderNames = []string{
 	ProviderNameAnthropic,
 }
 
-// Provider mirrors ProviderAuthenticationResponse from the backend.
-//
-// Input is kept as json.RawMessage (same rationale as Agent.Config /
-// Agent.Tools): the input shape is a discriminated union over
-// ProviderName with deeply-validated per-variant fields (apiKey,
-// baseUrl, azureEndpoint, azureDeployment, defaultModel, ...) that
-// evolves as new providers land. Mirroring the variants in Go would
-// lie about parity and force a CLI release on every backend bump.
-//
-// The CLI surfaces a few well-known fields opportunistically (the
-// presence of "apiKey" triggers masking) but otherwise pretty-prints
-// Input as JSON.
+// Provider mirrors ProviderAuthenticationResponse. Input is raw JSON
+// (discriminated union over ProviderName); see docs/agents.md.
 type Provider struct {
 	ID           string          `json:"id"`
 	Name         string          `json:"name"`
@@ -116,7 +87,7 @@ type Provider struct {
 	LastUsedAt   *time.Time      `json:"lastUsedAt,omitempty"`
 }
 
-// PaginatedProvidersResponse mirrors PaginatedProviderAuthenticationsResponse.
+// PaginatedProvidersResponse is the GET /1/providers response.
 type PaginatedProvidersResponse struct {
 	Data       []Provider         `json:"data"`
 	Pagination PaginationMetadata `json:"pagination"`
@@ -129,29 +100,12 @@ type ListProvidersParams struct {
 }
 
 // ApplicationConfig mirrors ApplicationConfigResponse.
-//
-// Single-field today (maxRetentionDays). Kept as a struct rather than
-// `int` so the wire shape can grow without breaking callers.
 type ApplicationConfig struct {
 	MaxRetentionDays int `json:"maxRetentionDays"`
 }
 
-// Conversation mirrors ConversationBaseResponse from the backend (the
-// "lightweight, no messages" shape used in PaginatedConversationsResponse).
-//
-// Feedback and ConversationMetadata are kept as json.RawMessage:
-//
-//   - Feedback is `[]FeedbackResponse | null` and only populated when
-//     the caller passes ?includeFeedback=true. The FeedbackResponse
-//     schema has 7 fields with several anyOf nullables; the CLI does
-//     not introspect them, it only forwards. Typing them eagerly would
-//     be churn-prone for a feature `agents conversations list` only
-//     exposes via passthrough.
-//   - ConversationMetadata is currently a single nullable timestamp
-//     ({cachedAt: …}) but the schema name signals room to grow.
-//
-// Both are emitted with `omitempty` so default `--output json` for
-// list/get isn't bloated by trailing nulls.
+// Conversation mirrors ConversationBaseResponse (no messages — the
+// lightweight shape used in list responses).
 type Conversation struct {
 	ID                   string          `json:"id"`
 	AgentID              string          `json:"agentId"`
@@ -169,22 +123,16 @@ type Conversation struct {
 	ConversationMetadata json.RawMessage `json:"conversationMetadata,omitempty"`
 }
 
-// PaginatedConversationsResponse mirrors PaginatedConversationsResponse.
+// PaginatedConversationsResponse is the list-conversations envelope.
 type PaginatedConversationsResponse struct {
 	Data       []Conversation     `json:"data"`
 	Pagination PaginationMetadata `json:"pagination"`
 }
 
 // ListConversationsParams configures GET /1/agents/{id}/conversations.
-//
-// StartDate/EndDate are YYYY-MM-DD strings sent verbatim — the backend
-// validates Pydantic-side (same passthrough convention as
-// InvalidateAgentCache.before).
-//
-// IncludeFeedback toggles ?includeFeedback (backend default: false).
-// FeedbackVote is a *int because nil = "no filter" while 0 ("downvote")
-// is a meaningful filter value. Backend constraint: 0 <= vote <= 1, and
-// the param is silently dropped unless includeFeedback=true is also set.
+// FeedbackVote is *int because nil = no filter while 0 (downvote) is a
+// meaningful value; backend silently drops the param unless
+// IncludeFeedback=true.
 type ListConversationsParams struct {
 	Page            int
 	Limit           int
@@ -195,8 +143,7 @@ type ListConversationsParams struct {
 }
 
 // PurgeConversationsParams configures DELETE /1/agents/{id}/conversations.
-// Empty StartDate/EndDate = wipe everything (the CLI layer adds an
-// explicit `--all` guardrail; this struct is the wire shape only).
+// Backend rejects dateless purge — see docs/agents.md gotchas.
 type PurgeConversationsParams struct {
 	StartDate string
 	EndDate   string
@@ -223,8 +170,8 @@ type AllowedDomainListResponse struct {
 	Domains []AllowedDomain `json:"domains"`
 }
 
-// SecretKey mirrors SecretKeyResponse. Value is the vended secret —
-// always treat as sensitive.
+// SecretKey mirrors SecretKeyResponse. Value is sensitive — always mask
+// unless the caller explicitly opts in.
 type SecretKey struct {
 	ID         string     `json:"id"`
 	Name       string     `json:"name"`
@@ -248,23 +195,21 @@ type ListSecretKeysParams struct {
 	Limit int
 }
 
-// SecretKeyCreate is the POST body. AgentIDs is optional; when empty
-// the field is omitted.
+// SecretKeyCreate is the POST body. AgentIDs is omitted when empty.
 type SecretKeyCreate struct {
 	Name     string   `json:"name"`
 	AgentIDs []string `json:"agentIds,omitempty"`
 }
 
-// SecretKeyPatch is the PATCH body. Both fields are pointers so a
-// nil value means "leave unchanged" while a zero value (empty string
-// / empty slice) is sent through to the backend.
+// SecretKeyPatch is the PATCH body. Pointer fields: nil = leave unchanged,
+// non-nil zero value = sent through (clears the field).
 type SecretKeyPatch struct {
 	Name     *string   `json:"name,omitempty"`
 	AgentIDs *[]string `json:"agentIds,omitempty"`
 }
 
-// FeedbackCreate is the POST body for /1/feedback. Vote is 0
-// (downvote) or 1 (upvote); enforced at the CLI layer.
+// FeedbackCreate is the POST body for /1/feedback. Vote is 0 (downvote)
+// or 1 (upvote); enforced at the CLI layer.
 type FeedbackCreate struct {
 	MessageID string   `json:"messageId"`
 	AgentID   string   `json:"agentId"`
@@ -287,18 +232,14 @@ type Feedback struct {
 }
 
 // UserDataResponse mirrors GET /1/user-data/{user_token}. Inner items
-// are passed through as raw JSON because their schemas are evolving
-// (conversation messages are a discriminated role union, memories
-// have an unspecified shape).
+// are raw JSON (evolving schemas).
 type UserDataResponse struct {
 	Conversations []json.RawMessage `json:"conversations"`
 	Memories      []json.RawMessage `json:"memories"`
 }
 
-// StatusResponse mirrors GET /status. Values are nullable; "version"
-// and "migration_revision" are populated in deployed builds.
+// StatusResponse mirrors GET /status.
 type StatusResponse map[string]*string
 
-// ModelDefaults mirrors GET /1/providers/models/defaults — a map of
-// provider type → recommended default model name.
+// ModelDefaults mirrors GET /1/providers/models/defaults.
 type ModelDefaults map[string]string

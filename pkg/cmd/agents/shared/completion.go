@@ -11,15 +11,8 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-// MessageInput is what `agents test` and `agents run` accept for their
-// `messages` field, in declining priority:
-//
-//   - InputFile != "": read JSON from file (or "-" for stdin) and use it
-//     verbatim. Must already be a JSON array of message objects.
-//   - Message != "": wrap as a single-shot user message
-//     [{"role":"user","content":"<Message>"}]. Convenient for one-liners.
-//
-// Exactly one must be non-empty (BuildMessages enforces).
+// MessageInput is what `agents try` and `agents run` accept for the
+// `messages` field. Exactly one of InputFile / Message must be set.
 type MessageInput struct {
 	InputFile string
 	Message   string
@@ -37,7 +30,6 @@ func BuildMessages(stdin io.ReadCloser, in MessageInput) (json.RawMessage, error
 	case !hasFile && !hasMsg:
 		return nil, cmdutil.FlagErrorf("one of --input or --message is required")
 	case hasMsg:
-		// Marshal handles escaping correctly for arbitrary content.
 		body, _ := json.Marshal([]map[string]string{
 			{"role": "user", "content": in.Message},
 		})
@@ -52,8 +44,7 @@ func BuildMessages(stdin io.ReadCloser, in MessageInput) (json.RawMessage, error
 	if !json.Valid(raw) {
 		return nil, cmdutil.FlagErrorf("messages in %s is not valid JSON", SourceLabel(in.InputFile))
 	}
-	// Cheap shape check so the user gets a CLI-side error instead of a
-	// 422 from the backend's discriminator validator.
+	// Cheap shape check so the user gets a CLI-side error rather than 422.
 	var probe any
 	_ = json.Unmarshal(raw, &probe)
 	if _, ok := probe.([]any); !ok {
@@ -63,8 +54,7 @@ func BuildMessages(stdin io.ReadCloser, in MessageInput) (json.RawMessage, error
 }
 
 // ReadJSONFile reads a JSON document from a path (or "-" for stdin),
-// strips a UTF-8 BOM if present, and validates well-formedness. Used by
-// `agents test --config`.
+// strips a UTF-8 BOM if present, and validates well-formedness.
 func ReadJSONFile(stdin io.ReadCloser, file string) (json.RawMessage, error) {
 	raw, err := cmdutil.ReadFile(file, stdin)
 	if err != nil {
@@ -78,21 +68,13 @@ func ReadJSONFile(stdin io.ReadCloser, file string) (json.RawMessage, error) {
 }
 
 // CompletionRequest is the assembled body the CLI POSTs.
-//
-// Mirrors AgentCompletionRequest in the backend
-// (rag/models/agent_completion_request.py). Kept narrow to the fields
-// the CLI actually composes; richer structure (algolia.searchParameters,
-// tool_approvals, conversation `id`) can be added by hand-writing the
-// JSON file and using --input.
 type CompletionRequest struct {
 	Messages      json.RawMessage `json:"messages"`
 	Configuration json.RawMessage `json:"configuration,omitempty"`
 }
 
 // NormalizeCompatibility maps user-facing aliases ("v4", "v5") to the
-// backend's canonical wire values. Empty defaults to v5 (CLI default;
-// see CompletionOptions.Compatibility doc for rationale). Shared
-// between `agents test` and `agents run`.
+// backend's canonical wire values. Empty defaults to v5.
 func NormalizeCompatibility(s string) (agentstudio.CompatibilityMode, error) {
 	switch s {
 	case "", "v5", "ai-sdk-5":
@@ -105,7 +87,7 @@ func NormalizeCompatibility(s string) (agentstudio.CompatibilityMode, error) {
 }
 
 // MarshalCompletionBody assembles the JSON body. Configuration is
-// optional (nil for `agents run`, required for `agents test`).
+// optional (nil for `agents run`, required for `agents try`).
 func MarshalCompletionBody(messages, configuration json.RawMessage) (json.RawMessage, error) {
 	if len(messages) == 0 {
 		return nil, fmt.Errorf("messages must not be empty")
@@ -120,26 +102,10 @@ func MarshalCompletionBody(messages, configuration json.RawMessage) (json.RawMes
 	return body, nil
 }
 
-// RenderCompletion writes a /completions response to io.Out.
-//
-// Output rules:
-//
-//   - Buffered responses: body is copied to stdout verbatim. The backend
-//     already returns a single JSON document; re-encoding would lose
-//     canonicalization (key order, number formatting) for no gain.
-//   - Streaming responses (Content-Type: text/event-stream):
-//   - Non-TTY (piped, redirected): NDJSON, one parsed event per line
-//     as compact JSON ({"type":"…","data":{…}}). Stable contract for
-//     pipelines (jq, scripts, log capture).
-//   - TTY + forceNDJSON=true: same NDJSON output. Opt-in escape hatch
-//     for users who want machine output even on a terminal.
-//   - TTY (default): a human-friendly transcript — assistant text is
-//     written inline as deltas arrive, tool calls/results show as
-//     dimmed annotations, errors in red. No newline-per-event noise.
-//
-// Cancellation: the caller is responsible for signal handling — pass a
-// ctx that is cancelled on SIGINT and the underlying transport will
-// tear the stream down cleanly. The body is closed before returning.
+// RenderCompletion writes a /completions response to io.Out. Buffered
+// responses copy verbatim. Streaming responses render either as a TTY
+// transcript or as NDJSON (forced by forceNDJSON or by non-TTY output).
+// See docs/agents.md.
 func RenderCompletion(ios *iostreams.IOStreams, body io.ReadCloser, contentType string, forceNDJSON bool) error {
 	defer body.Close()
 
@@ -165,15 +131,11 @@ func renderNDJSON(ios *iostreams.IOStreams, body io.Reader) error {
 	})
 }
 
-// renderTTY draws a flowing assistant reply with inline tool annotations.
-// Skips frames that don't carry user-visible content (start, finish,
-// step boundaries, reasoning signatures, …) — the transcript is meant
-// to read like a conversation, not a wire dump.
 func renderTTY(ios *iostreams.IOStreams, body io.Reader) error {
 	cs := ios.ColorScheme()
 	var (
 		wroteText bool
-		toolNames = map[string]string{} // toolCallId/toolName → display label
+		toolNames = map[string]string{}
 	)
 
 	flushNewlineIfNeeded := func() {
@@ -214,10 +176,6 @@ func renderTTY(ios *iostreams.IOStreams, body io.Reader) error {
 		case "error":
 			flushNewlineIfNeeded()
 			fmt.Fprintln(ios.Out, cs.Red("error: ")+string(e.Data))
-
-		case "reasoning", "reasoning-signature", "redacted-reasoning":
-			// Skip — this is internal model scratchpad, surfacing it
-			// in the transcript is noisier than helpful for a CLI.
 		}
 		return nil
 	})
@@ -227,8 +185,7 @@ func renderTTY(ios *iostreams.IOStreams, body io.Reader) error {
 }
 
 // extractTextDelta pulls the user-visible string out of a text frame.
-// v4 payloads are a JSON string ("hi"), v5 carry it under "delta" or
-// (older variants) "textDelta". Returns "" on any unexpected shape.
+// v4 payloads are JSON-encoded strings; v5 carry the text under "delta".
 func extractTextDelta(e agentstudio.StreamEvent) string {
 	if len(e.Data) == 0 {
 		return ""
@@ -246,9 +203,6 @@ func extractTextDelta(e agentstudio.StreamEvent) string {
 	return jsonString(e.Data, "textDelta")
 }
 
-// jsonString reads a top-level string field from a JSON object. Returns
-// "" if the data isn't an object, the field is missing, or the value
-// isn't a string. Pure helper, no allocation past the obj decode.
 func jsonString(raw json.RawMessage, key string) string {
 	if len(raw) == 0 || raw[0] != '{' {
 		return ""

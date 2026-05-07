@@ -13,23 +13,18 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-// NewInternalCmd is the parent for `algolia agents internal <verb>`.
-//
-// Verbs here wrap endpoints marked x-hidden in the OpenAPI spec.
-// They are exposed for diagnostics / lab usage and are not stable —
-// expect breaking changes without notice.
+// NewInternalCmd is the parent for `algolia agents internal <verb>` —
+// hidden, unstable, x-hidden endpoints. See docs/agents.md.
 func NewInternalCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "internal",
 		Short:  "Hidden Agent Studio diagnostics + memory internals (unstable)",
 		Hidden: true,
 		Long: heredoc.Doc(`
-			Wraps endpoints marked x-hidden in the Agent Studio
-			OpenAPI spec. NOT part of the documented public surface;
-			may change without notice. Intended for support /
-			diagnostics. memorize/ponder/consolidate hit the doubled
-			path /1/agents/agents/{id}/<verb> (verified live — the
-			single-path equivalents 404).
+			Wraps x-hidden Agent Studio endpoints. Not part of the
+			documented public surface; may change without notice.
+			memorize/ponder/consolidate hit the doubled path
+			/1/agents/agents/{id}/<verb>.
 		`),
 	}
 	cmd.AddCommand(newStatusCmd(f, nil))
@@ -46,8 +41,7 @@ func ctxOrBackground(ctx context.Context) context.Context {
 	return ctx
 }
 
-// readJSONBody reads a JSON document from file or stdin and validates it.
-// "-" reads stdin.
+// readJSONBody reads a JSON document from file or stdin ("-").
 func readJSONBody(file string, ios *iostreams.IOStreams) ([]byte, error) {
 	body, err := cmdutil.ReadFile(file, ios.In)
 	if err != nil {

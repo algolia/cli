@@ -1,13 +1,6 @@
-// Internal/hidden endpoints (x-hidden in the OpenAPI spec).
-//
-// Routes here are not part of the documented public surface and may
-// change without notice. They are exposed in the CLI behind hidden
-// commands strictly for diagnostics and lab usage.
-//
-// Path note: memorize/ponder/consolidate live under /1/agents/agents/
-// (the segment is genuinely doubled in the spec — verified live;
-// /1/agents/{id}/memorize 404s while /1/agents/agents/{id}/memorize
-// reaches the handler).
+// Hidden/internal endpoints (x-hidden in the OpenAPI spec). Surfaced
+// in the CLI behind hidden commands for diagnostics. Memory ops use
+// the doubled /1/agents/agents/ path — see docs/agents.md gotchas.
 
 package agentstudio
 
@@ -68,9 +61,7 @@ func (c *Client) GetProviderModelDefaults(ctx context.Context) (ModelDefaults, e
 	return out, nil
 }
 
-// AgentMemorize / AgentPonder / AgentConsolidate target the doubled
-// /1/agents/agents/{agent_id}/<verb> path. Body shapes are evolving;
-// callers supply opaque JSON.
+// AgentMemorize calls POST /1/agents/agents/{id}/memorize (doubled path).
 func (c *Client) AgentMemorize(ctx context.Context, agentID string, body json.RawMessage) (json.RawMessage, error) {
 	return c.doAgentMemoryOp(ctx, agentID, "memorize", body)
 }

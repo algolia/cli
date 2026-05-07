@@ -15,16 +15,6 @@ import (
 )
 
 // NewCacheCmd is the parent for `algolia agents cache <verb>`.
-//
-// Today there's exactly one verb (`invalidate`); kept as a sub-group
-// rather than a flat `agents cache-invalidate` because:
-//   - The parent reads as a noun (`cache`), the child as a verb
-//     (`invalidate`) — natural language order, matches the established
-//     CLI rhythm (`apikeys list`, `objects update`).
-//   - Reserves a clean home for follow-ups (`agents cache stats`,
-//     `agents cache size`, etc.) without renaming the existing surface.
-//   - Mirrors the nested-group pattern Phase 6+ will reuse for
-//     `agents providers <verb>` and `agents conversations <verb>`.
 func NewCacheCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cache",
@@ -67,17 +57,12 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 		Use:   "invalidate <agent-id> [--before YYYY-MM-DD] [--confirm]",
 		Short: "Invalidate cached completions for an agent",
 		Long: heredoc.Doc(`
-			Calls DELETE /1/agents/<id>/cache.
+			Calls DELETE /1/agents/<id>/cache. Drops every cached
+			completion for the agent unless --before YYYY-MM-DD is
+			passed (exclusive). Date validation is server-side.
 
-			By default, drops every cached completion for the agent. Pass
-			--before YYYY-MM-DD to drop only entries created strictly
-			before that date (exclusive — matches the backend's Pydantic
-			parsing). Date validation is the backend's job; bad input
-			surfaces a structured 422 verbatim.
-
-			Like "agents delete", interactive use prompts to confirm and
-			non-interactive use requires --confirm. Use --dry-run to
-			preview without deleting.
+			Like ` + "`agents delete`" + `, interactive use prompts and
+			non-interactive use requires --confirm. --dry-run previews.
 		`),
 		Example: heredoc.Doc(`
 			# Wipe all cached completions for an agent (interactive)
@@ -100,9 +85,6 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
 
-			// Mirror agents delete: --confirm/-y bypasses prompt.
-			// Without it, prompt in TTY, refuse in non-TTY. --dry-run
-			// is non-destructive and bypasses the confirmation entirely.
 			if !confirm && !opts.DryRun {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(

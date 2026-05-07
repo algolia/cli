@@ -35,9 +35,6 @@ func ctxOrBackground(ctx context.Context) context.Context {
 	return ctx
 }
 
-// rejectSlashMsg is the user-facing reason for rejecting tokens that
-// contain "/". The CLI escapes the path segment correctly, but the
-// staging gateway decodes %2F before routing — verified live, see
-// Anya QA report F-1. Blocking with a clear message beats a misleading
-// 404 from the backend.
+// rejectSlashMsg is shown when a user-token contains "/". Gateway
+// decodes %2F before path matching → misleading 404. See docs/agents.md.
 const rejectSlashMsg = `user-token contains "/", which the Agent Studio gateway misroutes (decodes "%2F" before path matching, yielding a misleading 404). Use a token without "/" or contact support if a slash-bearing token is required.`

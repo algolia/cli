@@ -26,32 +26,17 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
-// NewAgentsCmd returns the `algolia agents` command group, which manages
-// agents on Algolia Agent Studio (https://github.com/algolia/conversational-ai).
-//
-// Authentication uses the same Application ID + API Key as the rest of the
-// CLI; the Agent Studio host is resolved from --agent-studio-url (or the
-// equivalent profile field), then the configured region, then a cluster-proxy
-// fallback derived from the Application ID.
+// NewAgentsCmd returns the `algolia agents` command group for Algolia
+// Agent Studio (github.com/algolia/conversational-ai). See docs/agents.md.
 func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agents",
 		Short: "Manage Algolia Agent Studio agents",
 		Long: heredoc.Doc(`
-			Manage agents on Algolia Agent Studio.
-
-			Reads credentials from your active profile. The Agent Studio host is
-			resolved in this order:
-
-			  1. ALGOLIA_AGENT_STUDIO_URL env var, or the profile's
-			     "agent_studio_url" field.
-			  2. The build-time default baked into the binary (ldflag-driven;
-			     used by internal beta builds to point at
-			     agent-studio.staging.eu.algolia.com by default).
-			  3. The cluster-proxy fallback
-			     https://<app-id>.algolia.net/agent-studio (recommended for
-			     production end-users — the application's own cluster routes
-			     the request to the right region).
+			Manage agents on Algolia Agent Studio. Credentials come from
+			the active profile. Host resolution: --agent-studio-url /
+			ALGOLIA_AGENT_STUDIO_URL → profile region → ldflag default →
+			cluster-proxy fallback.
 		`),
 		Example: heredoc.Doc(`
 			# List your agents

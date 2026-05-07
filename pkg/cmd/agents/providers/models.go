@@ -38,17 +38,14 @@ func newModelsCmd(f *cmdutil.Factory, runF func(*ModelsOptions) error) *cobra.Co
 		Use:   "models [--provider-id <id>]",
 		Short: "List models available per provider type, or for a configured provider",
 		Long: heredoc.Doc(`
-			Two routes, one command:
+			Without --provider-id: GET /1/providers/models — the static
+			catalog of supported models per provider type. Use before
+			creating a provider.
 
-			  - No --provider-id: GET /1/providers/models
-			    Returns the static catalog of models per provider TYPE
-			    (openai → [gpt-4o, gpt-4o-mini, ...], anthropic → ...).
-			    Use this BEFORE creating a provider to pick a model.
-
-			  - --provider-id <id>: GET /1/providers/<id>/models
-			    Returns models exposed by a specific configured provider,
-			    which can include account-specific ones (OpenAI fine-tunes,
-			    Azure deployments, etc.).
+			With --provider-id <id>: GET /1/providers/<id>/models — the
+			models a specific configured provider exposes, including
+			account-specific entries (OpenAI fine-tunes, Azure
+			deployments).
 		`),
 		Example: heredoc.Doc(`
 			# What can I configure?
@@ -60,9 +57,7 @@ func newModelsCmd(f *cmdutil.Factory, runF func(*ModelsOptions) error) *cobra.Co
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Ctx = cmd.Context()
-			// An explicit empty --provider-id is almost certainly a
-			// scripting bug ("$PROV_ID" before assignment); refuse it
-			// instead of silently falling back to the catalog route.
+			// Refuse explicit empty --provider-id (almost certainly a scripting bug).
 			if cmd.Flags().Changed("provider-id") && opts.ProviderID == "" {
 				return cmdutil.FlagErrorf("--provider-id must not be empty")
 			}
@@ -104,7 +99,6 @@ func runListCatalog(opts *ModelsOptions, client *agentstudio.Client, ctx context
 		return opts.PrintFlags.Print(opts.IO, models)
 	}
 
-	// Sorted, table-friendly: provider name then model name.
 	providerNames := make([]string, 0, len(models))
 	for k := range models {
 		providerNames = append(providerNames, k)
@@ -137,13 +131,9 @@ func runListForProvider(opts *ModelsOptions, client *agentstudio.Client, ctx con
 		return err
 	}
 
-	// Spec leaves the response shape unspecified. Empirically it's a
-	// JSON array of strings, but we don't pin that — pretty-print
-	// whatever arrives and let the user pipe to jq.
 	if opts.PrintFlags.HasStructuredOutput() {
-		// Round-trip through a generic decode so --output json
-		// re-formats consistently rather than emitting the backend's
-		// exact whitespace.
+		// Round-trip through a generic decode so --output json re-formats
+		// consistently instead of emitting the backend's whitespace.
 		var anyV any
 		if err := json.Unmarshal(raw, &anyV); err != nil {
 			return fmt.Errorf("decode models response: %w", err)

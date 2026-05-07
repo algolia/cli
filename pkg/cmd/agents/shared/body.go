@@ -1,8 +1,5 @@
-// Package shared holds helpers reused across `algolia agents` subcommands
-// that pass user-supplied JSON through to the Agent Studio backend
-// (currently create + update; future provider/tool commands will reuse the
-// same shape). Kept tight on purpose — only extract here when there are
-// at least two real callers.
+// Package shared holds helpers reused across `algolia agents` subcommands.
+// Extract on second use, not pre-emptively. See docs/agents.md.
 package shared
 
 import (
@@ -14,8 +11,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-// SourceLabel returns "stdin" for "-", otherwise the path itself. Used in
-// help text and error messages so users can tell where a body came from.
+// SourceLabel returns "stdin" for "-", otherwise the path itself.
 func SourceLabel(file string) string {
 	if file == "-" {
 		return "stdin"
@@ -23,25 +19,16 @@ func SourceLabel(file string) string {
 	return file
 }
 
-// TrimUTF8BOM strips a leading UTF-8 byte-order-mark if present. Common
-// when users hand-edit JSON in Notepad or VS Code on Windows; json.Valid
-// rejects BOM-prefixed input with a confusing error otherwise.
+// TrimUTF8BOM strips a leading UTF-8 byte-order-mark if present.
 func TrimUTF8BOM(b []byte) []byte {
 	const bom = "\xef\xbb\xbf"
 	return []byte(strings.TrimPrefix(string(b), bom))
 }
 
 // PrintDryRun renders a preview of an HTTP request that would have been
-// sent. When wantsStructured is true (caller derives this from
-// `cmd.Flags().Changed("output")` so the user must opt in explicitly,
-// not just inherit a `WithDefaultOutput("json")` default), it emits a
-// structured summary. Otherwise it prints the request line + the
-// resolved JSON body pretty-printed — the human form intentionally
-// surfaces the *full* body so users can lint it visually before
-// re-running without --dry-run.
-//
-// extra lets a caller add command-specific keys to the structured summary
-// (e.g., "agentId" for update). Pass nil if there are none.
+// sent. wantsStructured must be derived from cmd.Flags().Changed("output")
+// (not PrintFlags.HasStructuredOutput) — see docs/agents.md "On --dry-run".
+// extra adds command-specific keys to the structured summary; pass nil if none.
 func PrintDryRun(
 	io *iostreams.IOStreams,
 	pf *cmdutil.PrintFlags,
@@ -70,8 +57,6 @@ func PrintDryRun(
 
 	pretty, err := json.MarshalIndent(json.RawMessage(body), "", "  ")
 	if err != nil {
-		// Body already passed json.Valid upstream; the only realistic
-		// failure here is OOM on a giant doc — fall back to raw bytes.
 		pretty = body
 	}
 	if _, err := io.Out.Write(pretty); err != nil {

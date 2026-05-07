@@ -46,14 +46,12 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 		Short: "Run a published Agent Studio agent and stream the response",
 		Long: heredoc.Doc(`
 			Send a completion to /1/agents/<id>/completions using the
-			persisted agent configuration. Equivalent to "agents test"
-			except it uses an existing (typically published) agent
-			rather than an in-memory configuration — this is what
-			downstream apps call in production.
+			persisted agent configuration. This is what downstream apps
+			call in production.
 
-			Streaming responses (default) are emitted as NDJSON: one
-			parsed event per line as {"type":"...","data":{...}}. Use
-			--no-stream for a single buffered JSON response instead.
+			Output: TTY-attached stdout renders a flowing transcript;
+			non-TTY emits NDJSON. --ndjson forces NDJSON on a TTY,
+			--no-stream returns a single buffered JSON response.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents run <id> -m "What's new today?"
@@ -108,16 +106,13 @@ func runRunCmd(opts *RunOptions) error {
 	if err != nil {
 		return err
 	}
-	// `agents run` uses the persisted agent's configuration — no
-	// `configuration` field in the body (the backend would reject it
-	// for a real agent, since it's only meaningful for agent_id="test").
+	// `agents run` uses the persisted agent's configuration; no
+	// `configuration` field in the body (backend rejects it for real agents).
 	body, err := shared.MarshalCompletionBody(messages, nil)
 	if err != nil {
 		return err
 	}
 
-	// Validate --compatibility before the dry-run short-circuit; same
-	// rationale as in `agents test`.
 	mode, err := shared.NormalizeCompatibility(opts.Compatibility)
 	if err != nil {
 		return err

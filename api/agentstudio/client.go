@@ -8,65 +8,27 @@ import (
 	"strings"
 )
 
-// Standard Algolia auth headers used by Agent Studio.
-//
-// HeaderUserID is a CLEARTEXT label used by the backend for telemetry
-// and rate-limiting only — it is NOT an authorization signal and MUST
-// NOT be used for access decisions. The backend's signed equivalent
-// (X-Algolia-Secure-User-Token, see common/models/secure_user_token.py
-// in algolia/conversational-ai) is wired into the streaming
-// /completions endpoint via CompletionOptions.SecureUserToken.
 const (
 	HeaderApplicationID = "X-Algolia-Application-Id"
 	HeaderAPIKey        = "X-Algolia-API-Key" //nolint:gosec // header name, not a credential
 	HeaderUserID        = "X-Algolia-User-ID"
 )
 
-// TODO(yuki): replace this hand-written client with the generated client
-// once algolia/api-clients-automation publishes a Go module from
-// algolia/conversational-ai's specs/agent-studio/spec.yml. Same pipeline
-// that produces our Search SDK; tracked separately.
-
-// Config configures a Client. All fields except ApplicationID, APIKey, and
-// BaseURL are optional.
+// Config configures a Client. ApplicationID, APIKey, and BaseURL are
+// required; everything else is optional.
 type Config struct {
-	// BaseURL is the Agent Studio base URL without trailing slash and
-	// without the /1 suffix (use ResolveHost to build it).
-	BaseURL string
-
-	// ApplicationID and APIKey are the standard Algolia credentials.
-	// Required.
+	BaseURL       string
 	ApplicationID string
 	APIKey        string
-
-	// UserID is sent as X-Algolia-User-ID. The backend defaults missing
-	// values to "default" outside production but enforces presence in prod.
-	// Recommended pattern from the CLI: "cli-<profile-name>".
-	UserID string
-
-	// UserAgent is sent as User-Agent. If empty, a minimal default is used.
-	UserAgent string
-
-	// HTTPClient overrides the default http.Client. Mainly for tests.
-	HTTPClient *http.Client
+	UserID        string
+	UserAgent     string
+	HTTPClient    *http.Client
 }
 
-// Client talks to the Agent Studio backend.
-//
-// Methods are organised by API tag (one source file per tag):
-//
-//   - agents.go        — Agents tag (CRUD, lifecycle, cache invalidation)
-//   - completions.go   — Completions tag (streaming + buffered)
-//   - providers.go     — Providers tag (CRUD + model discovery)
-//   - configuration.go — Configurations tag (app-wide settings)
-//
-// This file only carries the cross-cutting pieces (Config, Client,
-// NewClient, header injection, error mapping) so adding a new resource
-// is a single new file plus a single new test file.
-//
-// All methods accept a context for cancellation and propagate request
-// failures as *APIError (which wraps the appropriate sentinel error so
-// errors.Is works).
+// Client talks to the Agent Studio backend. Methods are organised by API
+// tag — one source file per tag (agents.go, completions.go, …). This
+// file carries only Config, NewClient, header injection, and error
+// mapping.
 type Client struct {
 	cfg        Config
 	httpClient *http.Client
@@ -113,27 +75,17 @@ func checkResponse(resp *http.Response) error {
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
 
-	apiErr := &APIError{
+	return &APIError{
 		StatusCode: resp.StatusCode,
 		Body:       body,
 		Detail:     extractDetail(body),
 		Sentinel:   sentinelFor(resp.StatusCode, body),
 	}
-	return apiErr
 }
 
 // extractDetail pulls a human-readable message from the response body.
-//
-// The backend returns errors in three observed shapes:
-//   - FastAPI validation: {"detail":[{"msg":"...","loc":[...]}, ...]}
-//     (often paired with a generic message like "Input is invalid, see
-//     detail/body:" — we must prefer the structured detail).
-//   - FastAPI default:    {"detail":"..."}
-//   - Algolia ClientError: {"message":"..."}
-//
-// Priority is structured detail > string detail > message > raw body, so
-// we never return a "see detail/body:" pointer when the actual detail is
-// right there.
+// Priority: structured FastAPI detail[].msg > string detail > Algolia
+// {message:...} > raw body.
 func extractDetail(body []byte) string {
 	if len(body) == 0 {
 		return ""
@@ -170,16 +122,13 @@ func extractDetail(body []byte) string {
 	return ""
 }
 
-// sentinelFor maps a status code (and body markers) to one of the package-level
-// sentinel errors so callers can match with errors.Is.
+// sentinelFor maps a status code (and body markers) to a sentinel error.
 func sentinelFor(status int, body []byte) error {
 	switch {
 	case status == http.StatusUnauthorized:
 		return ErrUnauthorized
 	case status == http.StatusForbidden:
-		// The backend uses this exact phrase when the GenAI feature flag is
-		// off for the app (see rag/dependencies/auth.py: "This feature is
-		// not enabled for this application.").
+		// Backend uses this exact phrase when the GenAI feature flag is off.
 		if strings.Contains(strings.ToLower(string(body)), "feature is not enabled") {
 			return ErrFeatureDisabled
 		}

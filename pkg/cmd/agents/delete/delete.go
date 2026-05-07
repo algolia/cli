@@ -39,12 +39,9 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Use:   "delete <agent-id> [--confirm]",
 		Short: "Delete an Agent Studio agent",
 		Long: heredoc.Doc(`
-			Soft-delete an Agent Studio agent. The backend keeps the row with
-			a deleted flag, so recovery is a platform-side ops concern;
-			treat this command as terminal from the CLI's perspective.
-
-			Use --dry-run to fetch the target agent and preview what would
-			be deleted, without actually deleting.
+			Soft-delete an Agent Studio agent. Recovery is a backend ops
+			concern; treat as terminal from the CLI. --dry-run fetches
+			the target and previews without deleting.
 		`),
 		Example: heredoc.Doc(`
 			# Interactive delete (asks for confirmation)
@@ -64,11 +61,6 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
 
-			// Mirror objects/delete: --confirm/-y is the explicit
-			// "I have confirmed" flag. Without it, we either prompt (TTY)
-			// or refuse (non-TTY) — but only when a real DELETE will
-			// happen; --dry-run is non-destructive so it bypasses the
-			// confirmation requirement entirely.
 			if !confirm && !opts.DryRun {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf(
@@ -106,10 +98,8 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		ctx = context.Background()
 	}
 
-	// Fetch the agent up front for two reasons:
-	//   1. Surface 404 cleanly (matches GET /1/agents/{id}'s shape).
-	//   2. Show name + status in the prompt / dry-run output, so the user
-	//      can sanity-check they're about to delete the right thing.
+	// Pre-fetch so 404 surfaces cleanly and the prompt/dry-run can
+	// show name+status for sanity-check.
 	agent, err := client.GetAgent(ctx, opts.AgentID)
 	if err != nil {
 		return err

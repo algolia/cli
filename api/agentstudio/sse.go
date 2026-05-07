@@ -10,12 +10,7 @@ import (
 )
 
 // CompatibilityMode selects the streaming protocol the backend emits.
-//
-// The backend (rag/models/agent_completion_request.py) makes this a
-// REQUIRED query parameter with no default. The CLI defaults to v5 — its
-// frames are standard SSE (data: <json>\n\n) with an explicit [DONE]
-// sentinel; v4 uses a Vercel-AI-specific line format (<type>:<json>\n)
-// with no terminator and is harder to use defensively.
+// Required server-side; CLI defaults to v5. See docs/agents.md.
 type CompatibilityMode string
 
 const (
@@ -23,31 +18,16 @@ const (
 	CompatV5 CompatibilityMode = "ai-sdk-5"
 )
 
-// StreamEvent is a normalized completion frame.
-//
-// Both v4 and v5 wire formats are reduced to the same shape so callers
-// don't have to branch on protocol:
-//
-//   - Type: a best-effort identifier. For v4 it's the mapped name
-//     ("text", "tool-call", …) derived from the single-character prefix.
-//     For v5 it's the value of payload.type when present (the v5 stream
-//     is a sequence of `{"type": "...", ...}` JSON objects), else "data".
-//   - Data: the JSON payload body. For v4 type=text frames the payload is
-//     a JSON string ("hello world"); the parser leaves it as RawMessage
-//     so callers can decode into the right shape themselves.
-//   - Raw: the original line (without trailing newline). Useful for
-//     forwarding bytes verbatim into NDJSON pipelines without losing
-//     fidelity from a re-marshal round-trip.
+// StreamEvent is a normalised completion frame. v4 and v5 are reduced
+// to the same shape so callers don't have to branch on protocol.
 type StreamEvent struct {
 	Type string
 	Data json.RawMessage
 	Raw  string
 }
 
-// v4 type-code → human name mapping. Mirrors
-// rag/utils/ai_sdk/v4/stream.py:Types and the parser in
-// tests/acceptance/helpers/completions.py:_V4_TYPE_MAPPING in
-// algolia/conversational-ai. Keep in sync if upstream adds codes.
+// v4 type-code → human name. Mirrors rag/utils/ai_sdk/v4/stream.py:Types
+// in algolia/conversational-ai. Keep in sync if upstream adds codes.
 var v4TypeNames = map[byte]string{
 	'0': "text",
 	'2': "data",
@@ -67,25 +47,11 @@ var v4TypeNames = map[byte]string{
 	'k': "file",
 }
 
-// ParseStream reads the body of a streaming /completions response and
-// invokes onEvent for each parsed frame, in order.
-//
-// The parser sniffs the line prefix to support both wire formats:
-//
-//   - v5 (default): `data: <json>\n\n`. `[DONE]` ends the stream cleanly;
-//     the parser stops without error and returns nil.
-//   - v4: `<type-code>:<json>\n`. The stream just ends when the body
-//     closes (no sentinel); parser returns nil on io.EOF.
-//
-// Comment lines (`:keepalive`) and blank lines are skipped silently.
-//
-// Lines that look like one of the two formats but contain malformed JSON
-// are skipped (with no error) — backends evolve faster than parsers, and
-// crashing the user's pipe on an unrecognized frame is hostile. If
-// onEvent returns an error, ParseStream stops and propagates it.
-//
-// Cancellation is the caller's job: pass a context-bound body (e.g. one
-// from http.Request.WithContext) and close it on cancel.
+// ParseStream reads a streaming /completions body and invokes onEvent
+// for each parsed frame. Malformed frames are skipped silently
+// (backends evolve faster than parsers; crashing the user's pipe is
+// hostile). The v5 [DONE] sentinel ends the stream cleanly. Callers
+// own cancellation via the body's underlying context.
 func ParseStream(body io.Reader, onEvent func(StreamEvent) error) error {
 	if body == nil {
 		return errors.New("agent studio: ParseStream: body is nil")
@@ -95,16 +61,13 @@ func ParseStream(body io.Reader, onEvent func(StreamEvent) error) error {
 	}
 
 	scanner := bufio.NewScanner(body)
-	// SSE frames can be large (a single text-delta with a long token,
-	// or a tool-result with a big JSON blob). Default 64 KiB is too tight;
-	// match the existing ScanFile cap (5 MiB).
+	// SSE frames can be large (long text-deltas, big tool-result blobs).
 	const maxLine = 1024 * 5120
 	scanner.Buffer(make([]byte, 0, 64*1024), maxLine)
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" || strings.HasPrefix(line, ":") {
-			// blank-line frame separator (v5) or SSE comment / keep-alive
 			continue
 		}
 
@@ -125,14 +88,9 @@ func ParseStream(body io.Reader, onEvent func(StreamEvent) error) error {
 	return nil
 }
 
-// parseLine inspects one line and tries v5 then v4. Returns:
-//
-//   - evt, ok=true: a usable StreamEvent (caller should emit it)
-//   - evt, ok=false: line was malformed for both formats, skip silently
-//   - stop=true: the [DONE] sentinel was seen; caller should stop
+// parseLine returns (evt, ok, stop): ok=true => emit; stop=true => [DONE].
 func parseLine(line string) (evt StreamEvent, ok bool, stop bool) {
-	// v5: `data: <json>` (after `set_cache_headers` adds `data: ` prefix
-	// and `\n\n` separator).
+	// v5: `data: <json>`.
 	if rest, found := strings.CutPrefix(line, "data: "); found {
 		rest = strings.TrimSpace(rest)
 		if rest == "" {
@@ -152,7 +110,7 @@ func parseLine(line string) (evt StreamEvent, ok bool, stop bool) {
 		return StreamEvent{Type: typ, Data: json.RawMessage(rest), Raw: line}, true, false
 	}
 
-	// v4: `<type>:<json>`. Type is single byte, then a colon, then JSON.
+	// v4: `<type>:<json>` — type is a single byte, then a colon, then JSON.
 	if len(line) < 3 || line[1] != ':' {
 		return StreamEvent{}, false, false
 	}

@@ -12,10 +12,7 @@ import (
 )
 
 // ListConversations calls GET /1/agents/{agent_id}/conversations.
-//
-// All query params are optional. Empty values are omitted from the wire
-// (matches the backend's "use default" semantics for page/limit and
-// "no filter" for date/feedback knobs).
+// All query params are optional; empty values are omitted from the wire.
 func (c *Client) ListConversations(
 	ctx context.Context,
 	agentID string,
@@ -74,12 +71,7 @@ func (c *Client) ListConversations(
 }
 
 // GetConversation calls GET /1/agents/{agent_id}/conversations/{conversation_id}.
-//
-// Returns the body as raw JSON because ConversationFullResponse embeds
-// `messages: []MessageResponse-Output` which is a discriminated union
-// over message roles (system/user/assistant/tool) with per-role nested
-// content arrays. Same passthrough rationale as Agent.Config / Provider.Input
-// — the CLI prints, the user's `jq` extracts.
+// Returns raw JSON — `messages` is a discriminated role union; see docs/agents.md.
 func (c *Client) GetConversation(
 	ctx context.Context,
 	agentID, conversationID string,
@@ -150,16 +142,8 @@ func (c *Client) DeleteConversation(ctx context.Context, agentID, conversationID
 }
 
 // PurgeConversations calls DELETE /1/agents/{agent_id}/conversations.
-//
-// Backend behaviour:
-//   - Both StartDate and EndDate empty → ALL conversations for this
-//     agent are deleted. This is intentional but destructive enough
-//     that the CLI requires an explicit `--all` flag (enforced at
-//     the cmd layer, not here — the client mirrors the wire shape).
-//   - Either present → range filter applied (inclusive on both ends,
-//     per backend convention).
-//
-// Returns nil on the backend's HTTP 204.
+// Backend rejects dateless purges; CLI enforces this at the flag layer.
+// See docs/agents.md gotchas.
 func (c *Client) PurgeConversations(ctx context.Context, agentID string, params PurgeConversationsParams) error {
 	if strings.TrimSpace(agentID) == "" {
 		return fmt.Errorf("agent studio: purge conversations: agent id is required")
@@ -192,14 +176,8 @@ func (c *Client) PurgeConversations(ctx context.Context, agentID string, params 
 	return checkResponse(resp)
 }
 
-// ExportConversations calls GET /1/agents/{agent_id}/conversations/export
-// and returns the body as raw JSON.
-//
-// The OpenAPI spec leaves the response body unspecified (the operation
-// has a 200 with no schema). Empirically the backend returns a JSON
-// document; the CLI prints it as-is and lets users pipe through `jq`
-// or write to a file with `--output-file`. Pinning a Go type here would
-// silently break the day the backend switches to NDJSON or CSV.
+// ExportConversations calls GET /1/agents/{agent_id}/conversations/export.
+// Returns raw JSON — the spec leaves the response body unspecified.
 func (c *Client) ExportConversations(
 	ctx context.Context,
 	agentID string,

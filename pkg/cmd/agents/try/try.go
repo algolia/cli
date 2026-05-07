@@ -15,15 +15,8 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-// TryOptions configures `algolia agents try`.
-//
-// Note: no DryRun field. The whole command IS the dry-run in the
-// conversational-ai sense — it sends the configuration to the
-// backend's `agent_id="test"` route, which runs a real completion
-// against an in-memory configuration without persisting anything.
-// Adding a `--dry-run` flag on top would mean "dry-run a dry-run",
-// the awkward case that motivated the rename from `agents test`.
-// See AGENTS.md → "Agent Studio" → "On `--dry-run`".
+// TryOptions configures `algolia agents try`. No DryRun field — the
+// command IS the dry-run (see docs/agents.md "On --dry-run").
 type TryOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
@@ -53,25 +46,20 @@ func NewTryCmd(f *cmdutil.Factory, runF func(*TryOptions) error) *cobra.Command 
 		Short: "Try an Agent Studio agent configuration without persisting it",
 		Long: heredoc.Doc(`
 			Send a completion to /1/agents/test/completions using an
-			ephemeral agent configuration. The backend's special-case
-			agent_id="test" route doesn't persist anything — it
-			instantiates the configuration in-memory, runs the message,
-			streams the result back. The primary developer loop for
+			ephemeral agent configuration. The backend's agent_id="test"
+			route runs the message in-memory and streams the result —
+			nothing is persisted. The primary developer loop for
 			iterating on agent prompts/tools without polluting the
-			agents list, and the conversational-ai-side equivalent of
-			"dry-run" semantics for an agentic configuration.
+			agents list.
 
-			Streaming responses (default) are emitted as NDJSON: one
-			parsed event per line as {"type":"...","data":{...}}. Pipe
-			to jq to filter (e.g. select(.type=="text-delta")). Use
-			--no-stream for a single buffered JSON response instead.
+			Output: TTY-attached stdout renders a flowing transcript
+			(text inline, tool calls/results dim, errors red); non-TTY
+			emits NDJSON one event per line. Pass --ndjson to force
+			NDJSON on a TTY, or --no-stream for a single buffered
+			JSON response.
 
-			There is no --dry-run flag here on purpose — the whole
-			command is the dry-run. To preview the request body
-			without calling the API, redirect stdout: --no-stream
-			against an unreachable backend, or build the body
-			yourself. To preview a *create* or *update* request
-			without sending it, use those commands' --dry-run flags.
+			There is no --dry-run flag — the whole command is the
+			dry-run. See docs/agents.md.
 		`),
 		Example: heredoc.Doc(`
 			# Quick one-liner with a config file
@@ -145,9 +133,7 @@ func runTryCmd(opts *TryOptions) error {
 		return err
 	}
 
-	// Local SIGINT handling: cancels the in-flight HTTP request so the
-	// transport tears down the SSE stream cleanly. Deferred stop()
-	// releases the signal handler when this function returns.
+	// SIGINT cancels the in-flight request so the SSE stream tears down cleanly.
 	ctx := opts.Ctx
 	if ctx == nil {
 		ctx = context.Background()

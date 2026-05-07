@@ -1,7 +1,7 @@
-// Package agentstudio is a thin Go client for Algolia's Agent Studio API
-// (https://github.com/algolia/conversational-ai). It uses the same
-// X-Algolia-Application-Id / X-Algolia-API-Key auth as the Search API, so it
-// plugs into the CLI's existing identity stack without OAuth bearer tokens.
+// Package agentstudio is a thin Go client for Algolia's Agent Studio
+// API (github.com/algolia/conversational-ai). Auth is the standard
+// X-Algolia-Application-Id / X-Algolia-API-Key pair — same identity
+// stack as the Search API, no OAuth bearer tokens.
 package agentstudio
 
 import (
@@ -10,75 +10,42 @@ import (
 	"strings"
 )
 
-// DefaultBaseURL is the build-time default for the Agent Studio base URL.
-// It is set via ldflags by `task build`:
-//
-//	-X github.com/algolia/cli/api/agentstudio.DefaultBaseURL=$ALGOLIA_AGENT_STUDIO_URL
-//
-// Empty by default so production builds fall through to the cluster-proxy
-// URL (https://<appID>.algolia.net/agent-studio). Internal beta builds set
-// it to https://agent-studio.staging.eu.algolia.com via .env so the
-// resulting binary "just works" against the staging backend without
-// per-command flags or env vars.
-//
-// Runtime overrides win: ALGOLIA_AGENT_STUDIO_URL or a profile's
-// agent_studio_url field both take precedence over this default.
+// DefaultBaseURL is the build-time default for the Agent Studio base
+// URL, set via ldflags by `task build`. Empty in production builds
+// (cluster-proxy fallback applies); set to the EU staging host for
+// internal beta builds. Runtime overrides win.
 var DefaultBaseURL string
 
-// Environments accepted by ResolveHost.
 const (
 	EnvProd    = "prod"
 	EnvStaging = "staging"
 )
 
-// Regions accepted by ResolveHost.
 const (
 	RegionEU = "eu"
 	RegionUS = "us"
 )
 
 // HostOptions controls how the Agent Studio base URL is resolved.
-//
-// Precedence is: Override > {Region}.algolia.com (per Env) > cluster-proxy
-// fallback via ApplicationID. See ResolveHost for details.
+// Precedence: Override > {Region}.algolia.com (per Env) > cluster-proxy
+// fallback via ApplicationID.
 type HostOptions struct {
-	// Region is the app's hosting region, "eu" or "us". Case-insensitive.
-	// Required unless Override or ApplicationID is set.
-	Region string
-
-	// Env selects the deployment: "prod" (default) or "staging". Staging is
-	// only available in the EU region.
-	Env string
-
-	// ApplicationID is used as the last-resort fallback host
-	// (https://{appID}.algolia.net/agent-studio), per the Agent Studio README.
-	// Useful for legacy profiles created before Region was tracked.
+	Region        string
+	Env           string
 	ApplicationID string
-
-	// Override forces a specific base URL (without trailing slash, without
-	// the /1 path suffix). Sourced from --agent-studio-url or
-	// ALGOLIA_AGENT_STUDIO_URL. Skips all other resolution.
-	Override string
+	Override      string
 }
 
-// ErrUnknownRegion is returned when Region is set to a value other than
-// "eu" or "us" (and no Override or ApplicationID is available).
-var ErrUnknownRegion = errors.New("unknown agent studio region")
-
-// ErrStagingNotInRegion is returned when Env=staging is requested for a
-// region other than EU. The staging deployment is EU-only.
-var ErrStagingNotInRegion = errors.New("agent studio staging is only available in eu")
-
-// ErrNoHostResolvable is returned when none of Override, Region, or
-// ApplicationID provides enough information to construct a base URL.
-var ErrNoHostResolvable = errors.New(
-	"cannot resolve agent studio host: set --agent-studio-url, configure a region on the profile, or pass an application id",
+var (
+	ErrUnknownRegion      = errors.New("unknown agent studio region")
+	ErrStagingNotInRegion = errors.New("agent studio staging is only available in eu")
+	ErrNoHostResolvable   = errors.New(
+		"cannot resolve agent studio host: set --agent-studio-url, configure a region on the profile, or pass an application id",
+	)
 )
 
-// ResolveHost returns the Agent Studio base URL for the given options.
-//
-// The returned URL has no trailing slash and no /1 suffix; callers append
-// "/1/agents" etc. themselves.
+// ResolveHost returns the Agent Studio base URL for the given options
+// (no trailing slash, no /1 suffix — callers append the path).
 func ResolveHost(opts HostOptions) (string, error) {
 	if opts.Override != "" {
 		return strings.TrimRight(opts.Override, "/"), nil
@@ -110,9 +77,7 @@ func ResolveHost(opts HostOptions) (string, error) {
 		return "", fmt.Errorf("%w: %q", ErrUnknownRegion, opts.Region)
 	}
 
-	// Cluster-proxy fallback: lets the app's own cluster route to the right
-	// region. Documented in the Agent Studio README as the recommended URL
-	// pattern when a direct regional host isn't known.
+	// Cluster-proxy fallback: app's own cluster routes to the right region.
 	if appID := strings.TrimSpace(opts.ApplicationID); appID != "" {
 		return "https://" + appID + ".algolia.net/agent-studio", nil
 	}
