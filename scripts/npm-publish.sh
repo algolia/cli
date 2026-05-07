@@ -52,6 +52,7 @@ done
 # Update coordinator package versions to match and publish
 for entry in "${PLATFORMS[@]}"; do
   pkg="${entry%%:*}"
+  # Pin the optionalDependency version in the coordinator package.json to match the published platform packages
   sed -i.bak "s|\"@algolia/$pkg\": \"[^\"]*\"|\"@algolia/$pkg\": \"$VERSION\"|g" "$NPM_DIR/algolia/package.json"
   rm -f "$NPM_DIR/algolia/package.json.bak"
 done
