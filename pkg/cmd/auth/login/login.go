@@ -53,7 +53,7 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 			the authorization code for API tokens using OAuth 2.0 with PKCE.
 
 			A local HTTP server is started to receive the OAuth redirect
-			automatically — no code copy-paste required.
+			automatically - no code copy-paste required.
 
 			Use --no-browser if the browser cannot be opened automatically
 			(e.g. SSH sessions, containers). The URL will be printed for you
@@ -170,7 +170,7 @@ func selectApplication(opts *LoginOptions, apps []dashboard.Application, interac
 			fmt.Fprintf(opts.IO.Out, "  %d. %s (%s)\n", i+1, app.Name, app.ID)
 		}
 		fmt.Fprintf(opts.IO.Out, "Use --app-name to select one.\n")
-		return nil, fmt.Errorf("multiple applications found — use --app-name to select one")
+		return nil, fmt.Errorf("multiple applications found - use --app-name to select one")
 	}
 
 	appNames := make([]string, len(apps))
