@@ -62,7 +62,7 @@ To build the Algolia CLI from source, you'll need:
 1. Clone the repo: `git clone https://github.com/kai687/cli.git algolia-cli && cd algolia-cli`
 1. Run: `task build`
 
-To also produce **`algolia-beta`** (same options from `.env`, for use alongside `algolia`), run: `task build-beta`.
+To also produce **`algolia-beta`** (same options from `.env`, for use alongside `algolia`), run: `task build-beta`. That build tags the binary as **`beta`** and prints a short **stderr** reminder when you use any `algolia agents …` command.
 
 ## Support
 

@@ -51,7 +51,7 @@ go build -v ./...
 ```
 
 - `task build` runs generation first.
-- `task build-beta` runs the same steps and embeds the same defaults; only the output filename and default version string differ (`algolia-beta`, `main+beta`). Override with `VERSION=…` when needed.
+- `task build-beta` runs the same steps and embeds the same defaults; it also injects **`version.Distribution=beta`** so every `agents` leaf command prints a stderr reminder before running (including when showing `agents` subcommand help). Artifact name defaults to **`algolia-beta`** and **`VERSION`** defaults to **`main+beta`** (override with `VERSION=…`).
 - CI also checks `go build -v ./...`.
 
 ## Test Commands

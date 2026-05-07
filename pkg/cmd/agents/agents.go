@@ -47,6 +47,8 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 	}
 
+	cmd.PersistentPreRunE = betaAgentsPreRunE(f)
+
 	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(get.NewGetCmd(f, nil))
 	cmd.AddCommand(create.NewCreateCmd(f, nil))
@@ -66,6 +68,14 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(feedback.NewFeedbackCmd(f))
 	cmd.AddCommand(userdata.NewUserDataCmd(f))
 	cmd.AddCommand(internalcmd.NewInternalCmd(f))
+
+	h := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		_ = betaAgentsPreRunE(f)(nil, nil)
+		if h != nil {
+			h(c, args)
+		}
+	})
 
 	return cmd
 }
