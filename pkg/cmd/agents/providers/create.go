@@ -22,6 +22,12 @@ type CreateOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	File          string
+	Name          string
+	Provider      string
+	APIKey        string
+	APIKeyStdin   bool
+	APIKeyEnv     string
+	BaseURL       string
 	DryRun        bool
 	Show          bool
 	OutputChanged bool
@@ -35,20 +41,30 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "create -F <file>",
-		Short: "Create an LLM provider authentication from a JSON file",
+		Use: "create (-F <file> | --name <name> --provider <type> " +
+			"(--api-key <key> | --api-key-stdin | --api-key-env <var>))",
+		Short: "Create an LLM provider authentication",
 		Long: heredoc.Doc(`
-			Create a provider authentication from a JSON file describing
-			the ProviderAuthenticationCreate body (name, providerName,
-			input). The "input" subobject's shape varies per providerName:
+			Create a provider authentication from a JSON file (-F) or from
+			flags for the common case (OpenAI, Anthropic, Google GenAI, or
+			DeepSeek with a single API key).
+
+			The -F body is the ProviderAuthenticationCreate JSON (name,
+			providerName, input). The "input" subobject's shape varies per
+			providerName:
 
 			  - openai / anthropic: {apiKey, baseUrl?}
 			  - azure_openai:       {apiKey, azureEndpoint, azureDeployment, apiVersion?}
 			  - openai_compatible:  {apiKey, baseUrl, defaultModel}
 			  - google_genai / deepseek: {apiKey}
 
-			The file is sent verbatim; field-level validation is the
-			backend's job (a 4xx surfaces with the structured detail).
+			With flags, only openai, anthropic, google_genai, and deepseek
+			are supported; use -F for Azure or openai_compatible.
+
+			Do not combine -F with --name/--provider/--api-key*.
+
+			Prefer --api-key-stdin or --api-key-env over --api-key (shell
+			history may record raw flags).
 
 			Use --dry-run to preview the request without sending.
 
@@ -57,6 +73,7 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents providers create -F openai-prod.json
+			$ algolia agents providers create --name openai-prod --provider openai --api-key-env OPENAI_API_KEY
 			$ cat spec.json | algolia agents providers create -F -
 			$ algolia agents providers create -F spec.json --dry-run
 		`),
@@ -73,7 +90,12 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the provider body (use \"-\" for stdin)")
-	_ = cmd.MarkFlagRequired("file")
+	cmd.Flags().StringVar(&opts.Name, "name", "", "Provider label (shortcut; not with -F)")
+	cmd.Flags().StringVar(&opts.Provider, "provider", "", `Provider backend: openai, anthropic, google_genai, or deepseek (shortcut; not with -F)`)
+	cmd.Flags().StringVar(&opts.APIKey, "api-key", "", "API credential (shortcut; not with -F)")
+	cmd.Flags().BoolVar(&opts.APIKeyStdin, "api-key-stdin", false, "Read API key from stdin (shortcut; not with -F)")
+	cmd.Flags().StringVar(&opts.APIKeyEnv, "api-key-env", "", "Read API key from this environment variable (shortcut; not with -F)")
+	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Optional OpenAI / Anthropic-compatible base URL (shortcut; not with -F)`)
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
 	cmd.Flags().
@@ -83,14 +105,41 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
-	if err != nil {
-		return err
+	source := opts.File
+
+	var body json.RawMessage
+	var err error
+
+	switch {
+	case inlineFlagsConflictWithFile(opts.File, opts.Name, opts.Provider, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin):
+		return cmdutil.FlagErrorf("cannot combine -F/--file with --name/--provider/--api-key/--api-key-* flags")
+	case opts.File != "":
+		body, err = shared.ReadJSONFile(opts.IO.In, opts.File)
+		if err != nil {
+			return err
+		}
+	default:
+		if !createShortcutAttempted(opts.Name, opts.Provider, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin) {
+			return cmdutil.FlagErrorf(`specify a JSON body with -F, or pass --name, --provider, and an API key flag`)
+		}
+		if opts.Name == "" || opts.Provider == "" {
+			return cmdutil.FlagErrorf("when creating without -F, both --name and --provider are required")
+		}
+		key, err := resolveProvidedAPIKey(opts.IO.In, opts.APIKey, opts.APIKeyEnv, opts.APIKeyStdin)
+		if err != nil {
+			return err
+		}
+		raw, err := marshalSimpleProviderCreate(opts.Name, opts.Provider, opts.BaseURL, key)
+		if err != nil {
+			return err
+		}
+		body = raw
+		source = "(flags)"
 	}
 
 	if opts.DryRun {
 		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
-			"create_provider", "POST /1/providers", opts.File, body, nil)
+			"create_provider", "POST /1/providers", source, body, nil)
 	}
 
 	client, err := opts.AgentStudioClient()

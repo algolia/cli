@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -74,3 +76,60 @@ func Test_runCreateCmd_RejectsInvalidJSON(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
+
+func Test_runCreateCmd_Flags_PostsMinimalOpenAIBody(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"input":{"apiKey":"sk-env"},"name":"prod","providerName":"openai"}`,
+			string(bytes.TrimSpace(body)))
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{
+			"id":"p1","name":"prod","providerName":"openai",
+			"input":{"apiKey":"sk-env"},
+			"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"
+		}`))
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	t.Setenv("OPENAI_CLI_TEST_KEY", "sk-env")
+
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+
+	cmd := NewProvidersCmd(f)
+	cli := `create --name prod --provider openai --api-key-env OPENAI_CLI_TEST_KEY`
+	result, err := test.Execute(cmd, cli, out)
+	require.NoError(t, err)
+	assert.Contains(t, result.String(), `"name":"prod"`)
+}
+
+func Test_runCreateCmd_FlagsMutuallyExclusiveWithFile(t *testing.T) {
+	specPath := sharedtest.WriteTempJSON(
+		t,
+		"spec.json",
+		`{"name":"x","providerName":"openai","input":{"apiKey":"sk"}}`,
+	)
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewProvidersCmd(f)
+	cli := "create --name clash --provider openai --api-key sk -F " + specPath
+	_, err := test.Execute(cmd, cli, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "combine")
+}
+
+func Test_runCreateCmd_FlagsUnsupportedProviderUsesF(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewProvidersCmd(f)
+	_, err := test.Execute(
+		cmd,
+		`create --name azure --provider azure_openai --api-key sk-azure --dry-run`,
+		out,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "use -F")
+}
+

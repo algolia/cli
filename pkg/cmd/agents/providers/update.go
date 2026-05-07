@@ -24,6 +24,11 @@ type UpdateOptions struct {
 
 	ProviderID    string
 	File          string
+	Name          string
+	APIKey        string
+	APIKeyStdin   bool
+	APIKeyEnv     string
+	BaseURL       string
 	DryRun        bool
 	Show          bool
 	OutputChanged bool
@@ -37,15 +42,23 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "update <provider-id> -F <file>",
-		Short: "Patch an LLM provider authentication from a JSON file",
+		Use: "update <provider-id> (-F <file> | [--name <name>] " +
+			"[--api-key <key> | --api-key-stdin | --api-key-env <var>] [--base-url <url>])",
+		Short: "Patch an LLM provider authentication",
 		Long: heredoc.Doc(`
-			Patch a provider authentication. PATCH semantics: only the
-			fields in the file are updated. Pass {"name":"new-name"} to
-			rename, or {"input":{"apiKey":"sk-NEW"}} to rotate the key.
+			Patch a provider authentication. Either pass a JSON body with -F
+			(PATCH semantics: only fields in the file are updated) or use
+			flags for simple renames and key rotation.
+
+			Do not combine -F with --name/--api-key* or --base-url.
+
+			When using flags, at least one of --name, --api-key,
+			--api-key-stdin, --api-key-env, or --base-url is required.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents providers update <id> -F rename.json
+			$ algolia agents providers update <id> --name new-label
+			$ algolia agents providers update <id> --api-key-env OPENAI_API_KEY
 			$ algolia agents providers update <id> -F rotate.json --dry-run
 		`),
 		Args: validators.ExactArgs(1),
@@ -65,7 +78,11 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the provider patch body (use \"-\" for stdin)")
-	_ = cmd.MarkFlagRequired("file")
+	cmd.Flags().StringVar(&opts.Name, "name", "", "Rename the provider label (shortcut; not with -F)")
+	cmd.Flags().StringVar(&opts.APIKey, "api-key", "", "Rotate the API credential (shortcut; not with -F)")
+	cmd.Flags().BoolVar(&opts.APIKeyStdin, "api-key-stdin", false, "Read new API key from stdin (shortcut; not with -F)")
+	cmd.Flags().StringVar(&opts.APIKeyEnv, "api-key-env", "", "Read new API key from this environment variable (shortcut; not with -F)")
+	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Set or clear base URL inside "input" (shortcut; not with -F)`)
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
 	cmd.Flags().
@@ -75,16 +92,40 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 }
 
 func runUpdateCmd(opts *UpdateOptions) error {
-	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
-	if err != nil {
-		return err
+	source := opts.File
+
+	var body json.RawMessage
+	var err error
+
+	switch {
+	case updateInlineFlagsConflictWithFile(opts.File, opts.Name, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin):
+		return cmdutil.FlagErrorf("cannot combine -F/--file with --name/--api-key/--api-key-* or --base-url")
+	case opts.File != "":
+		body, err = shared.ReadJSONFile(opts.IO.In, opts.File)
+		if err != nil {
+			return err
+		}
+	default:
+		if !updateUsesInlineFlags(opts.Name, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin) {
+			return cmdutil.FlagErrorf("specify a JSON patch with -F, or at least one shortcut flag (--name, --api-key, etc.)")
+		}
+		key, setKey, err := resolveOptionalAPIKey(opts.IO.In, opts.APIKey, opts.APIKeyEnv, opts.APIKeyStdin)
+		if err != nil {
+			return err
+		}
+		raw, err := marshalSimpleProviderPatch(opts.Name, opts.BaseURL, key, setKey)
+		if err != nil {
+			return err
+		}
+		body = raw
+		source = "(flags)"
 	}
 
 	if opts.DryRun {
 		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
 			"update_provider",
 			fmt.Sprintf("PATCH /1/providers/%s", opts.ProviderID),
-			opts.File, body, map[string]any{"providerId": opts.ProviderID})
+			source, body, map[string]any{"providerId": opts.ProviderID})
 	}
 
 	client, err := opts.AgentStudioClient()

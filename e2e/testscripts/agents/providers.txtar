@@ -19,9 +19,9 @@ stderr 'requires exactly 1 argument'
 ! exec algolia agents providers delete some-id
 stderr '--confirm required'
 
-# `create` requires --file
+# `create` without -F or shortcut flags prints usage error
 ! exec algolia agents providers create
-stderr 'required flag\(s\) "file" not set'
+stderr 'specify a JSON body with -F, or pass --name, --provider, and an API key flag'
 
 # --dry-run on create previews POST to /1/providers, no network
 exec algolia agents providers create -F spec.json --dry-run
