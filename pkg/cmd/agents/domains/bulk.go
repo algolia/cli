@@ -184,15 +184,44 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 	if err != nil {
 		return err
 	}
+	ctx := ctxOrBackground(opts.Ctx)
+
+	// Backend returns 204 with no body on bulk delete, so it can't tell us
+	// which IDs actually existed. Pre-fetch the list to classify
+	// requested IDs as present-and-removed vs already-absent. One extra
+	// GET per bulk op — acceptable for an admin-facing command, and the
+	// signal saves users from "did my delete actually do anything?".
+	var present, absent int
+	if opts.IO.IsStdoutTTY() {
+		opts.IO.StartProgressIndicatorWithLabel("Inspecting allowed domains")
+		current, lerr := client.ListAllowedDomains(ctx, opts.AgentID)
+		opts.IO.StopProgressIndicator()
+		if lerr == nil {
+			existing := make(map[string]struct{}, len(current.Domains))
+			for _, d := range current.Domains {
+				existing[d.ID] = struct{}{}
+			}
+			for _, id := range opts.DomainIDs {
+				if _, ok := existing[id]; ok {
+					present++
+				} else {
+					absent++
+				}
+			}
+		}
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Bulk-deleting allowed domains")
-	err = client.BulkDeleteAllowedDomains(ctxOrBackground(opts.Ctx), opts.AgentID, opts.DomainIDs)
+	err = client.BulkDeleteAllowedDomains(ctx, opts.AgentID, opts.DomainIDs)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
 	}
-	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Deleted %d allowed domain(s)\n", cs.SuccessIcon(), len(opts.DomainIDs))
+		cs := opts.IO.ColorScheme()
+		fmt.Fprintf(opts.IO.Out,
+			"%s Bulk delete OK — requested %d (removed %d, already absent %d)\n",
+			cs.SuccessIcon(), len(opts.DomainIDs), present, absent)
 	}
 	return nil
 }

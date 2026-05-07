@@ -112,3 +112,28 @@ func Test_runBulkDeleteCmd_Live(t *testing.T) {
 	_, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 -y", out)
 	require.NoError(t, err)
 }
+
+// TTY mode triggers a pre-fetch so the success line can split requested
+// IDs into removed (present at fetch time) vs already absent. Two of the
+// requested IDs exist on the server, one does not.
+func Test_runBulkDeleteCmd_TTYReportsRemovedAndAbsent(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/agents/agent-1/allowed-domains", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		_, _ = w.Write([]byte(`{"domains":[{"id":"d1","domain":"a.test"},{"id":"d2","domain":"b.test"}]}`))
+	})
+	mux.HandleFunc("/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	f, out := test.NewFactory(true, nil, nil, "")
+	f.AgentStudioClient = newClientForServer(t, ts)
+	cmd := NewDomainsCmd(f)
+	result, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 --domain-id d2 --domain-id d-missing -y", out)
+	require.NoError(t, err)
+	got := result.String()
+	assert.Contains(t, got, "requested 3 (removed 2, already absent 1)")
+}

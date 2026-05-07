@@ -106,7 +106,7 @@ func TestRenderCompletion_StreamingEmitsNDJSON(t *testing.T) {
 		``,
 	}, "\n")))
 
-	require.NoError(t, RenderCompletion(ios, body, "text/event-stream"))
+	require.NoError(t, RenderCompletion(ios, body, "text/event-stream", false))
 
 	scanner := bufio.NewScanner(bytes.NewReader(stdout.Bytes()))
 	var lines []string
@@ -125,6 +125,78 @@ func TestRenderCompletion_BufferedCopiesVerbatim(t *testing.T) {
 	ios, _, stdout, _ := iostreams.Test()
 	body := io.NopCloser(strings.NewReader(`{"role":"assistant","content":"hi"}`))
 
-	require.NoError(t, RenderCompletion(ios, body, "application/json"))
+	require.NoError(t, RenderCompletion(ios, body, "application/json", false))
 	assert.Equal(t, `{"role":"assistant","content":"hi"}`, stdout.String())
+}
+
+// TTY mode renders text-deltas as a single inline assistant reply with
+// a trailing newline; tool calls are surfaced as dim annotations; and
+// no NDJSON-shaped {"type":...,"data":...} envelope appears.
+func TestRenderCompletion_TTYRendersInlineText(t *testing.T) {
+	ios, _, stdout, _ := iostreams.Test()
+	ios.SetStdoutTTY(true)
+	body := io.NopCloser(strings.NewReader(strings.Join([]string{
+		`data: {"type":"text-delta","delta":"hello"}`,
+		``,
+		`data: {"type":"text-delta","delta":" world"}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n")))
+
+	require.NoError(t, RenderCompletion(ios, body, "text/event-stream", false))
+	got := stdout.String()
+	assert.Contains(t, got, "hello world")
+	assert.NotContains(t, got, `"type":"text-delta"`)
+}
+
+func TestRenderCompletion_TTYAnnotatesToolCalls(t *testing.T) {
+	ios, _, stdout, _ := iostreams.Test()
+	ios.SetStdoutTTY(true)
+	body := io.NopCloser(strings.NewReader(strings.Join([]string{
+		`data: {"type":"text-delta","delta":"thinking..."}`,
+		``,
+		`data: {"type":"tool-call","toolCallId":"t1","toolName":"search"}`,
+		``,
+		`data: {"type":"tool-result","toolCallId":"t1"}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n")))
+
+	require.NoError(t, RenderCompletion(ios, body, "text/event-stream", false))
+	got := stdout.String()
+	assert.Contains(t, got, "thinking...")
+	assert.Contains(t, got, "→ tool: search")
+	assert.Contains(t, got, "← tool: search")
+}
+
+// forceNDJSON=true on a TTY suppresses the rich render — useful when
+// users want to see machine output on screen for debugging.
+func TestRenderCompletion_TTYForceNDJSON(t *testing.T) {
+	ios, _, stdout, _ := iostreams.Test()
+	ios.SetStdoutTTY(true)
+	body := io.NopCloser(strings.NewReader(strings.Join([]string{
+		`data: {"type":"text-delta","delta":"hi"}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n")))
+
+	require.NoError(t, RenderCompletion(ios, body, "text/event-stream", true))
+	got := strings.TrimSpace(stdout.String())
+	var probe map[string]any
+	require.NoError(t, json.Unmarshal([]byte(got), &probe))
+	assert.Equal(t, "text-delta", probe["type"])
+}
+
+// v4 wire format: text payload is a JSON-encoded string, not an object.
+// extractTextDelta must unmarshal the string before printing.
+func TestRenderCompletion_TTYHandlesV4Text(t *testing.T) {
+	ios, _, stdout, _ := iostreams.Test()
+	ios.SetStdoutTTY(true)
+	body := io.NopCloser(strings.NewReader(`0:"hello v4"` + "\n"))
+
+	require.NoError(t, RenderCompletion(ios, body, "text/event-stream", false))
+	assert.Contains(t, stdout.String(), "hello v4")
 }

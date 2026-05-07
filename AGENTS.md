@@ -207,7 +207,7 @@ The wire format is **not** standard SSE. Two protocols, both served as `text/eve
 
 `ParseStream` sniffs the line prefix and emits a normalized `StreamEvent{Type, Data, Raw}` for both. `compatibilityMode` is a **required** server-side query parameter — the CLI defaults to v5 and exposes `--compatibility v4|v5`.
 
-Streaming output convention: NDJSON to stdout regardless of TTY, one `{"type":"...","data":{...}}` per line. Plays well with `jq -r 'select(.type=="text-delta") | .data.delta'`. Don't fork rendering between TTY/non-TTY for streaming responses.
+Streaming output convention: TTY-attached stdout renders a flowing assistant transcript (text-deltas inline, tool calls/results as dim annotations, errors red). Non-TTY (piped, redirected) emits NDJSON, one `{"type":"...","data":{...}}` per line — stable contract for `jq -r 'select(.type=="text-delta") | .data.delta'` and similar pipelines. `--ndjson` forces NDJSON on a TTY for users who want machine output on screen. Branch lives in `shared.RenderCompletion`; if you add a new event type that should surface in the TTY render, extend `renderTTY`'s switch — leave NDJSON's verbatim pass-through alone (it's the wire-fidelity escape hatch).
 
 ### Completion runtime knobs (`agents try` / `agents run`)
 

@@ -122,21 +122,25 @@ func MarshalCompletionBody(messages, configuration json.RawMessage) (json.RawMes
 
 // RenderCompletion writes a /completions response to io.Out.
 //
-// Output rules (intentionally simple — power users compose with `jq`):
+// Output rules:
 //
-//   - Streaming responses (Content-Type: text/event-stream): one parsed
-//     event per line as compact JSON ({"type":"…","data":{…}}). Matches
-//     NDJSON conventions used elsewhere in the CLI (e.g. `events tail`).
-//     The raw `data` field preserves whatever the backend sent so the
-//     v4/v5 distinction is recoverable downstream.
 //   - Buffered responses: body is copied to stdout verbatim. The backend
 //     already returns a single JSON document; re-encoding would lose
 //     canonicalization (key order, number formatting) for no gain.
+//   - Streaming responses (Content-Type: text/event-stream):
+//   - Non-TTY (piped, redirected): NDJSON, one parsed event per line
+//     as compact JSON ({"type":"…","data":{…}}). Stable contract for
+//     pipelines (jq, scripts, log capture).
+//   - TTY + forceNDJSON=true: same NDJSON output. Opt-in escape hatch
+//     for users who want machine output even on a terminal.
+//   - TTY (default): a human-friendly transcript — assistant text is
+//     written inline as deltas arrive, tool calls/results show as
+//     dimmed annotations, errors in red. No newline-per-event noise.
 //
 // Cancellation: the caller is responsible for signal handling — pass a
 // ctx that is cancelled on SIGINT and the underlying transport will
 // tear the stream down cleanly. The body is closed before returning.
-func RenderCompletion(ios *iostreams.IOStreams, body io.ReadCloser, contentType string) error {
+func RenderCompletion(ios *iostreams.IOStreams, body io.ReadCloser, contentType string, forceNDJSON bool) error {
 	defer body.Close()
 
 	if !strings.Contains(contentType, "text/event-stream") {
@@ -144,6 +148,13 @@ func RenderCompletion(ios *iostreams.IOStreams, body io.ReadCloser, contentType 
 		return err
 	}
 
+	if ios.IsStdoutTTY() && !forceNDJSON {
+		return renderTTY(ios, body)
+	}
+	return renderNDJSON(ios, body)
+}
+
+func renderNDJSON(ios *iostreams.IOStreams, body io.Reader) error {
 	enc := json.NewEncoder(ios.Out)
 	enc.SetEscapeHTML(false)
 	return agentstudio.ParseStream(body, func(e agentstudio.StreamEvent) error {
@@ -152,4 +163,114 @@ func RenderCompletion(ios *iostreams.IOStreams, body io.ReadCloser, contentType 
 			Data json.RawMessage `json:"data"`
 		}{Type: e.Type, Data: e.Data})
 	})
+}
+
+// renderTTY draws a flowing assistant reply with inline tool annotations.
+// Skips frames that don't carry user-visible content (start, finish,
+// step boundaries, reasoning signatures, …) — the transcript is meant
+// to read like a conversation, not a wire dump.
+func renderTTY(ios *iostreams.IOStreams, body io.Reader) error {
+	cs := ios.ColorScheme()
+	var (
+		wroteText bool
+		toolNames = map[string]string{} // toolCallId/toolName → display label
+	)
+
+	flushNewlineIfNeeded := func() {
+		if wroteText {
+			fmt.Fprintln(ios.Out)
+			wroteText = false
+		}
+	}
+
+	err := agentstudio.ParseStream(body, func(e agentstudio.StreamEvent) error {
+		switch e.Type {
+		case "text", "text-delta":
+			s := extractTextDelta(e)
+			if s == "" {
+				return nil
+			}
+			fmt.Fprint(ios.Out, s)
+			wroteText = true
+
+		case "tool-call", "tool-call-streaming-start", "tool-input-available":
+			name := jsonString(e.Data, "toolName")
+			id := jsonString(e.Data, "toolCallId")
+			if id != "" && name != "" {
+				toolNames[id] = name
+			}
+			flushNewlineIfNeeded()
+			fmt.Fprintln(ios.Out, cs.Gray("→ tool: "+nonEmpty(name, "(unknown)")))
+
+		case "tool-result", "tool-output-available":
+			id := jsonString(e.Data, "toolCallId")
+			label := toolNames[id]
+			if label == "" {
+				label = nonEmpty(jsonString(e.Data, "toolName"), "(unknown)")
+			}
+			flushNewlineIfNeeded()
+			fmt.Fprintln(ios.Out, cs.Gray("← tool: "+label))
+
+		case "error":
+			flushNewlineIfNeeded()
+			fmt.Fprintln(ios.Out, cs.Red("error: ")+string(e.Data))
+
+		case "reasoning", "reasoning-signature", "redacted-reasoning":
+			// Skip — this is internal model scratchpad, surfacing it
+			// in the transcript is noisier than helpful for a CLI.
+		}
+		return nil
+	})
+
+	flushNewlineIfNeeded()
+	return err
+}
+
+// extractTextDelta pulls the user-visible string out of a text frame.
+// v4 payloads are a JSON string ("hi"), v5 carry it under "delta" or
+// (older variants) "textDelta". Returns "" on any unexpected shape.
+func extractTextDelta(e agentstudio.StreamEvent) string {
+	if len(e.Data) == 0 {
+		return ""
+	}
+	if e.Data[0] == '"' {
+		var s string
+		if err := json.Unmarshal(e.Data, &s); err == nil {
+			return s
+		}
+		return ""
+	}
+	if s := jsonString(e.Data, "delta"); s != "" {
+		return s
+	}
+	return jsonString(e.Data, "textDelta")
+}
+
+// jsonString reads a top-level string field from a JSON object. Returns
+// "" if the data isn't an object, the field is missing, or the value
+// isn't a string. Pure helper, no allocation past the obj decode.
+func jsonString(raw json.RawMessage, key string) string {
+	if len(raw) == 0 || raw[0] != '{' {
+		return ""
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return ""
+	}
+	v, ok := m[key]
+	if !ok {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(v, &s); err != nil {
+		return ""
+	}
+	return s
+}
+
+func nonEmpty(s, fallback string) string {
+	if s == "" {
+		return fallback
+	}
+	return s
 }

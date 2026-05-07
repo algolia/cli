@@ -31,6 +31,7 @@ type RunOptions struct {
 	NoMemory        bool
 	NoAnalytics     bool
 	SecureUserToken string
+	NDJSON          bool
 	DryRun          bool
 }
 
@@ -89,6 +90,8 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 	cmd.Flags().BoolVar(&opts.NoAnalytics, "no-analytics", false, "Skip Agent Studio analytics for this completion (default: analytics enabled)")
 	cmd.Flags().
 		StringVar(&opts.SecureUserToken, "secure-user-token", "", "Signed JWT scoping the conversation/memory/analytics partition to an end-user (X-Algolia-Secure-User-Token)")
+	cmd.Flags().
+		BoolVar(&opts.NDJSON, "ndjson", false, "Force NDJSON output even on a TTY (default on non-TTY; use this when you want machine-parseable events but also want to see them on screen)")
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Print the resolved request body without calling the API")
 
@@ -149,5 +152,5 @@ func runRunCmd(opts *RunOptions) error {
 	if err != nil {
 		return err
 	}
-	return shared.RenderCompletion(opts.IO, resp.Body, resp.Header.Get("Content-Type"))
+	return shared.RenderCompletion(opts.IO, resp.Body, resp.Header.Get("Content-Type"), opts.NDJSON)
 }
