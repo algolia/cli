@@ -15,9 +15,8 @@ import (
 func Test_runPurgeCmd_RefusesDateless(t *testing.T) {
 	// The most important test in this package: backend rejects dateless
 	// DELETE with 400 "At least one filter is required" — the CLI surfaces
-	// this as a flag-level error to skip the round-trip.
-	// (Anya's Phase 7 vet caught this; spec marks both date params as
-	// optional but the live backend disagrees.)
+	// this as a flag-level error to skip the round-trip. Spec marks both
+	// date params optional; the live backend still requires at least one.
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "purge agent-1 -y", out)

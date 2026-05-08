@@ -172,8 +172,7 @@ func TestRules(t *testing.T) {
 //
 // Write-CRUD live coverage (create → update → delete same id) is
 // not in here yet — testscript's framework needs an id-extraction
-// helper we haven't added. The shell smokes in tmp/qa/ exercise
-// those paths against staging.
+// helper we haven't added.
 func TestAgents(t *testing.T) {
 	runTestsInDir(t, "testscripts/agents")
 }

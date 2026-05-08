@@ -11,8 +11,7 @@
 #
 # Write-CRUD chaining (create → update → delete same id) needs an
 # id-extraction helper in the testscript framework that we don't
-# have yet — deferred to a follow-up. The shell-script smokes in
-# tmp/qa/ cover those paths today.
+# have yet — deferred to a follow-up.
 
 [!env:ALGOLIA_AGENT_STUDIO_E2E] skip 'set ALGOLIA_AGENT_STUDIO_E2E=1 to run live Agent Studio E2E'
 

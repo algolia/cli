@@ -112,8 +112,6 @@ Two distinct concepts share the name:
 
 Prefer **`--api-key-env`** or **`--api-key-stdin`** over **`--api-key`** (shell history). `--dry-run` still shows the resolved body unredacted so authors can verify what would be sent.
 
-Team sign-off and **Anya** QA checklist: [`docs/qa/arg_friendly_providers_SIGNOFF.md`](qa/arg_friendly_providers_SIGNOFF.md).
-
 ## Secret masking
 
 `apiKey` (provider input) and `value` (secret-keys) are masked to `"***"` by default. Pass `--show-secret` to render verbatim. Masking happens at the cmd layer (`pkg/cmd/agents/shared/mask.go`), not the client. `--dry-run` does **not** mask: the user authored the file and is being shown what THEY are about to send. Three asterisks, no last-N preview — goal is "impossible to copy by accident", not "allow last-4 lookup". `secretFieldNames` is the closed set; extend alphabetically when new credential fields land.

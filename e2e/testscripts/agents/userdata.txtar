@@ -18,9 +18,8 @@ exec algolia agents userdata delete tok1 --dry-run
 ! stderr .
 stdout 'Dry run: would DELETE /1/user-data/tok1'
 
-# Slash in user-token is rejected with a clear message (gateway
-# decodes %2F before routing and yields a misleading 404 — see Anya
-# QA F-1). Same guard on get + delete.
+# Slash in user-token is rejected with a clear message (gateway decodes %2F
+# before routing and yields a misleading 404). Same guard on get + delete.
 ! exec algolia agents user-data get ab/cd
 stderr 'contains "/"'
 

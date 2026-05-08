@@ -76,7 +76,7 @@ func Test_runRunCmd_RequiresAgentID(t *testing.T) {
 }
 
 func Test_runRunCmd_ForwardsCompletionFlagsToWire(t *testing.T) {
-	// One end-to-end check that all four Phase 5 flags map onto the
+	// One end-to-end check that completion runtime flags map onto the
 	// expected query params + header. Exhaustive matrix lives in
 	// api/agentstudio/completions_test.go; this exists so a regression
 	// in the cobra→opts→client wiring (forgetting one field,

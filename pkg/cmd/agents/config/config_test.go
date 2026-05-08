@@ -114,8 +114,8 @@ func Test_runSetCmd_RejectsBothFlags(t *testing.T) {
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set --retention-days 30 -F "+patchPath, out)
 	require.Error(t, err)
-	// cobra's mutually-exclusive guard fires; matches Phase 5
-	// "[input message]" assertion style.
+	// cobra's mutually-exclusive guard fires; mirrors the "[input message]"
+	// assertion style from other agents commands.
 	assert.Contains(t, err.Error(), "[file retention-days]")
 }
 

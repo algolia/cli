@@ -58,7 +58,7 @@ stderr 'requires exactly 1 argument'
 
 # Dateless purge is refused at the CLI: backend returns 400
 # "At least one filter is required" so we short-circuit instead of
-# round-tripping. (Caught during Phase 7 live vet.)
+# round-tripping.
 ! exec algolia agents conversations purge agent-1 -y
 stderr 'at least one of --start-date / --end-date is required'
 

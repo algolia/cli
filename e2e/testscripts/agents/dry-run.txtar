@@ -58,7 +58,7 @@ stdout -count=1 '"messages"'
 stderr 'unknown flag'
 
 # ---------------------------------------------------------------------
-# Phase 5 completion runtime flags wire into the dry-run preview body
+# Completion runtime flags wire into the dry-run preview body
 # without changing it (they're query params + a header, not body
 # fields). Same for `agents try` which does NOT echo them via
 # --dry-run because it has no --dry-run. The body preview must remain

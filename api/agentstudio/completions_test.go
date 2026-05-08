@@ -158,8 +158,8 @@ func readAllString(t *testing.T, r io.Reader) string {
 }
 
 func TestCompletions_QueryFlagsAndSecureUserToken(t *testing.T) {
-	// Phase 5: validates the new --no-cache / --no-memory / --no-analytics
-	// / --secure-user-token plumbing all the way through the wire.
+	// Validates --no-cache / --no-memory / --no-analytics / --secure-user-token
+	// plumbing all the way through the wire.
 	//
 	// Polarity matters here: the No*-fields are inverted from the
 	// backend's query polarity (see CompletionOptions godoc). A `false`
