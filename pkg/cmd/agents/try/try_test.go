@@ -72,12 +72,6 @@ func Test_runTryCmd_NoStreamReturnsBufferedJSON(t *testing.T) {
 	assert.Equal(t, `{"role":"assistant","content":"hi"}`, result.String())
 }
 
-// No DryRun test on purpose. The whole command IS the dry-run in the
-// conversational-ai sense (unsaved-config completion); a CLI-level
-// --dry-run would be "dry-run a dry-run" — exactly the conceptual
-// collision that motivated the rename from `agents test`. See
-// AGENTS.md → "On `--dry-run`".
-
 func Test_runTryCmd_RejectsNeitherInputNorMessage(t *testing.T) {
 	cfgPath := sharedtest.WriteTempJSON(t, "cfg.json", `{"model":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")

@@ -28,7 +28,6 @@ type memoryOptions struct {
 	agentID           string
 	body              string
 	file              string
-	dryRun            bool
 }
 
 func newMemoryCmd(
@@ -68,7 +67,6 @@ func newMemoryCmd(
 	}
 	cmd.Flags().StringVar(&opts.body, "body", "", "Inline JSON body")
 	cmd.Flags().StringVarP(&opts.file, "file", "F", "", "JSON file path (\"-\" for stdin)")
-	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "Print what would be sent without calling the API")
 	opts.printFlags.AddFlags(cmd)
 	return cmd
 }
@@ -86,15 +84,6 @@ func runMemoryCmd(opts *memoryOptions, pickCall func(*agentstudio.Client) memory
 		if err != nil {
 			return err
 		}
-	}
-
-	if opts.dryRun {
-		var pretty bytes.Buffer
-		_ = json.Indent(&pretty, body, "  ", "  ")
-		fmt.Fprintf(opts.io.Out,
-			"Dry run: would POST /1/agents/agents/%s/%s\n  body: %s\n",
-			opts.agentID, opts.verb, pretty.String())
-		return nil
 	}
 
 	client, err := opts.agentStudioClient()

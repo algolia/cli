@@ -55,33 +55,6 @@ func Test_runDeleteCmd_NonTTYWithConfirmDeletes(t *testing.T) {
 	assert.True(t, deleted.Load(), "DELETE should have been called")
 }
 
-func Test_runDeleteCmd_DryRunDoesNotDelete(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			_, _ = w.Write([]byte(agentJSON("Concierge", "published")))
-		case http.MethodDelete:
-			t.Fatal("DELETE called during --dry-run")
-		}
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-
-	cmd := NewDeleteCmd(f, nil)
-	// --dry-run alone is enough; no --confirm needed because it's non-destructive.
-	result, err := test.Execute(cmd, "abc-123 --dry-run", out)
-	require.NoError(t, err)
-
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would DELETE /1/agents/abc-123")
-	assert.Contains(t, got, "name:   Concierge")
-	assert.Contains(t, got, "status: published")
-}
-
 func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/missing", func(w http.ResponseWriter, _ *http.Request) {

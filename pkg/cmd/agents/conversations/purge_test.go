@@ -43,19 +43,6 @@ func Test_runPurgeCmd_AcceptsOpenEndedStart(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_runPurgeCmd_DryRunWithDateRange(t *testing.T) {
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewConversationsCmd(f)
-	result, err := test.Execute(cmd,
-		"purge agent-1 --start-date 2026-01-01 --end-date 2026-01-31 --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would DELETE /1/agents/agent-1/conversations?")
-	assert.Contains(t, got, "startDate=2026-01-01")
-	assert.Contains(t, got, "endDate=2026-01-31")
-	assert.Contains(t, got, "scope: between 2026-01-01 and 2026-01-31")
-}
-
 func Test_runPurgeCmd_HitsBackendWithDateRange(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/agent-1/conversations", func(w http.ResponseWriter, r *http.Request) {

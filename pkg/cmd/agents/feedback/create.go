@@ -2,8 +2,6 @@ package feedback
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -25,7 +23,6 @@ type CreateOptions struct {
 	VoteSet           bool
 	Tags              []string
 	Notes             string
-	DryRun            bool
 }
 
 func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
@@ -81,7 +78,6 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().IntVar(&opts.Vote, "vote", 0, "Vote: 0=downvote, 1=upvote (required)")
 	cmd.Flags().StringSliceVar(&opts.Tags, "tags", nil, "Optional tags (max 10, each <=50 chars)")
 	cmd.Flags().StringVar(&opts.Notes, "notes", "", "Optional free-form notes (max 1000 chars)")
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
@@ -93,11 +89,6 @@ func runCreateCmd(opts *CreateOptions) error {
 		Vote:      opts.Vote,
 		Tags:      opts.Tags,
 		Notes:     opts.Notes,
-	}
-	if opts.DryRun {
-		raw, _ := json.MarshalIndent(body, "  ", "  ")
-		fmt.Fprintf(opts.IO.Out, "Dry run: would POST /1/feedback\n  body: %s\n", string(raw))
-		return nil
 	}
 	client, err := opts.AgentStudioClient()
 	if err != nil {

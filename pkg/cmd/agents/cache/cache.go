@@ -41,7 +41,6 @@ type InvalidateOptions struct {
 
 	AgentID   string
 	Before    string
-	DryRun    bool
 	DoConfirm bool
 }
 
@@ -62,7 +61,7 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 			passed (exclusive). Date validation is server-side.
 
 			Like ` + "`agents delete`" + `, interactive use prompts and
-			non-interactive use requires --confirm. --dry-run previews.
+			non-interactive use requires --confirm.
 		`),
 		Example: heredoc.Doc(`
 			# Wipe all cached completions for an agent (interactive)
@@ -73,9 +72,6 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 
 			# Skip the prompt (required in CI)
 			$ algolia agents cache invalidate 11111111-1111-1111-1111-111111111111 -y
-
-			# Preview without sending
-			$ algolia agents cache invalidate 11111111-1111-1111-1111-111111111111 --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -85,7 +81,7 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
 
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -101,27 +97,11 @@ func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *
 	cmd.Flags().
 		StringVar(&opts.Before, "before", "", "Drop entries strictly before this date (YYYY-MM-DD, exclusive)")
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Print what would be invalidated without calling the API")
 
 	return cmd
 }
 
 func runInvalidateCmd(opts *InvalidateOptions) error {
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out, "Dry run: would DELETE /1/agents/%s/cache", opts.AgentID)
-		if opts.Before != "" {
-			fmt.Fprintf(opts.IO.Out, "?before=%s", opts.Before)
-		}
-		fmt.Fprintln(opts.IO.Out)
-		if opts.Before == "" {
-			fmt.Fprintln(opts.IO.Out, "  scope: all cached completions for this agent")
-		} else {
-			fmt.Fprintf(opts.IO.Out, "  scope: cached completions created before %s\n", opts.Before)
-		}
-		return nil
-	}
-
 	if opts.DoConfirm {
 		msg := fmt.Sprintf("Invalidate completion cache for agent %s?", opts.AgentID)
 		if opts.Before != "" {

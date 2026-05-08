@@ -18,10 +18,9 @@ func AddConfirmFlag(cmd *cobra.Command, dst *bool) {
 }
 
 // ResolveConfirm enforces the "non-interactive shells require -y" rule
-// and reports whether the runner should prompt. dryRun bypasses the
-// gate (nothing will be mutated).
-func ResolveConfirm(ios *iostreams.IOStreams, confirm, dryRun bool) (bool, error) {
-	if confirm || dryRun {
+// and reports whether the runner should prompt.
+func ResolveConfirm(ios *iostreams.IOStreams, confirm bool) (bool, error) {
+	if confirm {
 		return false, nil
 	}
 	if !ios.CanPrompt() {

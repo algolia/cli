@@ -18,7 +18,6 @@ type DeleteOptions struct {
 	Ctx               context.Context
 	AgentStudioClient func() (*agentstudio.Client, error)
 	ID                string
-	DryRun            bool
 	DoConfirm         bool
 }
 
@@ -38,7 +37,7 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			if opts.ID == "" {
 				return cmdutil.FlagErrorf("id must not be empty")
 			}
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -50,15 +49,10 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be deleted without calling the API")
 	return cmd
 }
 
 func runDeleteCmd(opts *DeleteOptions) error {
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out, "Dry run: would DELETE /1/secret-keys/%s\n", opts.ID)
-		return nil
-	}
 	if opts.DoConfirm {
 		ok, err := shared.Confirm(fmt.Sprintf("Delete secret key %s?", opts.ID))
 		if err != nil {

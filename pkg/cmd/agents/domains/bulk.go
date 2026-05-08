@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -24,7 +23,6 @@ type BulkInsertOptions struct {
 	AgentID           string
 	Domains           []string
 	File              string
-	DryRun            bool
 }
 
 func newBulkInsertCmd(f *cmdutil.Factory, runF func(*BulkInsertOptions) error) *cobra.Command {
@@ -74,18 +72,11 @@ func newBulkInsertCmd(f *cmdutil.Factory, runF func(*BulkInsertOptions) error) *
 	cmd.Flags().StringSliceVar(&opts.Domains, "domain", nil, "Domain or pattern (repeatable)")
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file containing an array of strings (use \"-\" for stdin)")
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
 
 func runBulkInsertCmd(opts *BulkInsertOptions) error {
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out,
-			"Dry run: would POST /1/agents/%s/allowed-domains/bulk\n  domains (%d): %s\n",
-			opts.AgentID, len(opts.Domains), strings.Join(opts.Domains, ", "))
-		return nil
-	}
 	client, err := opts.AgentStudioClient()
 	if err != nil {
 		return err
@@ -106,7 +97,6 @@ type BulkDeleteOptions struct {
 	AgentID           string
 	DomainIDs         []string
 	File              string
-	DryRun            bool
 	DoConfirm         bool
 }
 
@@ -144,7 +134,7 @@ func newBulkDeleteCmd(f *cmdutil.Factory, runF func(*BulkDeleteOptions) error) *
 				}
 				opts.DomainIDs = vals
 			}
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -158,17 +148,10 @@ func newBulkDeleteCmd(f *cmdutil.Factory, runF func(*BulkDeleteOptions) error) *
 	cmd.Flags().StringSliceVar(&opts.DomainIDs, "domain-id", nil, "Domain ID (repeatable)")
 	cmd.Flags().StringVarP(&opts.File, "file", "F", "", "JSON file containing an array of IDs (use \"-\" for stdin)")
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
 	return cmd
 }
 
 func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out,
-			"Dry run: would DELETE /1/agents/%s/allowed-domains/bulk\n  ids (%d): %s\n",
-			opts.AgentID, len(opts.DomainIDs), strings.Join(opts.DomainIDs, ", "))
-		return nil
-	}
 	if opts.DoConfirm {
 		ok, err := shared.Confirm(fmt.Sprintf("Delete %d allowed domain(s)?", len(opts.DomainIDs)))
 		if err != nil {

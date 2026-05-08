@@ -22,7 +22,6 @@ type CreateOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	File          string
-	DryRun        bool
 	OutputChanged bool
 }
 
@@ -42,9 +41,6 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			tools, config, …). The file is sent verbatim to the backend; the
 			CLI only validates that it's well-formed JSON. Field-level
 			validation is the backend's job and surfaces as a 422 error.
-
-			Use --dry-run to print the resolved request body without sending
-			it — useful in CI to lint generated agent specs.
 		`),
 		Example: heredoc.Doc(`
 			# Create from a file
@@ -52,9 +48,6 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			# Create from stdin
 			$ cat spec.json | algolia agents create -F -
-
-			# Preview the request without sending it
-			$ algolia agents create -F spec.json --dry-run
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -70,8 +63,6 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the agent body (use \"-\" for stdin)")
 	_ = cmd.MarkFlagRequired("file")
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -82,11 +73,6 @@ func runCreateCmd(opts *CreateOptions) error {
 	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
 	if err != nil {
 		return err
-	}
-
-	if opts.DryRun {
-		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
-			"create_agent", "POST /1/agents", opts.File, body, nil)
 	}
 
 	ctx := opts.Ctx

@@ -100,7 +100,6 @@ type SetOptions struct {
 	// via cmd.Flags().Changed, not the value itself.
 	RetentionDays int
 	File          string
-	DryRun        bool
 	OutputChanged bool
 }
 
@@ -126,12 +125,11 @@ func newSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 			                       for future fields the CLI doesn't
 			                       know about yet.
 
-			Exactly one of the two must be provided. Use --dry-run to
-			preview without sending.
+			Exactly one of the two must be provided.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents config set --retention-days 30
-			$ algolia agents config set --retention-days 90 --dry-run
+			$ algolia agents config set --retention-days 90
 			$ algolia agents config set -F retention.json
 		`),
 		Args: validators.NoArgs(),
@@ -159,22 +157,15 @@ func newSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		IntVar(&opts.RetentionDays, "retention-days", 0, "Set maxRetentionDays (0, 30, 60, or 90 — backend-validated)")
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON patch body (use \"-\" for stdin)")
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
 	opts.PrintFlags.AddFlags(cmd)
 	cmd.MarkFlagsMutuallyExclusive("retention-days", "file")
 	return cmd
 }
 
 func runSetCmd(opts *SetOptions) error {
-	body, source, err := buildBody(opts)
+	body, _, err := buildBody(opts)
 	if err != nil {
 		return err
-	}
-
-	if opts.DryRun {
-		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
-			"update_configuration", "PATCH /1/configuration", source, body, nil)
 	}
 
 	client, err := opts.AgentStudioClient()

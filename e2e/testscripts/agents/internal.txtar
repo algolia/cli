@@ -1,19 +1,12 @@
-# `agents internal` (hidden) — flag-validation + dry-run contract.
+# `agents internal` (hidden) — flag-validation.
 
-# Parent group is hidden but reachable; subcommands resolve.
 exec algolia agents internal --help
-stdout 'status'
+stdout 'Wraps x-hidden'
 stdout 'memorize'
-stdout 'ponder'
-stdout 'consolidate'
 
-# Hidden from `agents --help`: no `internal:` row in the
-# Available commands listing (the cobra command-row format is
-# "  <name>: <short>" in this repo).
 exec algolia agents --help
 ! stdout 'internal:'
 
-# memorize requires both agent-id and a body source.
 ! exec algolia agents internal memorize
 stderr 'requires exactly 1 argument'
 
@@ -25,16 +18,3 @@ stderr 'mutually exclusive'
 
 ! exec algolia agents internal memorize agent-1 --body not-json
 stderr 'not valid JSON'
-
-# Dry-run shows the doubled path and pretty-printed body.
-exec algolia agents internal memorize agent-1 --body {"providerID":"p","model":"m","messages":[]} --dry-run
-! stderr .
-stdout 'POST /1/agents/agents/agent-1/memorize'
-stdout '"providerID": "p"'
-
-# ponder + consolidate share the same surface; quick sanity dry-runs.
-exec algolia agents internal ponder agent-1 --body {"providerID":"p","model":"m","messages":[]} --dry-run
-stdout 'POST /1/agents/agents/agent-1/ponder'
-
-exec algolia agents internal consolidate agent-1 --body {"providerID":"p","model":"m","messages":[]} --dry-run
-stdout 'POST /1/agents/agents/agent-1/consolidate'

@@ -22,24 +22,6 @@ func Test_runCreateCmd_RequiresName(t *testing.T) {
 	assert.Contains(t, err.Error(), "--name is required")
 }
 
-func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/secret-keys", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-	cmd := NewKeysCmd(f)
-	result, err := test.Execute(cmd, "create --name k1 --agent-id a1 --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would POST /1/secret-keys")
-	assert.Contains(t, got, `"name": "k1"`)
-}
-
 func Test_runCreateCmd_LiveMasksValue(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/secret-keys", func(w http.ResponseWriter, r *http.Request) {

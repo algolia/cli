@@ -37,25 +37,6 @@ func Test_runMemoryCmd_RejectsInvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
 
-func Test_runMemoryCmd_DryRunSkipsAPI(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agents/agent-1/memorize", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-	cmd := NewInternalCmd(f)
-	result, err := test.Execute(cmd,
-		`memorize agent-1 --body '{"providerID":"p","model":"m","messages":[]}' --dry-run`, out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "POST /1/agents/agents/agent-1/memorize")
-	assert.Contains(t, got, `"providerID"`)
-}
-
 func Test_runMemoryCmd_LiveDoubledPath(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/agents/agent-1/ponder", func(w http.ResponseWriter, r *http.Request) {

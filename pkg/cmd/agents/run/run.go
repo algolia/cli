@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 
@@ -23,7 +22,6 @@ type RunOptions struct {
 	AgentStudioClient func() (*agentstudio.Client, error)
 
 	AgentID string
-	DryRun  bool
 	shared.CompletionInputs
 }
 
@@ -51,8 +49,6 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 			$ cat messages.json | algolia agents run <id> -i -
 
 			$ algolia agents run <id> -m "hi" --no-stream
-
-			$ algolia agents run <id> -m "hi" --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -69,8 +65,6 @@ func NewRunCmd(f *cmdutil.Factory, runF func(*RunOptions) error) *cobra.Command 
 	}
 
 	shared.RegisterCompletionFlags(cmd, &opts.CompletionInputs)
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Print the resolved request body without calling the API")
 
 	return cmd
 }
@@ -93,12 +87,6 @@ func runRunCmd(opts *RunOptions) error {
 	mode, err := shared.NormalizeCompatibility(opts.Compatibility)
 	if err != nil {
 		return err
-	}
-
-	if opts.DryRun {
-		return shared.PrintDryRun(opts.IO, cmdutil.NewPrintFlags(), false,
-			"run_completion", fmt.Sprintf("POST /1/agents/%s/completions", opts.AgentID),
-			"", body, map[string]any{"agentId": opts.AgentID})
 	}
 
 	client, err := opts.AgentStudioClient()

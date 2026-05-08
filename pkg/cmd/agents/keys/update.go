@@ -2,8 +2,6 @@ package keys
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -25,7 +23,6 @@ type UpdateOptions struct {
 	AgentIDs          []string
 	NameSet           bool
 	AgentIDsSet       bool
-	DryRun            bool
 	ShowSecret        bool
 }
 
@@ -65,7 +62,6 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	cmd.Flags().StringVar(&opts.Name, "name", "", "New name (max 128)")
 	cmd.Flags().
 		StringSliceVar(&opts.AgentIDs, "agent-id", nil, "Replace the agent allowlist (repeatable; pass --agent-id=\"\" to clear)")
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be sent without calling the API")
 	cmd.Flags().
 		BoolVar(&opts.ShowSecret, "show-secret", false, "Reveal raw key value in the response (default redacted as ***)")
 	opts.PrintFlags.AddFlags(cmd)
@@ -86,11 +82,6 @@ func runUpdateCmd(opts *UpdateOptions) error {
 			}
 		}
 		patch.AgentIDs = &ids
-	}
-	if opts.DryRun {
-		raw, _ := json.MarshalIndent(patch, "  ", "  ")
-		fmt.Fprintf(opts.IO.Out, "Dry run: would PATCH /1/secret-keys/%s\n  body: %s\n", opts.ID, string(raw))
-		return nil
 	}
 	client, err := opts.AgentStudioClient()
 	if err != nil {

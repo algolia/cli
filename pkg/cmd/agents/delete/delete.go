@@ -22,7 +22,6 @@ type DeleteOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	AgentID   string
-	DryRun    bool
 	DoConfirm bool
 }
 
@@ -40,8 +39,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		Short: "Delete an Agent Studio agent",
 		Long: heredoc.Doc(`
 			Soft-delete an Agent Studio agent. Recovery is a backend ops
-			concern; treat as terminal from the CLI. --dry-run fetches
-			the target and previews without deleting.
+			concern; treat as terminal from the CLI.
 		`),
 		Example: heredoc.Doc(`
 			# Interactive delete (asks for confirmation)
@@ -49,9 +47,6 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 			# Skip the prompt (required in non-interactive shells / CI)
 			$ algolia agents delete 11111111-1111-1111-1111-111111111111 -y
-
-			# Preview without deleting
-			$ algolia agents delete 11111111-1111-1111-1111-111111111111 --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -61,7 +56,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 				return cmdutil.FlagErrorf("agent-id must not be empty")
 			}
 
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -75,8 +70,6 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Fetch and preview the agent without deleting it")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -92,18 +85,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	ctx := shared.OrBackground(opts.Ctx)
 
-	// Pre-fetch so 404 surfaces cleanly and the prompt/dry-run can
+	// Pre-fetch so 404 surfaces cleanly and the prompt can
 	// show name+status for sanity-check.
 	agent, err := client.GetAgent(ctx, opts.AgentID)
 	if err != nil {
 		return err
-	}
-
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out, "Dry run: would DELETE /1/agents/%s\n", opts.AgentID)
-		fmt.Fprintf(opts.IO.Out, "  name:   %s\n", agent.Name)
-		fmt.Fprintf(opts.IO.Out, "  status: %s\n", agent.Status)
-		return nil
 	}
 
 	if opts.DoConfirm {

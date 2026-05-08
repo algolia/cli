@@ -1,11 +1,7 @@
-# `agents keys` — flag-validation + dry-run contract.
+# `agents keys` — flag-validation.
 
 exec algolia agents keys
-stdout 'list'
-stdout 'get'
-stdout 'create'
-stdout 'update'
-stdout 'delete'
+stdout 'secret keys'
 
 ! exec algolia agents keys get
 stderr 'requires exactly 1 argument'
@@ -13,23 +9,8 @@ stderr 'requires exactly 1 argument'
 ! exec algolia agents keys create
 stderr '--name is required'
 
-exec algolia agents keys create --name k1 --agent-id a1 --dry-run
-! stderr .
-stdout 'Dry run: would POST /1/secret-keys'
-stdout '"name": "k1"'
-
 ! exec algolia agents keys update id1
 stderr 'nothing to update'
 
-exec algolia agents keys update id1 --name renamed --dry-run
-stdout 'PATCH /1/secret-keys/id1'
-stdout '"name": "renamed"'
-
-exec algolia agents keys update id1 --agent-id "" --dry-run
-stdout '"agentIds": \[\]'
-
 ! exec algolia agents keys delete id1
 stderr '--confirm required'
-
-exec algolia agents keys delete id1 --dry-run
-stdout 'Dry run: would DELETE /1/secret-keys/id1'

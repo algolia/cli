@@ -49,25 +49,6 @@ func Test_runRunCmd_StreamingHappyPath(t *testing.T) {
 	assert.Equal(t, "text-delta", event["type"])
 }
 
-func Test_runRunCmd_DryRunIncludesAgentID(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123/completions", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-
-	cmd := NewRunCmd(f, nil)
-	result, err := test.Execute(cmd, "abc-123 -m hi --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would POST /1/agents/abc-123/completions")
-	assert.Contains(t, got, `"content": "hi"`)
-}
-
 func Test_runRunCmd_RequiresAgentID(t *testing.T) {
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewRunCmd(f, nil)

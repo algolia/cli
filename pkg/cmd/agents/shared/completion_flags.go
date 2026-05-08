@@ -7,7 +7,7 @@ import "github.com/spf13/cobra"
 // RegisterCompletionFlags to wire them onto the cobra command.
 //
 // Owners of the surrounding command still register their own
-// `--config` / `--dry-run` / agent-id flags as usual.
+// `--config` (`try`) or positional agent-id (`run`) as usual.
 type CompletionInputs struct {
 	InputFile       string
 	Message         string

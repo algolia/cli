@@ -41,38 +41,11 @@ func Test_runCreateCmd_RoundTripsBody(t *testing.T) {
 	assert.Contains(t, result.String(), `"apiKey":"***"`)
 }
 
-func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	specPath := sharedtest.WriteTempJSON(
-		t,
-		"spec.json",
-		`{"name":"x","providerName":"openai","input":{"apiKey":"sk-x"}}`,
-	)
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-
-	cmd := NewProvidersCmd(f)
-	result, err := test.Execute(cmd, "create -F "+specPath+" --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would POST /1/providers")
-	// Dry-run shows the unmodified body — masking does NOT apply to
-	// dry-run because the user authored the file and is being shown
-	// what THEY are about to send.
-	assert.Contains(t, got, "sk-x")
-}
-
 func Test_runCreateCmd_RejectsInvalidJSON(t *testing.T) {
 	specPath := sharedtest.WriteTempJSON(t, "spec.json", `{not json`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewProvidersCmd(f)
-	_, err := test.Execute(cmd, "create -F "+specPath+" --dry-run", out)
+	_, err := test.Execute(cmd, "create -F "+specPath, out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
@@ -126,7 +99,7 @@ func Test_runCreateCmd_FlagsUnsupportedProviderUsesF(t *testing.T) {
 	cmd := NewProvidersCmd(f)
 	_, err := test.Execute(
 		cmd,
-		`create --name azure --provider azure_openai --api-key sk-azure --dry-run`,
+		`create --name azure --provider azure_openai --api-key sk-azure`,
 		out,
 	)
 	require.Error(t, err)

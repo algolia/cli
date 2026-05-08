@@ -22,7 +22,6 @@ type DeleteOptions struct {
 
 	AgentID        string
 	ConversationID string
-	DryRun         bool
 	DoConfirm      bool
 }
 
@@ -45,12 +44,11 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			and "purge" when you want to clean a range.
 
 			Like "agents delete", interactive use prompts to confirm and
-			non-interactive use requires --confirm. --dry-run previews.
+			non-interactive use requires --confirm.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents conversations delete <agent-id> <conv-id>
 			$ algolia agents conversations delete <agent-id> <conv-id> -y
-			$ algolia agents conversations delete <agent-id> <conv-id> --dry-run
 		`),
 		Args: validators.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -63,7 +61,7 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			if opts.ConversationID == "" {
 				return cmdutil.FlagErrorf("conversation-id must not be empty")
 			}
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -76,19 +74,10 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Print what would be deleted without calling the API")
 	return cmd
 }
 
 func runDeleteCmd(opts *DeleteOptions) error {
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out,
-			"Dry run: would DELETE /1/agents/%s/conversations/%s\n",
-			opts.AgentID, opts.ConversationID)
-		return nil
-	}
-
 	if opts.DoConfirm {
 		ok, err := shared.Confirm(
 			fmt.Sprintf("Delete conversation %s on agent %s?", opts.ConversationID, opts.AgentID),

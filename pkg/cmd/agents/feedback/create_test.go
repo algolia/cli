@@ -36,24 +36,6 @@ func Test_runCreateCmd_RequiresAllRequired(t *testing.T) {
 	}
 }
 
-func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/feedback", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-	cmd := NewFeedbackCmd(f)
-	result, err := test.Execute(cmd, "create --agent-id a --message-id m --vote 1 --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would POST /1/feedback")
-	assert.Contains(t, got, `"vote": 1`)
-}
-
 func Test_runCreateCmd_TooManyTags(t *testing.T) {
 	tags := strings.Repeat("x,", 11)
 	tags = strings.TrimSuffix(tags, ",")

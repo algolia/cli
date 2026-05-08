@@ -38,15 +38,6 @@ func Test_runUpdateCmd_HitsCorrectPath(t *testing.T) {
 	assert.NotContains(t, result.String(), "sk-XYZ")
 }
 
-func Test_runUpdateCmd_DryRunIncludesProviderID(t *testing.T) {
-	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"name":"renamed"}`)
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewProvidersCmd(f)
-	result, err := test.Execute(cmd, "update p1 -F "+patchPath+" --dry-run", out)
-	require.NoError(t, err)
-	assert.Contains(t, result.String(), "Dry run: would PATCH /1/providers/p1")
-}
-
 func Test_runUpdateCmd_Flags_PatchesRename(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/providers/p9", func(w http.ResponseWriter, r *http.Request) {

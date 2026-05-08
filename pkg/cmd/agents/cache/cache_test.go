@@ -50,38 +50,6 @@ func Test_runInvalidateCmd_WithBefore_PassesQueryParam(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_runInvalidateCmd_DryRunSkipsAPI(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123/cache", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-
-	cmd := NewCacheCmd(f)
-	result, err := test.Execute(cmd, "invalidate abc-123 --before 2026-01-15 --dry-run", out)
-	require.NoError(t, err)
-
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would DELETE /1/agents/abc-123/cache?before=2026-01-15")
-	assert.Contains(t, got, "scope: cached completions created before 2026-01-15")
-}
-
-func Test_runInvalidateCmd_DryRunNoBefore_DescribesAllScope(t *testing.T) {
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewCacheCmd(f)
-	result, err := test.Execute(cmd, "invalidate abc-123 --dry-run", out)
-	require.NoError(t, err)
-
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would DELETE /1/agents/abc-123/cache")
-	assert.NotContains(t, got, "?before=")
-	assert.Contains(t, got, "all cached completions for this agent")
-}
-
 func Test_runInvalidateCmd_RequiresAgentID(t *testing.T) {
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewCacheCmd(f)

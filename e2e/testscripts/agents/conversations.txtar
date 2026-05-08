@@ -1,18 +1,11 @@
-# `agents conversations` — flag-validation + dry-run + guardrails.
-# None of these hit the network: failing cases trip cobra/our own
-# validators before client construction; passing cases use --dry-run.
+# `agents conversations` — flag-validation + guardrails.
+# None of these hit the network: failing cases trip cobra / CLI validators.
 #
 # Ungated: runs whenever the standard ALGOLIA_APPLICATION_ID +
 # ALGOLIA_API_KEY are present.
 
-# `conversations` parent without verb prints help (cobra default for
-# groups with no Run; exits 0).
 exec algolia agents conversations
-stdout 'list'
-stdout 'get'
-stdout 'delete'
-stdout 'purge'
-stdout 'export'
+stdout 'conversations persisted'
 
 # ---------- list ----------
 
@@ -45,11 +38,6 @@ stderr 'requires exactly 2 argument'
 ! exec algolia agents conversations delete agent-1 c1
 stderr '--confirm required'
 
-# --dry-run bypasses the confirm requirement and prints the would-be call
-exec algolia agents conversations delete agent-1 c1 --dry-run
-! stderr .
-stdout 'Dry run: would DELETE /1/agents/agent-1/conversations/c1'
-
 # ---------- purge ----------
 
 # Requires <agent-id>
@@ -65,20 +53,6 @@ stderr 'at least one of --start-date / --end-date is required'
 # Non-TTY without --confirm is refused (even when scope is set)
 ! exec algolia agents conversations purge agent-1 --start-date 2026-01-01
 stderr '--confirm required'
-
-# Dry-run with date range previews URL with query string + scope label
-exec algolia agents conversations purge agent-1 --start-date 2026-01-01 --end-date 2026-01-31 --dry-run
-! stderr .
-stdout 'Dry run: would DELETE /1/agents/agent-1/conversations\?'
-stdout 'startDate=2026-01-01'
-stdout 'endDate=2026-01-31'
-stdout 'scope: between 2026-01-01 and 2026-01-31'
-
-# Dry-run with open-ended start (substitute for "wipe all")
-exec algolia agents conversations purge agent-1 --start-date 1970-01-01 --dry-run
-! stderr .
-stdout 'startDate=1970-01-01'
-stdout 'scope: from 1970-01-01 onwards'
 
 # ---------- export ----------
 

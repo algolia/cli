@@ -22,6 +22,88 @@ algolia agents
 
 Backend source of truth: `github.com/algolia/conversational-ai`.
 
+## How to use
+
+The CLI is a thin client over the Agent Studio HTTP API. **Exploration and help** start with `algolia agents --help` and `algolia agents <subcommand> --help` (flag names, examples, and defaults are maintained there).
+
+### 1. Credentials and host
+
+Use the **same application ID and API key** as for other Algolia APIs (CLI **profile** or **`ALGOLIA_APPLICATION_ID`** / **`ALGOLIA_API_KEY`**). The key must be allowed to call Agent Studio for your app (feature access is enforced server-side).
+
+If requests hit the wrong cluster, set **`ALGOLIA_AGENT_STUDIO_URL`** or profile **`agent_studio_url`** (see **Auth + host resolution** below).
+
+### 2. Read-only orientation
+
+Inspect existing resources before you mutate anything:
+
+```bash
+algolia agents list
+algolia agents get <agent-id> --output json
+algolia agents providers list
+```
+
+**Agent IDs and provider IDs** are opaque strings (often UUID-shaped). **`publish`**, **`run`**, and most verbs that address a single agent expect **`agent-id`**, not the human-readable `name` field inside the agent body.
+
+### 3. Providers (LLM backing)
+
+Either pass **full JSON** with **`-F`** (all backend provider types — Azure, `openai_compatible`, …) or use **shortcut flags** for the common OpenAI-compatible single-key vendors — see **Providers: `-F` vs flags** below.
+
+```bash
+algolia agents providers create --name prod-openai --provider openai \
+  --api-key-env OPENAI_API_KEY
+```
+
+Note the **`providerId`** returned; you embed it when authoring agent JSON (`providerId` in the create body).
+
+### 4. Agents: JSON-first create/update
+
+There is **no interactive wizard** or template subcommands — **create**/**update** consume **`-F`** files the backend validates:
+
+```bash
+algolia agents create -F agent.json
+algolia agents update <agent-id> -F patch.json
+```
+
+Author JSON by aligning with **`agents get`** from an agent tuned in Dashboard, from your OpenAPI/SDK examples, or from internal integration docs — the schemas move with the backend.
+
+### 5. Completions: try vs run
+
+**`try`** sends an **unsaved** configuration file to **`/1/agents/test/completions`** (nothing persisted in the agents list):
+
+```bash
+algolia agents try -c draft.json --message "Smoke test message"
+algolia agents try -c draft.json -m hi --no-stream
+```
+
+**`run`** targets a **persisted agent** **`agent-id`** and is the shape production usage follows:
+
+```bash
+algolia agents run <agent-id> -m "Hello"
+```
+
+Streaming, compatibility mode, cache/memory/analytics knobs, and secure-user token behave the same on both commands — see **Completion runtime knobs** below and **`--help`** on each command.
+
+### 6. Lifecycle and cache
+
+Publishing makes an agent reachable for **`run`**-style completions the way downstream apps expect:
+
+```bash
+algolia agents publish <agent-id>
+algolia agents unpublish <agent-id>
+```
+
+Clear cached completions after config changes — non-interactive shells need **`-y` / `--confirm`** (same rule as other destructive `agents` verbs):
+
+```bash
+algolia agents cache invalidate <agent-id> -y
+```
+
+Destructive verbs (**`agents delete`**, **`conversations delete|purge`**, **`providers delete`**, …) require **`-y` / `--confirm`** in scripts; interactive sessions get a prompt unless you pass **`-y`**.
+
+### 7. Output for scripts
+
+Prefer **`--output json`** when you automate parsing (**`jq`**, CI). **`try`** / **`run`** on a non-TTY default to NDJSON streams; **`--ndjson`** forces stream JSON on an interactive terminal. Masked secrets (**`providers`**, **`keys`**) omit raw credentials unless **`--show-secret`** — see **Secret masking** below.
+
 ## Layout
 
 Both layers mirror the OpenAPI spec's tag boundaries — one source file (and one test file) per API tag.
@@ -90,14 +172,11 @@ Output rendering (`pkg/cmd/agents/shared/completion.go`):
 
 `No*` polarity is inverted from the wire because the backend defaults all three to true. `memory` in particular has an `anyOf [{const false}, {type null}]` schema — `memory=true` would 422. Wire form omits the param when `No*` is false, sends `<param>=false` when true.
 
-## On `--dry-run`
+## Ephemeral completions (`agents try`)
 
-Two distinct concepts share the name:
+Backend route **`/1/agents/test/completions`** runs a completion from an **unsaved** configuration (`agents try -c`). Nothing is written to the agents list—use it to iterate on prompts and tools before **`create` / `publish`**.
 
-- **CLI `--dry-run`** on `agents create / update / delete / run`: validates the request, prints what would be sent, makes no HTTP call. Two output modes (human / structured) gated on whether `--output` was explicitly set — gating on `PrintFlags.HasStructuredOutput()` would let `WithDefaultOutput("json")` from the success path silently steal the human dry-run output.
-- **Conversational-ai "dry-run"** = a real completion against a configuration that hasn't been persisted. Backend exposes this via the `agent_id="test"` route. CLI surfaces it as `agents try`.
-
-`agents try` therefore has no `--dry-run` flag — the whole command IS the dry-run. To preview the wire body without calling the backend, marshal `{"messages":[...], "configuration":{...}}` yourself. The dry-run e2e regression-asserts that `agents try --dry-run` is rejected.
+To inspect the JSON you would POST to **`run`**, assemble `{"messages":[...]}` locally (the persisted agent supplies configuration server-side for real agent ids).
 
 ## Providers: `-F` vs flags
 
@@ -110,11 +189,11 @@ Two distinct concepts share the name:
 
 `agents providers update <id>` accepts **`-F`** (patch JSON) **or** shortcut flags: any non-empty combination of `--name`, `--api-key` / `--api-key-stdin` / `--api-key-env`, and `--base-url`, with the same exclusivity rule against `-F`.
 
-Prefer **`--api-key-env`** or **`--api-key-stdin`** over **`--api-key`** (shell history). `--dry-run` still shows the resolved body unredacted so authors can verify what would be sent.
+Prefer **`--api-key-env`** or **`--api-key-stdin`** over **`--api-key`** (shell history).
 
 ## Secret masking
 
-`apiKey` (provider input) and `value` (secret-keys) are masked to `"***"` by default. Pass `--show-secret` to render verbatim. Masking happens at the cmd layer (`pkg/cmd/agents/shared/mask.go`), not the client. `--dry-run` does **not** mask: the user authored the file and is being shown what THEY are about to send. Three asterisks, no last-N preview — goal is "impossible to copy by accident", not "allow last-4 lookup". `secretFieldNames` is the closed set; extend alphabetically when new credential fields land.
+`apiKey` (provider input) and `value` (secret-keys) are masked to `"***"` by default. Pass **`--show-secret`** to render verbatim. Masking happens at the cmd layer (`pkg/cmd/agents/shared/mask.go`), not the client. Three asterisks, no last-N preview — goal is "impossible to copy by accident", not "allow last-4 lookup". `secretFieldNames` is the closed set; extend alphabetically when new credential fields land.
 
 ## Backend / spec gotchas
 
@@ -133,11 +212,11 @@ Same HTTP method, two orders of magnitude difference in blast radius:
 - `delete <agent-id> <conv-id>` — surgical, one conversation.
 - `purge <agent-id> --start-date|--end-date` — bulk, every conversation in the date range.
 
-Both flow through the same `--confirm` / non-TTY-refuses-without-it rule as `agents delete`. `--dry-run` previews the URL and labels the scope (`scope: between A and B`, `scope: from A onwards`, …).
+Both flow through the same **`--confirm`** / non-TTY-refuses-without-it rule as `agents delete`.
 
 ## Telemetry
 
-Single `"Command Invoked"` event from root, with `{command: cmd.CommandPath(), flags: [<changed flag names>]}`. Already attributes per-verb and surfaces `--dry-run`. Don't add bespoke per-verb telemetry — diverging from convention for one feature would be a mistake. Outcome (success/error) is a separate, all-commands refactor.
+Single `"Command Invoked"` event from root, with `{command: cmd.CommandPath(), flags: [<changed flag names>]}`. Don't add bespoke per-verb telemetry — diverging from convention for one feature would be a mistake. Outcome (success/error) is a separate, all-commands refactor.
 
 ## Shared helpers
 
@@ -146,8 +225,7 @@ Single `"Command Invoked"` event from root, with `{command: cmd.CommandPath(), f
 - `BuildMessages`, `ReadJSONFile`, `MarshalCompletionBody` — completion body assembly.
 - `RenderCompletion`, `renderTTY`, `renderNDJSON` — streaming output.
 - `NormalizeCompatibility` — `v4`/`v5` aliases → wire form.
-- `PrintDryRun` — shared `--dry-run` formatter.
 - `MaskInput`, `MaskString` — secret redaction.
-- `SourceLabel`, `TrimUTF8BOM`, `ReadJSONBody` — file/stdin plumbing.
+- `SourceLabel`, `TrimUTF8BOM` — file/stdin plumbing.
 
 Extract on second use, not pre-emptively.

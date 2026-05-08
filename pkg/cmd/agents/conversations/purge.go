@@ -3,7 +3,6 @@ package conversations
 import (
 	"context"
 	"fmt"
-	"net/url"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -24,7 +23,6 @@ type PurgeOptions struct {
 	AgentID   string
 	StartDate string
 	EndDate   string
-	DryRun    bool
 	DoConfirm bool
 }
 
@@ -55,8 +53,7 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 			validates and 422s on bad input).
 
 			Like "agents delete", interactive use prompts and
-			non-interactive use requires --confirm. --dry-run previews
-			the URL and bypasses both.
+			non-interactive use requires --confirm.
 		`),
 		Example: heredoc.Doc(`
 			# Purge a specific month
@@ -64,9 +61,6 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 
 			# Purge everything from a given date onwards (open-ended)
 			$ algolia agents conversations purge <agent-id> --start-date 2026-01-01 -y
-
-			# Preview without sending
-			$ algolia agents conversations purge <agent-id> --start-date 2026-01-01 --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,7 +75,7 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 						"(backend rejects dateless purge with 400 \"At least one filter is required\")",
 				)
 			}
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -96,29 +90,11 @@ func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Comm
 	cmd.Flags().StringVar(&opts.StartDate, "start-date", "", "Purge conversations >= date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&opts.EndDate, "end-date", "", "Purge conversations <= date (YYYY-MM-DD)")
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be purged without calling the API")
 	return cmd
 }
 
 func runPurgeCmd(opts *PurgeOptions) error {
 	scope := purgeScope(opts.StartDate, opts.EndDate)
-
-	if opts.DryRun {
-		q := url.Values{}
-		if opts.StartDate != "" {
-			q.Set("startDate", opts.StartDate)
-		}
-		if opts.EndDate != "" {
-			q.Set("endDate", opts.EndDate)
-		}
-		path := fmt.Sprintf("/1/agents/%s/conversations", opts.AgentID)
-		if encoded := q.Encode(); encoded != "" {
-			path += "?" + encoded
-		}
-		fmt.Fprintf(opts.IO.Out, "Dry run: would DELETE %s\n", path)
-		fmt.Fprintf(opts.IO.Out, "  scope: %s\n", scope)
-		return nil
-	}
 
 	if opts.DoConfirm {
 		ok, err := shared.Confirm(

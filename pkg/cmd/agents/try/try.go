@@ -15,8 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-// TryOptions configures `algolia agents try`. No DryRun field — the
-// command IS the dry-run (see docs/agents.md "On --dry-run").
+// TryOptions configures `algolia agents try`.
 type TryOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
@@ -50,8 +49,6 @@ func NewTryCmd(f *cmdutil.Factory, runF func(*TryOptions) error) *cobra.Command 
 			NDJSON on a TTY, or --no-stream for a single buffered
 			JSON response.
 
-			There is no --dry-run flag — the whole command is the
-			dry-run. See docs/agents.md.
 		`),
 		Example: heredoc.Doc(`
 			# Quick one-liner with a config file

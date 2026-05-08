@@ -39,16 +39,6 @@ func Test_runBulkInsertCmd_RequiresInput(t *testing.T) {
 	assert.Contains(t, err.Error(), "provide at least one")
 }
 
-func Test_runBulkInsertCmd_DryRunListsDomains(t *testing.T) {
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewDomainsCmd(f)
-	result, err := test.Execute(cmd, "bulk-insert agent-1 --domain a --domain b --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would POST /1/agents/agent-1/allowed-domains/bulk")
-	assert.Contains(t, got, "domains (2): a, b")
-}
-
 func Test_runBulkInsertCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
@@ -83,16 +73,6 @@ func Test_runBulkDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 	_, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1", out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--confirm required")
-}
-
-func Test_runBulkDeleteCmd_DryRun(t *testing.T) {
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewDomainsCmd(f)
-	result, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 --domain-id d2 --dry-run", out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would DELETE /1/agents/agent-1/allowed-domains/bulk")
-	assert.Contains(t, got, "ids (2): d1, d2")
 }
 
 func Test_runBulkDeleteCmd_Live(t *testing.T) {

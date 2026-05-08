@@ -3,7 +3,6 @@ package providers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -29,7 +28,6 @@ type UpdateOptions struct {
 	APIKeyStdin   bool
 	APIKeyEnv     string
 	BaseURL       string
-	DryRun        bool
 	Show          bool
 	OutputChanged bool
 }
@@ -59,7 +57,6 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 			$ algolia agents providers update <id> -F rename.json
 			$ algolia agents providers update <id> --name new-label
 			$ algolia agents providers update <id> --api-key-env OPENAI_API_KEY
-			$ algolia agents providers update <id> -F rotate.json --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -84,16 +81,12 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	cmd.Flags().StringVar(&opts.APIKeyEnv, "api-key-env", "", "Read new API key from this environment variable (shortcut; not with -F)")
 	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Set or clear base URL inside "input" (shortcut; not with -F)`)
 	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
-	cmd.Flags().
 		BoolVar(&opts.Show, "show-secret", false, "Render secret fields verbatim in the success response")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
 
 func runUpdateCmd(opts *UpdateOptions) error {
-	source := opts.File
-
 	var body json.RawMessage
 	var err error
 
@@ -118,14 +111,6 @@ func runUpdateCmd(opts *UpdateOptions) error {
 			return err
 		}
 		body = raw
-		source = "(flags)"
-	}
-
-	if opts.DryRun {
-		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
-			"update_provider",
-			fmt.Sprintf("PATCH /1/providers/%s", opts.ProviderID),
-			source, body, map[string]any{"providerId": opts.ProviderID})
 	}
 
 	client, err := opts.AgentStudioClient()

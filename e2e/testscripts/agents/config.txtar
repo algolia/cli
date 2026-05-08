@@ -1,12 +1,9 @@
-# `agents config` — flag-validation + dry-run contract.
-# No network: dry-run on `set`, and a help-output check on the parent.
+# `agents config` — flag-validation (no network for passing runs here).
 #
 # Ungated.
 
-# `config` parent without verb prints help.
 exec algolia agents config
-stdout 'get'
-stdout 'set'
+stdout 'Agent Studio configuration'
 
 # `set` without flags is rejected (one of --retention-days or --file required).
 ! exec algolia agents config set
@@ -15,24 +12,6 @@ stderr 'one of --retention-days or --file is required'
 # `set` with both flags is mutually exclusive (cobra-enforced).
 ! exec algolia agents config set --retention-days 30 -F patch.json
 stderr '\[file retention-days\]'
-
-# --dry-run with --retention-days previews PATCH /1/configuration with
-# the constructed body. Source label "--retention-days" appears in the
-# header parenthetical (`(N bytes from --retention-days)`) — same
-# format the file-source path uses.
-exec algolia agents config set --retention-days 30 --dry-run
-! stderr .
-stdout 'Dry run: would PATCH /1/configuration'
-stdout '"maxRetentionDays": 30'
-stdout 'from --retention-days'
-
-# --dry-run with -F file previews the verbatim body (lets users use
-# fields the CLI doesn't know about yet).
-exec algolia agents config set -F patch.json --dry-run
-! stderr .
-stdout 'Dry run: would PATCH /1/configuration'
-stdout '"maxRetentionDays": 90'
-stdout '"futureField": "x"'
 
 -- patch.json --
 {

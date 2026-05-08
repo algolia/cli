@@ -20,23 +20,6 @@ func Test_runCreateCmd_RequiresDomain(t *testing.T) {
 	assert.Contains(t, err.Error(), "--domain is required")
 }
 
-func Test_runCreateCmd_DryRunSkipsAPI(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains", func(_ http.ResponseWriter, _ *http.Request) {
-		t.Fatal("backend was called during --dry-run")
-	})
-	ts := httptest.NewServer(mux)
-	t.Cleanup(ts.Close)
-
-	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
-	cmd := NewDomainsCmd(f)
-	result, err := test.Execute(cmd, "create agent-1 --domain https://x.test --dry-run", out)
-	require.NoError(t, err)
-	assert.Contains(t, result.String(), "Dry run: would POST /1/agents/agent-1/allowed-domains")
-	assert.Contains(t, result.String(), `"https://x.test"`)
-}
-
 func Test_runCreateCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/agents/agent-1/allowed-domains", func(w http.ResponseWriter, r *http.Request) {

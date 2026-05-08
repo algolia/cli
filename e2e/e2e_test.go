@@ -163,9 +163,8 @@ func TestRules(t *testing.T) {
 // TestAgents tests `algolia agents` commands.
 //
 // Two-tier coverage:
-//   - dry-run.txtar: ungated, runs with the standard e2e env. Pure
-//     CLI logic — no network. Asserts the dry-run body shape and
-//     flag-validation guards stay stable.
+//   - Ungated scripts (`*.txtar` except list): CLI validation helpers
+//     that exercise `algolia agents` cobra validators without network calls.
 //   - list.txtar: gated on ALGOLIA_AGENT_STUDIO_E2E=1. Read-only
 //     smoke against the live backend. Confirms the wire format we
 //     parse against still matches what the deployed service emits.

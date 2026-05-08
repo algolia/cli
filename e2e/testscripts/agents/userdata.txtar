@@ -1,8 +1,7 @@
-# `agents user-data` — flag-validation + dry-run contract.
+# `agents user-data` — flag-validation.
 
 exec algolia agents user-data
-stdout 'get'
-stdout 'delete'
+stdout 'Inspect or erase'
 
 ! exec algolia agents user-data get
 stderr 'requires exactly 1 argument'
@@ -10,13 +9,8 @@ stderr 'requires exactly 1 argument'
 ! exec algolia agents user-data delete tok1
 stderr '--confirm required'
 
-exec algolia agents user-data delete tok1 --dry-run
-! stderr .
-stdout 'Dry run: would DELETE /1/user-data/tok1'
-
-exec algolia agents userdata delete tok1 --dry-run
-! stderr .
-stdout 'Dry run: would DELETE /1/user-data/tok1'
+! exec algolia agents userdata delete tok1
+stderr '--confirm required'
 
 # Slash in user-token is rejected with a clear message (gateway decodes %2F
 # before routing and yields a misleading 404). Same guard on get + delete.

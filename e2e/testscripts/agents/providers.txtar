@@ -1,15 +1,10 @@
-# `agents providers` — flag-validation + dry-run contract.
-# Pure CLI logic, no network: passing cases use --dry-run; failing
-# cases trip cobra/our validators before client construction.
+# `agents providers` — flag-validation (no network).
 #
 # Ungated: runs whenever the standard ALGOLIA_APPLICATION_ID +
 # ALGOLIA_API_KEY are present.
 
-# `providers` parent without verb prints help (no Run on a group).
 exec algolia agents providers
-stdout 'create'
-stdout 'list'
-stdout 'models'
+stdout 'Manage LLM provider'
 
 # `get` requires <provider-id> positional
 ! exec algolia agents providers get
@@ -23,22 +18,6 @@ stderr '--confirm required'
 ! exec algolia agents providers create
 stderr 'specify a JSON body with -F, or pass --name, --provider, and an API key flag'
 
-# --dry-run on create previews POST to /1/providers, no network
-exec algolia agents providers create -F spec.json --dry-run
-! stderr .
-stdout 'Dry run: would POST /1/providers'
-stdout '"providerName": "openai"'
-# dry-run shows the user's authored body verbatim, masking does NOT
-# apply here — the user wrote the file and is being shown what THEY
-# are about to send
-stdout 'sk-DRY-RUN-DEMO'
-
-# --dry-run on update includes the provider id in the path preview
-exec algolia agents providers update p1-id -F patch.json --dry-run
-! stderr .
-stdout 'Dry run: would PATCH /1/providers/p1-id'
-stdout '"name": "renamed-by-cli"'
-
 # `models` without flag is the catalog route — accepts no positional args
 ! exec algolia agents providers models extra-arg
 stderr 'does not take any positional arguments'
@@ -46,17 +25,3 @@ stderr 'does not take any positional arguments'
 # `models` with --provider-id requires the id to be non-empty
 ! exec algolia agents providers models --provider-id ''
 stderr '--provider-id must not be empty'
-
--- spec.json --
-{
-  "name": "openai-prod",
-  "providerName": "openai",
-  "input": {
-    "apiKey": "sk-DRY-RUN-DEMO",
-    "baseUrl": null
-  }
-}
--- patch.json --
-{
-  "name": "renamed-by-cli"
-}

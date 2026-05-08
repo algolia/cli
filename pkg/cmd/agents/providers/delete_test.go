@@ -12,15 +12,22 @@ import (
 	"github.com/algolia/cli/test"
 )
 
-func Test_runDeleteCmd_DryRunPreFetchesAndPreviews(t *testing.T) {
+func Test_runDeleteCmd_PrefetchesBeforeDelete(t *testing.T) {
+	var getCalls, deleteCalls int
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/providers/p1", func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method, "dry-run must GET, not DELETE")
-		_, _ = w.Write([]byte(`{
+		switch r.Method {
+		case http.MethodGet:
+			getCalls++
+			_, _ = w.Write([]byte(`{
 			"id":"p1","name":"openai-prod","providerName":"openai",
 			"input":{"apiKey":"sk-x"},
 			"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"
 		}`))
+		case http.MethodDelete:
+			deleteCalls++
+			w.WriteHeader(http.StatusNoContent)
+		}
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
@@ -29,12 +36,11 @@ func Test_runDeleteCmd_DryRunPreFetchesAndPreviews(t *testing.T) {
 	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
-	result, err := test.Execute(cmd, "delete p1 --dry-run", out)
+	result, err := test.Execute(cmd, "delete p1 -y", out)
 	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "Dry run: would DELETE /1/providers/p1")
-	assert.Contains(t, got, "openai-prod")
-	assert.Contains(t, got, "openai")
+	assert.Equal(t, 1, getCalls)
+	assert.Equal(t, 1, deleteCalls)
+	assert.NotContains(t, result.String(), "Dry run:")
 }
 
 func Test_runDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {

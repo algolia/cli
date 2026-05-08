@@ -19,7 +19,6 @@ type DeleteOptions struct {
 	Ctx               context.Context
 	AgentStudioClient func() (*agentstudio.Client, error)
 	UserToken         string
-	DryRun            bool
 	DoConfirm         bool
 }
 
@@ -42,7 +41,7 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			if strings.Contains(opts.UserToken, "/") {
 				return cmdutil.FlagErrorf("%s", rejectSlashMsg)
 			}
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -54,15 +53,10 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		},
 	}
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "Print what would be deleted without calling the API")
 	return cmd
 }
 
 func runDeleteCmd(opts *DeleteOptions) error {
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out, "Dry run: would DELETE /1/user-data/%s\n", opts.UserToken)
-		return nil
-	}
 	if opts.DoConfirm {
 		msg := fmt.Sprintf(
 			"Erase ALL conversations and memories for user token %q across every agent in this app? This cannot be undone.",

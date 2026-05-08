@@ -22,17 +22,6 @@ func Test_runUpdateCmd_RequiresAtLeastOneField(t *testing.T) {
 	assert.Contains(t, err.Error(), "nothing to update")
 }
 
-func Test_runUpdateCmd_DryRunNameOnly(t *testing.T) {
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewKeysCmd(f)
-	result, err := test.Execute(cmd, `update id1 --name renamed --dry-run`, out)
-	require.NoError(t, err)
-	got := result.String()
-	assert.Contains(t, got, "PATCH /1/secret-keys/id1")
-	assert.Contains(t, got, `"name": "renamed"`)
-	assert.NotContains(t, got, "agentIds")
-}
-
 func Test_runUpdateCmd_LivePatch(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/secret-keys/id1", func(w http.ResponseWriter, r *http.Request) {

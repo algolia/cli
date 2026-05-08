@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,6 +10,12 @@ import (
 	"github.com/algolia/cli/pkg/version"
 	"github.com/algolia/cli/test"
 )
+
+var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(s string) string {
+	return ansiRegexp.ReplaceAllString(s, "")
+}
 
 func TestBetaAgentsPreRunE_skipWhenReleaseBuild(t *testing.T) {
 	prev := version.Distribution
@@ -27,7 +34,7 @@ func TestBetaAgentsPreRunE_warnWhenDistributionSet(t *testing.T) {
 
 	f, bio := test.NewFactory(false, nil, nil, "")
 	require.NoError(t, betaAgentsPreRunE(f)(nil, nil))
-	got := bio.ErrBuf.String()
-	assert.Contains(t, got, "beta CLI")
-	assert.Contains(t, got, "agents")
+	got := stripANSI(bio.ErrBuf.String())
+
+	assert.Equal(t, betaWarningLine+"\n\n", got)
 }

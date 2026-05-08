@@ -28,7 +28,6 @@ type CreateOptions struct {
 	APIKeyStdin   bool
 	APIKeyEnv     string
 	BaseURL       string
-	DryRun        bool
 	Show          bool
 	OutputChanged bool
 }
@@ -66,8 +65,6 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			Prefer --api-key-stdin or --api-key-env over --api-key (shell
 			history may record raw flags).
 
-			Use --dry-run to preview the request without sending.
-
 			By default the created provider in the success response is
 			masked. Pass --show-secret to render the apiKey verbatim.
 		`),
@@ -75,7 +72,6 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			$ algolia agents providers create -F openai-prod.json
 			$ algolia agents providers create --name openai-prod --provider openai --api-key-env OPENAI_API_KEY
 			$ cat spec.json | algolia agents providers create -F -
-			$ algolia agents providers create -F spec.json --dry-run
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -97,16 +93,12 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	cmd.Flags().StringVar(&opts.APIKeyEnv, "api-key-env", "", "Read API key from this environment variable (shortcut; not with -F)")
 	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Optional OpenAI / Anthropic-compatible base URL (shortcut; not with -F)`)
 	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
-	cmd.Flags().
 		BoolVar(&opts.Show, "show-secret", false, "Render secret fields verbatim in the success response")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	source := opts.File
-
 	var body json.RawMessage
 	var err error
 
@@ -134,12 +126,6 @@ func runCreateCmd(opts *CreateOptions) error {
 			return err
 		}
 		body = raw
-		source = "(flags)"
-	}
-
-	if opts.DryRun {
-		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
-			"create_provider", "POST /1/providers", source, body, nil)
 	}
 
 	client, err := opts.AgentStudioClient()

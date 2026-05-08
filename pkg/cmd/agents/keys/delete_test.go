@@ -20,14 +20,6 @@ func Test_runDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 	assert.Contains(t, err.Error(), "--confirm required")
 }
 
-func Test_runDeleteCmd_DryRun(t *testing.T) {
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewKeysCmd(f)
-	result, err := test.Execute(cmd, "delete id1 --dry-run", out)
-	require.NoError(t, err)
-	assert.Contains(t, result.String(), "Dry run: would DELETE /1/secret-keys/id1")
-}
-
 func Test_runDeleteCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/secret-keys/id1", func(w http.ResponseWriter, _ *http.Request) {

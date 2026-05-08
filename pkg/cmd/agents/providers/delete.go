@@ -21,7 +21,6 @@ type DeleteOptions struct {
 	AgentStudioClient func() (*agentstudio.Client, error)
 
 	ProviderID string
-	DryRun     bool
 	DoConfirm  bool
 }
 
@@ -42,13 +41,11 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			them to point at a different provider) before retrying.
 
 			Like "agents delete", interactive use prompts to confirm and
-			non-interactive use requires --confirm. Use --dry-run to
-			preview without deleting.
+			non-interactive use requires --confirm.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents providers delete <id>           # interactive
 			$ algolia agents providers delete <id> -y        # CI
-			$ algolia agents providers delete <id> --dry-run # preview
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +54,7 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 			if opts.ProviderID == "" {
 				return cmdutil.FlagErrorf("provider-id must not be empty")
 			}
-			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm, opts.DryRun)
+			doConfirm, err := shared.ResolveConfirm(opts.IO, confirm)
 			if err != nil {
 				return err
 			}
@@ -70,8 +67,6 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	}
 
 	shared.AddConfirmFlag(cmd, &confirm)
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Fetch and preview the provider without deleting it")
 	return cmd
 }
 
@@ -83,18 +78,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
-	// Pre-fetch so the prompt + dry-run output show name+providerName,
+	// Pre-fetch so the prompt can show name+providerName,
 	// matching `agents delete`'s contract.
 	p, err := client.GetProvider(ctx, opts.ProviderID)
 	if err != nil {
 		return err
-	}
-
-	if opts.DryRun {
-		fmt.Fprintf(opts.IO.Out, "Dry run: would DELETE /1/providers/%s\n", opts.ProviderID)
-		fmt.Fprintf(opts.IO.Out, "  name:     %s\n", p.Name)
-		fmt.Fprintf(opts.IO.Out, "  provider: %s\n", p.ProviderName)
-		return nil
 	}
 
 	if opts.DoConfirm {

@@ -23,7 +23,6 @@ type UpdateOptions struct {
 
 	AgentID       string
 	File          string
-	DryRun        bool
 	OutputChanged bool
 }
 
@@ -41,9 +40,6 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 			Update an existing agent. The file body is a partial
 			AgentConfigUpdate — only the fields you want to change need to
 			be present.
-
-			Use --dry-run to print the resolved patch body without sending
-			it — useful for verifying generated patches in CI.
 		`),
 		Example: heredoc.Doc(`
 			# Rename an agent
@@ -51,9 +47,6 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 
 			# Apply a patch from a file
 			$ algolia agents update <id> -F patch.json
-
-			# Preview without sending
-			$ algolia agents update <id> -F patch.json --dry-run
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,8 +66,6 @@ func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the patch body (use \"-\" for stdin)")
 	_ = cmd.MarkFlagRequired("file")
-	cmd.Flags().
-		BoolVar(&opts.DryRun, "dry-run", false, "Validate and print the resolved request body without calling the API")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -85,12 +76,6 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
 	if err != nil {
 		return err
-	}
-
-	if opts.DryRun {
-		return shared.PrintDryRun(opts.IO, opts.PrintFlags, opts.OutputChanged,
-			"update_agent", "PATCH /1/agents/"+opts.AgentID, opts.File, body,
-			map[string]any{"agentId": opts.AgentID})
 	}
 
 	ctx := opts.Ctx
