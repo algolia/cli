@@ -18,14 +18,15 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN="--dry-run"
 fi
 
-# Format: "npm-package-name:dist-relative-path"
+# Format: "package-suffix:dist-relative-path"
+# Each suffix matches both the directory under npm/ and the published name @algolia/<suffix>.
 PLATFORMS=(
-  "algolia-darwin-x64:algolia_darwin_amd64_v1/algolia"
-  "algolia-darwin-arm64:algolia_darwin_arm64/algolia"
-  "algolia-linux-x64:algolia_linux_amd64_v1/algolia"
-  "algolia-linux-arm64:algolia_linux_arm64/algolia"
-  "algolia-win32-x64:algolia_windows_amd64_v1/algolia.exe"
-  "algolia-win32-arm64:algolia_windows_arm64/algolia.exe"
+  "cli-darwin-x64:algolia_darwin_amd64_v1/algolia"
+  "cli-darwin-arm64:algolia_darwin_arm64/algolia"
+  "cli-linux-x64:algolia_linux_amd64_v1/algolia"
+  "cli-linux-arm64:algolia_linux_arm64/algolia"
+  "cli-win32-x64:algolia_windows_amd64_v1/algolia.exe"
+  "cli-win32-arm64:algolia_windows_arm64/algolia.exe"
 )
 
 # Publish platform packages
