@@ -2,7 +2,7 @@
 
 The official Algolia CLI lets you manage your Algolia resources — indices, records, API keys, and synonyms — directly from the command line.
 
-> This package installs a prebuilt Go binary. No Node.js runtime dependency is required after install.
+> This package installs a prebuilt Go binary. The npm wrapper still requires Node.js to launch the installed command.
 
 ## Installation
 
