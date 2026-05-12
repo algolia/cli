@@ -68,7 +68,10 @@ func TestNewClient_TrimsTrailingSlashAndDefaults(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://x.example.com", c.cfg.BaseURL)
 	assert.Equal(t, "algolia-cli/agentstudio", c.cfg.UserAgent)
-	assert.Equal(t, http.DefaultClient, c.httpClient)
+	require.NotNil(t, c.httpClient)
+	assert.Zero(t, c.httpClient.Timeout)
+	_, ok := c.httpClient.Transport.(*http.Transport)
+	assert.True(t, ok, "expected default *http.Transport for timeouts without killing SSE streams")
 }
 
 func TestCheckResponse_ErrorMapping(t *testing.T) {

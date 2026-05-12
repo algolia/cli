@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -34,6 +36,28 @@ type Client struct {
 	httpClient *http.Client
 }
 
+// defaultHTTPClient returns a client suitable for both short JSON calls
+// and long-lived SSE streams: ResponseHeaderTimeout caps stalls before
+// the first byte; Client.Timeout stays zero so an open stream is not
+// cut off after a fixed wall clock.
+func defaultHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			ResponseHeaderTimeout: 60 * time.Second,
+		},
+	}
+}
+
 // NewClient validates cfg and returns a ready-to-use Client.
 func NewClient(cfg Config) (*Client, error) {
 	if strings.TrimSpace(cfg.BaseURL) == "" {
@@ -48,7 +72,7 @@ func NewClient(cfg Config) (*Client, error) {
 
 	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
 	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = http.DefaultClient
+		cfg.HTTPClient = defaultHTTPClient()
 	}
 	if cfg.UserAgent == "" {
 		cfg.UserAgent = "algolia-cli/agentstudio"

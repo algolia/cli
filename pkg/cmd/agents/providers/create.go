@@ -3,6 +3,8 @@ package providers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -120,6 +122,10 @@ func runCreateCmd(opts *CreateOptions) error {
 		key, err := resolveProvidedAPIKey(opts.IO.In, opts.APIKey, opts.APIKeyEnv, opts.APIKeyStdin)
 		if err != nil {
 			return err
+		}
+		if strings.TrimSpace(opts.APIKey) != "" {
+			fmt.Fprintf(opts.IO.ErrOut, "%s\n",
+				"Warning: --api-key can expose your secret in shell history and process listings; prefer --api-key-env or --api-key-stdin.")
 		}
 		raw, err := marshalSimpleProviderCreate(opts.Name, opts.Provider, opts.BaseURL, key)
 		if err != nil {

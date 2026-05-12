@@ -28,6 +28,20 @@ func TestGetUserData_RejectsEmptyToken(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestGetUserData_RejectsSlashInToken(t *testing.T) {
+	_, c := newTestClient(t, http.NewServeMux())
+	_, err := c.GetUserData(context.Background(), "ab/cd")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must not contain '/'")
+}
+
+func TestDeleteUserData_RejectsSlashInToken(t *testing.T) {
+	_, c := newTestClient(t, http.NewServeMux())
+	err := c.DeleteUserData(context.Background(), "../oops")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must not contain '/'")
+}
+
 func TestGetUserData_PathEscaped(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/user-data/tok%20with%20space", func(w http.ResponseWriter, _ *http.Request) {

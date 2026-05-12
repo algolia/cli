@@ -25,9 +25,9 @@ func TestResolveHost(t *testing.T) {
 			want: "https://custom.example",
 		},
 		{
-			name: "override preserved verbatim (no scheme rewriting)",
-			opts: HostOptions{Override: "http://localhost:8000"},
-			want: "http://localhost:8000",
+			name:    "http override rejected without env",
+			opts:    HostOptions{Override: "http://localhost:8000"},
+			wantErr: nil,
 		},
 		{
 			name: "eu prod",
@@ -70,6 +70,11 @@ func TestResolveHost(t *testing.T) {
 			want: "https://APP123.algolia.net/agent-studio",
 		},
 		{
+			name:    "cluster-proxy rejects non-alphanumeric app id",
+			opts:    HostOptions{ApplicationID: "evil.com#frag"},
+			wantErr: nil,
+		},
+		{
 			name:    "no inputs at all returns ErrNoHostResolvable",
 			opts:    HostOptions{},
 			wantErr: ErrNoHostResolvable,
@@ -83,6 +88,20 @@ func TestResolveHost(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name == "cluster-proxy rejects non-alphanumeric app id" {
+				got, err := ResolveHost(tc.opts)
+				require.Error(t, err)
+				assert.Empty(t, got)
+				assert.Contains(t, err.Error(), "invalid application id")
+				return
+			}
+			if tc.name == "http override rejected without env" {
+				got, err := ResolveHost(tc.opts)
+				require.Error(t, err)
+				assert.Empty(t, got)
+				assert.Contains(t, err.Error(), "https://")
+				return
+			}
 			got, err := ResolveHost(tc.opts)
 			if tc.wantErr != nil {
 				require.Error(t, err)
@@ -98,4 +117,11 @@ func TestResolveHost(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestResolveHost_HTTPOverrideWithInsecureEnv(t *testing.T) {
+	t.Setenv(EnvAllowInsecureAgentStudioHTTP, "1")
+	got, err := ResolveHost(HostOptions{Override: "http://localhost:8000/agent-studio/"})
+	require.NoError(t, err)
+	assert.Equal(t, "http://localhost:8000/agent-studio", got)
 }

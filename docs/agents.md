@@ -9,6 +9,7 @@ algolia agents
   list | get | create | update | delete | publish | unpublish | duplicate
   try     # run a completion against an unsaved configuration
   run     # run a completion against a persisted agent
+  tools   add-search-index   # merge algolia_search_index tool / index entry
   cache invalidate
   config get | set
   providers     list | get | create | update | delete | models | defaults
@@ -134,6 +135,8 @@ For the cmd layer, top-level verbs each own a subpackage. Sub-groups (`cache/`, 
 - Standard Algolia headers: `X-Algolia-Application-Id`, `X-Algolia-API-Key`. No bearer tokens.
 - `X-Algolia-User-ID` is **not** an authorization signal — it's a cleartext label for telemetry/rate-limiting. The signed equivalent is `X-Algolia-Secure-User-Token` (JWT), wired only into `/completions`.
 - Base URL precedence: profile `agent_studio_url` → env `ALGOLIA_AGENT_STUDIO_URL` → ldflag `agentstudio.DefaultBaseURL` → cluster-proxy fallback `https://{appID}.algolia.net/agent-studio`.
+- Overrides (`ALGOLIA_AGENT_STUDIO_URL` / profile `agent_studio_url`) must be **HTTPS** URLs with a scheme and host. Plain **HTTP** is rejected unless **`ALGOLIA_AGENT_STUDIO_ALLOW_INSECURE_HTTP=1`** is set (local development only).
+- Cluster-proxy fallback requires an **application id** that is **4–32 alphanumeric** characters (so it is safe to embed as a single DNS label). Invalid characters produce a CLI error before any request.
 - Admin API key is required for `keys create|update|delete`. Backend rejects with 403 `"Admin API key required."` otherwise.
 
 ## Pass-through bodies (`json.RawMessage`)
@@ -224,7 +227,7 @@ Single `"Command Invoked"` event from root, with `{command: cmd.CommandPath(), f
 
 - `BuildMessages`, `ReadJSONFile`, `MarshalCompletionBody` — completion body assembly.
 - `RenderCompletion`, `renderTTY`, `renderNDJSON` — streaming output.
-- `NormalizeCompatibility` — `v4`/`v5` aliases → wire form.
+- `NormalizeCompatibility` — `v4`/`v5` / `ai-sdk-4`/`ai-sdk-5` (case-insensitive) → wire form.
 - `MaskInput`, `MaskString` — secret redaction.
 - `SourceLabel`, `TrimUTF8BOM` — file/stdin plumbing.
 

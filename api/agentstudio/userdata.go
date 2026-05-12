@@ -13,6 +13,9 @@ func (c *Client) GetUserData(ctx context.Context, userToken string) (*UserDataRe
 	if strings.TrimSpace(userToken) == "" {
 		return nil, fmt.Errorf("agent studio: get user data: user token is required")
 	}
+	if strings.Contains(userToken, "/") {
+		return nil, fmt.Errorf("agent studio: get user data: user token must not contain '/'")
+	}
 	endpoint := c.cfg.BaseURL + "/1/user-data/" + url.PathEscape(userToken)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -37,6 +40,9 @@ func (c *Client) GetUserData(ctx context.Context, userToken string) (*UserDataRe
 func (c *Client) DeleteUserData(ctx context.Context, userToken string) error {
 	if strings.TrimSpace(userToken) == "" {
 		return fmt.Errorf("agent studio: delete user data: user token is required")
+	}
+	if strings.Contains(userToken, "/") {
+		return fmt.Errorf("agent studio: delete user data: user token must not contain '/'")
 	}
 	return c.doDeleteNoBody(ctx,
 		c.cfg.BaseURL+"/1/user-data/"+url.PathEscape(userToken),

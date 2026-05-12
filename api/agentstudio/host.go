@@ -7,6 +7,9 @@ package agentstudio
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
+	"regexp"
 	"strings"
 )
 
@@ -15,6 +18,11 @@ import (
 // (cluster-proxy fallback applies); set to the EU staging host for
 // internal beta builds. Runtime overrides win.
 var DefaultBaseURL string
+
+// EnvAllowInsecureAgentStudioHTTP must be non-empty to permit http://
+// overrides (ALGOLIA_AGENT_STUDIO_URL / profile agent_studio_url). Use
+// only for local development; production overrides must be https://.
+const EnvAllowInsecureAgentStudioHTTP = "ALGOLIA_AGENT_STUDIO_ALLOW_INSECURE_HTTP"
 
 const (
 	EnvProd    = "prod"
@@ -37,6 +45,10 @@ type HostOptions struct {
 }
 
 var (
+	// clusterProxyApplicationIDRx construes app IDs that are safe to
+	// embed as a single DNS label in https://<id>.algolia.net/agent-studio.
+	clusterProxyApplicationIDRx = regexp.MustCompile(`^[A-Za-z0-9]{4,32}$`)
+
 	ErrUnknownRegion      = errors.New("unknown agent studio region")
 	ErrStagingNotInRegion = errors.New("agent studio staging is only available in eu")
 	ErrNoHostResolvable   = errors.New(
@@ -48,7 +60,7 @@ var (
 // (no trailing slash, no /1 suffix — callers append the path).
 func ResolveHost(opts HostOptions) (string, error) {
 	if opts.Override != "" {
-		return strings.TrimRight(opts.Override, "/"), nil
+		return normalizeAgentStudioOverride(opts.Override)
 	}
 
 	env := strings.ToLower(strings.TrimSpace(opts.Env))
@@ -78,9 +90,59 @@ func ResolveHost(opts HostOptions) (string, error) {
 	}
 
 	// Cluster-proxy fallback: app's own cluster routes to the right region.
-	if appID := strings.TrimSpace(opts.ApplicationID); appID != "" {
+	appID := strings.TrimSpace(opts.ApplicationID)
+	if appID != "" {
+		if err := validateClusterProxyApplicationID(appID); err != nil {
+			return "", err
+		}
 		return "https://" + appID + ".algolia.net/agent-studio", nil
 	}
 
 	return "", ErrNoHostResolvable
+}
+
+func normalizeAgentStudioOverride(raw string) (string, error) {
+	s := strings.TrimRight(strings.TrimSpace(raw), "/")
+	if s == "" {
+		return "", fmt.Errorf("agent studio url override is empty")
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", fmt.Errorf("agent studio url override: %w", err)
+	}
+	if u.Scheme == "" {
+		return "", fmt.Errorf(
+			"agent studio url override must include a scheme (e.g. https://)",
+		)
+	}
+	if u.Host == "" {
+		return "", fmt.Errorf("agent studio url override must include a host")
+	}
+	switch u.Scheme {
+	case "https":
+		return s, nil
+	case "http":
+		if os.Getenv(EnvAllowInsecureAgentStudioHTTP) == "" {
+			return "", fmt.Errorf(
+				"agent studio url must use https:// (got http://); for local development set %s=1",
+				EnvAllowInsecureAgentStudioHTTP,
+			)
+		}
+		return s, nil
+	default:
+		return "", fmt.Errorf(
+			"agent studio url scheme %q is not supported (use https://)",
+			u.Scheme,
+		)
+	}
+}
+
+func validateClusterProxyApplicationID(appID string) error {
+	if !clusterProxyApplicationIDRx.MatchString(appID) {
+		return fmt.Errorf(
+			"invalid application id %q for agent studio cluster URL: expect 4-32 alphanumeric characters (A-Z, a-z, 0-9)",
+			appID,
+		)
+	}
+	return nil
 }

@@ -26,6 +26,11 @@ type CompletionOptions struct {
 // raw HTTP response. Caller closes resp.Body on all paths and inspects
 // Content-Type to decide between ParseStream (text/event-stream) and a
 // single json.Decode. agentID may be a UUID or the literal "test".
+//
+// Callers should pass a ctx that supports cancellation; for streaming,
+// also consider an application-level deadline if the remote end stalls
+// mid-body (the default HTTP client sets ResponseHeaderTimeout but does
+// not cap total stream duration).
 func (c *Client) Completions(
 	ctx context.Context,
 	agentID string,
