@@ -10,9 +10,8 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
-// DefaultOAuthClientID is injected at build time via ldflags.
-// Override with ALGOLIA_OAUTH_CLIENT_ID environment variable for local development.
-var DefaultOAuthClientID = ""
+// DefaultOAuthClientID is a public OAuth client ID (PKCE flow, not a secret).
+var DefaultOAuthClientID = "-6xbCNF7usNqkcacFHKt0WHCJIZ2rlp2bP2_VH12xQE"
 
 // OAuthClientID returns the OAuth client ID, preferring the ALGOLIA_OAUTH_CLIENT_ID
 // environment variable over the compiled-in default (set via ldflags).

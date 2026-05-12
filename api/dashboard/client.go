@@ -11,17 +11,11 @@ import (
 	"strings"
 )
 
-// DefaultDashboardURL and DefaultAPIURL are empty by default and must be
-// injected at build time via ldflags, e.g.:
-//
-//	go build -ldflags "-X github.com/algolia/cli/api/dashboard.DefaultDashboardURL=https://..."
-//
-// They can also be overridden at runtime with ALGOLIA_DASHBOARD_URL / ALGOLIA_API_URL / ALGOLIA_OAUTH_SCOPE
-// environment variables.
+// Production defaults; overridable via ldflags or ALGOLIA_DASHBOARD_URL / ALGOLIA_API_URL / ALGOLIA_OAUTH_SCOPE env vars.
 var (
-	DefaultDashboardURL = ""
-	DefaultAPIURL       = ""
-	DefaultOAuthScope   = ""
+	DefaultDashboardURL = "https://dashboard.algolia.com"
+	DefaultAPIURL       = "https://api.dashboard.algolia.com"
+	DefaultOAuthScope   = "public applications:manage keys:manage"
 )
 
 // Client interacts with the Algolia Dashboard OAuth endpoint and the Public API.
