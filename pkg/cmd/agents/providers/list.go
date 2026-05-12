@@ -15,6 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// ListOptions collects inputs for `agents providers list`.
 type ListOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context

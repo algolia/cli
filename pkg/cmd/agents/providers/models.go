@@ -18,6 +18,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// ModelsOptions collects inputs for `agents providers models`.
 type ModelsOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
@@ -83,12 +84,12 @@ func runModelsCmd(opts *ModelsOptions) error {
 	ctx := shared.OrBackground(opts.Ctx)
 
 	if opts.ProviderID == "" {
-		return runListCatalog(opts, client, ctx)
+		return runListCatalog(ctx, opts, client)
 	}
-	return runListForProvider(opts, client, ctx)
+	return runListForProvider(ctx, opts, client)
 }
 
-func runListCatalog(opts *ModelsOptions, client *agentstudio.Client, ctx context.Context) error {
+func runListCatalog(ctx context.Context, opts *ModelsOptions, client *agentstudio.Client) error {
 	opts.IO.StartProgressIndicatorWithLabel("Fetching provider model catalog")
 	models, err := client.ListProviderModels(ctx)
 	opts.IO.StopProgressIndicator()
@@ -124,7 +125,7 @@ func runListCatalog(opts *ModelsOptions, client *agentstudio.Client, ctx context
 	return table.Render()
 }
 
-func runListForProvider(opts *ModelsOptions, client *agentstudio.Client, ctx context.Context) error {
+func runListForProvider(ctx context.Context, opts *ModelsOptions, client *agentstudio.Client) error {
 	opts.IO.StartProgressIndicatorWithLabel("Fetching models for provider")
 	raw, err := client.ListModelsForProvider(ctx, opts.ProviderID)
 	opts.IO.StopProgressIndicator()

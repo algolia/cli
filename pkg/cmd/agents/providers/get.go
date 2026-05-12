@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// GetOptions collects inputs for `agents providers get`.
 type GetOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context

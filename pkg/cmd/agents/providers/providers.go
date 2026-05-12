@@ -1,3 +1,5 @@
+// Package providers implements CLI commands for Agent Studio LLM provider
+// authentications (OpenAI, Anthropic, Azure, etc.).
 package providers
 
 import (

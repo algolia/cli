@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/printers"
 )
 
+// DefaultsOptions collects inputs for `agents providers defaults`.
 type DefaultsOptions struct {
 	IO                *iostreams.IOStreams
 	Ctx               context.Context

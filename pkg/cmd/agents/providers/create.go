@@ -14,6 +14,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// CreateOptions collects inputs for `agents providers create`.
 type CreateOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context

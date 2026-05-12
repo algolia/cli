@@ -14,6 +14,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// DeleteOptions collects inputs for `agents providers delete`.
 type DeleteOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context

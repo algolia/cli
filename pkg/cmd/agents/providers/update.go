@@ -15,6 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
+// UpdateOptions collects inputs for `agents providers update`.
 type UpdateOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
