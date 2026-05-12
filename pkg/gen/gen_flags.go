@@ -212,14 +212,14 @@ func shortDescription(description string) string {
 	s := strings.Split(description, ":\n")
 	// Handle sentences ending with a period
 	s = strings.Split(s[0], ".\n")
-	s[0] = replaceMarkdownLinks(s[0])
-	s[0] = strings.ReplaceAll(s[0], "`", "")
+	description = replaceMarkdownLinks(s[0])
+	description = strings.TrimSpace(strings.ReplaceAll(description, "`", ""))
 
-	if !strings.HasSuffix(s[0], ".") {
-		s[0] += "."
+	if description != "" && !strings.HasSuffix(description, ".") {
+		description += "."
 	}
 
-	return strings.TrimSpace(s[0])
+	return description
 }
 
 func replaceMarkdownLinks(text string) string {
@@ -234,6 +234,23 @@ func replaceMarkdownLinks(text string) string {
 	return text
 }
 
+func schemaDescription(schema *openapi3.Schema) string {
+	if schema.Description != "" {
+		return schema.Description
+	}
+
+	for _, schemaRef := range schema.OneOf {
+		if schemaRef.Value == nil {
+			continue
+		}
+		if description := schemaDescription(schemaRef.Value); description != "" {
+			return description
+		}
+	}
+
+	return ""
+}
+
 // getDescription returns the short description for the given parameter.
 // It's the first sentence of the parameter description followed by possible values if it's an enum,
 // followed by a link to the API param reference page
@@ -244,7 +261,7 @@ func getDescription(name string, param *openapi3.Schema) string {
 		withLink = false
 	}
 
-	description := shortDescription(param.Description)
+	description := shortDescription(schemaDescription(param))
 
 	// Add choices if param is an enum
 	if param.Enum != nil {
@@ -257,8 +274,8 @@ func getDescription(name string, param *openapi3.Schema) string {
 
 	// Add link to the API param reference page
 	if withLink {
-		link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s/", name)
-		description = fmt.Sprintf("%s\nSee: %s", description, link)
+		link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s", name)
+		description = fmt.Sprintf("%s\n\nSee: %s", description, link)
 	}
 	return description
 }
