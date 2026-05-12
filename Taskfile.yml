@@ -20,7 +20,8 @@ tasks:
       -X github.com/algolia/cli/api/dashboard.DefaultAPIURL=$ALGOLIA_API_URL
       -X github.com/algolia/cli/pkg/config.DefaultSearchHosts=$ALGOLIA_SEARCH_HOSTS
       -X github.com/algolia/cli/pkg/auth.DefaultOAuthClientID=$ALGOLIA_OAUTH_CLIENT_ID
-      -X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$ALGOLIA_OAUTH_SCOPE'"
+      -X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$ALGOLIA_OAUTH_SCOPE'
+      -X github.com/algolia/cli/api/agentstudio.DefaultBaseURL=$ALGOLIA_AGENT_STUDIO_URL"
       -o algolia cmd/algolia/main.go
     vars:
       VERSION: '{{ .VERSION | default "main" }}'
