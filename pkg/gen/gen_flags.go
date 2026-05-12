@@ -275,7 +275,7 @@ func getDescription(name string, param *openapi3.Schema) string {
 	// Add link to the API param reference page
 	if withLink {
 		link := fmt.Sprintf("https://www.algolia.com/doc/api-reference/api-parameters/%s", name)
-		description = fmt.Sprintf("%s\n\nSee: %s", description, link)
+		description = fmt.Sprintf("%s\nSee: %s", description, link)
 	}
 	return description
 }
