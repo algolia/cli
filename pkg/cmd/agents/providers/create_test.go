@@ -50,7 +50,15 @@ func Test_runCreateCmd_RejectsInvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
 
-func Test_runCreateCmd_Flags_PostsMinimalOpenAIBody(t *testing.T) {
+func Test_runCreateCmd_RequiresFileFlag(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewProvidersCmd(f)
+	_, err := test.Execute(cmd, "create", out)
+	require.Error(t, err)
+}
+
+func Test_runCreateCmd_File_PostsOpenAIProviderBody(t *testing.T) {
+	specJSON := `{"name":"prod","providerName":"openai","input":{"apiKey":"sk-env"}}`
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -68,40 +76,39 @@ func Test_runCreateCmd_Flags_PostsMinimalOpenAIBody(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	t.Setenv("OPENAI_CLI_TEST_KEY", "sk-env")
+	specPath := sharedtest.WriteTempJSON(t, "spec.json", specJSON)
 
 	f, out := test.NewFactory(false, nil, nil, "")
 	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
-	cli := `create --name prod --provider openai --api-key-env OPENAI_CLI_TEST_KEY`
-	result, err := test.Execute(cmd, cli, out)
+	result, err := test.Execute(cmd, "create -F "+specPath, out)
 	require.NoError(t, err)
 	assert.Contains(t, result.String(), `"name":"prod"`)
 }
 
-func Test_runCreateCmd_FlagsMutuallyExclusiveWithFile(t *testing.T) {
-	specPath := sharedtest.WriteTempJSON(
-		t,
-		"spec.json",
-		`{"name":"x","providerName":"openai","input":{"apiKey":"sk"}}`,
-	)
-	f, out := test.NewFactory(false, nil, nil, "")
-	cmd := NewProvidersCmd(f)
-	cli := "create --name clash --provider openai --api-key sk -F " + specPath
-	_, err := test.Execute(cmd, cli, out)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "combine")
-}
+func Test_runCreateCmd_FileAcceptsAzureOpenAI(t *testing.T) {
+	specJSON := `{"name":"azure1","providerName":"azure_openai","input":{"apiKey":"k","azureEndpoint":"https://x.openai.azure.com","azureDeployment":"d"}}`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{
+			"id":"p1","name":"azure1","providerName":"azure_openai",
+			"input":{"apiKey":"k"},
+			"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"
+		}`))
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
 
-func Test_runCreateCmd_FlagsUnsupportedProviderUsesF(t *testing.T) {
+	specPath := sharedtest.WriteTempJSON(t, "spec.json", specJSON)
+
 	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+
 	cmd := NewProvidersCmd(f)
-	_, err := test.Execute(
-		cmd,
-		`create --name azure --provider azure_openai --api-key sk-azure`,
-		out,
-	)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "use -F")
+	result, err := test.Execute(cmd, "create -F "+specPath, out)
+	require.NoError(t, err)
+	assert.Contains(t, result.String(), `"name":"azure1"`)
 }

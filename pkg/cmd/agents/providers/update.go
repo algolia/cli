@@ -3,7 +3,6 @@ package providers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
@@ -26,9 +25,6 @@ type UpdateOptions struct {
 	ProviderID    string
 	File          string
 	Name          string
-	APIKey        string
-	APIKeyStdin   bool
-	APIKeyEnv     string
 	BaseURL       string
 	Show          bool
 	OutputChanged bool
@@ -42,23 +38,22 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use: "update <provider-id> (-F <file> | [--name <name>] " +
-			"[--api-key <key> | --api-key-stdin | --api-key-env <var>] [--base-url <url>])",
+		Use:   "update <provider-id> (-F <file> | [--name <name>] [--base-url <url>])",
 		Short: "Patch an LLM provider authentication",
 		Long: heredoc.Doc(`
-			Patch a provider authentication. Either pass a JSON body with -F
-			(PATCH semantics: only fields in the file are updated) or use
-			flags for simple renames and key rotation.
+			Patch a provider authentication from a JSON file (-F) or with
+			--name / --base-url for non-secret fields only.
 
-			Do not combine -F with --name/--api-key* or --base-url.
+			The -F body is PATCH JSON (only fields present are updated).
+			Rotate a vendor API key by including "input": {"apiKey": "..."}
+			in that file — not via flags.
 
-			When using flags, at least one of --name, --api-key,
-			--api-key-stdin, --api-key-env, or --base-url is required.
+			Do not combine -F with --name or --base-url.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents providers update <id> -F rename.json
+			$ algolia agents providers update <id> -F rotate-key.json
 			$ algolia agents providers update <id> --name new-label
-			$ algolia agents providers update <id> --api-key-env OPENAI_API_KEY
 		`),
 		Args: validators.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -78,10 +73,7 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the provider patch body (use \"-\" for stdin)")
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Rename the provider label (shortcut; not with -F)")
-	cmd.Flags().StringVar(&opts.APIKey, "api-key", "", "Rotate the API credential (shortcut; not with -F)")
-	cmd.Flags().BoolVar(&opts.APIKeyStdin, "api-key-stdin", false, "Read new API key from stdin (shortcut; not with -F)")
-	cmd.Flags().StringVar(&opts.APIKeyEnv, "api-key-env", "", "Read new API key from this environment variable (shortcut; not with -F)")
-	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Set or clear base URL inside "input" (shortcut; not with -F)`)
+	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Set base URL inside "input" (shortcut; not with -F)`)
 	cmd.Flags().
 		BoolVar(&opts.Show, "show-secret", false, "Render secret fields verbatim in the success response")
 	opts.PrintFlags.AddFlags(cmd)
@@ -93,26 +85,15 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	var err error
 
 	switch {
-	case updateInlineFlagsConflictWithFile(opts.File, opts.Name, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin):
-		return cmdutil.FlagErrorf("cannot combine -F/--file with --name/--api-key/--api-key-* or --base-url")
+	case updateInlineFlagsConflictWithFile(opts.File, opts.Name, opts.BaseURL):
+		return cmdutil.FlagErrorf("cannot combine -F/--file with --name or --base-url")
 	case opts.File != "":
 		body, err = shared.ReadJSONFile(opts.IO.In, opts.File)
 		if err != nil {
 			return err
 		}
 	default:
-		if !updateUsesInlineFlags(opts.Name, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin) {
-			return cmdutil.FlagErrorf("specify a JSON patch with -F, or at least one shortcut flag (--name, --api-key, etc.)")
-		}
-		key, setKey, err := resolveOptionalAPIKey(opts.IO.In, opts.APIKey, opts.APIKeyEnv, opts.APIKeyStdin)
-		if err != nil {
-			return err
-		}
-		if strings.TrimSpace(opts.APIKey) != "" {
-			fmt.Fprintf(opts.IO.ErrOut, "%s\n",
-				"Warning: --api-key can expose your secret in shell history and process listings; prefer --api-key-env or --api-key-stdin.")
-		}
-		raw, err := marshalSimpleProviderPatch(opts.Name, opts.BaseURL, key, setKey)
+		raw, err := marshalSimpleProviderPatch(opts.Name, opts.BaseURL)
 		if err != nil {
 			return err
 		}
@@ -135,4 +116,31 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		p.Input = shared.MaskInput(p.Input)
 	}
 	return opts.PrintFlags.Print(opts.IO, p)
+}
+
+func marshalSimpleProviderPatch(name, baseURL string) ([]byte, error) {
+	patch := map[string]any{}
+	if strings.TrimSpace(name) != "" {
+		patch["name"] = strings.TrimSpace(name)
+	}
+	if strings.TrimSpace(baseURL) != "" {
+		patch["input"] = map[string]string{"baseUrl": strings.TrimSpace(baseURL)}
+	}
+	if len(patch) == 0 {
+		return nil, cmdutil.FlagErrorf(
+			"specify a JSON patch with -F (include input.apiKey to rotate secrets), or --name and/or --base-url",
+		)
+	}
+	return json.Marshal(patch)
+}
+
+func updateUsesInlineFlags(name, baseURL string) bool {
+	return strings.TrimSpace(name) != "" || strings.TrimSpace(baseURL) != ""
+}
+
+func updateInlineFlagsConflictWithFile(file, name, baseURL string) bool {
+	if strings.TrimSpace(file) == "" {
+		return false
+	}
+	return updateUsesInlineFlags(name, baseURL)
 }

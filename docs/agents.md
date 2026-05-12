@@ -47,11 +47,10 @@ algolia agents providers list
 
 ### 3. Providers (LLM backing)
 
-Either pass **full JSON** with **`-F`** (all backend provider types — Azure, `openai_compatible`, …) or use **shortcut flags** for the common OpenAI-compatible single-key vendors — see **Providers: `-F` vs flags** below.
+Pass **full JSON** with **`-F`** (`ProviderAuthenticationCreate`): all backend provider types (Azure, `openai_compatible`, single-key vendors, …). Put **vendor credentials** (e.g. `input.apiKey`) in that file, not on the command line.
 
 ```bash
-algolia agents providers create --name prod-openai --provider openai \
-  --api-key-env OPENAI_API_KEY
+algolia agents providers create -F openai-prod.json
 ```
 
 Note the **`providerId`** returned; you embed it when authoring agent JSON (`providerId` in the create body).
@@ -181,18 +180,13 @@ Backend route **`/1/agents/test/completions`** runs a completion from an **unsav
 
 To inspect the JSON you would POST to **`run`**, assemble `{"messages":[...]}` locally (the persisted agent supplies configuration server-side for real agent ids).
 
-## Providers: `-F` vs flags
+## Providers: JSON via `-F`
 
-`agents providers create` accepts either:
+**`agents providers create`** takes **`-F`** only: full `ProviderAuthenticationCreate` JSON (all `providerName` variants).
 
-- **`-F <file>`** — full `ProviderAuthenticationCreate` JSON (all `providerName` variants, including `azure_openai` and `openai_compatible`), or
-- **Flags** — `--name`, `--provider` (`openai` \| `anthropic` \| `google_genai` \| `deepseek`), plus exactly one of `--api-key`, `--api-key-stdin`, or `--api-key-env <VAR>`. Optional `--base-url` only for `openai` / `anthropic`.
+**`agents providers update <id>`** takes **`-F`** with PATCH JSON (only fields you include are updated — use `"input": {"apiKey": "…"}` in that file to rotate a vendor key), **or** shortcut flags **`--name`** / **`--base-url`** for non-secret fields. **`-F`** is **mutually exclusive** with those flags.
 
-`-F` and the shortcut flags are **mutually exclusive**.
-
-`agents providers update <id>` accepts **`-F`** (patch JSON) **or** shortcut flags: any non-empty combination of `--name`, `--api-key` / `--api-key-stdin` / `--api-key-env`, and `--base-url`, with the same exclusivity rule against `-F`.
-
-Prefer **`--api-key-env`** or **`--api-key-stdin`** over **`--api-key`** (shell history).
+See **`agents providers create -h`** / **`update -h`** for flag details.
 
 ## Secret masking
 

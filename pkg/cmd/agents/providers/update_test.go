@@ -67,28 +67,28 @@ func Test_runUpdateCmd_Flags_PatchesRename(t *testing.T) {
 	assert.Contains(t, result.String(), "new-label")
 }
 
-func Test_runUpdateCmd_FlagsEnvRotatesKey(t *testing.T) {
+func Test_runUpdateCmd_FileRotatesKey(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/providers/p9", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
-		assert.JSONEq(t, `{"input":{"apiKey":"sk-env-rot"}}`, string(bytes.TrimSpace(body)))
+		assert.JSONEq(t, `{"input":{"apiKey":"sk-rot"}}`, string(bytes.TrimSpace(body)))
 		_, _ = w.Write([]byte(`{
 			"id":"p9","name":"x","providerName":"openai",
-			"input":{"apiKey":"sk-env-rot"},
+			"input":{"apiKey":"sk-rot"},
 			"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-02T00:00:00Z"
 		}`))
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	t.Setenv("ROT_KEY", "sk-env-rot")
+	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"input":{"apiKey":"sk-rot"}}`)
 
 	f, out := test.NewFactory(false, nil, nil, "")
 	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
-	result, err := test.Execute(cmd, `update p9 --api-key-env ROT_KEY`, out)
+	result, err := test.Execute(cmd, "update p9 -F "+patchPath, out)
 	require.NoError(t, err)
 	assert.Contains(t, result.String(), `"apiKey":"***"`)
 }

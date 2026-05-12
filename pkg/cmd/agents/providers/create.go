@@ -3,8 +3,6 @@ package providers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -24,12 +22,6 @@ type CreateOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	File          string
-	Name          string
-	Provider      string
-	APIKey        string
-	APIKeyStdin   bool
-	APIKeyEnv     string
-	BaseURL       string
 	Show          bool
 	OutputChanged bool
 }
@@ -42,37 +34,26 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use: "create (-F <file> | --name <name> --provider <type> " +
-			"(--api-key <key> | --api-key-stdin | --api-key-env <var>))",
+		Use:   "create -F <file>",
 		Short: "Create an LLM provider authentication",
 		Long: heredoc.Doc(`
-			Create a provider authentication from a JSON file (-F) or from
-			flags for the common case (OpenAI, Anthropic, Google GenAI, or
-			DeepSeek with a single API key).
-
-			The -F body is the ProviderAuthenticationCreate JSON (name,
-			providerName, input). The "input" subobject's shape varies per
-			providerName:
+			Create a provider authentication from a JSON file (-F). The body
+			is ProviderAuthenticationCreate JSON (name, providerName, input).
+			The "input" shape depends on providerName:
 
 			  - openai / anthropic: {apiKey, baseUrl?}
 			  - azure_openai:       {apiKey, azureEndpoint, azureDeployment, apiVersion?}
 			  - openai_compatible:  {apiKey, baseUrl, defaultModel}
 			  - google_genai / deepseek: {apiKey}
 
-			With flags, only openai, anthropic, google_genai, and deepseek
-			are supported; use -F for Azure or openai_compatible.
-
-			Do not combine -F with --name/--provider/--api-key*.
-
-			Prefer --api-key-stdin or --api-key-env over --api-key (shell
-			history may record raw flags).
+			Put vendor credentials (e.g. input.apiKey) in that file — not on
+			the command line.
 
 			By default the created provider in the success response is
 			masked. Pass --show-secret to render the apiKey verbatim.
 		`),
 		Example: heredoc.Doc(`
 			$ algolia agents providers create -F openai-prod.json
-			$ algolia agents providers create --name openai-prod --provider openai --api-key-env OPENAI_API_KEY
 			$ cat spec.json | algolia agents providers create -F -
 		`),
 		Args: validators.NoArgs(),
@@ -88,12 +69,7 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the provider body (use \"-\" for stdin)")
-	cmd.Flags().StringVar(&opts.Name, "name", "", "Provider label (shortcut; not with -F)")
-	cmd.Flags().StringVar(&opts.Provider, "provider", "", `Provider backend: openai, anthropic, google_genai, or deepseek (shortcut; not with -F)`)
-	cmd.Flags().StringVar(&opts.APIKey, "api-key", "", "API credential (shortcut; not with -F)")
-	cmd.Flags().BoolVar(&opts.APIKeyStdin, "api-key-stdin", false, "Read API key from stdin (shortcut; not with -F)")
-	cmd.Flags().StringVar(&opts.APIKeyEnv, "api-key-env", "", "Read API key from this environment variable (shortcut; not with -F)")
-	cmd.Flags().StringVar(&opts.BaseURL, "base-url", "", `Optional OpenAI / Anthropic-compatible base URL (shortcut; not with -F)`)
+	_ = cmd.MarkFlagRequired("file")
 	cmd.Flags().
 		BoolVar(&opts.Show, "show-secret", false, "Render secret fields verbatim in the success response")
 	opts.PrintFlags.AddFlags(cmd)
@@ -101,37 +77,9 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	var body json.RawMessage
-	var err error
-
-	switch {
-	case inlineFlagsConflictWithFile(opts.File, opts.Name, opts.Provider, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin):
-		return cmdutil.FlagErrorf("cannot combine -F/--file with --name/--provider/--api-key/--api-key-* flags")
-	case opts.File != "":
-		body, err = shared.ReadJSONFile(opts.IO.In, opts.File)
-		if err != nil {
-			return err
-		}
-	default:
-		if !createShortcutAttempted(opts.Name, opts.Provider, opts.APIKey, opts.APIKeyEnv, opts.BaseURL, opts.APIKeyStdin) {
-			return cmdutil.FlagErrorf(`specify a JSON body with -F, or pass --name, --provider, and an API key flag`)
-		}
-		if opts.Name == "" || opts.Provider == "" {
-			return cmdutil.FlagErrorf("when creating without -F, both --name and --provider are required")
-		}
-		key, err := resolveProvidedAPIKey(opts.IO.In, opts.APIKey, opts.APIKeyEnv, opts.APIKeyStdin)
-		if err != nil {
-			return err
-		}
-		if strings.TrimSpace(opts.APIKey) != "" {
-			fmt.Fprintf(opts.IO.ErrOut, "%s\n",
-				"Warning: --api-key can expose your secret in shell history and process listings; prefer --api-key-env or --api-key-stdin.")
-		}
-		raw, err := marshalSimpleProviderCreate(opts.Name, opts.Provider, opts.BaseURL, key)
-		if err != nil {
-			return err
-		}
-		body = raw
+	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
+	if err != nil {
+		return err
 	}
 
 	client, err := opts.AgentStudioClient()
