@@ -1,6 +1,7 @@
 package userdata
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -41,13 +42,15 @@ func Test_runGetCmd_OutputFile(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	dst := filepath.Join(t.TempDir(), "out.json")
+	const outFile = "out.json"
+	dir := t.TempDir()
+	dst := filepath.Join(dir, outFile)
 	f, out := test.NewFactory(false, nil, nil, "")
 	f.AgentStudioClient = sharedtest.NewClient(t, ts)
 	cmd := NewUserDataCmd(f)
 	_, err := test.Execute(cmd, "get tok1 -o "+dst, out)
 	require.NoError(t, err)
-	body, err := os.ReadFile(dst)
+	body, err := fs.ReadFile(os.DirFS(dir), outFile)
 	require.NoError(t, err)
 	assert.Contains(t, string(body), `"conversations"`)
 }

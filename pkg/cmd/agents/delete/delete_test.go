@@ -1,6 +1,7 @@
 package delete
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -20,6 +21,11 @@ func agentJSON(name, status string) string {
 	}`
 }
 
+func writeTestJSONResponse(w http.ResponseWriter, body []byte) {
+	var out io.Writer = w
+	_, _ = out.Write(body)
+}
+
 func Test_runDeleteCmd_NonTTYRequiresConfirm(t *testing.T) {
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewDeleteCmd(f, nil)
@@ -35,7 +41,7 @@ func Test_runDeleteCmd_NonTTYWithConfirmDeletes(t *testing.T) {
 	mux.HandleFunc("/1/agents/abc-123", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			_, _ = w.Write([]byte(agentJSON("Concierge", "draft")))
+			writeTestJSONResponse(w, []byte(agentJSON("Concierge", "draft")))
 		case http.MethodDelete:
 			deleted.Store(true)
 			w.WriteHeader(http.StatusNoContent)

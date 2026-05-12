@@ -1,6 +1,7 @@
 package list
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,6 +13,11 @@ import (
 	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
+
+func writeTestJSONResponse(w http.ResponseWriter, body []byte) {
+	var out io.Writer = w
+	_, _ = out.Write(body)
+}
 
 // newCmdAgainst wires a fresh agentstudio client (pointed at a
 // httptest server) onto the standard test factory and returns an
@@ -71,7 +77,7 @@ func Test_runListCmd(t *testing.T) {
 			handler := http.NewServeMux()
 			handler.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, tc.wantQuery, r.URL.RawQuery)
-				_, _ = w.Write([]byte(`{
+				writeTestJSONResponse(w, []byte(`{
 					"data":[{
 						"id":"abc-123",
 						"name":"Concierge",
@@ -79,7 +85,7 @@ func Test_runListCmd(t *testing.T) {
 						"providerId":"prov-1",
 						"instructions":"Be helpful.",
 						"createdAt":"2023-01-01T00:00:00Z",
-						"updatedAt":"` + updated.Format(time.RFC3339) + `"
+						"updatedAt":"`+updated.Format(time.RFC3339)+`"
 					}],
 					"pagination":{"page":1,"limit":10,"totalCount":1,"totalPages":1}
 				}`))

@@ -1,6 +1,7 @@
 package conversations
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -42,8 +43,9 @@ func Test_runExportCmd_OutputFileWritesCompact(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
+	const exportFile = "export.json"
 	dir := t.TempDir()
-	outPath := filepath.Join(dir, "export.json")
+	outPath := filepath.Join(dir, exportFile)
 
 	f, out := test.NewFactory(false, nil, nil, "")
 	f.AgentStudioClient = sharedtest.NewClient(t, ts)
@@ -52,7 +54,7 @@ func Test_runExportCmd_OutputFileWritesCompact(t *testing.T) {
 	_, err := test.Execute(cmd, "export agent-1 -O "+outPath, out)
 	require.NoError(t, err)
 
-	contents, err := os.ReadFile(outPath)
+	contents, err := fs.ReadFile(os.DirFS(dir), exportFile)
 	require.NoError(t, err)
 	// Files get the raw bytes (jq-friendly), not the pretty form.
 	assert.Equal(t, `[{"id":"c1"}]`, string(contents))

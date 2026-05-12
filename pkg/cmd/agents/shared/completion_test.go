@@ -95,6 +95,25 @@ func TestMarshalCompletionBody_RejectsEmptyMessages(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestNormalizeCompatibility(t *testing.T) {
+	got, err := NormalizeCompatibility("")
+	require.NoError(t, err)
+	assert.Equal(t, "ai-sdk-5", string(got))
+
+	for _, in := range []string{"v5", "V5", "ai-sdk-5", "AI-SDK-5", "  AI-SDK-5  "} {
+		got, err := NormalizeCompatibility(in)
+		require.NoError(t, err, in)
+		assert.Equal(t, "ai-sdk-5", string(got), in)
+	}
+	for _, in := range []string{"v4", "AI-SDK-4"} {
+		got, err := NormalizeCompatibility(in)
+		require.NoError(t, err, in)
+		assert.Equal(t, "ai-sdk-4", string(got), in)
+	}
+	_, errInvalid := NormalizeCompatibility("nope")
+	require.Error(t, errInvalid)
+}
+
 func TestRenderCompletion_StreamingEmitsNDJSON(t *testing.T) {
 	ios, _, stdout, _ := iostreams.Test()
 	body := io.NopCloser(strings.NewReader(strings.Join([]string{

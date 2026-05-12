@@ -3,6 +3,7 @@ package create
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ type CreateOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	File          string
+	Body          string
 	OutputChanged bool
 }
 
@@ -33,12 +35,13 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 	}
 
 	cmd := &cobra.Command{
-		Use:   "create -F <file>",
-		Short: "Create an Agent Studio agent from a JSON file",
+		Use:   "create (--body <json> | -F <file>)",
+		Short: "Create an Agent Studio agent from JSON",
 		Long: heredoc.Doc(`
-			Create a new Agent Studio agent from a JSON file describing the
+			Create a new Agent Studio agent from JSON describing the
 			AgentConfigCreate body (name, instructions, model, providerId,
-			tools, config, …). The file is sent verbatim to the backend; the
+			tools, config, …). Pass --body for inline JSON or -F for a file
+			(or "-" for stdin). The payload is sent verbatim to the backend; the
 			CLI only validates that it's well-formed JSON. Field-level
 			validation is the backend's job and surfaces as a 422 error.
 		`),
@@ -48,11 +51,22 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 			# Create from stdin
 			$ cat spec.json | algolia agents create -F -
+
+			# Create from inline JSON
+			$ algolia agents create --body '{"name":"Concierge","instructions":"You are helpful."}'
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Ctx = cmd.Context()
 			opts.OutputChanged = cmd.Flags().Changed("output")
+			hasBody := strings.TrimSpace(opts.Body) != ""
+			hasFile := opts.File != ""
+			switch {
+			case hasBody && hasFile:
+				return cmdutil.FlagErrorf("specify either --body or --file, not both")
+			case !hasBody && !hasFile:
+				return cmdutil.FlagErrorf("one of --body or --file is required")
+			}
 			if runF != nil {
 				return runF(opts)
 			}
@@ -60,9 +74,9 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		},
 	}
 
+	cmd.Flags().StringVar(&opts.Body, "body", "", "Inline JSON agent body (AgentConfigCreate)")
 	cmd.Flags().
 		StringVarP(&opts.File, "file", "F", "", "JSON file with the agent body (use \"-\" for stdin)")
-	_ = cmd.MarkFlagRequired("file")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -70,9 +84,18 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	body, err := shared.ReadJSONFile(opts.IO.In, opts.File)
-	if err != nil {
-		return err
+	var body json.RawMessage
+	var err error
+	if strings.TrimSpace(opts.Body) != "" {
+		if !json.Valid([]byte(opts.Body)) {
+			return cmdutil.FlagErrorf("--body is not valid JSON")
+		}
+		body = json.RawMessage(opts.Body)
+	} else {
+		body, err = shared.ReadJSONFile(opts.IO.In, opts.File)
+		if err != nil {
+			return err
+		}
 	}
 
 	ctx := opts.Ctx

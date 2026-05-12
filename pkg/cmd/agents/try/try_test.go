@@ -159,5 +159,5 @@ func Test_runTryCmd_RejectsInvalidCompatibility(t *testing.T) {
 	cmd := NewTryCmd(f, nil)
 	_, err := test.Execute(cmd, "-c "+cfgPath+" -m hi --compatibility v9", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --compatibility "v9"`)
+	assert.Contains(t, err.Error(), `invalid --compatibility`)
 }

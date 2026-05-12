@@ -73,16 +73,21 @@ type CompletionRequest struct {
 	Configuration json.RawMessage `json:"configuration,omitempty"`
 }
 
-// NormalizeCompatibility maps user-facing aliases ("v4", "v5") to the
-// backend's canonical wire values. Empty defaults to v5.
+// NormalizeCompatibility maps user-facing aliases ("v4", "v5", "ai-sdk-4",
+// "ai-sdk-5") to the backend wire values. Matching is case-insensitive.
+// Empty defaults to v5.
 func NormalizeCompatibility(s string) (agentstudio.CompatibilityMode, error) {
+	s = strings.ToLower(strings.TrimSpace(s))
 	switch s {
 	case "", "v5", "ai-sdk-5":
 		return agentstudio.CompatV5, nil
 	case "v4", "ai-sdk-4":
 		return agentstudio.CompatV4, nil
 	default:
-		return "", cmdutil.FlagErrorf("invalid --compatibility %q (allowed: v4, v5)", s)
+		return "", cmdutil.FlagErrorf(
+			`invalid --compatibility %q (allowed: v4, v5, ai-sdk-4, ai-sdk-5; case-insensitive)`,
+			s,
+		)
 	}
 }
 

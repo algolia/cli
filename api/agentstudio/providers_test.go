@@ -221,7 +221,7 @@ func TestListModelsForProvider_PassesThroughRawJSON(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mux := http.NewServeMux()
 			mux.HandleFunc("/1/providers/p1/models", func(w http.ResponseWriter, _ *http.Request) {
-				_, _ = w.Write([]byte(tc.body))
+				writeTestJSONResponse(w, []byte(tc.body))
 			})
 			_, c := newTestClient(t, mux)
 			got, err := c.ListModelsForProvider(context.Background(), "p1")

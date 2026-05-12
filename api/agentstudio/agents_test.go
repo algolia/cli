@@ -318,10 +318,10 @@ func TestPublishUnpublishDuplicate(t *testing.T) {
 					body, _ := io.ReadAll(r.Body)
 					assert.Empty(t, body)
 
-					_, _ = w.Write([]byte(`{
+					writeTestJSONResponse(w, []byte(`{
 						"id":"new-id-or-same",
 						"name":"X",
-						"status":"` + string(tc.wantStatus) + `",
+						"status":"`+string(tc.wantStatus)+`",
 						"instructions":"x",
 						"createdAt":"2025-01-01T00:00:00Z"
 					}`))

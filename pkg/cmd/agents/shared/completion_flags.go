@@ -31,7 +31,7 @@ func RegisterCompletionFlags(cmd *cobra.Command, in *CompletionInputs) {
 		StringVarP(&in.Message, "message", "m", "", "Single user message (convenience for one-shot prompts)")
 	cmd.Flags().BoolVar(&in.NoStream, "no-stream", false, "Request a buffered JSON response instead of SSE")
 	cmd.Flags().
-		StringVar(&in.Compatibility, "compatibility", "", "Streaming protocol: v4 (ai-sdk-4) or v5 (ai-sdk-5, default)")
+		StringVar(&in.Compatibility, "compatibility", "", "Streaming protocol: v4 / ai-sdk-4 or v5 / ai-sdk-5 (default); case-insensitive")
 	cmd.Flags().BoolVar(&in.NoCache, "no-cache", false, "Bypass the backend completion cache (default: cache enabled)")
 	cmd.Flags().
 		BoolVar(&in.NoMemory, "no-memory", false, "Disable agent memory for this completion (default: memory enabled)")
