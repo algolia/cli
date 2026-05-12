@@ -61,15 +61,15 @@ func TestGenMdxTreeWritesNestedCommandPages(t *testing.T) {
 	require.NoError(t, GenMdxTree(root, dir))
 
 	rootContent := readTestFile(t, filepath.Join(dir, "index.mdx"))
-	require.Contains(t, rootContent, "slug: tools/cli/commands")
-	require.Contains(t, rootContent, "[`algolia events`](/tools/cli/commands/events)")
+	require.Contains(t, rootContent, "slug: doc/tools/cli/commands")
+	require.Contains(t, rootContent, "[`algolia events`](/doc/tools/cli/commands/events)")
 
 	eventsContent := readTestFile(t, filepath.Join(dir, "events", "index.mdx"))
-	require.Contains(t, eventsContent, "slug: tools/cli/commands/events")
-	require.Contains(t, eventsContent, "[`algolia events sources`](/tools/cli/commands/events/sources)")
+	require.Contains(t, eventsContent, "slug: doc/tools/cli/commands/events")
+	require.Contains(t, eventsContent, "[`algolia events sources`](/doc/tools/cli/commands/events/sources)")
 
 	listContent := readTestFile(t, filepath.Join(dir, "events", "sources", "list", "index.mdx"))
-	require.Contains(t, listContent, "slug: tools/cli/commands/events/sources/list")
+	require.Contains(t, listContent, "slug: doc/tools/cli/commands/events/sources/list")
 	require.Contains(t, listContent, "`algolia events sources list [flags]`")
 	require.Contains(t, listContent, "`-F`, `--format`")
 }

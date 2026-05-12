@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const mdxDocsRootSlug = "tools/cli/commands"
+const mdxDocsRootSlug = "doc/tools/cli/commands"
 
 //go:embed mdx.tpl
 var mdxTemplate string
