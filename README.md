@@ -59,7 +59,7 @@ To build the Algolia CLI from source, you'll need:
 - Go version 1.23 or later
 - [Go task](https://taskfile.dev/)
 
-1. Clone the repo: `git clone https://github.com/kai687/cli.git algolia-cli && cd algolia-cli`
+1. Clone the repo: `git clone https://github.com/algolia/cli.git algolia-cli && cd algolia-cli`
 1. Run: `task build`
 
 ## Support
