@@ -10,6 +10,7 @@ import (
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
+	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -84,6 +85,11 @@ func NewFactory(
 			return crawler.NewClientWithHTTPClient("id", "key", &http.Client{
 				Transport: r,
 			}), nil
+		}
+		f.AgentStudioClient = func() (*agentstudio.Client, error) {
+			c := agentstudio.NewClientWithHTTPClient("APP", "KEY", &http.Client{Transport: r})
+			c.BaseURL = "http://test.local/"
+			return c, nil
 		}
 	}
 

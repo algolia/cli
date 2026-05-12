@@ -85,6 +85,12 @@ tasks:
     vars:
       source: https://raw.githubusercontent.com/algolia/api-clients-automation/main/specs/bundled/search.yml
       destination: ./api/specs/search.yml
+  download-agent-studio-spec:
+    desc: Download the latest Agent Studio (RAG API) OpenAPI spec from a live endpoint
+    cmd: curl -fsSL -o {{ .destination }} {{ .source }}
+    vars:
+      source: https://agent-studio.eu.algolia.com/rag-openapi.json
+      destination: ./api/specs/agent-studio.json
   generate:
     desc: Generate command flags
     internal: true

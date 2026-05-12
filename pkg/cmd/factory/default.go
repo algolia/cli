@@ -9,6 +9,7 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
+	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -23,6 +24,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
+	f.AgentStudioClient = agentStudioClient(f)
 
 	return f
 }
@@ -82,6 +84,21 @@ func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
 		}
 
 		return crawler.NewClient(userID, APIKey), nil
+	}
+}
+
+func agentStudioClient(f *cmdutil.Factory) func() (*agentstudio.Client, error) {
+	return func() (*agentstudio.Client, error) {
+		appID, err := f.Config.Profile().GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := f.Config.Profile().GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		return agentstudio.NewClient(appID, apiKey), nil
 	}
 }
 
