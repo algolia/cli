@@ -1,0 +1,94 @@
+env COMP_ID=test-comp-e2e
+env INDEX_NAME=test-comp-source-index
+
+# Add a record to the source index so the composition has something to search
+exec algolia records import ${INDEX_NAME} --file record.json --wait
+! stderr .
+
+# Defer index cleanup
+defer algolia index delete ${INDEX_NAME} --confirm
+! stderr .
+
+# Upsert a composition using the real behavior.injection schema
+exec algolia compositions upsert ${COMP_ID} --file comp.json
+! stderr .
+stdout '"taskID"'
+
+# Defer composition cleanup
+defer algolia compositions delete ${COMP_ID} --confirm
+! stderr .
+
+# Get the composition back
+exec algolia compositions get ${COMP_ID}
+! stderr .
+stdout ${COMP_ID}
+
+# List compositions (should contain our composition)
+exec algolia compositions list
+! stderr .
+stdout ${COMP_ID}
+
+# Search the composition
+exec algolia compositions search ${COMP_ID} "test"
+! stderr .
+stdout '"hits"'
+
+# Upsert a rule
+exec algolia compositions rules upsert ${COMP_ID} rule-e2e --file rule.json
+! stderr .
+stdout '"taskID"'
+
+# Get the rule back
+exec algolia compositions rules get ${COMP_ID} rule-e2e
+! stderr .
+stdout 'rule-e2e'
+
+# List rules
+exec algolia compositions rules list ${COMP_ID}
+! stderr .
+stdout 'rule-e2e'
+
+# Delete the rule
+exec algolia compositions rules delete ${COMP_ID} rule-e2e --confirm
+! stderr .
+
+-- record.json --
+{"objectID": "test-record-1", "name": "Test record"}
+
+-- comp.json --
+{
+  "objectID": "test-comp-e2e",
+  "name": "Test Composition E2E",
+  "behavior": {
+    "injection": {
+      "main": {
+        "source": {
+          "search": {
+            "index": "test-comp-source-index"
+          }
+        }
+      }
+    }
+  }
+}
+
+-- rule.json --
+{
+  "objectID": "rule-e2e",
+  "conditions": [
+    { "anchoring": "is", "pattern": "test" }
+  ],
+  "consequence": {
+    "behavior": {
+      "injection": {
+        "main": {
+          "source": {
+            "search": {
+              "index": "test-comp-source-index"
+            }
+          }
+        }
+      }
+    }
+  }
+}

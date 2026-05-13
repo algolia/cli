@@ -153,3 +153,8 @@ func TestSearch(t *testing.T) {
 func TestAgentReady(t *testing.T) {
 	runTestsInDir(t, "testscripts/agent-ready")
 }
+
+// TestCompositions tests `algolia compositions` commands
+func TestCompositions(t *testing.T) {
+	runTestsInDir(t, "testscripts/compositions")
+}
