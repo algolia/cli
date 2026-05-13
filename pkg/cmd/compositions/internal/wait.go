@@ -39,6 +39,18 @@ func WaitForTask(
 	io.StartProgressIndicatorWithLabel("Waiting for task")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
+	// Check once immediately so quick-completing tasks don't wait a full pollInterval.
+	resp, err := client.GetTask(client.NewApiGetTaskRequest(compositionID, taskID))
+	if err != nil {
+		io.StopProgressIndicator()
+		return err
+	}
+	if resp.Status == algoliaComposition.TASK_STATUS_PUBLISHED {
+		io.StopProgressIndicator()
+		return nil
+	}
+
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 	for {

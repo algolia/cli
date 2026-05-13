@@ -98,5 +98,10 @@ func runUpsertCmd(opts *UpsertOptions) error {
 		return err
 	}
 
+	if opts.IO.IsStdoutTTY() {
+		cs := opts.IO.ColorScheme()
+		fmt.Fprintf(opts.IO.Out, "%s Upserted rule %s in composition %s\n", cs.SuccessIcon(), opts.ObjectID, opts.CompositionID)
+	}
+
 	return p.Print(opts.IO, res)
 }

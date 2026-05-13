@@ -54,16 +54,19 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 			opts.ObjectID = args[1]
 
 			if !opts.DoConfirm {
+				if !opts.IO.CanPrompt() {
+					return cmdutil.FlagErrorf("--confirm required when non-interactive shell is detected")
+				}
 				var confirmed bool
 				err := prompt.Confirm(
 					fmt.Sprintf("Delete rule %q from composition %q?", opts.ObjectID, opts.CompositionID),
 					&confirmed,
 				)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to prompt: %w", err)
 				}
 				if !confirmed {
-					return cmdutil.ErrCancel
+					return nil
 				}
 			}
 
@@ -100,6 +103,11 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	if err := compinternal.WaitForTask(opts.IO, client, opts.CompositionID, res.TaskID, compinternal.PollInterval, compinternal.Timeout); err != nil {
 		return err
+	}
+
+	if opts.IO.IsStdoutTTY() {
+		cs := opts.IO.ColorScheme()
+		fmt.Fprintf(opts.IO.Out, "%s Deleted rule %s from composition %s\n", cs.SuccessIcon(), opts.ObjectID, opts.CompositionID)
 	}
 
 	return p.Print(opts.IO, res)
