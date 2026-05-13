@@ -1,52 +1,45 @@
 ---
-navigation: "cli"
-title: |-
-  {{ .Name }}
-description: |-
-  {{ .Description }}
-slug: {{ .Slug }}
+title: {{ .Name }}
+description: {{ .Description }}
+public: true
 ---
-{{ if .Description }}
-{{ .Description }}
-{{ end }}
 
-## Usage
+```txt Usage
+{{ .Usage }}
+```
+{{- if .SubPages }}
 
-`{{ .Usage }}`
-
-{{ if .Aliases }}
-## Aliases
-
-{{ range $alias := .Aliases -}}
-- `{{ $alias }}`
-{{ end }}
-{{ end }}
-
-{{ if .SubPages }}
-## Subcommands
+## Commands
 
 {{ range $subPage := .SubPages -}}
-- [`{{ $subPage.Name }}`](/{{ $subPage.Slug }}): {{ $subPage.Description }}
-{{ end }}
-{{ end }}
+- [`{{ $subPage.Name }}`](/{{ $subPage.Slug }})
+{{ end -}}
+{{ end -}}
+{{ $examples := getExamples .Command -}}
+{{ if $examples }}
 
-{{ $examples := getExamples .Command }}{{ if $examples }}
 ## Examples
-{{ range $example := $examples }}
-{{ $example.Desc }}
 
-```sh{{ if $example.WebCLICommand }} command="{{$example.WebCLICommand}}"{{ end }}
+{{ range $example := $examples -}}
+{{ if $example.Desc }}{{ $example.Desc }}:
+
+{{ end -}}
+```sh icon=square-terminal
 {{ $example.Code }}
 ```
-{{ end }}
-{{ end }}
-
-{{ range $flagKey, $flagSlice := .Flags -}}
+{{ end -}}
+{{ end -}}
+{{ range $flagKey, $flagSlice := .Flags }}
 {{ if $flagSlice }}
 ## {{ $flagKey }}
 
 {{ range $flag := $flagSlice -}}
-- {{ if $flag.Shorthand }}`-{{ $flag.Shorthand }}`, {{ end }}`--{{ $flag.Name }}`: {{ $flag.Description }}
+<ParamField body="{{ if $flag.Shorthand }}-{{ $flag.Shorthand }}, {{ end }}--{{ $flag.Name }}">
+
+{{ formatAlgoliaDocLinks (trimTrailingNewlines $flag.Description) }}
+
+</ParamField>
+
+{{ end -}}
 {{ end }}
-{{ end }}
-{{ end }}
+{{- end -}}

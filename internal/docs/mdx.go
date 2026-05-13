@@ -4,13 +4,16 @@ import (
 	_ "embed"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
 	"github.com/spf13/cobra"
 )
 
-const mdxDocsRootSlug = "tools/cli/commands"
+const mdxDocsRootSlug = "doc/tools/cli/commands"
+
+var algoliaAPIReferenceLinkRE = regexp.MustCompile(`See: (/doc/api-reference/api-parameters/([^\s)]+))`)
 
 //go:embed mdx.tpl
 var mdxTemplate string
@@ -26,6 +29,8 @@ func GenMdxTree(cmd *cobra.Command, dir string) error {
 		"getExamples": func(cmd Command) []Example {
 			return cmd.ExamplesList()
 		},
+		"formatAlgoliaDocLinks": formatAlgoliaDocLinks,
+		"trimTrailingNewlines":  trimTrailingNewlines,
 	}).Parse(mdxTemplate)
 	if err != nil {
 		return err
@@ -48,7 +53,7 @@ func newMdxPage(cmd Command) mdxPage {
 }
 
 func writeMdxPageTree(tpl *template.Template, dir string, page mdxPage) error {
-	filename := filepath.Join(dir, commandOutputDir(page.Command), "index.mdx")
+	filename := filepath.Join(dir, commandOutputFilename(page.Command))
 	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
 		return err
 	}
@@ -81,8 +86,16 @@ func commandPathParts(cmd Command) []string {
 	return parts[1:]
 }
 
-func commandOutputDir(cmd Command) string {
-	return filepath.Join(commandPathParts(cmd)...)
+func commandOutputFilename(cmd Command) string {
+	parts := commandPathParts(cmd)
+	if len(parts) == 0 {
+		return "index.mdx"
+	}
+
+	last := len(parts) - 1
+	parts[last] += ".mdx"
+
+	return filepath.Join(parts...)
 }
 
 func buildMdxSlug(parts []string) string {
@@ -91,4 +104,13 @@ func buildMdxSlug(parts []string) string {
 	}
 
 	return mdxDocsRootSlug + "/" + strings.Join(parts, "/")
+}
+
+func trimTrailingNewlines(s string) string {
+	return strings.TrimRight(s, "\n")
+}
+
+func formatAlgoliaDocLinks(s string) string {
+	s = strings.ReplaceAll(s, "https://www.algolia.com/doc", "/doc")
+	return algoliaAPIReferenceLinkRE.ReplaceAllString(s, "See: [`$2`]($1)")
 }

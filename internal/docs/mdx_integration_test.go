@@ -22,7 +22,7 @@ func TestGenMdxTreeSupportsCurrentCommandTree(t *testing.T) {
 	rootContent := readTestFile(t, filepath.Join(dir, "index.mdx"))
 	require.Contains(t, rootContent, "algolia search MOVIES --query \"toy story\"")
 
-	logoutContent := readTestFile(t, filepath.Join(dir, "auth", "logout", "index.mdx"))
+	logoutContent := readTestFile(t, filepath.Join(dir, "auth", "logout.mdx"))
 	require.Contains(t, logoutContent, "algolia auth logout")
 }
 
