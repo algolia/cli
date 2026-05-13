@@ -1,0 +1,31 @@
+# Read-only live smoke against the configured Agent Studio backend.
+#
+# Gated on ALGOLIA_AGENT_STUDIO_E2E=1 because:
+#   1. The standard e2e env (ALGOLIA_APPLICATION_ID/_API_KEY) targets
+#      a Search test app, which does NOT necessarily have the gen_ai
+#      feature gate enabled — `agents list` would 403 with a useful
+#      error but a non-zero exit, failing the suite.
+#   2. Unit tests already cover the response-parsing shape; this
+#      script's value is "the live backend speaks the wire format we
+#      think it does" — only meaningful when explicitly opted into.
+#
+# Write-CRUD chaining (create → update → delete same id) needs an
+# id-extraction helper in the testscript framework that we don't
+# have yet — deferred to a follow-up.
+
+[!env:ALGOLIA_AGENT_STUDIO_E2E] skip 'set ALGOLIA_AGENT_STUDIO_E2E=1 to run live Agent Studio E2E'
+
+# `agents list --output json` returns the paginated envelope.
+# We don't assert on `data` count (the test app's agents change over
+# time); only on the envelope shape, which is the wire-format contract.
+exec algolia agents list --output json
+! stderr .
+stdout -count=1 '"data":'
+stdout -count=1 '"pagination":'
+stdout -count=1 '"totalCount":'
+
+# `agents list` without --output prints a TTY table or empty output.
+# We just assert the call returned cleanly — schema-level checks live
+# in the unit tests.
+exec algolia agents list
+! stderr .

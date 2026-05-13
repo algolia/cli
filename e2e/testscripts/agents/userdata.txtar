@@ -1,0 +1,21 @@
+# `agents user-data` — flag-validation.
+
+exec algolia agents user-data
+stdout 'Inspect or erase'
+
+! exec algolia agents user-data get
+stderr 'requires exactly 1 argument'
+
+! exec algolia agents user-data delete tok1
+stderr '--confirm required'
+
+! exec algolia agents userdata delete tok1
+stderr '--confirm required'
+
+# Slash in user-token is rejected with a clear message (gateway decodes %2F
+# before routing and yields a misleading 404). Same guard on get + delete.
+! exec algolia agents user-data get ab/cd
+stderr 'contains "/"'
+
+! exec algolia agents user-data delete ab/cd --confirm
+stderr 'contains "/"'

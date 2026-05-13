@@ -1,0 +1,15 @@
+# `agents cache invalidate` — flag-validation.
+#
+# Ungated.
+
+# `cache` parent without verb prints help
+exec algolia agents cache
+stdout 'invalidate'
+
+# `invalidate` requires <agent-id> positional
+! exec algolia agents cache invalidate
+stderr 'requires exactly 1 argument'
+
+# Non-TTY without --confirm is refused (matches `agents delete` rule)
+! exec algolia agents cache invalidate abc-123
+stderr '--confirm required'

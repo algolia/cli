@@ -3,3 +3,8 @@ linters:
     - gosec
     - gofumpt
     - stylecheck
+
+# tmp/ holds Taskfile outputs and ad-hoc QA probes; exclude from lint noise.
+issues:
+  exclude-dirs:
+    - tmp

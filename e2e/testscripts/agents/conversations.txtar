@@ -1,0 +1,61 @@
+# `agents conversations` — flag-validation + guardrails.
+# None of these hit the network: failing cases trip cobra / CLI validators.
+#
+# Ungated: runs whenever the standard ALGOLIA_APPLICATION_ID +
+# ALGOLIA_API_KEY are present.
+
+exec algolia agents conversations
+stdout 'conversations persisted'
+
+# ---------- list ----------
+
+# Requires <agent-id> positional
+! exec algolia agents conversations list
+stderr 'requires exactly 1 argument'
+
+# --feedback-vote without --include-feedback is refused (mirrors backend
+# constraint; reject early at the CLI for a clearer error message).
+! exec algolia agents conversations list agent-1 --feedback-vote 1
+stderr '--feedback-vote requires --include-feedback'
+
+# --feedback-vote outside 0|1 is refused
+! exec algolia agents conversations list agent-1 --include-feedback --feedback-vote 7
+stderr 'must be 0 \(down\) or 1 \(up\)'
+
+# ---------- get ----------
+
+# Requires both positionals
+! exec algolia agents conversations get agent-1
+stderr 'requires exactly 2 argument'
+
+# ---------- delete ----------
+
+# Requires both positionals
+! exec algolia agents conversations delete agent-1
+stderr 'requires exactly 2 argument'
+
+# Non-TTY without --confirm is refused (mirrors `agents delete`)
+! exec algolia agents conversations delete agent-1 c1
+stderr '--confirm required'
+
+# ---------- purge ----------
+
+# Requires <agent-id>
+! exec algolia agents conversations purge
+stderr 'requires exactly 1 argument'
+
+# Dateless purge is refused at the CLI: backend returns 400
+# "At least one filter is required" so we short-circuit instead of
+# round-tripping.
+! exec algolia agents conversations purge agent-1 -y
+stderr 'at least one of --start-date / --end-date is required'
+
+# Non-TTY without --confirm is refused (even when scope is set)
+! exec algolia agents conversations purge agent-1 --start-date 2026-01-01
+stderr '--confirm required'
+
+# ---------- export ----------
+
+# Requires <agent-id>
+! exec algolia agents conversations export
+stderr 'requires exactly 1 argument'

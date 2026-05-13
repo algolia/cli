@@ -1,0 +1,19 @@
+# `agents feedback` — flag-validation.
+
+exec algolia agents feedback
+stdout 'feedback'
+
+! exec algolia agents feedback create
+stderr '--agent-id is required'
+
+! exec algolia agents feedback create --agent-id a
+stderr '--message-id is required'
+
+! exec algolia agents feedback create --agent-id a --message-id m
+stderr '--vote is required'
+
+! exec algolia agents feedback create --agent-id a --message-id m --vote 5
+stderr 'must be 0 or 1'
+
+! exec algolia agents feedback create --agent-id a --message-id m --vote 1 --tags x,x,x,x,x,x,x,x,x,x,x
+stderr 'at most 10'
