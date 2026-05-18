@@ -31,12 +31,12 @@ fi
 # The directory under npm/ is npm/cli-<plat>; the published name is
 # @algolia/${PACKAGE_NAME}-<plat>.
 PLATFORMS=(
-  "darwin-x64:algolia_darwin_amd64_v1/algolia"
-  "darwin-arm64:algolia_darwin_arm64/algolia"
-  "linux-x64:algolia_linux_amd64_v1/algolia"
-  "linux-arm64:algolia_linux_arm64/algolia"
-  "win32-x64:algolia_windows_amd64_v1/algolia.exe"
-  "win32-arm64:algolia_windows_arm64/algolia.exe"
+  "darwin-x64:macos_darwin_amd64_v1/algolia"
+  "darwin-arm64:macos_darwin_arm64_v8.0/algolia"
+  "linux-x64:linux_linux_amd64_v1/algolia"
+  "linux-arm64:linux_linux_arm64_v8.0/algolia"
+  "win32-x64:windows_windows_amd64_v1/algolia.exe"
+  "win32-arm64:windows_windows_arm64_v8.0/algolia.exe"
 )
 
 # When publishing under a non-default name, rewrite package.json names and the
@@ -78,6 +78,7 @@ for entry in "${PLATFORMS[@]}"; do
   echo "Publishing @algolia/$PACKAGE_NAME-$plat@$VERSION"
 
   if [[ -z "$DRY_RUN" ]]; then
+    mkdir -p "$dest_dir"
     cp "$src" "$dest_dir/$binary_name"
     if [[ "$binary_name" != *.exe ]]; then
       chmod +x "$dest_dir/$binary_name"
