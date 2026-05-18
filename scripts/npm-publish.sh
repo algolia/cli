@@ -77,12 +77,10 @@ for entry in "${PLATFORMS[@]}"; do
 
   echo "Publishing @algolia/$PACKAGE_NAME-$plat@$VERSION"
 
-  if [[ -z "$DRY_RUN" ]]; then
-    mkdir -p "$dest_dir"
-    cp "$src" "$dest_dir/$binary_name"
-    if [[ "$binary_name" != *.exe ]]; then
-      chmod +x "$dest_dir/$binary_name"
-    fi
+  mkdir -p "$dest_dir"
+  cp "$src" "$dest_dir/$binary_name"
+  if [[ "$binary_name" != *.exe ]]; then
+    chmod +x "$dest_dir/$binary_name"
   fi
 
   npm --prefix "$NPM_DIR/cli-$plat" version --no-git-tag-version "$VERSION"
