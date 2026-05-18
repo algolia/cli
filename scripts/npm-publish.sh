@@ -21,6 +21,12 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN="--dry-run"
 fi
 
+# Provenance attestations need an OIDC issuer — only available in CI runners.
+PROVENANCE=""
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+  PROVENANCE="--provenance"
+fi
+
 # Format: "platform-suffix:dist-relative-path"
 # The directory under npm/ is npm/cli-<plat>; the published name is
 # @algolia/${PACKAGE_NAME}-<plat>.
@@ -79,7 +85,7 @@ for entry in "${PLATFORMS[@]}"; do
   fi
 
   npm --prefix "$NPM_DIR/cli-$plat" version --no-git-tag-version "$VERSION"
-  npm publish "$NPM_DIR/cli-$plat" --access public --provenance $DRY_RUN
+  npm publish "$NPM_DIR/cli-$plat" --access public $PROVENANCE $DRY_RUN
 done
 
 # Update coordinator package versions to match and publish
@@ -93,4 +99,4 @@ done
 npm --prefix "$NPM_DIR/algolia" version --no-git-tag-version "$VERSION"
 
 echo "Publishing @algolia/$PACKAGE_NAME@$VERSION"
-npm publish "$NPM_DIR/algolia" --access public --provenance $DRY_RUN
+npm publish "$NPM_DIR/algolia" --access public $PROVENANCE $DRY_RUN
