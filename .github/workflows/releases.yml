@@ -5,7 +5,7 @@ on:
       - "v*"
 permissions:
   contents: write # publishing releases
-  id-token: write # OIDC token for npm trusted publishing
+  id-token: write # OIDC token for npm provenance attestation
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -51,6 +51,7 @@ jobs:
       - name: Publish npm packages
         env:
           VERSION: ${{ github.ref_name }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: ./scripts/npm-publish.sh
       - name: Docs checkout
         uses: actions/checkout@v4

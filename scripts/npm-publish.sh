@@ -2,8 +2,6 @@
 set -euo pipefail
 
 # Override to publish under a different name (e.g. cli_beta) for testing.
-# When non-default, --provenance is skipped (OIDC trusted publisher is only
-# configured for @algolia/cli on npmjs.org).
 PACKAGE_NAME="${PACKAGE_NAME:-cli}"
 
 # Strip leading 'v' from the tag (e.g. v1.8.2 -> 1.8.2)
@@ -21,11 +19,6 @@ DIST_DIR="$REPO_ROOT/dist"
 DRY_RUN=""
 if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN="--dry-run"
-fi
-
-PROVENANCE="--provenance"
-if [[ "$PACKAGE_NAME" != "cli" ]]; then
-  PROVENANCE=""
 fi
 
 # Format: "platform-suffix:dist-relative-path"
@@ -86,7 +79,7 @@ for entry in "${PLATFORMS[@]}"; do
   fi
 
   npm --prefix "$NPM_DIR/cli-$plat" version --no-git-tag-version "$VERSION"
-  npm publish "$NPM_DIR/cli-$plat" --access public $PROVENANCE $DRY_RUN
+  npm publish "$NPM_DIR/cli-$plat" --access public --provenance $DRY_RUN
 done
 
 # Update coordinator package versions to match and publish
@@ -100,4 +93,4 @@ done
 npm --prefix "$NPM_DIR/algolia" version --no-git-tag-version "$VERSION"
 
 echo "Publishing @algolia/$PACKAGE_NAME@$VERSION"
-npm publish "$NPM_DIR/algolia" --access public $PROVENANCE $DRY_RUN
+npm publish "$NPM_DIR/algolia" --access public --provenance $DRY_RUN
