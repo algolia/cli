@@ -4,13 +4,26 @@ set -euo pipefail
 # Override to publish under a different name (e.g. cli_beta) for testing.
 PACKAGE_NAME="${PACKAGE_NAME:-cli}"
 
+if [[ -z "${VERSION:-}" ]]; then
+  echo "Error: VERSION must be set to a semantic version like v1.8.2 or 1.8.2." >&2
+  exit 1
+fi
+
 # Strip leading 'v' from the tag (e.g. v1.8.2 -> 1.8.2)
 VERSION="${VERSION#v}"
 
+if [[ ! "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)([-+][0-9A-Za-z.-]+)?$ ]]; then
+  echo "Error: VERSION must be a semantic version like v1.8.2 or 1.8.2; got '$VERSION'." >&2
+  exit 1
+fi
+
 # Offset the major version by +4 so the npm package starts at 5.x
 # (the old @algolia/cli package was at 4.x — a completely different tool)
-IFS='.' read -r major minor patch <<< "$VERSION"
-VERSION="$((major + 4)).$minor.$patch"
+major="${BASH_REMATCH[1]}"
+minor="${BASH_REMATCH[2]}"
+patch="${BASH_REMATCH[3]}"
+suffix="${BASH_REMATCH[4]:-}"
+VERSION="$((major + 4)).$minor.$patch$suffix"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NPM_DIR="$REPO_ROOT/npm"
