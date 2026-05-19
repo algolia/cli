@@ -66,10 +66,15 @@ if [[ "$PACKAGE_NAME" != "cli" ]]; then
   done
 fi
 
+binary_name="algolia"
+if [[ "$PLAT" == win32-* ]]; then
+  binary_name="algolia.exe"
+fi
+
 echo "==> Building binary..."
 mkdir -p "$PLAT_DIR/bin"
-( cd "$REPO_ROOT" && go build -o "$PLAT_DIR/bin/algolia" ./cmd/algolia )
-chmod +x "$PLAT_DIR/bin/algolia"
+( cd "$REPO_ROOT" && go build -o "$PLAT_DIR/bin/$binary_name" ./cmd/algolia )
+chmod +x "$PLAT_DIR/bin/$binary_name"
 
 echo "==> Bumping platform package version to $TEST_VERSION..."
 npm --prefix "$PLAT_DIR" version --no-git-tag-version --allow-same-version "$TEST_VERSION" >/dev/null
