@@ -1,0 +1,24 @@
+{
+  "name": "@algolia/cli-linux-arm64",
+  "version": "5.8.2",
+  "description": "linux arm64 binary for @algolia/cli",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin/algolia",
+    "index.js"
+  ],
+  "license": "MIT",
+  "homepage": "https://algolia.com/doc/tools/cli/",
+  "bugs": {
+    "url": "https://github.com/algolia/cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/algolia/cli.git"
+  }
+}
