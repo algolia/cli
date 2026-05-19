@@ -4,22 +4,24 @@ The official Algolia CLI lets you manage your Algolia resources — indices, rec
 
 > This package installs a prebuilt Go binary. The npm wrapper still requires Node.js to launch the installed command.
 
-## Installation
+## Usage
 
-```sh
-npm install -g @algolia/cli
-```
-
-Or run without installing:
+Run without installing:
 
 ```sh
 npx @algolia/cli --help
 ```
 
-## Usage
+Or install globally:
 
 ```sh
+npm install -g @algolia/cli
 algolia --help
+```
+
+## Examples
+
+```sh
 algolia search --index my-index --query "foo"
 algolia indices list
 algolia apikeys list
