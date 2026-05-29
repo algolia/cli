@@ -400,6 +400,112 @@ func (c *Client) UpdateApplication(accessToken, appID, name string) (*Applicatio
 	return &app, nil
 }
 
+// GetSelfServePlans returns the available plans
+func (c *Client) GetSelfServePlans(accessToken string) ([]Plan, error) {
+	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/plan-templates/self-serve", nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't get the list of plans: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Couldn't get the list of plans: %d", resp.StatusCode)
+	}
+
+	var plansResp PlanTemplatesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&plansResp); err != nil {
+		return nil, fmt.Errorf("Couldn't get the list of plans: %w", err)
+	}
+
+	plans := make([]Plan, 0, len(plansResp.Data))
+	for i := range plansResp.Data {
+		plans = append(plans, plansResp.Data[i].toPlan())
+	}
+	return plans, nil
+}
+
+// GetUser returns account-level information for the authenticated user
+func (c *Client) GetUser(accessToken string) (*DashboardUser, error) {
+	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/user", nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't get your account details: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Couldn't get your account details: %d", resp.StatusCode)
+	}
+
+	var userResp userResponse
+	if err := json.NewDecoder(resp.Body).Decode(&userResp); err != nil {
+		return nil, fmt.Errorf("Couldn't get your account details: %w", err)
+	}
+
+	user := userResp.toUser()
+	return &user, nil
+}
+
+// ChangeApplicationPlan changes the plan of an application
+func (c *Client) ChangeApplicationPlan(accessToken, appID, plan string) (*Application, error) {
+	payload := ChangePlanRequest{Plan: plan}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint := fmt.Sprintf(
+		"%s/1/applications/%s/plan/self-serve",
+		c.APIURL,
+		url.PathEscape(appID),
+	)
+	req, err := http.NewRequest(http.MethodPatch, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't change your application's plan: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("Couldn't change your application's plan: %d", resp.StatusCode)
+	}
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var singleResp SingleApplicationResponse
+	if err := json.Unmarshal(respBody, &singleResp); err == nil &&
+		singleResp.Data.Attributes.ApplicationID != "" {
+		app := singleResp.Data.toApplication()
+		return &app, nil
+	}
+	return &Application{ID: appID}, nil
+}
+
 // ListRegions returns the allowed hosting regions for application creation.
 func (c *Client) ListRegions(accessToken string) ([]Region, error) {
 	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/hosting/regions", nil)

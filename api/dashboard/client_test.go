@@ -278,7 +278,7 @@ func TestCreateApplication_Success(t *testing.T) {
 
 func TestUpdateApplication_Success(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/1/applications/APP1", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -306,7 +306,7 @@ func TestUpdateApplication_Success(t *testing.T) {
 
 func TestUpdateApplication_Unauthorized(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/1/applications/APP1", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 
@@ -320,7 +320,7 @@ func TestUpdateApplication_Unauthorized(t *testing.T) {
 
 func TestUpdateApplication_ErrorStatus(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/1/applications/APP1", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_, err := w.Write([]byte(`{"errors":[{"title":"name has already been taken"}]}`))
 		require.NoError(t, err)
@@ -333,6 +333,199 @@ func TestUpdateApplication_ErrorStatus(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "update application failed with status 422")
 	assert.Contains(t, err.Error(), "name has already been taken")
+}
+
+func TestGetSelfServePlans_Success(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/plan-templates/self-serve", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		require.NoError(t, json.NewEncoder(w).Encode(PlanTemplatesResponse{
+			Data: []PlanTemplateResource{
+				{
+					ID:   "build",
+					Type: "plan_template",
+					Attributes: PlanTemplateAttributes{
+						Name:        "Build",
+						Description: "Free forever Search & Discovery API.",
+						Type:        "free",
+						Configuration: PlanTemplateConfiguration{
+							Plan:        "build",
+							AcceptTerms: "Build terms",
+						},
+					},
+				},
+				{
+					ID:   "grow",
+					Type: "plan_template",
+					Attributes: PlanTemplateAttributes{
+						Name:        "Grow",
+						Description: "Best-in-class Search & Discovery API with free tier.",
+						Type:        "freeform",
+						Freeform:    "$0.50 / 1,000 Requests",
+						Configuration: PlanTemplateConfiguration{
+							Plan:        "grow",
+							AcceptTerms: "Grow terms",
+						},
+					},
+				},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	plans, err := client.GetSelfServePlans("test-token")
+	require.NoError(t, err)
+	require.Len(t, plans, 2)
+
+	// The free-type plan keeps its configuration.plan id and prices as "Free".
+	assert.Equal(t, "build", plans[0].ID)
+	assert.Equal(t, "Build", plans[0].Name)
+	assert.Equal(t, "free", plans[0].Type)
+	assert.Equal(t, "Free", plans[0].Price)
+	assert.Equal(t, "Build terms", plans[0].AcceptTerms)
+
+	// Freeform plans surface the freeform pricing string.
+	assert.Equal(t, "grow", plans[1].ID)
+	assert.Equal(t, "$0.50 / 1,000 Requests", plans[1].Price)
+}
+
+func TestGetSelfServePlans_Unauthorized(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/plan-templates/self-serve", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.GetSelfServePlans("expired-token")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "session expired")
+}
+
+func TestGetUser_TopLevel(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/user", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		_, err := w.Write([]byte(`{"has_payment_method": true, "plan": "grow"}`))
+		require.NoError(t, err)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	user, err := client.GetUser("test-token")
+	require.NoError(t, err)
+	assert.True(t, user.HasPaymentMethod)
+}
+
+func TestGetUser_DataAttributes(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/user", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(
+			[]byte(
+				`{"data":{"attributes":{"has_payment_method": false, "current_plan": "build"}}}`,
+			),
+		)
+		require.NoError(t, err)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	user, err := client.GetUser("test-token")
+	require.NoError(t, err)
+	assert.False(t, user.HasPaymentMethod)
+}
+
+func TestChangeApplicationPlan_Success(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/plan/self-serve",
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPatch, r.Method)
+			assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+			var payload ChangePlanRequest
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+			assert.Equal(t, "grow", payload.Plan)
+
+			require.NoError(t, json.NewEncoder(w).Encode(SingleApplicationResponse{
+				Data: ApplicationResource{
+					ID: "APP1", Type: "application",
+					Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "My App"},
+				},
+			}))
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	app, err := client.ChangeApplicationPlan("test-token", "APP1", "grow")
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", app.ID)
+	assert.Equal(t, "My App", app.Name)
+}
+
+func TestChangeApplicationPlan_EmptyBodyFallback(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/plan/self-serve",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	// An empty/204 body still yields a usable result with the known app ID.
+	app, err := client.ChangeApplicationPlan("test-token", "APP1", "free")
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", app.ID)
+}
+
+func TestChangeApplicationPlan_Unauthorized(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/plan/self-serve",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.ChangeApplicationPlan("expired-token", "APP1", "grow")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "session expired")
+}
+
+func TestChangeApplicationPlan_ErrorStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/plan/self-serve",
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, err := w.Write([]byte(`{"errors":[{"title":"plan change not allowed"}]}`))
+			require.NoError(t, err)
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.ChangeApplicationPlan("test-token", "APP1", "grow")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Couldn't change your application's plan: 422")
+	// The response body must never be surfaced in the error, only the status.
+	assert.NotContains(t, err.Error(), "plan change not allowed")
 }
 
 func TestGetCrawlerUser_Success(t *testing.T) {
