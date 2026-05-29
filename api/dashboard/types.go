@@ -76,6 +76,11 @@ type CreateApplicationRequest struct {
 	Name       string `json:"name"`
 }
 
+// UpdateApplicationRequest is the payload for PATCH /1/application/{id}.
+type UpdateApplicationRequest struct {
+	Name string `json:"name"`
+}
+
 // Region represents a hosting region from GET /1/hosting/regions.
 type Region struct {
 	Code string `json:"code"`

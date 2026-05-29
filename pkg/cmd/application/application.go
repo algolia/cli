@@ -6,6 +6,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/application/create"
 	"github.com/algolia/cli/pkg/cmd/application/list"
 	"github.com/algolia/cli/pkg/cmd/application/selectapp"
+	"github.com/algolia/cli/pkg/cmd/application/update"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -20,6 +21,7 @@ func NewApplicationCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(create.NewCreateCmd(f))
 	cmd.AddCommand(list.NewListCmd(f))
 	cmd.AddCommand(selectapp.NewSelectCmd(f))
+	cmd.AddCommand(update.NewUpdateCmd(f))
 
 	return cmd
 }

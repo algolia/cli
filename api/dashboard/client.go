@@ -36,7 +36,10 @@ func NewClient(clientID string) *Client {
 		dashboardURL = strings.TrimRight(v, "/")
 	}
 	if dashboardURL == "" {
-		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_DASHBOARD_URL is not set and no default was compiled in")
+		fmt.Fprintln(
+			os.Stderr,
+			"fatal: ALGOLIA_DASHBOARD_URL is not set and no default was compiled in",
+		)
 		os.Exit(1)
 	}
 
@@ -54,7 +57,10 @@ func NewClient(clientID string) *Client {
 		oauthScope = v
 	}
 	if oauthScope == "" {
-		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_OAUTH_SCOPE is not set and no default was compiled in")
+		fmt.Fprintln(
+			os.Stderr,
+			"fatal: ALGOLIA_OAUTH_SCOPE is not set and no default was compiled in",
+		)
 		os.Exit(1)
 	}
 
@@ -87,7 +93,10 @@ func (c *Client) SignupAuthorizeURL(codeChallenge, redirectURI string) string {
 	return c.buildAuthorizeURL(codeChallenge, redirectURI, map[string]string{"screen": "signup"})
 }
 
-func (c *Client) buildAuthorizeURL(codeChallenge, redirectURI string, extra map[string]string) string {
+func (c *Client) buildAuthorizeURL(
+	codeChallenge, redirectURI string,
+	extra map[string]string,
+) string {
 	params := url.Values{
 		"client_id":             {c.ClientID},
 		"response_type":         {"code"},
@@ -104,7 +113,9 @@ func (c *Client) buildAuthorizeURL(codeChallenge, redirectURI string, extra map[
 
 // AuthorizationCodeGrant exchanges an authorization code + PKCE code_verifier
 // for an access token. The redirectURI must match the one used in the authorize URL.
-func (c *Client) AuthorizationCodeGrant(code, codeVerifier, redirectURI string) (*OAuthTokenResponse, error) {
+func (c *Client) AuthorizationCodeGrant(
+	code, codeVerifier, redirectURI string,
+) (*OAuthTokenResponse, error) {
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
 		"client_id":     {c.ClientID},
@@ -113,7 +124,11 @@ func (c *Client) AuthorizationCodeGrant(code, codeVerifier, redirectURI string) 
 		"redirect_uri":  {redirectURI},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/token", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.DashboardURL+"/2/oauth/token",
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +161,11 @@ func (c *Client) RefreshToken(refreshToken string) (*OAuthTokenResponse, error) 
 		"refresh_token": {refreshToken},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/token", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.DashboardURL+"/2/oauth/token",
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +197,11 @@ func (c *Client) RevokeToken(token string) error {
 		"token":     {token},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/revoke", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.DashboardURL+"/2/oauth/revoke",
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return err
 	}
@@ -246,7 +269,11 @@ func (c *Client) ListApplications(accessToken string) ([]Application, error) {
 
 // GetApplication returns a single application by its ID.
 func (c *Client) GetApplication(accessToken, appID string) (*Application, error) {
-	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/application/"+url.PathEscape(appID), nil)
+	req, err := http.NewRequest(
+		http.MethodGet,
+		c.APIURL+"/1/application/"+url.PathEscape(appID),
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -299,12 +326,69 @@ func (c *Client) CreateApplication(accessToken, region, name string) (*Applicati
 		respBody, _ := io.ReadAll(resp.Body)
 		respStr := string(respBody)
 
-		if strings.Contains(strings.ToLower(respStr), "cluster") && strings.Contains(strings.ToLower(respStr), "not available") ||
+		if strings.Contains(strings.ToLower(respStr), "cluster") &&
+			strings.Contains(strings.ToLower(respStr), "not available") ||
 			strings.Contains(strings.ToLower(respStr), "no cluster") {
-			return nil, &ErrClusterUnavailable{Region: region, Message: fmt.Sprintf("no cluster available in region %q", region)}
+			return nil, &ErrClusterUnavailable{
+				Region:  region,
+				Message: fmt.Sprintf("no cluster available in region %q", region),
+			}
 		}
 
-		return nil, fmt.Errorf("create application failed with status %d: %s", resp.StatusCode, respStr)
+		return nil, fmt.Errorf(
+			"create application failed with status %d: %s",
+			resp.StatusCode,
+			respStr,
+		)
+	}
+
+	var singleResp SingleApplicationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&singleResp); err != nil {
+		return nil, fmt.Errorf("failed to parse application response: %w", err)
+	}
+
+	app := singleResp.Data.toApplication()
+	return &app, nil
+}
+
+// UpdateApplication renames an existing application.
+func (c *Client) UpdateApplication(accessToken, appID, name string) (*Application, error) {
+	payload := UpdateApplicationRequest{Name: name}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint := c.APIURL + "/1/applications/" + url.PathEscape(appID)
+	req, err := http.NewRequest(http.MethodPatch, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("update application request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf(
+				"no existing application found; select one using 'algolia application select' or create a new one with 'algolia application create'",
+			)
+		}
+		return nil, fmt.Errorf(
+			"update application failed with status %d: %s",
+			resp.StatusCode,
+			string(respBody),
+		)
 	}
 
 	var singleResp SingleApplicationResponse
@@ -350,7 +434,11 @@ var WriteACL = []string{
 }
 
 // CreateAPIKey creates a new API key with the given ACL for the specified application.
-func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, description string) (string, error) {
+func (c *Client) CreateAPIKey(
+	accessToken, appID string,
+	acl []string,
+	description string,
+) (string, error) {
 	payload := CreateAPIKeyRequest{ACL: acl, Description: description}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -377,17 +465,28 @@ func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, descripti
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("create API key failed with status %d: %s", resp.StatusCode, string(respBody))
+		return "", fmt.Errorf(
+			"create API key failed with status %d: %s",
+			resp.StatusCode,
+			string(respBody),
+		)
 	}
 
 	var keyResp CreateAPIKeyResponse
 	if err := json.Unmarshal(respBody, &keyResp); err != nil {
-		return "", fmt.Errorf("failed to parse API key response: %w (body: %s)", err, string(respBody))
+		return "", fmt.Errorf(
+			"failed to parse API key response: %w (body: %s)",
+			err,
+			string(respBody),
+		)
 	}
 
 	key := keyResp.Data.Attributes.Value
 	if key == "" {
-		return "", fmt.Errorf("API key creation succeeded but no key was returned in the response: %s", string(respBody))
+		return "", fmt.Errorf(
+			"API key creation succeeded but no key was returned in the response: %s",
+			string(respBody),
+		)
 	}
 
 	return key, nil

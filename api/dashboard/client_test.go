@@ -64,7 +64,11 @@ func TestAuthorizationCodeGrant_Success(t *testing.T) {
 	ts, client := newTestClient(mux)
 	defer ts.Close()
 
-	resp, err := client.AuthorizationCodeGrant("auth-code-123", "verifier-xyz", "http://localhost:12345")
+	resp, err := client.AuthorizationCodeGrant(
+		"auth-code-123",
+		"verifier-xyz",
+		"http://localhost:12345",
+	)
 	require.NoError(t, err)
 	assert.Equal(t, "access-token-123", resp.AccessToken)
 	assert.Equal(t, "refresh-token-456", resp.RefreshToken)
@@ -118,8 +122,24 @@ func TestListApplications_Success(t *testing.T) {
 		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
 			Data: []ApplicationResource{
-				{ID: "APP1", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "My App", APIKey: "key1"}},
-				{ID: "APP2", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP2", Name: "Other App", APIKey: "key2"}},
+				{
+					ID:   "APP1",
+					Type: "application",
+					Attributes: ApplicationAttributes{
+						ApplicationID: "APP1",
+						Name:          "My App",
+						APIKey:        "key1",
+					},
+				},
+				{
+					ID:   "APP2",
+					Type: "application",
+					Attributes: ApplicationAttributes{
+						ApplicationID: "APP2",
+						Name:          "Other App",
+						APIKey:        "key2",
+					},
+				},
 			},
 		}))
 	})
@@ -145,15 +165,30 @@ func TestListApplications_Paginated(t *testing.T) {
 		case "2":
 			require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
 				Data: []ApplicationResource{
-					{ID: "APP3", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP3", Name: "Third App"}},
+					{
+						ID:         "APP3",
+						Type:       "application",
+						Attributes: ApplicationAttributes{ApplicationID: "APP3", Name: "Third App"},
+					},
 				},
 				Meta: PaginationMeta{TotalCount: 3, PerPage: 2, CurrentPage: 2, TotalPages: 2},
 			}))
 		default:
 			require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
 				Data: []ApplicationResource{
-					{ID: "APP1", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "First App"}},
-					{ID: "APP2", Type: "application", Attributes: ApplicationAttributes{ApplicationID: "APP2", Name: "Second App"}},
+					{
+						ID:         "APP1",
+						Type:       "application",
+						Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "First App"},
+					},
+					{
+						ID:   "APP2",
+						Type: "application",
+						Attributes: ApplicationAttributes{
+							ApplicationID: "APP2",
+							Name:          "Second App",
+						},
+					},
 				},
 				Meta: PaginationMeta{TotalCount: 3, PerPage: 2, CurrentPage: 1, TotalPages: 2},
 			}))
@@ -193,7 +228,11 @@ func TestGetApplication_Success(t *testing.T) {
 		require.NoError(t, json.NewEncoder(w).Encode(SingleApplicationResponse{
 			Data: ApplicationResource{
 				ID: "APP1", Type: "application",
-				Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "My App", APIKey: "api-key-123"},
+				Attributes: ApplicationAttributes{
+					ApplicationID: "APP1",
+					Name:          "My App",
+					APIKey:        "api-key-123",
+				},
 			},
 		}))
 	})
@@ -235,6 +274,65 @@ func TestCreateApplication_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "NEW_APP", app.ID)
 	assert.Equal(t, "My App", app.Name)
+}
+
+func TestUpdateApplication_Success(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPatch, r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		var payload UpdateApplicationRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+		assert.Equal(t, "Renamed App", payload.Name)
+
+		require.NoError(t, json.NewEncoder(w).Encode(SingleApplicationResponse{
+			Data: ApplicationResource{
+				ID: "APP1", Type: "application",
+				Attributes: ApplicationAttributes{ApplicationID: "APP1", Name: "Renamed App"},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	app, err := client.UpdateApplication("test-token", "APP1", "Renamed App")
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", app.ID)
+	assert.Equal(t, "Renamed App", app.Name)
+}
+
+func TestUpdateApplication_Unauthorized(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.UpdateApplication("expired-token", "APP1", "Renamed App")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "session expired")
+}
+
+func TestUpdateApplication_ErrorStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_, err := w.Write([]byte(`{"errors":[{"title":"name has already been taken"}]}`))
+		require.NoError(t, err)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.UpdateApplication("test-token", "APP1", "Taken Name")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "update application failed with status 422")
+	assert.Contains(t, err.Error(), "name has already been taken")
 }
 
 func TestGetCrawlerUser_Success(t *testing.T) {
