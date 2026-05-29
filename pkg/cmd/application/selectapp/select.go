@@ -58,22 +58,40 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSelectCmd(opts)
+			_, err := runSelectCmd(opts)
+			return err
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Select application by name (non-interactive)")
+	cmd.Flags().
+		StringVar(&opts.AppName, "app-name", "", "Select application by name (non-interactive)")
 
 	return cmd
 }
 
-func runSelectCmd(opts *SelectOptions) error {
+// Run executes the interactive application-selection flow and returns the
+// chosen application. Other commands (e.g. deeplink) use it to ensure an
+// application is selected before proceeding. A nil application is returned
+// when the account has no applications.
+func Run(f *cmdutil.Factory) (*dashboard.Application, error) {
+	opts := &SelectOptions{
+		IO:     f.IOStreams,
+		Config: f.Config,
+		NewDashboardClient: func(clientID string) *dashboard.Client {
+			return dashboard.NewClient(clientID)
+		},
+	}
+
+	return runSelectCmd(opts)
+}
+
+func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
 	accessToken, err := auth.EnsureAuthenticated(opts.IO, client)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
@@ -82,26 +100,26 @@ func runSelectCmd(opts *SelectOptions) error {
 	if err != nil {
 		newToken, reAuthErr := auth.ReauthenticateIfExpired(opts.IO, client, err)
 		if reAuthErr != nil {
-			return reAuthErr
+			return nil, reAuthErr
 		}
 		accessToken = newToken
 		opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
 		apps, err = client.ListApplications(accessToken)
 		opts.IO.StopProgressIndicator()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if len(apps) == 0 {
 		fmt.Fprintf(opts.IO.Out, "%s No applications found.\n", cs.WarningIcon())
 		fmt.Fprintf(opts.IO.Out, "  Use %s to create one.\n", cs.Bold("algolia application create"))
-		return nil
+		return nil, nil
 	}
 
 	chosen, err := pickApplication(opts, apps)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// If a profile already exists for this app, switch the default
@@ -119,7 +137,7 @@ func runSelectCmd(opts *SelectOptions) error {
 		}
 
 		if err := opts.Config.SetDefaultProfile(profileName); err != nil {
-			return fmt.Errorf("failed to set default profile: %w", err)
+			return nil, fmt.Errorf("failed to set default profile: %w", err)
 		}
 		fmt.Fprintf(opts.IO.Out, "%s Switched to profile %q (application %s).\n",
 			cs.SuccessIcon(), profileName, cs.Bold(chosen.ID))
@@ -127,27 +145,34 @@ func runSelectCmd(opts *SelectOptions) error {
 		if existingProfile != nil && existingProfile.APIKey == "" {
 			app := &dashboard.Application{ID: chosen.ID, Name: chosen.Name}
 			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, app); err != nil {
-				return err
+				return nil, err
 			}
 			existingProfile.ApplicationID = chosen.ID
 			existingProfile.APIKey = app.APIKey
 			if err := existingProfile.Add(); err != nil {
-				return err
+				return nil, err
 			}
 			fmt.Fprintf(opts.IO.Out, "%s Profile %q updated with API key.\n",
 				cs.SuccessIcon(), profileName)
 		}
-		return nil
+		return chosen, nil
 	}
 
 	if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, chosen); err != nil {
-		return err
+		return nil, err
 	}
 
-	return apputil.ConfigureProfile(opts.IO, opts.Config, chosen, "", true)
+	if err := apputil.ConfigureProfile(opts.IO, opts.Config, chosen, "", true); err != nil {
+		return nil, err
+	}
+
+	return chosen, nil
 }
 
-func pickApplication(opts *SelectOptions, apps []dashboard.Application) (*dashboard.Application, error) {
+func pickApplication(
+	opts *SelectOptions,
+	apps []dashboard.Application,
+) (*dashboard.Application, error) {
 	if opts.AppName != "" {
 		for i := range apps {
 			if apps[i].Name == opts.AppName {
