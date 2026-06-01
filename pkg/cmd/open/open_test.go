@@ -68,6 +68,9 @@ func newTestOptions(
 		NewDashboardClient: func(string) *dashboard.Client {
 			return &dashboard.Client{DashboardURL: "https://dashboard.algolia.com"}
 		},
+		ListApplications: func(_ *dashboard.Client, _ string) ([]dashboard.Application, error) {
+			return []dashboard.Application{{ID: "APP123", Name: "Test"}}, nil
+		},
 		Browser: func(u string) error {
 			*opened = u
 			return nil
@@ -111,7 +114,7 @@ func TestRunOpenCmd_ResourceShortcutWithAppID(t *testing.T) {
 
 	err := runOpenCmd(opts)
 	require.NoError(t, err)
-	assert.False(t, *authed, "status must not require sign-in")
+	assert.True(t, *authed, "app-scoped status validates the profile application against the signed-in account")
 	assert.Equal(t, "https://staging.algolia.test/apps/APP123/monitoring/status", *opened)
 }
 
@@ -195,6 +198,38 @@ func TestRunOpenCmd_DashboardTargetUsesConfiguredDashboardURL(t *testing.T) {
 	)
 }
 
+func TestRunOpenCmd_DashboardTargetIgnoresStaleProfileApp(t *testing.T) {
+	t.Setenv("ALGOLIA_APPLICATION_ID", "")
+
+	io, _, _, _ := iostreams.Test()
+	io.SetStdoutTTY(true)
+	io.SetStdinTTY(true)
+
+	cfg := test.NewConfigStubWithProfiles([]*config.Profile{
+		{Name: "default", ApplicationID: "USER_A_APP", APIKey: "key", Default: true},
+	})
+
+	selectCalled := false
+	opts, opened, _ := newTestOptions(io, cfg)
+	opts.Shortcut = "billing"
+	opts.ListApplications = func(_ *dashboard.Client, _ string) ([]dashboard.Application, error) {
+		return []dashboard.Application{{ID: "USER_B_APP", Name: "User B App"}}, nil
+	}
+	opts.SelectApplication = func() (*dashboard.Application, error) {
+		selectCalled = true
+		return &dashboard.Application{ID: "USER_B_APP", Name: "User B App"}, nil
+	}
+
+	err := runOpenCmd(opts)
+	require.NoError(t, err)
+	assert.True(t, selectCalled, "stale profile application must trigger selection")
+	assert.Equal(
+		t,
+		"https://dashboard.algolia.com/account/billing/details?applicationId=USER_B_APP",
+		*opened,
+	)
+}
+
 func TestRunOpenCmd_DashboardTargetSelectsAppWhenNoneConfigured(t *testing.T) {
 	t.Setenv("ALGOLIA_APPLICATION_ID", "")
 
@@ -225,7 +260,10 @@ func TestRunOpenCmd_Unsupported(t *testing.T) {
 
 	err := runOpenCmd(opts)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported open command")
+	assert.Contains(t, err.Error(), "unsupported open command, given: bogus")
+	assert.Contains(t, err.Error(), "Available shortcuts:")
+	assert.Contains(t, err.Error(), "billing")
+	assert.Contains(t, err.Error(), "docs")
 	assert.False(t, *authed)
 	assert.Empty(t, *opened)
 }
@@ -329,7 +367,8 @@ func TestRunOpenCmd_UnsupportedWithJSONOutput(t *testing.T) {
 
 	err := runOpenCmd(opts)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported open command")
+	assert.Contains(t, err.Error(), "unsupported open command, given: bogus")
+	assert.Contains(t, err.Error(), "Available shortcuts:")
 }
 
 func TestRunOpenCmd_InvalidOutputFormat(t *testing.T) {

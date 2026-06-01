@@ -3,6 +3,7 @@ package open
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -77,6 +78,14 @@ func targetNames() []string {
 	return names
 }
 
+func unsupportedShortcutError(shortcut string) error {
+	return fmt.Errorf(
+		"unsupported open command, given: %s\n\nAvailable shortcuts: %s",
+		shortcut,
+		strings.Join(targetNames(), ", "),
+	)
+}
+
 // pageEntry describes an open shortcut for machine-readable output.
 type pageEntry struct {
 	Shortcut      string `json:"shortcut"`
@@ -98,6 +107,7 @@ type OpenOptions struct {
 
 	Authenticate       func(*iostreams.IOStreams, *dashboard.Client) (string, error)
 	SelectApplication  func() (*dashboard.Application, error)
+	ListApplications   func(*dashboard.Client, string) ([]dashboard.Application, error)
 	NewDashboardClient func(clientID string) *dashboard.Client
 	Browser            func(string) error
 }
@@ -187,13 +197,26 @@ func runOpenCmd(opts *OpenOptions) error {
 		return listTargets(opts)
 	}
 
-	// Resource shortcuts open directly, without sign-in.
+	// Resource shortcuts open directly, without sign-in. App-scoped resources
+	// (such as status) use the dashboard URL only when a profile application is
+	// configured and belongs to the signed-in account.
 	if resource, ok := resourceURLs[opts.Shortcut]; ok {
-		appID, _ := opts.config.Profile().GetApplicationID()
 		url := resource.Default
-		if appID != "" && resource.AppPath != "" {
-			baseURL := opts.NewDashboardClient(auth.OAuthClientID()).DashboardURL
-			url = fmt.Sprintf("%s/apps/%s/%s", baseURL, appID, resource.AppPath)
+		if resource.AppPath != "" {
+			if _, err := opts.config.Profile().GetApplicationID(); err == nil {
+				client := opts.NewDashboardClient(auth.OAuthClientID())
+				accessToken, err := opts.Authenticate(opts.IO, client)
+				if err != nil {
+					return err
+				}
+				appID, err := opts.resolveApplicationForAccount(client, accessToken)
+				if err != nil {
+					return err
+				}
+				if appID != "" {
+					url = fmt.Sprintf("%s/apps/%s/%s", client.DashboardURL, appID, resource.AppPath)
+				}
+			}
 		}
 		return opts.Browser(url)
 	}
@@ -203,7 +226,7 @@ func runOpenCmd(opts *OpenOptions) error {
 		return openDashboardTarget(opts, target)
 	}
 
-	return fmt.Errorf("unsupported open command, given: %s", opts.Shortcut)
+	return unsupportedShortcutError(opts.Shortcut)
 }
 
 // structuredOutput reports whether an output format was requested via --output.
@@ -228,7 +251,7 @@ func printTargets(opts *OpenOptions, listing bool) error {
 	baseURL, appID, displayAppID := opts.resolveScope()
 	entry, ok := entryFor(opts.Shortcut, baseURL, appID, displayAppID)
 	if !ok {
-		return fmt.Errorf("unsupported open command, given: %s", opts.Shortcut)
+		return unsupportedShortcutError(opts.Shortcut)
 	}
 
 	return printer.Print(opts.IO, entry)
@@ -288,22 +311,19 @@ func (opts *OpenOptions) allEntries() []pageEntry {
 // (selecting one if needed), then opens the dashboard page.
 func openDashboardTarget(opts *OpenOptions, target dashboardTarget) error {
 	client := opts.NewDashboardClient(auth.OAuthClientID())
-	if _, err := opts.Authenticate(opts.IO, client); err != nil {
+	accessToken, err := opts.Authenticate(opts.IO, client)
+	if err != nil {
 		return err
 	}
 
-	appID, err := opts.config.Profile().GetApplicationID()
+	appID, err := opts.resolveApplicationForAccount(client, accessToken)
 	if err != nil {
-		app, selErr := opts.SelectApplication()
-		if selErr != nil {
-			return selErr
-		}
-		if app == nil {
-			// No application is available to scope to; the selection flow has
-			// already explained the situation to the user.
-			return nil
-		}
-		appID = app.ID
+		return err
+	}
+	if appID == "" {
+		// No application is available to scope to; the selection flow has
+		// already explained the situation to the user.
+		return nil
 	}
 
 	// The base URL is resolved from ALGOLIA_DASHBOARD_URL by the dashboard
@@ -314,6 +334,74 @@ func openDashboardTarget(opts *OpenOptions, target dashboardTarget) error {
 	fmt.Fprintf(opts.IO.Out, "Opening %s\n", cs.Bold(url))
 
 	return opts.Browser(url)
+}
+
+func applicationInAccount(apps []dashboard.Application, appID string) bool {
+	for _, app := range apps {
+		if app.ID == appID {
+			return true
+		}
+	}
+	return false
+}
+
+func (opts *OpenOptions) fetchAccountApplications(
+	client *dashboard.Client,
+	accessToken string,
+) ([]dashboard.Application, error) {
+	listFn := opts.ListApplications
+	if listFn == nil {
+		listFn = func(c *dashboard.Client, token string) ([]dashboard.Application, error) {
+			return c.ListApplications(token)
+		}
+	}
+
+	opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
+	apps, err := listFn(client, accessToken)
+	opts.IO.StopProgressIndicator()
+	if err != nil {
+		newToken, reAuthErr := auth.ReauthenticateIfExpired(opts.IO, client, err)
+		if reAuthErr != nil {
+			return nil, reAuthErr
+		}
+		opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
+		apps, err = listFn(client, newToken)
+		opts.IO.StopProgressIndicator()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return apps, nil
+}
+
+// resolveApplicationForAccount returns an application ID that belongs to the
+// signed-in account. The configured profile application is used only when it
+// appears in the account's application list; otherwise the user is prompted to
+// select one.
+func (opts *OpenOptions) resolveApplicationForAccount(
+	client *dashboard.Client,
+	accessToken string,
+) (string, error) {
+	apps, err := opts.fetchAccountApplications(client, accessToken)
+	if err != nil {
+		return "", err
+	}
+
+	appID, err := opts.config.Profile().GetApplicationID()
+	if err == nil && applicationInAccount(apps, appID) {
+		return appID, nil
+	}
+
+	app, selErr := opts.SelectApplication()
+	if selErr != nil {
+		return "", selErr
+	}
+	if app == nil {
+		return "", nil
+	}
+
+	return app.ID, nil
 }
 
 // dashboardURL builds the dashboard URL for an application page. Application
