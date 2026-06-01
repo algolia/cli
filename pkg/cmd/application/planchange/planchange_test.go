@@ -103,7 +103,7 @@ func newServer(t *testing.T, userJSON string) *planChangeServer {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_, _ = w.Write([]byte(userJSON))
+		require.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(userJSON)))
 	})
 	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, _ *http.Request) {
 		require.NoError(t, json.NewEncoder(w).Encode(dashboard.SingleApplicationResponse{
