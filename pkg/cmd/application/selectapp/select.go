@@ -70,7 +70,7 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 }
 
 // Run executes the interactive application-selection flow and returns the
-// chosen application. Other commands (e.g. deeplink) use it to ensure an
+// chosen application. Other commands (e.g. open) use it to ensure an
 // application is selected before proceeding. A nil application is returned
 // when the account has no applications.
 func Run(f *cmdutil.Factory) (*dashboard.Application, error) {
