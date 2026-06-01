@@ -105,6 +105,17 @@ func newServer(t *testing.T, userJSON string) *planChangeServer {
 		}
 		_, _ = w.Write([]byte(userJSON))
 	})
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, _ *http.Request) {
+		require.NoError(t, json.NewEncoder(w).Encode(dashboard.SingleApplicationResponse{
+			Data: dashboard.ApplicationResource{
+				ID: "APP1", Type: "application",
+				Attributes: dashboard.ApplicationAttributes{
+					ApplicationID: "APP1",
+					Name:          "My App",
+				},
+			},
+		}))
+	})
 	mux.HandleFunc(
 		"/1/applications/APP1/plan/self-serve",
 		func(w http.ResponseWriter, r *http.Request) {
@@ -139,12 +150,13 @@ func newOpts(
 	t *testing.T,
 	srv *planChangeServer,
 	isTTY bool,
-) (*Options, *test.CmdInOut) {
+) (*Options, *test.CmdInOut, *string) {
 	t.Helper()
 	seedToken(t)
 	t.Setenv("ALGOLIA_APPLICATION_ID", "APP1")
 
 	f, out := test.NewFactory(isTTY, nil, nil, "")
+	opened := new(string)
 	opts := &Options{
 		IO:         f.IOStreams,
 		Config:     f.Config,
@@ -152,17 +164,22 @@ func newOpts(
 		NewDashboardClient: func(string) *dashboard.Client {
 			c := dashboard.NewClientWithHTTPClient("test", srv.Client())
 			c.APIURL = srv.URL
+			c.DashboardURL = "https://dashboard.algolia.com"
 			return c
 		},
+		Browser: func(url string) error {
+			*opened = url
+			return nil
+		},
 	}
-	return opts, out
+	return opts, out, opened
 }
 
 func TestRun_WithPlanFlag(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": true}`)
 	defer srv.Close()
 
-	opts, out := newOpts(t, srv, false)
+	opts, out, _ := newOpts(t, srv, false)
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
@@ -177,7 +194,7 @@ func TestRun_FreeTargetNotBilled(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": false}`)
 	defer srv.Close()
 
-	opts, out := newOpts(t, srv, false)
+	opts, out, _ := newOpts(t, srv, false)
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
@@ -192,7 +209,7 @@ func TestRun_BillingBlock(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": false}`)
 	defer srv.Close()
 
-	opts, _ := newOpts(t, srv, false)
+	opts, _, _ := newOpts(t, srv, false)
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
@@ -208,7 +225,7 @@ func TestRun_ToSDeclineAborts(t *testing.T) {
 
 	defer prompt.StubConfirm(false)()
 
-	opts, out := newOpts(t, srv, true)
+	opts, out, _ := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
 	require.NoError(t, Run(opts))
@@ -220,7 +237,7 @@ func TestRun_NonInteractiveRequiresPlan(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": true}`)
 	defer srv.Close()
 
-	opts, _ := newOpts(t, srv, false)
+	opts, _, _ := newOpts(t, srv, false)
 	// No --plan and no TTY.
 
 	err := Run(opts)
@@ -242,18 +259,19 @@ func TestRun_InteractivePicker(t *testing.T) {
 	t.Cleanup(func() { prompt.SurveyAskOne = origAsk })
 	defer prompt.StubConfirm(true)()
 
-	opts, _ := newOpts(t, srv, true)
+	opts, out, _ := newOpts(t, srv, true)
 
 	require.NoError(t, Run(opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
+	assert.Contains(t, out.String(), "Current application: APP1 (My App)")
 }
 
 func TestRun_DryRunDoesNotCallAPI(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": true}`)
 	defer srv.Close()
 
-	opts, out := newOpts(t, srv, false)
+	opts, out, _ := newOpts(t, srv, false)
 	opts.Plan = "grow"
 	opts.DryRun = true
 
@@ -263,11 +281,46 @@ func TestRun_DryRunDoesNotCallAPI(t *testing.T) {
 	assert.Contains(t, out.String(), "Grow")
 }
 
+func TestRun_OfferCostManagementBudget(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	defer srv.Close()
+
+	defer prompt.StubConfirm(true)()
+
+	opts, out, opened := newOpts(t, srv, true)
+	opts.Plan = "grow"
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 1, srv.patchCalls)
+	assert.Contains(t, out.String(), "create a budget")
+	assert.Equal(
+		t,
+		"https://dashboard.algolia.com/account/billing/cost-management?applicationId=APP1",
+		*opened,
+	)
+}
+
+func TestRun_FreePlanSkipsCostManagementBudget(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	defer srv.Close()
+
+	defer prompt.StubConfirm(true)()
+
+	opts, out, opened := newOpts(t, srv, true)
+	opts.Plan = "free"
+	opts.AcceptTerms = true
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 1, srv.patchCalls)
+	assert.NotContains(t, out.String(), "create a budget")
+	assert.Empty(t, *opened)
+}
+
 func TestRun_OutputJSON(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": true}`)
 	defer srv.Close()
 
-	opts, out := newOpts(t, srv, false)
+	opts, out, _ := newOpts(t, srv, false)
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 	opts.PrintFlags = newPrintFlags("json")

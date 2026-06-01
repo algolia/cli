@@ -15,6 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	pkgopen "github.com/algolia/cli/pkg/open"
 	"github.com/algolia/cli/pkg/prompt"
 )
 
@@ -31,6 +32,7 @@ type Options struct {
 	PrintFlags *cmdutil.PrintFlags
 
 	NewDashboardClient func(clientID string) *dashboard.Client
+	Browser            func(string) error
 }
 
 // changeResult is the structured (-o json) payload for a successful change.
@@ -83,7 +85,7 @@ func Run(opts *Options) error {
 		user = nil
 	}
 
-	target, err := selectTarget(opts, plans)
+	target, err := selectTarget(opts, client, &token, appID, plans)
 	if err != nil {
 		return err
 	}
@@ -153,13 +155,56 @@ func Run(opts *Options) error {
 		cs.Bold(appID),
 		cs.Bold(target.Name),
 	)
-	return nil
+
+	if target.IsFree() {
+		return nil
+	}
+
+	return offerCostManagementBudget(opts, client.DashboardURL, appID)
+}
+
+// offerCostManagementBudget tells the user they can create a budget and, when
+// confirmed, opens the cost management page in the browser.
+func offerCostManagementBudget(opts *Options, dashboardURL, appID string) error {
+	if !opts.IO.CanPrompt() || !opts.IO.IsStdoutTTY() {
+		return nil
+	}
+
+	browser := opts.Browser
+	if browser == nil {
+		browser = pkgopen.Browser
+	}
+
+	cs := opts.IO.ColorScheme()
+	fmt.Fprintf(
+		opts.IO.Out,
+		"\nWant to create a budget and monitor your costs?\n",
+	)
+
+	openPage := true
+	if err := prompt.Confirm("Open cost management?", &openPage); err != nil {
+		return err
+	}
+	if !openPage {
+		return nil
+	}
+
+	url := fmt.Sprintf("%s/account/billing/cost-management?applicationId=%s", dashboardURL, appID)
+	fmt.Fprintf(opts.IO.Out, "Opening %s\n", cs.Bold(url))
+
+	return browser(url)
 }
 
 // selectTarget resolves the target plan from the --plan flag or, when
 // interactive and no flag is set, an interactive picker over the available
 // plans.
-func selectTarget(opts *Options, plans []dashboard.Plan) (*dashboard.Plan, error) {
+func selectTarget(
+	opts *Options,
+	client *dashboard.Client,
+	token *string,
+	appID string,
+	plans []dashboard.Plan,
+) (*dashboard.Plan, error) {
 	if opts.Plan != "" {
 		return resolvePlan(plans, opts.Plan)
 	}
@@ -171,7 +216,28 @@ func selectTarget(opts *Options, plans []dashboard.Plan) (*dashboard.Plan, error
 		)
 	}
 
+	cs := opts.IO.ColorScheme()
+	appLabel := cs.Bold(appID)
+	if name := currentAppName(opts, client, token, appID); name != "" {
+		appLabel = fmt.Sprintf("%s (%s)", cs.Bold(appID), name)
+	}
+	fmt.Fprintf(opts.IO.Out, "Current application: %s\n\n", appLabel)
+
 	return pickPlan(plans)
+}
+
+// currentAppName resolves the current application's display name, best-effort.
+// It returns "" when the name can't be fetched so callers fall back to the ID.
+func currentAppName(opts *Options, client *dashboard.Client, token *string, appID string) string {
+	var app *dashboard.Application
+	if err := callWithReauth(opts.IO, client, token, "Fetching application", func(t string) error {
+		var e error
+		app, e = client.GetApplication(t, appID)
+		return e
+	}); err != nil || app == nil {
+		return ""
+	}
+	return app.Name
 }
 
 // resolvePlan maps a --plan value to one of the fetched plans.
