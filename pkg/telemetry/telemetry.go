@@ -92,7 +92,9 @@ type NoOpTelemetryClient struct{}
 
 type CLIAnalyticsEventMetadata struct {
 	AnonymousID              string   // the anonymous id is the hash of the mac address of the machine
-	UserID                   string   // TODO: Once we implement OAuth
+	UserID                   string   // the authenticated user's id from the OAuth token; empty when logged out
+	Email                    string   // the authenticated user's email, when available
+	Name                     string   // the authenticated user's name, when available
 	InvocationID             string   // the invocation id is unique to each context object and represents all events coming from one command
 	ConfiguredApplicationsNb int      // the number of configured applications
 	AppID                    string   // the app id with which the command was called
@@ -167,6 +169,13 @@ func (e *CLIAnalyticsEventMetadata) SetConfiguredApplicationsNb(nb int) {
 	e.ConfiguredApplicationsNb = nb
 }
 
+// SetUser sets the authenticated user identity on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetUser(userID, email, name string) {
+	e.UserID = userID
+	e.Email = email
+	e.Name = name
+}
+
 // Identify tracks the user with the provided properties
 func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	metadata := GetEventMetadata(ctx)
@@ -176,27 +185,41 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 		isCI = 1
 	}
 
-	return a.client.Enqueue(analytics.Identify{
+	traits := analytics.Traits{
+		"configured_applications": metadata.ConfiguredApplicationsNb,
+		"version":                 metadata.CLIVersion,
+		"operating_system":        metadata.OS,
+		"is_ci":                   isCI,
+	}
+
+	identify := analytics.Identify{
 		AnonymousId: metadata.AnonymousID,
-		Traits: map[string]interface{}{
-			"configured_applications": metadata.ConfiguredApplicationsNb,
-			"version":                 metadata.CLIVersion,
-			"operating_system":        metadata.OS,
-			"is_ci":                   isCI,
-		},
+		Traits:      traits,
 		Context: &analytics.Context{
 			Device: analytics.DeviceInfo{
 				Id: metadata.AnonymousID,
 			},
 		},
-	})
+	}
+
+	if metadata.UserID != "" {
+		identify.UserId = metadata.UserID
+		if metadata.Email != "" {
+			traits["email"] = metadata.Email
+		}
+		if metadata.Name != "" {
+			traits["name"] = metadata.Name
+		}
+	}
+
+	return a.client.Enqueue(identify)
 }
 
 // Track tracks the event with the provided properties
 func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) error {
 	metadata := GetEventMetadata(ctx)
 
-	return a.client.Enqueue(analytics.Track{
+	track := analytics.Track{
 		Event:       event,
 		AnonymousId: metadata.AnonymousID,
 		Properties: map[string]interface{}{
@@ -210,7 +233,13 @@ func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) erro
 				Id: metadata.AnonymousID,
 			},
 		},
-	})
+	}
+
+	if metadata.UserID != "" {
+		track.UserId = metadata.UserID
+	}
+
+	return a.client.Enqueue(track)
 }
 
 // Close closes the client, waiting for all pending events to be sent.
