@@ -26,7 +26,7 @@ func ResolvePlan(plans []dashboard.Plan, value string) (*dashboard.Plan, error) 
 		}
 	}
 	return nil, cmdutil.FlagErrorf(
-		"invalid plan %q; valid plans: %s",
+		"invalid plan %q; available plans: %s",
 		value,
 		strings.Join(PlanChoices(plans), ", "),
 	)
