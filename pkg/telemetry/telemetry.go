@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"runtime"
 
 	"github.com/segmentio/analytics-go/v3"
@@ -67,6 +68,26 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 		return nil, err
 	}
 	return &AnalyticsTelemetryClient{client: client}, nil
+}
+
+// IdentifyOnce sends a single Identify event through a short-lived client and
+// flushes it before returning. It is meant for one-shot identification (for
+// example, right after authentication fills the token) where the command's
+// request-scoped client may already have been closed. It honors the same
+// ALGOLIA_CLI_TELEMETRY and DEBUG environment variables as the root command and
+// fails silently so telemetry never blocks the user.
+func IdentifyOnce(ctx context.Context) {
+	if os.Getenv("ALGOLIA_CLI_TELEMETRY") == "0" {
+		return
+	}
+
+	client, err := NewAnalyticsTelemetryClient(os.Getenv("DEBUG") != "")
+	if err != nil {
+		return
+	}
+	defer client.Close()
+
+	_ = client.Identify(ctx)
 }
 
 // anonymousID is a unique identifier for an anonymous user of the CLI (basically the hash of the mac address)
