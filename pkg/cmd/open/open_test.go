@@ -29,6 +29,7 @@ func TestDashboardURL(t *testing.T) {
 		{"usage", "https://dashboard.algolia.com/account/billing/usage?applicationId=APP123"},
 		{"team", "https://dashboard.algolia.com/account/teams?applicationId=APP123"},
 		{"billing", "https://dashboard.algolia.com/account/billing/details?applicationId=APP123"},
+		{"cost-management", "https://dashboard.algolia.com/account/billing/cost-management?applicationId=APP123"},
 	}
 
 	for _, tt := range tests {

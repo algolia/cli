@@ -54,14 +54,15 @@ type dashboardTarget struct {
 }
 
 var dashboardTargets = map[string]dashboardTarget{
-	"dashboard":  {path: "dashboard"},
-	"indices":    {path: "explorer/browse"},
-	"crawler":    {path: "crawler"},
-	"connectors": {path: "connectors"},
-	"api-keys":   {path: "account/api-keys/all", accountScoped: true},
-	"usage":      {path: "account/billing/usage", accountScoped: true},
-	"team":       {path: "account/teams", accountScoped: true},
-	"billing":    {path: "account/billing/details", accountScoped: true},
+	"dashboard":       {path: "dashboard"},
+	"indices":         {path: "explorer/browse"},
+	"crawler":         {path: "crawler"},
+	"connectors":      {path: "connectors"},
+	"api-keys":        {path: "account/api-keys/all", accountScoped: true},
+	"usage":           {path: "account/billing/usage", accountScoped: true},
+	"team":            {path: "account/teams", accountScoped: true},
+	"billing":         {path: "account/billing/details", accountScoped: true},
+	"cost-management": {path: "account/billing/cost-management", accountScoped: true},
 }
 
 // targetNames returns every supported shortcut, sorted.
@@ -140,9 +141,9 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 			Resource shortcuts (docs, API reference, status, …) open directly.
 
 			Application pages (dashboard, indices, crawler, connectors, api-keys,
-			usage, team, billing) are scoped to the current application: they
-			require you to be signed in, and prompt you to select an application
-			if none is configured.
+			usage, team, billing, cost-management) are scoped to the current
+			application: they require you to be signed in and prompt you to select
+			an application if none is configured.
 
 			Run 'algolia open --list' to see every shortcut.
 
