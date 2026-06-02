@@ -79,8 +79,9 @@ func samplePlanTemplates() []dashboard.PlanTemplateResource {
 
 type planChangeServer struct {
 	*httptest.Server
-	patchCalls int
-	lastPlan   string
+	patchCalls       int
+	lastPlan         string
+	currentPlanLabel string
 }
 
 // newServer spins up a dashboard stub. userJSON is the raw GET /1/user body;
@@ -112,6 +113,7 @@ func newServer(t *testing.T, userJSON string) *planChangeServer {
 				Attributes: dashboard.ApplicationAttributes{
 					ApplicationID: "APP1",
 					Name:          "My App",
+					Plan:          dashboard.ApplicationPlan{Label: srv.currentPlanLabel},
 				},
 			},
 		}))
@@ -173,6 +175,17 @@ func newOpts(
 		},
 	}
 	return opts, out, opened
+}
+
+// stubPicker forces the plan picker to choose the candidate at index.
+func stubPicker(t *testing.T, index int) {
+	t.Helper()
+	orig := prompt.SurveyAskOne
+	prompt.SurveyAskOne = func(_ survey.Prompt, response interface{}, _ ...survey.AskOpt) error {
+		*(response.(*int)) = index
+		return nil
+	}
+	t.Cleanup(func() { prompt.SurveyAskOne = orig })
 }
 
 func TestRun_WithPlanFlag(t *testing.T) {
@@ -329,4 +342,113 @@ func TestRun_OutputJSON(t *testing.T) {
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Contains(t, out.String(), `"plan":"grow"`)
 	assert.Contains(t, out.String(), `"application_id":"APP1"`)
+}
+
+func TestRun_UpgradeFiltersToHigherPlans(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Grow"
+	defer srv.Close()
+
+	stubPicker(t, 0)
+	defer prompt.StubConfirm(true)()
+
+	opts, out, _ := newOpts(t, srv, true)
+	opts.Direction = DirectionUpgrade
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 1, srv.patchCalls)
+	assert.Equal(t, "grow-plus", srv.lastPlan)
+	assert.Contains(t, out.String(), "current plan: Grow")
+}
+
+func TestRun_DowngradeFiltersToLowerPlans(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Grow"
+	defer srv.Close()
+
+	stubPicker(t, 0)
+	defer prompt.StubConfirm(true)()
+
+	opts, _, _ := newOpts(t, srv, true)
+	opts.Direction = DirectionDowngrade
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 1, srv.patchCalls)
+	assert.Equal(t, "build", srv.lastPlan)
+}
+
+func TestRun_UpgradeAtHighestPlanIsNoOp(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Grow Plus"
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, true)
+	opts.Direction = DirectionUpgrade
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "already on the highest")
+	assert.Contains(t, out.String(), "nothing to upgrade")
+}
+
+func TestRun_DowngradeAtLowestPlanIsNoOp(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Build"
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, true)
+	opts.Direction = DirectionDowngrade
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "already on the lowest")
+	assert.Contains(t, out.String(), "nothing to downgrade")
+}
+
+func TestRun_PlanFlagOverridesDirection(t *testing.T) {
+	// "upgrade --plan free" is an explicit override: it is honored even though
+	// free is below the current "Grow" plan.
+	srv := newServer(t, `{"has_payment_method": false}`)
+	srv.currentPlanLabel = "Grow"
+	defer srv.Close()
+
+	opts, _, _ := newOpts(t, srv, false)
+	opts.Direction = DirectionUpgrade
+	opts.Plan = "free"
+	opts.AcceptTerms = true
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 1, srv.patchCalls)
+	assert.Equal(t, "build", srv.lastPlan)
+}
+
+func TestRun_SamePlanIsNoOp(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Grow"
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, false)
+	opts.Plan = "grow"
+	opts.AcceptTerms = true
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "already on the Grow plan")
+	assert.Contains(t, out.String(), "no change needed")
+}
+
+func TestRun_UnknownCurrentPlanShowsAllPlans(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Enterprise"
+	defer srv.Close()
+
+	stubPicker(t, 0)
+	defer prompt.StubConfirm(true)()
+
+	opts, _, _ := newOpts(t, srv, true)
+	opts.Direction = DirectionUpgrade
+
+	require.NoError(t, Run(opts))
+	assert.Equal(t, 1, srv.patchCalls)
+	assert.Equal(t, "build", srv.lastPlan)
 }

@@ -30,16 +30,27 @@ type ApplicationResource struct {
 
 // ApplicationAttributes contains the actual application fields.
 type ApplicationAttributes struct {
-	Name          string `json:"name"`
-	ApplicationID string `json:"application_id"`
-	APIKey        string `json:"api_key"`
+	Name          string          `json:"name"`
+	ApplicationID string          `json:"application_id"`
+	APIKey        string          `json:"api_key"`
+	Plan          ApplicationPlan `json:"plan"`
+}
+
+// ApplicationPlan is the plan applied to an application (attributes.plan).
+// Label (e.g. "Grow Plus") matches a self-serve plan template's Name.
+type ApplicationPlan struct {
+	Name       string `json:"name"`
+	Label      string `json:"label"`
+	Version    int    `json:"version"`
+	PayAsYouGo bool   `json:"pay_as_you_go"`
 }
 
 // Application is a flattened view of an Algolia application for CLI consumption.
 type Application struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	APIKey string `json:"api_key,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	APIKey    string `json:"api_key,omitempty"`
+	PlanLabel string `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
 }
 
 // PaginationMeta contains page-based pagination metadata.
@@ -160,9 +171,10 @@ type DashboardCrawlerError struct {
 // toApplication flattens a JSON:API resource into a simple Application.
 func (r *ApplicationResource) toApplication() Application {
 	return Application{
-		ID:     r.Attributes.ApplicationID,
-		Name:   r.Attributes.Name,
-		APIKey: r.Attributes.APIKey,
+		ID:        r.Attributes.ApplicationID,
+		Name:      r.Attributes.Name,
+		APIKey:    r.Attributes.APIKey,
+		PlanLabel: r.Attributes.Plan.Label,
 	}
 }
 

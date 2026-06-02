@@ -246,6 +246,23 @@ func TestGetApplication_Success(t *testing.T) {
 	assert.Equal(t, "api-key-123", app.APIKey)
 }
 
+func TestGetApplication_ParsesPlanLabel(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, _ *http.Request) {
+		_, err := w.Write([]byte(
+			`{"data":{"id":"APP1","type":"application","attributes":{"name":"My App","application_id":"APP1","plan":{"name":"v8.5-plg-grow-plus","version":9,"label":"Grow Plus","pay_as_you_go":true}}}}`,
+		))
+		require.NoError(t, err)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	app, err := client.GetApplication("test-token", "APP1")
+	require.NoError(t, err)
+	assert.Equal(t, "Grow Plus", app.PlanLabel)
+}
+
 func TestCreateApplication_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
