@@ -12,6 +12,22 @@ See [Algolia CLI](https://algolia.com/doc/tools/cli/) in the Algolia documentati
 
 ## Installation
 
+### npm (any platform)
+
+The Algolia CLI is published on npm as [`@algolia/cli`](https://www.npmjs.com/package/@algolia/cli).
+
+Run without installing:
+
+```sh
+npx @algolia/cli --help
+```
+
+Or install globally:
+
+```sh
+npm install -g @algolia/cli
+```
+
 ### macOS
 
 The Algolia CLI is available on [Homebrew](https://brew.sh/) and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
