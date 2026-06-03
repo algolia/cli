@@ -19,15 +19,25 @@ import (
 	"github.com/algolia/cli/pkg/prompt"
 )
 
+// Direction selects whether the flow offers higher-tier (upgrade) or
+// lower-tier (downgrade) plans.
+type Direction int
+
+const (
+	DirectionUpgrade Direction = iota
+	DirectionDowngrade
+)
+
 // Options carries everything the shared plan-change flow needs. The upgrade and
 // downgrade commands populate it the same way.
 type Options struct {
 	IO     *iostreams.IOStreams
 	Config config.IConfig
 
-	Plan        string // --plan (optional): target plan, e.g. "free", "grow", "grow-plus"
-	DryRun      bool   // --dry-run: preview without calling the API
-	AcceptTerms bool   // --accept-terms: accept ToS in non-interactive mode
+	Direction   Direction // upgrade or downgrade
+	Plan        string    // --plan (optional): target plan, e.g. "free", "grow", "grow-plus"
+	DryRun      bool      // --dry-run: preview without calling the API
+	AcceptTerms bool      // --accept-terms: accept ToS in non-interactive mode
 
 	PrintFlags *cmdutil.PrintFlags
 
@@ -85,9 +95,25 @@ func Run(opts *Options) error {
 		user = nil
 	}
 
-	target, err := selectTarget(opts, client, &token, appID, plans)
+	app := fetchApplication(opts, client, &token, appID)
+
+	target, err := resolveTarget(opts, appID, app, plans)
 	if err != nil {
 		return err
+	}
+	if target == nil {
+		return nil
+	}
+
+	if isCurrentPlan(app, *target) {
+		fmt.Fprintf(
+			opts.IO.Out,
+			"%s Application %s is already on the %s plan; no change needed.\n",
+			cs.WarningIcon(),
+			cs.Bold(appID),
+			cs.Bold(target.Name),
+		)
+		return nil
 	}
 
 	// Paid plans require a payment method that the CLI cannot collect. Only
@@ -195,49 +221,149 @@ func offerCostManagementBudget(opts *Options, dashboardURL, appID string) error 
 	return browser(url)
 }
 
-// selectTarget resolves the target plan from the --plan flag or, when
-// interactive and no flag is set, an interactive picker over the available
-// plans.
-func selectTarget(
+// resolveTarget picks the target plan: --plan overrides the direction filter,
+// otherwise candidates are filtered by direction and chosen interactively. A
+// nil plan with a nil error means there is nothing to switch to.
+func resolveTarget(
 	opts *Options,
-	client *dashboard.Client,
-	token *string,
 	appID string,
+	app *dashboard.Application,
 	plans []dashboard.Plan,
 ) (*dashboard.Plan, error) {
 	if opts.Plan != "" {
 		return resolvePlan(plans, opts.Plan)
 	}
 
+	candidates := filterByDirection(plans, app, opts.Direction)
+
+	if len(candidates) == 0 {
+		reportNoCandidates(opts, appID, app, opts.Direction)
+		return nil, nil
+	}
+
 	if !opts.IO.CanPrompt() {
 		return nil, cmdutil.FlagErrorf(
 			"--plan is required in non-interactive mode (one of: %s)",
-			strings.Join(planChoices(plans), ", "),
+			strings.Join(planChoices(candidates), ", "),
 		)
 	}
 
-	cs := opts.IO.ColorScheme()
-	appLabel := cs.Bold(appID)
-	if name := currentAppName(opts, client, token, appID); name != "" {
-		appLabel = fmt.Sprintf("%s (%s)", cs.Bold(appID), name)
-	}
-	fmt.Fprintf(opts.IO.Out, "Current application: %s\n\n", appLabel)
+	printCurrentApplication(opts, appID, app)
 
-	return pickPlan(plans)
+	return pickPlan(candidates)
 }
 
-// currentAppName resolves the current application's display name, best-effort.
-// It returns "" when the name can't be fetched so callers fall back to the ID.
-func currentAppName(opts *Options, client *dashboard.Client, token *string, appID string) string {
+// fetchApplication returns the current application, or nil if it can't be fetched.
+func fetchApplication(
+	opts *Options,
+	client *dashboard.Client,
+	token *string,
+	appID string,
+) *dashboard.Application {
 	var app *dashboard.Application
 	if err := callWithReauth(opts.IO, client, token, "Fetching application", func(t string) error {
 		var e error
 		app, e = client.GetApplication(t, appID)
 		return e
-	}); err != nil || app == nil {
-		return ""
+	}); err != nil {
+		return nil
 	}
-	return app.Name
+	return app
+}
+
+// filterByDirection returns plans above (upgrade) or below (downgrade) the
+// current plan in the API's tier order, or all plans when it isn't found.
+func filterByDirection(
+	plans []dashboard.Plan,
+	app *dashboard.Application,
+	dir Direction,
+) []dashboard.Plan {
+	idx := currentPlanIndex(plans, app)
+	if idx < 0 {
+		return plans
+	}
+	if dir == DirectionDowngrade {
+		return plans[:idx]
+	}
+	return plans[idx+1:]
+}
+
+// normalizePlanKey normalizes a plan label/name for comparison; the CLI joins
+// the current plan to the self-serve list by matching label against Name.
+func normalizePlanKey(s string) string {
+	return strings.TrimSpace(strings.ToLower(s))
+}
+
+// currentPlanIndex returns the index of the app's current plan in plans, or -1.
+func currentPlanIndex(plans []dashboard.Plan, app *dashboard.Application) int {
+	if app == nil {
+		return -1
+	}
+	label := normalizePlanKey(app.PlanLabel)
+	if label == "" {
+		return -1
+	}
+	for i := range plans {
+		if normalizePlanKey(plans[i].Name) == label {
+			return i
+		}
+	}
+	return -1
+}
+
+// isCurrentPlan reports whether target is the plan the application is already on.
+func isCurrentPlan(app *dashboard.Application, target dashboard.Plan) bool {
+	if app == nil {
+		return false
+	}
+	label := normalizePlanKey(app.PlanLabel)
+	return label != "" && label == normalizePlanKey(target.Name)
+}
+
+// reportNoCandidates tells the user they're already at the highest/lowest plan.
+func reportNoCandidates(
+	opts *Options,
+	appID string,
+	app *dashboard.Application,
+	dir Direction,
+) {
+	cs := opts.IO.ColorScheme()
+	current := ""
+	if app != nil && app.PlanLabel != "" {
+		current = fmt.Sprintf(" (%s)", app.PlanLabel)
+	}
+	tier, verb := "highest", "upgrade"
+	if dir == DirectionDowngrade {
+		tier, verb = "lowest", "downgrade"
+	}
+	fmt.Fprintf(
+		opts.IO.Out,
+		"%s Application %s is already on the %s self-serve plan%s; nothing to %s to.\n",
+		cs.WarningIcon(),
+		cs.Bold(appID),
+		tier,
+		current,
+		verb,
+	)
+}
+
+// printCurrentApplication prints the current app and plan before the picker.
+func printCurrentApplication(opts *Options, appID string, app *dashboard.Application) {
+	cs := opts.IO.ColorScheme()
+	label := cs.Bold(appID)
+	if app != nil && app.Name != "" {
+		label = fmt.Sprintf("%s (%s)", cs.Bold(appID), app.Name)
+	}
+	if app != nil && app.PlanLabel != "" {
+		fmt.Fprintf(
+			opts.IO.Out,
+			"Current application: %s — current plan: %s\n\n",
+			label,
+			cs.Bold(app.PlanLabel),
+		)
+		return
+	}
+	fmt.Fprintf(opts.IO.Out, "Current application: %s\n\n", label)
 }
 
 // resolvePlan maps a --plan value to one of the fetched plans.

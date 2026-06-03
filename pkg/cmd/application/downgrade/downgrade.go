@@ -14,6 +14,7 @@ func NewDowngradeCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &planchange.Options{
 		IO:         f.IOStreams,
 		Config:     f.Config,
+		Direction:  planchange.DirectionDowngrade,
 		PrintFlags: cmdutil.NewPrintFlags(),
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
