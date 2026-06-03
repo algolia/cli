@@ -177,6 +177,10 @@ func Execute() exitCode {
 		telemetryMetadata.SetAppID(appID)
 		telemetryMetadata.SetConfiguredApplicationsNb(len(cfg.ConfiguredProfiles()))
 
+		if token := auth.LoadToken(); token != nil {
+			telemetryMetadata.SetUser(token.UserID, token.Email, token.Name)
+		}
+
 		ctx := cmd.Context()
 		telemetryClient := telemetry.GetTelemetryClient(ctx)
 

@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -14,6 +15,7 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -71,7 +73,7 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runLoginCmd(opts)
+			return runLoginCmd(cmd.Context(), opts)
 		},
 	}
 
@@ -83,13 +85,13 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runLoginCmd(opts *LoginOptions) error {
-	return RunOAuthFlow(opts, false)
+func runLoginCmd(ctx context.Context, opts *LoginOptions) error {
+	return RunOAuthFlow(ctx, opts, false)
 }
 
 // RunOAuthFlow runs the full browser-based OAuth + profile setup flow.
 // If signup is true, the browser opens to the sign-up page instead of sign-in.
-func RunOAuthFlow(opts *LoginOptions, signup bool) error {
+func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
@@ -98,6 +100,8 @@ func RunOAuthFlow(opts *LoginOptions, signup bool) error {
 	if err != nil {
 		return err
 	}
+
+	identifyAuthenticatedUser(ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
 	apps, err := client.ListApplications(accessToken)
@@ -136,6 +140,32 @@ func RunOAuthFlow(opts *LoginOptions, signup bool) error {
 	}
 
 	return apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default)
+}
+
+// identifyAuthenticatedUser emits a telemetry Identify for the user that just
+// authenticated. It is a no-op when no identified token is present.
+func identifyAuthenticatedUser(ctx context.Context) {
+	if applyStoredIdentity(ctx) {
+		telemetry.IdentifyOnce(ctx)
+	}
+}
+
+// applyStoredIdentity copies the persisted user identity from the stored token
+// onto the request's telemetry metadata. It reports whether an identity was
+// applied.
+func applyStoredIdentity(ctx context.Context) bool {
+	token := auth.LoadToken()
+	if token == nil || token.UserID == "" {
+		return false
+	}
+
+	metadata := telemetry.GetEventMetadata(ctx)
+	if metadata == nil {
+		return false
+	}
+
+	metadata.SetUser(token.UserID, token.Email, token.Name)
+	return true
 }
 
 // reuseExistingAPIKey checks if a local profile already has an API key for
