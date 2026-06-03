@@ -258,7 +258,7 @@ func resolvePlan(plans []dashboard.Plan, value string) (*dashboard.Plan, error) 
 		}
 	}
 	return nil, cmdutil.FlagErrorf(
-		"Invalid plan %q; valid plans: %s",
+		"Invalid plan %q; available plans: %s",
 		value,
 		strings.Join(planChoices(plans), ", "),
 	)
@@ -286,9 +286,7 @@ func pickPlan(candidates []dashboard.Plan) (*dashboard.Plan, error) {
 	return &candidates[selected], nil
 }
 
-// confirmToS displays the plan's terms and asks the user to accept them. The
-// prompt defaults to yes ([Y/n]). In non-interactive mode acceptance requires
-// the --accept-terms flag (chosen over silent auto-accept).
+// confirmToS shows the plan's terms and returns whether they were accepted.
 func confirmToS(opts *Options, target dashboard.Plan) (bool, error) {
 	cs := opts.IO.ColorScheme()
 
@@ -298,11 +296,12 @@ func confirmToS(opts *Options, target dashboard.Plan) (bool, error) {
 	}
 	fmt.Fprintf(opts.IO.Out, "\n%s\n\n", terms)
 
+	if opts.AcceptTerms {
+		fmt.Fprintf(opts.IO.Out, "%s Terms accepted via --accept-terms.\n", cs.SuccessIcon())
+		return true, nil
+	}
+
 	if !opts.IO.CanPrompt() {
-		if opts.AcceptTerms {
-			fmt.Fprintf(opts.IO.Out, "%s Terms accepted via --accept-terms.\n", cs.SuccessIcon())
-			return true, nil
-		}
 		return false, cmdutil.FlagErrorf(
 			"the plan terms must be accepted in non-interactive mode; pass --accept-terms to confirm",
 		)
