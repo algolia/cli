@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/zalando/go-keyring"
@@ -15,12 +16,16 @@ const (
 	keyringUser    = "oauth-token"
 )
 
-// StoredToken represents the persisted OAuth tokens.
+// StoredToken represents the persisted OAuth tokens and the identity of the
+// authenticated user.
 type StoredToken struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresAt    int64  `json:"expires_at"`
 	Scope        string `json:"scope,omitempty"`
+	UserID       string `json:"user_id,omitempty"`
+	Email        string `json:"email,omitempty"`
+	Name         string `json:"name,omitempty"`
 }
 
 // IsExpired returns true if the access token has expired (with a 60s buffer).
@@ -28,8 +33,15 @@ func (t *StoredToken) IsExpired() bool {
 	return time.Now().Unix() >= t.ExpiresAt-60
 }
 
-// SaveToken persists tokens from an OAuthTokenResponse to the OS keychain.
+// SaveToken persists tokens (and the user identity, when present) from an
+// OAuthTokenResponse to the OS keychain.
 func SaveToken(resp *dashboard.OAuthTokenResponse) error {
+	return persistToken(storedTokenFromResponse(resp))
+}
+
+// storedTokenFromResponse builds a StoredToken from an OAuth token response,
+// including the user identity when the response carries a user object.
+func storedTokenFromResponse(resp *dashboard.OAuthTokenResponse) StoredToken {
 	expiresAt := resp.CreatedAt + int64(resp.ExpiresIn)
 	if expiresAt == 0 {
 		expiresAt = time.Now().Unix() + int64(resp.ExpiresIn)
@@ -42,6 +54,17 @@ func SaveToken(resp *dashboard.OAuthTokenResponse) error {
 		Scope:        resp.Scope,
 	}
 
+	if resp.User != nil && resp.User.ID != 0 {
+		stored.UserID = strconv.Itoa(resp.User.ID)
+		stored.Email = resp.User.Email
+		stored.Name = resp.User.Name
+	}
+
+	return stored
+}
+
+// persistToken marshals and writes a StoredToken to the OS keychain.
+func persistToken(stored StoredToken) error {
 	data, err := json.Marshal(stored)
 	if err != nil {
 		return err
@@ -96,9 +119,14 @@ func GetValidToken(client *dashboard.Client) (string, error) {
 		return "", fmt.Errorf("session expired and refresh failed — run `algolia auth login` to re-authenticate: %w", err)
 	}
 
-	if err := SaveToken(tokenResp); err != nil {
-		return tokenResp.AccessToken, nil
+	refreshed := storedTokenFromResponse(tokenResp)
+	if refreshed.UserID == "" {
+		refreshed.UserID = stored.UserID
+		refreshed.Email = stored.Email
+		refreshed.Name = stored.Name
 	}
 
-	return tokenResp.AccessToken, nil
+	_ = persistToken(refreshed)
+
+	return refreshed.AccessToken, nil
 }
