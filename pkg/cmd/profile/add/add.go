@@ -82,7 +82,7 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 	cmd := &cobra.Command{
 		Use:   "add",
 		Args:  validators.NoArgs(),
-		Short: "Add a new profile configuration to the CLI",
+		Short: "(deprecated) Add a new profile configuration to the CLI",
 		Example: heredoc.Doc(`
 			# Add a new profile (interactive)
 			$ algolia profile add

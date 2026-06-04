@@ -539,39 +539,41 @@ var WriteACL = []string{
 	"settings", "editSettings", "recommendation",
 }
 
-// CreateAPIKey creates a new API key with the given ACL for the specified application.
+// CreateAPIKey creates a new API key with the given ACL for the specified
+// application. It returns the API key value and its resource ID (UUID), the
+// latter so callers can persist it for later rotation/revocation.
 func (c *Client) CreateAPIKey(
 	accessToken, appID string,
 	acl []string,
 	description string,
-) (string, error) {
+) (key, uuid string, err error) {
 	payload := CreateAPIKeyRequest{ACL: acl, Description: description}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	endpoint := fmt.Sprintf("%s/1/applications/%s/api-keys", c.APIURL, url.PathEscape(appID))
 	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	c.setAPIHeaders(req, accessToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("create API key request failed: %w", err)
+		return "", "", fmt.Errorf("create API key request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read API key response: %w", err)
+		return "", "", fmt.Errorf("failed to read API key response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"create API key failed with status %d: %s",
 			resp.StatusCode,
 			string(respBody),
@@ -580,22 +582,22 @@ func (c *Client) CreateAPIKey(
 
 	var keyResp CreateAPIKeyResponse
 	if err := json.Unmarshal(respBody, &keyResp); err != nil {
-		return "", fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"failed to parse API key response: %w (body: %s)",
 			err,
 			string(respBody),
 		)
 	}
 
-	key := keyResp.Data.Attributes.Value
+	key = keyResp.Data.Attributes.Value
 	if key == "" {
-		return "", fmt.Errorf(
+		return "", "", fmt.Errorf(
 			"API key creation succeeded but no key was returned in the response: %s",
 			string(respBody),
 		)
 	}
 
-	return key, nil
+	return key, keyResp.Data.ID, nil
 }
 
 // GetCrawlerUser gets the crawler API user data for the current authenticated user

@@ -30,7 +30,7 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 		Use:               "setdefault <profile>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
-		Short:             "Set the default profile",
+		Short:             "(deprecated) Set the default profile",
 		Example: heredoc.Doc(`
 			# Set the default profile to "my-app"
 			$ algolia profile setdefault my-app

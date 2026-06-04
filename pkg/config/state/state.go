@@ -181,6 +181,18 @@ func (s *State) SetApp(app *ApplicationState) {
 	s.Applications[app.ApplicationID] = app
 }
 
+// RemoveApp deletes the application entry for appID and clears the current
+// pointer when it referenced that application.
+func (s *State) RemoveApp(appID string) {
+	if s == nil || appID == "" {
+		return
+	}
+	delete(s.Applications, appID)
+	if s.CurrentApplicationID == appID {
+		s.CurrentApplicationID = ""
+	}
+}
+
 // PutAPIKeyUUID records the keychain API key UUID for appID, creating the
 // entry when missing.
 func (s *State) PutAPIKeyUUID(appID, uuid string) {

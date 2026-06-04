@@ -47,10 +47,11 @@ type ApplicationPlan struct {
 
 // Application is a flattened view of an Algolia application for CLI consumption.
 type Application struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	APIKey    string `json:"api_key,omitempty"`
-	PlanLabel string `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	APIKey     string `json:"api_key,omitempty"`
+	APIKeyUUID string `json:"-"`                    // resource ID of APIKey when freshly created; persisted as api_key_uuid
+	PlanLabel  string `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
 }
 
 // PaginationMeta contains page-based pagination metadata.

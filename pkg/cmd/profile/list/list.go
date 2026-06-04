@@ -11,6 +11,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/factory"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/config/state"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
 	"github.com/algolia/cli/pkg/validators"
@@ -32,7 +33,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Use:     "list",
 		Aliases: []string{"l"},
 		Args:    validators.NoArgs(),
-		Short:   "List the configured profile(s)",
+		Short:   "(deprecated) List the configured profile(s)",
 		Example: heredoc.Doc(`
 			# List the configured profiles
 			$ algolia profile list
@@ -75,6 +76,9 @@ func runListCmd(opts *ListOptions) error {
 		table.AddField(profile.ApplicationID, nil, nil)
 
 		apiKey := profile.APIKey
+		if apiKey == "" {
+			apiKey, _ = state.GetSecret(profile.ApplicationID, state.SecretAPIKey)
+		}
 		if apiKey == "" {
 			apiKey = profile.AdminAPIKey // Legacy
 		}

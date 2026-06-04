@@ -2,13 +2,11 @@ package config
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/viper"
 
 	"github.com/algolia/cli/pkg/config/state"
-	"github.com/algolia/cli/pkg/utils"
 )
 
 // DefaultSearchHosts can be set at build time via ldflags, e.g.
@@ -23,11 +21,16 @@ type Profile struct {
 	AdminAPIKey   string   `mapstructure:"admin_api_key"`
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
+	// APIKeyUUID is the resource ID of the API key stored in the keychain.
+	// It is persisted to state.toml (not config.toml) so the key can later
+	// be rotated/revoked without re-reading the secret.
+	APIKeyUUID string `mapstructure:"-"`
+
 	Default bool `mapstructure:"default"`
 
 	// statePath points at state.toml; it is set by Config.InitConfig. When
-	// empty (e.g. in unit tests) credential resolution falls back to the
-	// legacy config.toml behavior.
+	// empty (e.g. in unit tests) it falls back to state.DefaultPath() for
+	// writes and disables state-based reads.
 	statePath string
 }
 
@@ -234,28 +237,54 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 	return "", ErrCrawlerAPIKeyNotConfigured
 }
 
-// Add adds a profile to the configuration, preserving any existing profiles.
+// Add persists the profile to the new store: non-secret metadata (application
+// ID, alias, search hosts, API key UUID) goes to state.toml and the API key
+// itself goes to the OS keychain. config.toml is no longer written.
+//
+// Existing non-secret fields for the application (e.g. crawler_user_id) are
+// preserved. The profile becomes the current application when it is flagged as
+// default, or when no application is current yet (so the first configured
+// application is immediately usable).
 func (p *Profile) Add() error {
-	runtimeViper := viper.GetViper()
-	runtimeViper.Set(p.GetFieldName("application_id"), p.ApplicationID)
-	runtimeViper.Set(p.GetFieldName("api_key"), p.APIKey)
+	if p.ApplicationID == "" {
+		return ErrApplicationIDNotConfigured
+	}
 
-	return p.write(runtimeViper)
-}
+	path := p.statePath
+	if path == "" {
+		path = state.DefaultPath()
+	}
 
-// write writes the configuration file
-func (p *Profile) write(runtimeViper *viper.Viper) error {
-	configFile := viper.ConfigFileUsed()
-	err := utils.MakePath(configFile)
+	s, err := state.Load(path)
 	if err != nil {
 		return err
 	}
-	runtimeViper.SetConfigFile(configFile)
-	runtimeViper.SetConfigType(filepath.Ext(configFile))
 
-	err = runtimeViper.WriteConfig()
-	if err != nil {
+	app := s.App(p.ApplicationID)
+	if app == nil {
+		app = &state.ApplicationState{ApplicationID: p.ApplicationID}
+	}
+	if p.Name != "" {
+		app.Alias = p.Name
+	}
+	if len(p.SearchHosts) > 0 {
+		app.SearchHosts = p.SearchHosts
+	}
+	if p.APIKeyUUID != "" {
+		app.APIKeyUUID = p.APIKeyUUID
+	}
+	s.SetApp(app)
+
+	if p.Default || s.CurrentApplicationID == "" {
+		s.SetCurrent(p.ApplicationID)
+	}
+
+	if err := s.Save(path); err != nil {
 		return err
+	}
+
+	if p.APIKey != "" {
+		return state.SetSecret(p.ApplicationID, state.SecretAPIKey, p.APIKey)
 	}
 
 	return nil

@@ -180,33 +180,35 @@ default = true
 	assert.Equal(t, "key-cfg", apiKey)
 }
 
-func TestAddProfile_PreservesExistingProfiles(t *testing.T) {
-	configFile := filepath.Join(t.TempDir(), "config.toml")
+func TestAddProfile_WritesStateAndKeychain(t *testing.T) {
+	keyring.MockInit()
+	viper.Reset()
 
-	// First CLI invocation: add profile A.
-	initTestViper(configFile)
+	statePath := filepath.Join(t.TempDir(), "state.toml")
 
+	// First CLI invocation: add profile A. With no current app yet, it
+	// becomes the current application.
 	profileA := &Profile{
+		statePath:     statePath,
 		Name:          "app-a",
 		ApplicationID: "APP_A_ID",
 		APIKey:        "key-a",
+		APIKeyUUID:    "uuid-a",
 	}
 	require.NoError(t, profileA.Add())
 
-	// Second CLI invocation: add profile B.
-	initTestViper(configFile)
-
+	// Second CLI invocation: add profile B (not default), preserving A.
 	profileB := &Profile{
+		statePath:     statePath,
 		Name:          "app-b",
 		ApplicationID: "APP_B_ID",
 		APIKey:        "key-b",
 	}
 	require.NoError(t, profileB.Add())
 
-	// Third CLI invocation: read back and verify both profiles exist.
-	initTestViper(configFile)
-
+	// Read back via Config pointed at the same state.toml.
 	cfg := &Config{}
+	cfg.CurrentProfile.statePath = statePath
 	profiles := cfg.ConfiguredProfiles()
 
 	profilesByName := make(map[string]*Profile)
@@ -217,4 +219,20 @@ func TestAddProfile_PreservesExistingProfiles(t *testing.T) {
 	assert.Len(t, profiles, 2, "both profiles should be preserved on disk")
 	assert.Equal(t, "APP_A_ID", profilesByName["app-a"].ApplicationID)
 	assert.Equal(t, "APP_B_ID", profilesByName["app-b"].ApplicationID)
+	assert.Equal(t, "uuid-a", profilesByName["app-a"].APIKeyUUID)
+
+	// The first application added becomes the current (default) one.
+	assert.True(t, profilesByName["app-a"].Default)
+	assert.False(t, profilesByName["app-b"].Default)
+
+	// config.toml is never written; secrets live in the keychain only.
+	keyA, err := state.GetSecret("APP_A_ID", state.SecretAPIKey)
+	require.NoError(t, err)
+	assert.Equal(t, "key-a", keyA)
+	keyB, err := state.GetSecret("APP_B_ID", state.SecretAPIKey)
+	require.NoError(t, err)
+	assert.Equal(t, "key-b", keyB)
+
+	// ConfiguredProfiles must not leak secrets into the profile metadata.
+	assert.Empty(t, profilesByName["app-a"].APIKey)
 }

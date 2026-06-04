@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/config/state"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/telemetry"
@@ -169,11 +170,20 @@ func applyStoredIdentity(ctx context.Context) bool {
 }
 
 // reuseExistingAPIKey checks if a local profile already has an API key for
-// the given application. If so, it sets app.APIKey and returns true.
+// the given application. If so, it sets app.APIKey and returns true. The key
+// itself lives in the OS keychain; the profile only carries metadata.
 func reuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
 	for _, p := range cfg.ConfiguredProfiles() {
-		if p.ApplicationID == app.ID && p.APIKey != "" {
+		if p.ApplicationID != app.ID {
+			continue
+		}
+		// In-memory profiles (tests/legacy) may already hold the key.
+		if p.APIKey != "" {
 			app.APIKey = p.APIKey
+			return true
+		}
+		if key, err := state.GetSecret(app.ID, state.SecretAPIKey); err == nil && key != "" {
+			app.APIKey = key
 			return true
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/config/state"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/pkg/validators"
@@ -122,12 +123,9 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 		return nil, err
 	}
 
-	// If a profile already exists for this app, switch the default
-	// and ensure it has an API key.
+	// If a profile already exists for this app, switch the current
+	// application and ensure it has an API key.
 	if exists, profileName := opts.Config.ApplicationIDExists(chosen.ID); exists {
-		// Read the profile BEFORE SetDefaultProfile, because viper.Set() calls
-		// inside SetDefaultProfile pollute the override map and cause
-		// UnmarshalKey to return empty fields (known viper issue).
 		var existingProfile *config.Profile
 		for _, p := range opts.Config.ConfiguredProfiles() {
 			if p.Name == profileName {
@@ -142,13 +140,15 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 		fmt.Fprintf(opts.IO.Out, "%s Switched to profile %q (application %s).\n",
 			cs.SuccessIcon(), profileName, cs.Bold(chosen.ID))
 
-		if existingProfile != nil && existingProfile.APIKey == "" {
+		storedKey, _ := state.GetSecret(chosen.ID, state.SecretAPIKey)
+		if existingProfile != nil && storedKey == "" {
 			app := &dashboard.Application{ID: chosen.ID, Name: chosen.Name}
 			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, app); err != nil {
 				return nil, err
 			}
 			existingProfile.ApplicationID = chosen.ID
 			existingProfile.APIKey = app.APIKey
+			existingProfile.APIKeyUUID = app.APIKeyUUID
 			if err := existingProfile.Add(); err != nil {
 				return nil, err
 			}

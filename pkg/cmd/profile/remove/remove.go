@@ -37,7 +37,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 		Use:               "remove <profile>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
-		Short:             "Remove the specified profile",
+		Short:             "(deprecated) Remove the specified profile",
 		Long:              `Remove the specified profile from the configuration.`,
 		Example: heredoc.Doc(`
 			# Remove the profile named "my-app" from the configuration

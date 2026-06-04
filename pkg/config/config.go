@@ -1,18 +1,16 @@
 package config
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
-	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/algolia/cli/pkg/config/state"
-	"github.com/algolia/cli/pkg/utils"
 )
 
 type IConfig interface {
@@ -88,21 +86,73 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 	return filepath.Join(configPath, "algolia")
 }
 
-// ConfiguredProfiles return the profiles in the configuration file
+// loadState loads state.toml for read operations. When no state path is
+// configured (e.g. a bare Config in unit tests) it returns an empty state so
+// reads stay deterministic and never touch a real home directory.
+func (c *Config) loadState() *state.State {
+	if c.CurrentProfile.statePath == "" {
+		return state.New()
+	}
+	s, err := state.Load(c.CurrentProfile.statePath)
+	if err != nil {
+		return state.New()
+	}
+	return s
+}
+
+// writeStatePath returns the path used for state writes, defaulting to the
+// well-known location when not explicitly configured (always set in production
+// by InitConfig).
+func (c *Config) writeStatePath() string {
+	if c.CurrentProfile.statePath != "" {
+		return c.CurrentProfile.statePath
+	}
+	return state.DefaultPath()
+}
+
+// profileName returns the alias for an application, falling back to its ID.
+func profileName(app *state.ApplicationState) string {
+	if app.Alias != "" {
+		return app.Alias
+	}
+	return app.ApplicationID
+}
+
+// resolveApp resolves a profile name to its application state, matching the
+// stored alias first and then the application ID.
+func (c *Config) resolveApp(st *state.State, name string) *state.ApplicationState {
+	if app := st.AppByAlias(name); app != nil {
+		return app
+	}
+	return st.App(name)
+}
+
+// ConfiguredProfiles returns the configured applications from state.toml. Only
+// non-secret metadata is populated; secrets stay in the keychain and are read
+// lazily by callers that need them.
 func (c *Config) ConfiguredProfiles() []*Profile {
-	configs := viper.AllSettings()
-	applications := make([]*Profile, 0, len(configs))
-	for appName := range configs {
-		app := &Profile{
-			Name: appName,
-		}
-		if err := viper.UnmarshalKey(appName, app); err != nil {
-			log.Fatalf("%s", err)
-		}
-		applications = append(applications, app)
+	s := c.loadState()
+
+	appIDs := make([]string, 0, len(s.Applications))
+	for appID := range s.Applications {
+		appIDs = append(appIDs, appID)
+	}
+	sort.Strings(appIDs)
+
+	profiles := make([]*Profile, 0, len(appIDs))
+	for _, appID := range appIDs {
+		app := s.Applications[appID]
+		profiles = append(profiles, &Profile{
+			Name:          profileName(app),
+			ApplicationID: app.ApplicationID,
+			APIKeyUUID:    app.APIKeyUUID,
+			SearchHosts:   app.SearchHosts,
+			Default:       appID == s.CurrentApplicationID,
+			statePath:     c.CurrentProfile.statePath,
+		})
 	}
 
-	return applications
+	return profiles
 }
 
 // Profile returns the current profile
@@ -110,7 +160,7 @@ func (c *Config) Profile() *Profile {
 	return &c.CurrentProfile
 }
 
-// Default returns the default profile
+// Default returns the default (current) profile
 func (c *Config) Default() *Profile {
 	for _, profile := range c.ConfiguredProfiles() {
 		if profile.Default {
@@ -120,136 +170,99 @@ func (c *Config) Default() *Profile {
 	return nil
 }
 
-// ProfileNames returns the list of name of the configured profiles
+// ProfileNames returns the aliases of the configured profiles.
 func (c *Config) ProfileNames() []string {
-	return viper.AllKeys()
+	profiles := c.ConfiguredProfiles()
+	names := make([]string, 0, len(profiles))
+	for _, profile := range profiles {
+		names = append(names, profile.Name)
+	}
+	return names
 }
 
-// ProfileExists check if a profile with the given name exists
-func (c *Config) ProfileExists(appName string) bool {
-	return viper.IsSet(appName)
+// ProfileExists checks whether a profile with the given name (alias or
+// application ID) exists.
+func (c *Config) ProfileExists(name string) bool {
+	return c.resolveApp(c.loadState(), name) != nil
 }
 
-// RemoveProfile remove a profile from the configuration
+// RemoveProfile removes a profile from state.toml and deletes its secrets from
+// the keychain.
 func (c *Config) RemoveProfile(name string) error {
-	runtimeViper := viper.GetViper()
-	configMap := runtimeViper.AllSettings()
-	delete(configMap, name)
-
-	buf := new(bytes.Buffer)
-
-	encodeErr := toml.NewEncoder(buf).Encode(configMap)
-	if encodeErr != nil {
-		return encodeErr
-	}
-
-	nv := viper.New()
-	nv.SetConfigType("toml") // hint to viper that we've encoded the data as toml
-
-	err := nv.ReadConfig(buf)
+	path := c.writeStatePath()
+	s, err := state.Load(path)
 	if err != nil {
 		return err
 	}
 
-	return c.write(nv)
+	app := c.resolveApp(s, name)
+	if app == nil {
+		return fmt.Errorf("profile '%s' not found", name)
+	}
+	appID := app.ApplicationID
+
+	s.RemoveApp(appID)
+	if err := s.Save(path); err != nil {
+		return err
+	}
+
+	_ = state.DeleteSecret(appID, state.SecretAPIKey)
+	_ = state.DeleteSecret(appID, state.SecretCrawlerAPIKey)
+	return nil
 }
 
-// SetDefaultProfile set the default profile
+// SetDefaultProfile marks the named profile's application as the current one.
 func (c *Config) SetDefaultProfile(name string) error {
-	configuration, err := c.read()
+	path := c.writeStatePath()
+	s, err := state.Load(path)
 	if err != nil {
 		return err
 	}
 
-	configs := configuration.AllSettings()
-
-	found := false
-
-	for profileName := range configs {
-		runtimeViper := viper.GetViper()
-		runtimeViper.Set(profileName+".default", false)
-
-		if profileName == name {
-			found = true
-			runtimeViper.Set(profileName+".default", true)
-		}
-	}
-
-	if !found {
+	app := c.resolveApp(s, name)
+	if app == nil {
 		return fmt.Errorf("profile '%s' not found", name)
 	}
 
-	return c.write(configuration)
+	s.SetCurrent(app.ApplicationID)
+	return s.Save(path)
 }
 
-// ApplicationIDExists check if an application ID exists in any profiles
+// ApplicationIDExists checks whether an application ID is configured.
 func (c *Config) ApplicationIDExists(appID string) (bool, string) {
-	for _, profile := range c.ConfiguredProfiles() {
-		if profile.ApplicationID == appID {
-			return true, profile.Name
-		}
+	if app := c.loadState().App(appID); app != nil {
+		return true, profileName(app)
 	}
-
 	return false, ""
 }
 
 // ApplicationIDForProfile returns the application ID for a given profile name.
-func (c *Config) ApplicationIDForProfile(profileName string) (bool, string) {
-	for _, profile := range c.ConfiguredProfiles() {
-		if profile.Name == profileName {
-			return true, profile.ApplicationID
-		}
+func (c *Config) ApplicationIDForProfile(name string) (bool, string) {
+	if app := c.resolveApp(c.loadState(), name); app != nil {
+		return true, app.ApplicationID
 	}
-
 	return false, ""
 }
 
-// SetCrawlerAuth sets the config properties for crawler public api
+// SetCrawlerAuth stores the crawler user ID in state.toml and the crawler API
+// key in the keychain for the named profile.
 func (c *Config) SetCrawlerAuth(profile, crawlerUserID, crawlerAPIKey string) error {
-	configuration, err := c.read()
+	path := c.writeStatePath()
+	s, err := state.Load(path)
 	if err != nil {
 		return err
 	}
 
-	profiles := configuration.AllSettings()
-
-	if _, exists := profiles[profile]; !exists {
+	app := c.resolveApp(s, profile)
+	if app == nil {
 		return fmt.Errorf("profile '%s' not found", profile)
 	}
 
-	configuration.Set(profile+".crawler_user_id", crawlerUserID)
-	configuration.Set(profile+".crawler_api_key", crawlerAPIKey)
-
-	return c.write(configuration)
-}
-
-// read reads the configuration file and returns its runtime
-func (c *Config) read() (*viper.Viper, error) {
-	runtimeViper := viper.GetViper()
-
-	runtimeViper.SetConfigType("toml")
-	err := runtimeViper.ReadInConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return runtimeViper, nil
-}
-
-// write writes the configuration file
-func (c *Config) write(runtimeViper *viper.Viper) error {
-	configFile := viper.ConfigFileUsed()
-	err := utils.MakePath(configFile)
-	if err != nil {
-		return err
-	}
-	runtimeViper.SetConfigFile(configFile)
-	runtimeViper.SetConfigType(filepath.Ext(configFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
+	app.CrawlerUserID = crawlerUserID
+	s.SetApp(app)
+	if err := s.Save(path); err != nil {
 		return err
 	}
 
-	return nil
+	return state.SetSecret(app.ApplicationID, state.SecretCrawlerAPIKey, crawlerAPIKey)
 }
