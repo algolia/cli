@@ -1,28 +1,38 @@
 package apputil
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/algolia/cli/api/dashboard"
+	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
 // CreateApplicationWithRetry creates an application, retrying with a different
-// region if the selected one has no available cluster.
+// region if the selected one has no available cluster. triggeredFrom tags the
+// emitted telemetry events with their origin (telemetry.TriggeredFrom*).
 func CreateApplicationWithRetry(
+	ctx context.Context,
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	accessToken string,
 	region string,
 	appName string,
+	triggeredFrom string,
 ) (*dashboard.Application, string, error) {
 	cs := io.ColorScheme()
+
+	telemetry.Track(ctx, telemetry.ApplicationCreateStarted(triggeredFrom))
+	start := time.Now()
 
 	for {
 		if region == "" {
@@ -38,6 +48,10 @@ func CreateApplicationWithRetry(
 		io.StopProgressIndicator()
 
 		if err == nil {
+			telemetry.Track(
+				ctx,
+				telemetry.ApplicationCreateCompleted(triggeredFrom, time.Since(start)),
+			)
 			fmt.Fprintf(io.Out, "%s Application %s created in region %q\n",
 				cs.SuccessIcon(), cs.Bold(app.ID), region)
 			return app, region, nil
@@ -45,18 +59,33 @@ func CreateApplicationWithRetry(
 
 		var clusterErr *dashboard.ErrClusterUnavailable
 		if errors.As(err, &clusterErr) {
-			fmt.Fprintf(io.Out, "%s No cluster available in region %q. Please select another region.\n",
-				cs.WarningIcon(), region)
+			fmt.Fprintf(
+				io.Out,
+				"%s No cluster available in region %q. Please select another region.\n",
+				cs.WarningIcon(),
+				region,
+			)
 			region = ""
 
 			if !io.CanPrompt() {
-				return nil, "", fmt.Errorf("no cluster available in region %q — try a different --region", clusterErr.Region)
+				trackCreateFailed(ctx, triggeredFrom, err)
+				return nil, "", fmt.Errorf(
+					"no cluster available in region %q — try a different --region",
+					clusterErr.Region,
+				)
 			}
 			continue
 		}
 
+		trackCreateFailed(ctx, triggeredFrom, err)
 		return nil, "", fmt.Errorf("application creation failed: %w", err)
 	}
+}
+
+// trackCreateFailed emits CLI Application Create Failed with the classified error.
+func trackCreateFailed(ctx context.Context, triggeredFrom string, err error) {
+	class, _, status := cmdutil.ClassifyError(err)
+	telemetry.Track(ctx, telemetry.ApplicationCreateFailed(triggeredFrom, class, status))
 }
 
 // PromptRegion fetches regions from the API and prompts the user to select one.
@@ -103,11 +132,20 @@ func PromptRegion(
 // CreateAndFetchApplication creates an application (with region retry) and
 // generates an API key for it.
 func CreateAndFetchApplication(
+	ctx context.Context,
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
-	accessToken, region, appName string,
+	accessToken, region, appName, triggeredFrom string,
 ) (*dashboard.Application, error) {
-	app, _, err := CreateApplicationWithRetry(io, client, accessToken, region, appName)
+	app, _, err := CreateApplicationWithRetry(
+		ctx,
+		io,
+		client,
+		accessToken,
+		region,
+		appName,
+		triggeredFrom,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +198,8 @@ func ConfigureProfile(
 	}
 	profileName = strings.ToLower(profileName)
 
-	if exists, existingAppID := cfg.ApplicationIDForProfile(profileName); exists && existingAppID != appDetails.ID {
+	if exists, existingAppID := cfg.ApplicationIDForProfile(profileName); exists &&
+		existingAppID != appDetails.ID {
 		profileName = strings.ToLower(appDetails.Name + "-" + appDetails.ID)
 	}
 

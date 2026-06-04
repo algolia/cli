@@ -5,6 +5,7 @@
 package planchange
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	pkgopen "github.com/algolia/cli/pkg/open"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
 // Direction selects whether the flow offers higher-tier (upgrade) or
@@ -54,8 +56,10 @@ type changeResult struct {
 }
 
 // Run executes the shared plan-change flow.
-func Run(opts *Options) error {
+func Run(ctx context.Context, opts *Options) error {
 	cs := opts.IO.ColorScheme()
+
+	opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeStarted(opts.Plan))
 
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
@@ -146,6 +150,7 @@ func Run(opts *Options) error {
 		return err
 	}
 	if !accepted {
+		opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeDeclinedTerms(target.ID))
 		fmt.Fprintf(
 			opts.IO.Out,
 			"%s Plan change aborted; no changes were made.\n",
@@ -153,13 +158,19 @@ func Run(opts *Options) error {
 		)
 		return nil
 	}
+	opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeAcceptedTerms(target.ID))
 
 	if err := callWithReauth(opts.IO, client, &token, "Changing plan", func(t string) error {
 		_, e := client.ChangeApplicationPlan(t, appID, target.ID)
 		return e
 	}); err != nil {
+		if opts.Direction == DirectionUpgrade {
+			class, _, status := cmdutil.ClassifyError(err)
+			telemetry.Track(ctx, telemetry.ApplicationUpgradeFailed(target.ID, class, status))
+		}
 		return err
 	}
+	opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeCompleted(target.ID))
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()
@@ -187,6 +198,14 @@ func Run(opts *Options) error {
 	}
 
 	return offerCostManagementBudget(opts, client.DashboardURL, appID)
+}
+
+// trackUpgrade emits event only for upgrades; downgrades share this path but
+// the analytics spec defines no downgrade events.
+func (opts *Options) trackUpgrade(ctx context.Context, event telemetry.Event) {
+	if opts.Direction == DirectionUpgrade {
+		telemetry.Track(ctx, event)
+	}
 }
 
 // offerCostManagementBudget tells the user they can create a budget and, when

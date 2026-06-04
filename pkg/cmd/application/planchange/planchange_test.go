@@ -1,6 +1,7 @@
 package planchange
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -196,7 +197,7 @@ func TestRun_WithPlanFlag(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
 	assert.Contains(t, out.String(), "Grow")
@@ -211,7 +212,7 @@ func TestRun_FreeTargetNotBilled(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	// "free" maps to the free-type template, whose id is "build".
 	assert.Equal(t, "build", srv.lastPlan)
@@ -226,7 +227,7 @@ func TestRun_BillingBlock(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	err := Run(opts)
+	err := Run(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payment method")
 	assert.Equal(t, 0, srv.patchCalls)
@@ -241,7 +242,7 @@ func TestRun_ToSDeclineAborts(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "aborted")
 }
@@ -253,7 +254,7 @@ func TestRun_NonInteractiveRequiresPlan(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, false)
 	// No --plan and no TTY.
 
-	err := Run(opts)
+	err := Run(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--plan is required")
 	assert.Equal(t, 0, srv.patchCalls)
@@ -274,7 +275,7 @@ func TestRun_InteractivePicker(t *testing.T) {
 
 	opts, out, _ := newOpts(t, srv, true)
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
 	assert.Contains(t, out.String(), "Current application: APP1 (My App)")
@@ -288,7 +289,7 @@ func TestRun_DryRunDoesNotCallAPI(t *testing.T) {
 	opts.Plan = "grow"
 	opts.DryRun = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "Dry run")
 	assert.Contains(t, out.String(), "Grow")
@@ -303,7 +304,7 @@ func TestRun_OfferCostManagementBudget(t *testing.T) {
 	opts, out, opened := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Contains(t, out.String(), "create a budget")
 	assert.Equal(
@@ -323,7 +324,7 @@ func TestRun_FreePlanSkipsCostManagementBudget(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.NotContains(t, out.String(), "create a budget")
 	assert.Empty(t, *opened)
@@ -338,7 +339,7 @@ func TestRun_OutputJSON(t *testing.T) {
 	opts.AcceptTerms = true
 	opts.PrintFlags = newPrintFlags("json")
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Contains(t, out.String(), `"plan":"grow"`)
 	assert.Contains(t, out.String(), `"application_id":"APP1"`)
@@ -355,7 +356,7 @@ func TestRun_UpgradeFiltersToHigherPlans(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionUpgrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow-plus", srv.lastPlan)
 	assert.Contains(t, out.String(), "current plan: Grow")
@@ -372,7 +373,7 @@ func TestRun_DowngradeFiltersToLowerPlans(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionDowngrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
 }
@@ -385,7 +386,7 @@ func TestRun_UpgradeAtHighestPlanIsNoOp(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionUpgrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the highest")
 	assert.Contains(t, out.String(), "nothing to upgrade")
@@ -399,7 +400,7 @@ func TestRun_DowngradeAtLowestPlanIsNoOp(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionDowngrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the lowest")
 	assert.Contains(t, out.String(), "nothing to downgrade")
@@ -417,7 +418,7 @@ func TestRun_PlanFlagOverridesDirection(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
 }
@@ -431,7 +432,7 @@ func TestRun_SamePlanIsNoOp(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the Grow plan")
 	assert.Contains(t, out.String(), "no change needed")
@@ -448,7 +449,7 @@ func TestRun_UnknownCurrentPlanShowsAllPlans(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionUpgrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
 }

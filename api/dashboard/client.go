@@ -335,11 +335,14 @@ func (c *Client) CreateApplication(accessToken, region, name string) (*Applicati
 			}
 		}
 
-		return nil, fmt.Errorf(
-			"create application failed with status %d: %s",
-			resp.StatusCode,
-			respStr,
-		)
+		return nil, &APIError{
+			StatusCode: resp.StatusCode,
+			Message: fmt.Sprintf(
+				"create application failed with status %d: %s",
+				resp.StatusCode,
+				respStr,
+			),
+		}
 	}
 
 	var singleResp SingleApplicationResponse
@@ -493,7 +496,13 @@ func (c *Client) ChangeApplicationPlan(accessToken, appID, plan string) (*Applic
 		return nil, ErrSessionExpired
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("Couldn't change your application's plan: %d", resp.StatusCode)
+		return nil, &APIError{
+			StatusCode: resp.StatusCode,
+			Message: fmt.Sprintf(
+				"Couldn't change your application's plan: %d",
+				resp.StatusCode,
+			),
+		}
 	}
 
 	respBody, _ := io.ReadAll(resp.Body)

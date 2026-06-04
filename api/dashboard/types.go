@@ -106,6 +106,17 @@ type RegionsResponse struct {
 // ErrSessionExpired is returned when an API call gets a 401 Unauthorized.
 var ErrSessionExpired = errors.New("session expired")
 
+// APIError is returned for non-2xx dashboard responses. It carries the HTTP
+// status so callers (and telemetry) can branch on it, keeping the message.
+type APIError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *APIError) Error() string { return e.Message }
+
+func (e *APIError) HTTPStatusCode() int { return e.StatusCode }
+
 // ErrClusterUnavailable is returned when a region has no available cluster.
 type ErrClusterUnavailable struct {
 	Region  string

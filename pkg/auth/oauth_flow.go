@@ -1,13 +1,17 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/algolia/cli/api/dashboard"
+	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
 // DefaultOAuthClientID is a public OAuth client ID (PKCE flow, not a secret).
@@ -20,7 +24,10 @@ func OAuthClientID() string {
 		return v
 	}
 	if DefaultOAuthClientID == "" {
-		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_OAUTH_CLIENT_ID is not set and no default was compiled in")
+		fmt.Fprintln(
+			os.Stderr,
+			"fatal: ALGOLIA_OAUTH_CLIENT_ID is not set and no default was compiled in",
+		)
 		os.Exit(1)
 	}
 	return DefaultOAuthClientID
@@ -35,11 +42,27 @@ func OAuthClientID() string {
 // launched, e.g. SSH / containers).
 //
 // If signup is true the browser opens to the sign-up page.
-func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBrowser bool) (string, error) {
+func RunOAuth(
+	ctx context.Context,
+	io *iostreams.IOStreams,
+	client *dashboard.Client,
+	signup, openBrowser bool,
+) (string, error) {
 	cs := io.ColorScheme()
+
+	flow := telemetry.FlowLogin
+	if signup {
+		flow = telemetry.FlowSignup
+	}
+	start := time.Now()
+	telemetry.Track(ctx, telemetry.AuthStarted(flow, !openBrowser))
 
 	redirectURI, resultCh, err := StartCallbackServer()
 	if err != nil {
+		telemetry.Track(
+			ctx,
+			telemetry.AuthFailed(flow, telemetry.AuthStepCallback, cmdutil.ErrorClass(err)),
+		)
 		return "", err
 	}
 
@@ -63,25 +86,44 @@ func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBro
 			fmt.Fprintf(io.Out, "Opening browser to sign in...\n")
 		}
 		fmt.Fprintf(io.Out, "If the browser doesn't open, visit:\n  %s\n\n", cs.Bold(authorizeURL))
-		_ = OpenBrowser(authorizeURL)
+		if browserErr := OpenBrowser(authorizeURL); browserErr != nil {
+			telemetry.Track(ctx, telemetry.AuthBrowserFailed(flow, cmdutil.ErrorClass(browserErr)))
+		} else {
+			telemetry.Track(ctx, telemetry.AuthBrowserOpened(flow))
+		}
 	} else {
 		fmt.Fprintf(io.Out, "Open this URL in your browser to authenticate:\n\n  %s\n\n", cs.Bold(authorizeURL))
 	}
 
 	fmt.Fprintf(io.Out, "Waiting for authentication...\n")
 	cbResult := <-resultCh
+	telemetry.Track(ctx, telemetry.AuthCallbackReceived(flow, time.Since(start)))
 
 	if cbResult.Error != "" {
-		return "", fmt.Errorf("authorization failed: %s", cbResult.Error)
+		err := fmt.Errorf("authorization failed: %s", cbResult.Error)
+		telemetry.Track(
+			ctx,
+			telemetry.AuthFailed(flow, telemetry.AuthStepCallback, cmdutil.ErrorClass(err)),
+		)
+		return "", err
 	}
 	if cbResult.Code == "" {
-		return "", fmt.Errorf("no authorization code received")
+		err := fmt.Errorf("no authorization code received")
+		telemetry.Track(
+			ctx,
+			telemetry.AuthFailed(flow, telemetry.AuthStepCallback, cmdutil.ErrorClass(err)),
+		)
+		return "", err
 	}
 
 	io.StartProgressIndicatorWithLabel("Exchanging code for tokens")
 	tokenResp, err := client.AuthorizationCodeGrant(cbResult.Code, codeVerifier, redirectURI)
 	io.StopProgressIndicator()
 	if err != nil {
+		telemetry.Track(
+			ctx,
+			telemetry.AuthFailed(flow, telemetry.AuthStepExchange, cmdutil.ErrorClass(err)),
+		)
 		return "", err
 	}
 

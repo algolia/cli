@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	pkgopen "github.com/algolia/cli/pkg/open"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -78,7 +80,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.nameProvided = cmd.Flags().Changed("name")
-			return runCreateCmd(opts)
+			return runCreateCmd(cmd.Context(), opts)
 		},
 	}
 
@@ -99,7 +101,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runCreateCmd(opts *CreateOptions) error {
+func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
 	cs := opts.IO.ColorScheme()
 
 	name, err := resolveName(opts)
@@ -180,11 +182,23 @@ func runCreateCmd(opts *CreateOptions) error {
 		return err
 	}
 	if !accepted {
+		telemetry.Track(
+			ctx,
+			telemetry.ApplicationCreateAborted(telemetry.TriggeredFromExplicitCommand),
+		)
 		fmt.Fprintf(opts.IO.Out, "%s Aborted; no application was created.\n", cs.WarningIcon())
 		return nil
 	}
 
-	appDetails, err := apputil.CreateAndFetchApplication(opts.IO, client, token, opts.Region, name)
+	appDetails, err := apputil.CreateAndFetchApplication(
+		ctx,
+		opts.IO,
+		client,
+		token,
+		opts.Region,
+		name,
+		telemetry.TriggeredFromExplicitCommand,
+	)
 	if err != nil {
 		return err
 	}

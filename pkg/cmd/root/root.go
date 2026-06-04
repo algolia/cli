@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/MakeNowJust/heredoc"
@@ -191,13 +192,11 @@ func Execute() exitCode {
 			return err
 		}
 
-		// Send telemetry.
-		err = telemetryClient.Track(ctx, "Command Invoked")
+		// Command Invoked; flushed at the end of Execute with the command's other events.
+		err = telemetryClient.Track(ctx, telemetry.EventCommandInvoked, nil)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}
-
-		go telemetryClient.Close() // flush telemetry events
 
 		return nil
 	}
@@ -210,23 +209,41 @@ func Execute() exitCode {
 	}
 
 	// Run the command.
+	start := time.Now()
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-	// Handle eventual errors.
+
+	// Exit code; reused below as the Command Completed exit_code property.
+	code := exitCodeForError(err, authError)
+
+	// Command Failed precedes Command Completed so Command Completed is always last.
+	if cmd != nil && cmdutil.ShouldTrackUsage(cmd) {
+		if err != nil {
+			class, source, status := cmdutil.ClassifyError(err)
+			telemetry.Track(ctx, telemetry.CommandFailed(class, source, status))
+		}
+		telemetry.Track(
+			ctx,
+			telemetry.CommandCompleted(time.Since(start), err == nil, int(code)),
+		)
+	}
+	flushTelemetry(ctx)
+
+	// Print the error (exit code already resolved above).
 	if err != nil {
-		if err == cmdutil.ErrSilent {
-			return exitError
-		} else if cmdutil.IsUserCancellation(err) {
+		switch {
+		case err == cmdutil.ErrSilent:
+			// Intentionally silent.
+		case cmdutil.IsUserCancellation(err):
 			if errors.Is(err, terminal.InterruptErr) {
 				// ensure the next shell prompt will start on its own line
 				fmt.Fprint(stderr, "\n")
 			}
-			return exitCancel
-		} else if errors.Is(err, authError) {
-			return exitAuth
+		case errors.Is(err, authError):
+			// Already reported by PersistentPreRunE.
+		default:
+			printError(stderr, err, cmd, hasDebug)
 		}
-
-		printError(stderr, err, cmd, hasDebug)
-		return exitError
+		return code
 	}
 
 	// If there is an update available, notify the user.
@@ -246,6 +263,44 @@ func Execute() exitCode {
 	}
 
 	return exitOK
+}
+
+// exitCodeForError maps a command error to its process exit code.
+func exitCodeForError(err error, authError error) exitCode {
+	switch {
+	case err == nil:
+		return exitOK
+	case err == cmdutil.ErrSilent:
+		return exitError
+	case cmdutil.IsUserCancellation(err):
+		return exitCancel
+	case errors.Is(err, authError):
+		return exitAuth
+	default:
+		return exitError
+	}
+}
+
+// flushTelemetry sends this command's queued events as one batch and waits for
+// it, so events aren't dropped at exit. The client bounds its own HTTP request;
+// the cap here is a last-resort ceiling, kept above that timeout so a real
+// in-flight flush is never abandoned.
+func flushTelemetry(ctx context.Context) {
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+
+	done := make(chan struct{})
+	go func() {
+		client.Close()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+	}
 }
 
 // createContext creates a context with telemetry.

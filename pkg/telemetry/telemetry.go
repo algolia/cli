@@ -4,10 +4,14 @@ import (
 	"context"
 	"crypto/md5" // nolint:gosec
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
@@ -21,6 +25,11 @@ import (
 const (
 	AppName               = "cli"
 	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+
+	// telemetryHTTPTimeout bounds the total duration of the telemetry flush
+	// HTTP request (connect, TLS, and response), so closing the client at the
+	// end of a command can never hang the CLI on a slow or unreachable endpoint.
+	telemetryHTTPTimeout = 3 * time.Second
 )
 
 type telemetryMetadataKey struct{}
@@ -29,12 +38,16 @@ type telemetryClientKey struct{}
 
 type TelemetryClient interface {
 	Identify(ctx context.Context) error
-	Track(ctx context.Context, event string) error
+	Track(ctx context.Context, event string, properties map[string]any) error
 	Close()
 }
 
 type AnalyticsTelemetryClient struct {
 	client analytics.Client
+	debug  bool
+
+	mu     sync.Mutex
+	lastTS time.Time
 }
 
 type AnalyticsTelemetryLogger struct {
@@ -60,14 +73,61 @@ func newTelemetryLogger(debug bool) AnalyticsTelemetryLogger {
 }
 
 func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
+	return newAnalyticsTelemetryClient(telemetryAnalyticsURL, debug)
+}
+
+func newAnalyticsTelemetryClient(endpoint string, debug bool) (TelemetryClient, error) {
 	client, err := analytics.NewWithConfig("", analytics.Config{
-		Endpoint: telemetryAnalyticsURL,
+		Endpoint: endpoint,
 		Logger:   newTelemetryLogger(debug),
+		// In debug mode, surface the library's own batch/flush logs.
+		Verbose: debug,
+		// Buffer every event into one batch flushed at Close. The default 5s
+		// interval would split a long command (e.g. interactive login) across
+		// requests, reordering events downstream and risking a dropped batch.
+		Interval:  24 * time.Hour,
+		BatchSize: 250,
+		// Bound the flush request so Close() at exit can't hang the CLI.
+		Transport: boundedRoundTripper{
+			base:    http.DefaultTransport,
+			timeout: telemetryHTTPTimeout,
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &AnalyticsTelemetryClient{client: client}, nil
+	return &AnalyticsTelemetryClient{client: client, debug: debug}, nil
+}
+
+// boundedRoundTripper applies a total per-request timeout, like
+// http.Client.Timeout (analytics.Config only accepts a RoundTripper).
+type boundedRoundTripper struct {
+	base    http.RoundTripper
+	timeout time.Duration
+}
+
+func (t boundedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx, cancel := context.WithTimeout(req.Context(), t.timeout)
+	resp, err := t.base.RoundTrip(req.WithContext(ctx))
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	// Cancel when the body is closed, not now, or the response would be truncated.
+	resp.Body = &cancelOnCloseBody{ReadCloser: resp.Body, cancel: cancel}
+	return resp, nil
+}
+
+// cancelOnCloseBody cancels the request context when the body is closed.
+type cancelOnCloseBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (b *cancelOnCloseBody) Close() error {
+	err := b.ReadCloser.Close()
+	b.cancel()
+	return err
 }
 
 // IdentifyOnce sends a single Identify event through a short-lived client and
@@ -236,19 +296,34 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	return a.client.Enqueue(identify)
 }
 
-// Track tracks the event with the provided properties
-func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) error {
+// Track merges custom properties over the base properties (custom wins on collisions).
+func (a *AnalyticsTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
 	metadata := GetEventMetadata(ctx)
+
+	props := map[string]interface{}{
+		"invocation_id": metadata.InvocationID,
+		"app_id":        metadata.AppID,
+		"command":       metadata.CommandPath,
+		"flags":         metadata.CommandFlags,
+	}
+	for k, v := range properties {
+		props[k] = v
+	}
+
+	// In debug mode, echo each event to stderr for local observability.
+	if a.debug {
+		fmt.Fprintf(os.Stderr, "[telemetry] %s %v\n", event, properties)
+	}
 
 	track := analytics.Track{
 		Event:       event,
 		AnonymousId: metadata.AnonymousID,
-		Properties: map[string]interface{}{
-			"invocation_id": metadata.InvocationID,
-			"app_id":        metadata.AppID,
-			"command":       metadata.CommandPath,
-			"flags":         metadata.CommandFlags,
-		},
+		Properties:  props,
+		Timestamp:   a.nextTimestamp(),
 		Context: &analytics.Context{
 			Device: analytics.DeviceInfo{
 				Id: metadata.AnonymousID,
@@ -263,11 +338,33 @@ func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) erro
 	return a.client.Enqueue(track)
 }
 
+// nextTimestamp returns strictly increasing timestamps at least 1ms apart.
+// Amplitude truncates event_time to milliseconds, so same-millisecond events
+// are ordered non-deterministically; spacing by 1ms preserves emit order.
+func (a *AnalyticsTelemetryClient) nextTimestamp() time.Time {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	ts := time.Now()
+	if !ts.After(a.lastTS) {
+		ts = a.lastTS.Add(time.Millisecond)
+	}
+	a.lastTS = ts
+	return ts
+}
+
 // Close closes the client, waiting for all pending events to be sent.
 func (a *AnalyticsTelemetryClient) Close() {
 	_ = a.client.Close()
 }
 
-func (a *NoOpTelemetryClient) Identify(ctx context.Context) error            { return nil }
-func (a *NoOpTelemetryClient) Track(ctx context.Context, event string) error { return nil }
-func (a *NoOpTelemetryClient) Close()                                        {}
+func (a *NoOpTelemetryClient) Identify(ctx context.Context) error { return nil }
+
+func (a *NoOpTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
+	return nil
+}
+func (a *NoOpTelemetryClient) Close() {}

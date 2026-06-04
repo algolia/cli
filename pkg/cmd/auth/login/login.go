@@ -3,6 +3,7 @@ package login
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/MakeNowJust/heredoc"
@@ -78,9 +79,11 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Auto-select application by name")
-	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
+	cmd.Flags().
+		StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
 	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the profile as the default")
-	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
+	cmd.Flags().
+		BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
 
 	return cmd
 }
@@ -95,8 +98,14 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
+	flow := telemetry.FlowLogin
+	if signup {
+		flow = telemetry.FlowSignup
+	}
+	start := time.Now()
+
 	openBrowser := !opts.NoBrowser
-	accessToken, err := auth.RunOAuth(opts.IO, client, signup, openBrowser)
+	accessToken, err := auth.RunOAuth(ctx, opts.IO, client, signup, openBrowser)
 	if err != nil {
 		return err
 	}
@@ -107,18 +116,38 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 	apps, err := client.ListApplications(accessToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
+		telemetry.Track(
+			ctx,
+			telemetry.AuthFailed(flow, telemetry.AuthStepAppsFetch, cmdutil.ErrorClass(err)),
+		)
 		return err
 	}
+
+	hadExistingApps := len(apps) > 0
+	createdAppDuringFlow := false
 
 	var appDetails *dashboard.Application
 
 	if len(apps) == 0 {
-		fmt.Fprintf(opts.IO.Out, "\n%s No applications found. Let's create one.\n", cs.WarningIcon())
+		fmt.Fprintf(
+			opts.IO.Out,
+			"\n%s No applications found. Let's create one.\n",
+			cs.WarningIcon(),
+		)
 
-		appDetails, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, "", opts.AppName)
+		appDetails, err = apputil.CreateAndFetchApplication(
+			ctx,
+			opts.IO,
+			client,
+			accessToken,
+			"",
+			opts.AppName,
+			telemetry.TriggeredFromAuthFlow,
+		)
 		if err != nil {
 			return err
 		}
+		createdAppDuringFlow = true
 	} else {
 		interactive := opts.IO.CanPrompt()
 		app, err := selectApplication(opts, apps, interactive)
@@ -139,7 +168,15 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 		profileName = appDetails.Name
 	}
 
-	return apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default)
+	if err := apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default); err != nil {
+		return err
+	}
+
+	telemetry.Track(
+		ctx,
+		telemetry.AuthCompleted(flow, time.Since(start), hadExistingApps, createdAppDuringFlow),
+	)
+	return nil
 }
 
 // identifyAuthenticatedUser emits a telemetry Identify for the user that just
@@ -180,7 +217,11 @@ func reuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
 	return false
 }
 
-func selectApplication(opts *LoginOptions, apps []dashboard.Application, interactive bool) (*dashboard.Application, error) {
+func selectApplication(
+	opts *LoginOptions,
+	apps []dashboard.Application,
+	interactive bool,
+) (*dashboard.Application, error) {
 	if opts.AppName != "" {
 		for i := range apps {
 			if apps[i].Name == opts.AppName {

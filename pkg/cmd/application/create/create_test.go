@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -212,7 +213,7 @@ func TestRun_FreeNonInteractive(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, false)
 	opts.AcceptTerms = true
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 1, srv.createCalls)
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "APP1")
@@ -224,7 +225,7 @@ func TestRun_NonInteractiveRequiresAcceptTerms(t *testing.T) {
 
 	opts, _, _ := newOpts(t, srv, false)
 
-	err := runCreateCmd(opts)
+	err := runCreateCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must be accepted")
 	assert.Equal(t, 0, srv.createCalls)
@@ -238,7 +239,7 @@ func TestRun_PaidWithBillingNonInteractive(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 1, srv.createCalls)
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
@@ -252,7 +253,7 @@ func TestRun_PaidWithBillingRequiresAcceptTerms(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, false)
 	opts.Plan = "grow"
 
-	err := runCreateCmd(opts)
+	err := runCreateCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must be accepted")
 	assert.Equal(t, 0, srv.createCalls)
@@ -267,7 +268,7 @@ func TestRun_PaidNoBillingNonInteractive(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	err := runCreateCmd(opts)
+	err := runCreateCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payment method")
 	assert.Equal(t, 0, srv.createCalls)
@@ -284,7 +285,7 @@ func TestRun_PaidNoBillingInteractiveOpensBilling(t *testing.T) {
 	opts, _, opened := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 0, srv.createCalls)
 	assert.Equal(
 		t,
@@ -302,7 +303,7 @@ func TestRun_PaidNoBillingInteractiveDeclineOpen(t *testing.T) {
 	opts, _, opened := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 0, srv.createCalls)
 	assert.Empty(t, *opened)
 }
@@ -316,7 +317,7 @@ func TestRun_ToSDeclineAborts(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Plan = "free"
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 0, srv.createCalls)
 	assert.Contains(t, out.String(), "Aborted")
 }
@@ -332,7 +333,7 @@ func TestRun_AcceptTermsSkipsPromptInteractive(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 1, srv.createCalls)
 	assert.Contains(t, out.String(), "Terms accepted via --accept-terms")
 }
@@ -346,7 +347,7 @@ func TestRun_PaidPlanHiddenByServerNonInteractive(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	err := runCreateCmd(opts)
+	err := runCreateCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payment method")
 	assert.NotContains(t, err.Error(), "invalid plan")
@@ -366,7 +367,7 @@ func TestRun_PaidPlanHiddenByServerInteractiveOpensBilling(t *testing.T) {
 	opts, _, opened := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 0, srv.createCalls)
 	assert.Equal(
 		t,
@@ -383,7 +384,7 @@ func TestRun_InvalidPlanErrors(t *testing.T) {
 	opts.Plan = "bogus"
 	opts.AcceptTerms = true
 
-	err := runCreateCmd(opts)
+	err := runCreateCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid plan")
 	assert.Equal(t, 0, srv.createCalls)
@@ -397,7 +398,7 @@ func TestRun_InteractivePickerHidesPaidWithoutBilling(t *testing.T) {
 
 	opts, out, _ := newOpts(t, srv, true)
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 1, srv.createCalls)
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "only the Free plan is available")
@@ -418,7 +419,7 @@ func TestRun_InteractivePickerSelectsPaid(t *testing.T) {
 
 	opts, out, _ := newOpts(t, srv, true)
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 1, srv.createCalls)
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
@@ -434,7 +435,7 @@ func TestRun_DryRunDoesNotCallAPI(t *testing.T) {
 	opts.DryRun = true
 	opts.PrintFlags = newPrintFlags("")
 
-	require.NoError(t, runCreateCmd(opts))
+	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 0, srv.createCalls)
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "Dry run")
@@ -450,7 +451,7 @@ func TestRun_PlanChangeFailureKeepsFreeApp(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	err := runCreateCmd(opts)
+	err := runCreateCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to apply")
 	assert.Equal(t, 1, srv.createCalls)

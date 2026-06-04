@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -23,7 +24,9 @@ func EnsureAuthenticated(
 	cs := io.ColorScheme()
 	fmt.Fprintf(io.Out, "%s %s\n", cs.WarningIcon(), err)
 
-	return RunOAuth(io, client, false, true)
+	// Lazy login from another command: no request-scoped telemetry context here,
+	// so OAuth flow events are emitted only by the dedicated auth login/signup commands.
+	return RunOAuth(context.Background(), io, client, false, true)
 }
 
 // ReauthenticateIfExpired checks if err is a session-expired error from the API.
@@ -41,5 +44,5 @@ func ReauthenticateIfExpired(
 	ClearToken()
 	fmt.Fprintf(io.Out, "%s Session expired.\n", cs.WarningIcon())
 
-	return RunOAuth(io, client, false, true)
+	return RunOAuth(context.Background(), io, client, false, true)
 }
