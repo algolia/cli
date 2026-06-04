@@ -14,3 +14,11 @@ issues:
       linters:
         - stylecheck
       text: ST1005
+    # secret.go defines the keychain service name and the secret-kind
+    # identifiers (e.g. "api_key", "crawler_api_key") used as keychain account
+    # suffixes. These are field names, not embedded credentials, so gosec's
+    # G101 hardcoded-credential heuristic is a false positive here.
+    - path: pkg/config/state/secret.go
+      linters:
+        - gosec
+      text: G101

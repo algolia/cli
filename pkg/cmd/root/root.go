@@ -84,6 +84,10 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
+	_ = cmd.PersistentFlags().MarkDeprecated(
+		"profile",
+		"use `algolia auth login` and `algolia application select` instead; `--profile` still resolves stored aliases until next major version",
+	)
 
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
@@ -130,6 +134,10 @@ func Execute() exitCode {
 	cfg.InitConfig()
 	cmdFactory := factory.New(version.Version, &cfg)
 	stderr := cmdFactory.IOStreams.ErrOut
+
+	// One-time migration of the legacy config.toml into state.toml + the OS
+	// keychain. No-op once state.toml exists; never fatal.
+	cfg.MigrateIfNeeded(stderr)
 
 	// Set up the update notifier.
 	updateMessageChan := make(chan *update.ReleaseInfo)

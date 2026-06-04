@@ -5,8 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/spf13/viper"
+
+	"github.com/algolia/cli/pkg/config/state"
+	"github.com/algolia/cli/pkg/utils"
 )
 
 // DefaultSearchHosts can be set at build time via ldflags, e.g.
@@ -22,6 +24,32 @@ type Profile struct {
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
 	Default bool `mapstructure:"default"`
+
+	// statePath points at state.toml; it is set by Config.InitConfig. When
+	// empty (e.g. in unit tests) credential resolution falls back to the
+	// legacy config.toml behavior.
+	statePath string
+}
+
+// loadState resolves the application state that applies to this profile from
+// state.toml. The deprecated `--profile <name>` flag is resolved against the
+// stored alias; when the name is not a known alias the current application is
+// used instead for consistency. Returns nil when there is no state.toml or no
+// applicable application entry.
+func (p *Profile) loadState() *state.ApplicationState {
+	if p.statePath == "" {
+		return nil
+	}
+	s, err := state.Load(p.statePath)
+	if err != nil {
+		return nil
+	}
+	if p.Name != "" {
+		if app := s.AppByAlias(p.Name); app != nil {
+			return app
+		}
+	}
+	return s.ResolveCurrent()
 }
 
 func (p *Profile) GetFieldName(field string) string {
@@ -46,6 +74,11 @@ func (p *Profile) GetApplicationID() (string, error) {
 		return p.ApplicationID, nil
 	}
 
+	if app := p.loadState(); app != nil && app.ApplicationID != "" {
+		return app.ApplicationID, nil
+	}
+
+	// Legacy fallback: config.toml (read-only, scheduled for removal in v2.0).
 	if p.Name == "" {
 		p.LoadDefault()
 	}
@@ -69,6 +102,14 @@ func (p *Profile) GetAPIKey() (string, error) {
 		return p.APIKey, nil
 	}
 
+	if app := p.loadState(); app != nil && app.ApplicationID != "" {
+		if key, err := state.GetSecret(app.ApplicationID, state.SecretAPIKey); err == nil &&
+			key != "" {
+			return key, nil
+		}
+	}
+
+	// Legacy fallback: config.toml (read-only, scheduled for removal in v2.0).
 	if p.Name == "" {
 		p.LoadDefault()
 	}
@@ -117,6 +158,11 @@ func (p *Profile) GetSearchHosts() []string {
 		return p.SearchHosts
 	}
 
+	if app := p.loadState(); app != nil && len(app.SearchHosts) > 0 {
+		return app.SearchHosts
+	}
+
+	// Legacy fallback: config.toml (read-only, scheduled for removal in v2.0).
 	if p.Name == "" {
 		p.LoadDefault()
 	}
@@ -141,6 +187,11 @@ func (p *Profile) GetCrawlerUserID() (string, error) {
 		return os.Getenv("ALGOLIA_CRAWLER_USER_ID"), nil
 	}
 
+	if app := p.loadState(); app != nil && app.CrawlerUserID != "" {
+		return app.CrawlerUserID, nil
+	}
+
+	// Legacy fallback: config.toml (read-only, scheduled for removal in v2.0).
 	if p.Name == "" {
 		p.LoadDefault()
 	}
@@ -161,6 +212,14 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 		return os.Getenv("ALGOLIA_CRAWLER_API_KEY"), nil
 	}
 
+	if app := p.loadState(); app != nil && app.ApplicationID != "" {
+		if key, err := state.GetSecret(app.ApplicationID, state.SecretCrawlerAPIKey); err == nil &&
+			key != "" {
+			return key, nil
+		}
+	}
+
+	// Legacy fallback: config.toml (read-only, scheduled for removal in v2.0).
 	if p.Name == "" {
 		p.LoadDefault()
 	}

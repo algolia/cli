@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/algolia/cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+
+	"github.com/algolia/cli/pkg/config/state"
+	"github.com/algolia/cli/pkg/utils"
 )
 
 type IConfig interface {
@@ -43,6 +45,10 @@ type Config struct {
 
 // InitConfig reads in profiles file and ENV variables if set.
 func (c *Config) InitConfig() {
+	// state.toml is the source of truth for credential resolution; config.toml
+	// is only read as a legacy fallback (removed in CLI v2.0).
+	c.CurrentProfile.statePath = state.DefaultPath()
+
 	if c.File != "" {
 		viper.SetConfigFile(c.File)
 	} else {
