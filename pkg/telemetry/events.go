@@ -32,6 +32,12 @@ const (
 	EventApplicationUpgradeDeclinedTerms = "CLI Application Upgrade Declined Terms"
 	EventApplicationUpgradeFailed        = "CLI Application Upgrade Failed"
 	EventApplicationUpgradeCompleted     = "CLI Application Upgrade Completed"
+
+	EventApplicationDowngradeStarted       = "CLI Application Downgrade Started"
+	EventApplicationDowngradeAcceptedTerms = "CLI Application Downgrade Accepted Terms"
+	EventApplicationDowngradeDeclinedTerms = "CLI Application Downgrade Declined Terms"
+	EventApplicationDowngradeFailed        = "CLI Application Downgrade Failed"
+	EventApplicationDowngradeCompleted     = "CLI Application Downgrade Completed"
 )
 
 // Property values, so call sites reference a constant instead of a literal.
@@ -207,8 +213,7 @@ func ApplicationCreateAborted(triggeredFrom string) Event {
 // ApplicationUpgradeStarted is emitted when the user starts the upgrade flow.
 func ApplicationUpgradeStarted(plan string) Event {
 	return Event{
-		Name:       EventApplicationUpgradeStarted,
-		Properties: map[string]any{"plan": plan},
+		Name: EventApplicationUpgradeStarted,
 	}
 }
 
@@ -245,6 +250,52 @@ func ApplicationUpgradeFailed(plan, errorClass string, httpStatus int) Event {
 func ApplicationUpgradeCompleted(plan string) Event {
 	return Event{
 		Name:       EventApplicationUpgradeCompleted,
+		Properties: map[string]any{"plan": plan},
+	}
+}
+
+// --- Application downgrade events -------------------------------------------
+
+// ApplicationDowngradeStarted is emitted when the user starts the downgrade flow.
+func ApplicationDowngradeStarted(plan string) Event {
+	return Event{
+		Name: EventApplicationDowngradeStarted,
+	}
+}
+
+// ApplicationDowngradeAcceptedTerms is emitted when the user accepts the T&C.
+func ApplicationDowngradeAcceptedTerms(plan string) Event {
+	return Event{
+		Name:       EventApplicationDowngradeAcceptedTerms,
+		Properties: map[string]any{"plan": plan},
+	}
+}
+
+// ApplicationDowngradeDeclinedTerms is emitted when the user declines the T&C.
+func ApplicationDowngradeDeclinedTerms(plan string) Event {
+	return Event{
+		Name:       EventApplicationDowngradeDeclinedTerms,
+		Properties: map[string]any{"plan": plan},
+	}
+}
+
+// ApplicationDowngradeFailed is emitted when the Dashboard API returns an error.
+// httpStatus is omitted when zero.
+func ApplicationDowngradeFailed(plan, errorClass string, httpStatus int) Event {
+	props := map[string]any{
+		"plan":        plan,
+		"error_class": errorClass,
+	}
+	if httpStatus != 0 {
+		props["http_status"] = httpStatus
+	}
+	return Event{Name: EventApplicationDowngradeFailed, Properties: props}
+}
+
+// ApplicationDowngradeCompleted is emitted when the downgrade flow succeeds.
+func ApplicationDowngradeCompleted(plan string) Event {
+	return Event{
+		Name:       EventApplicationDowngradeCompleted,
 		Properties: map[string]any{"plan": plan},
 	}
 }

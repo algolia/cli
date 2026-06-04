@@ -58,8 +58,9 @@ type changeResult struct {
 // Run executes the shared plan-change flow.
 func Run(ctx context.Context, opts *Options) error {
 	cs := opts.IO.ColorScheme()
+	ev := planChangeEventsFor(opts.Direction)
 
-	opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeStarted(opts.Plan))
+	telemetry.Track(ctx, ev.started(opts.Plan))
 
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
@@ -150,7 +151,7 @@ func Run(ctx context.Context, opts *Options) error {
 		return err
 	}
 	if !accepted {
-		opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeDeclinedTerms(target.ID))
+		telemetry.Track(ctx, ev.declinedTerms(target.ID))
 		fmt.Fprintf(
 			opts.IO.Out,
 			"%s Plan change aborted; no changes were made.\n",
@@ -158,19 +159,17 @@ func Run(ctx context.Context, opts *Options) error {
 		)
 		return nil
 	}
-	opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeAcceptedTerms(target.ID))
+	telemetry.Track(ctx, ev.acceptedTerms(target.ID))
 
 	if err := callWithReauth(opts.IO, client, &token, "Changing plan", func(t string) error {
 		_, e := client.ChangeApplicationPlan(t, appID, target.ID)
 		return e
 	}); err != nil {
-		if opts.Direction == DirectionUpgrade {
-			class, _, status := cmdutil.ClassifyError(err)
-			telemetry.Track(ctx, telemetry.ApplicationUpgradeFailed(target.ID, class, status))
-		}
+		class, _, status := cmdutil.ClassifyError(err)
+		telemetry.Track(ctx, ev.failed(target.ID, class, status))
 		return err
 	}
-	opts.trackUpgrade(ctx, telemetry.ApplicationUpgradeCompleted(target.ID))
+	telemetry.Track(ctx, ev.completed(target.ID))
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()
@@ -200,11 +199,33 @@ func Run(ctx context.Context, opts *Options) error {
 	return offerCostManagementBudget(opts, client.DashboardURL, appID)
 }
 
-// trackUpgrade emits event only for upgrades; downgrades share this path but
-// the analytics spec defines no downgrade events.
-func (opts *Options) trackUpgrade(ctx context.Context, event telemetry.Event) {
-	if opts.Direction == DirectionUpgrade {
-		telemetry.Track(ctx, event)
+// planChangeEvents bundles the telemetry constructors for one direction, so the
+// shared flow emits upgrade- or downgrade-named events without branching at
+// each call site.
+type planChangeEvents struct {
+	started       func(plan string) telemetry.Event
+	acceptedTerms func(plan string) telemetry.Event
+	declinedTerms func(plan string) telemetry.Event
+	failed        func(plan, errorClass string, httpStatus int) telemetry.Event
+	completed     func(plan string) telemetry.Event
+}
+
+func planChangeEventsFor(dir Direction) planChangeEvents {
+	if dir == DirectionDowngrade {
+		return planChangeEvents{
+			started:       telemetry.ApplicationDowngradeStarted,
+			acceptedTerms: telemetry.ApplicationDowngradeAcceptedTerms,
+			declinedTerms: telemetry.ApplicationDowngradeDeclinedTerms,
+			failed:        telemetry.ApplicationDowngradeFailed,
+			completed:     telemetry.ApplicationDowngradeCompleted,
+		}
+	}
+	return planChangeEvents{
+		started:       telemetry.ApplicationUpgradeStarted,
+		acceptedTerms: telemetry.ApplicationUpgradeAcceptedTerms,
+		declinedTerms: telemetry.ApplicationUpgradeDeclinedTerms,
+		failed:        telemetry.ApplicationUpgradeFailed,
+		completed:     telemetry.ApplicationUpgradeCompleted,
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 	"github.com/algolia/cli/test"
 )
 
@@ -436,6 +437,91 @@ func TestRun_SamePlanIsNoOp(t *testing.T) {
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the Grow plan")
 	assert.Contains(t, out.String(), "no change needed")
+}
+
+// recordingTelemetry records the names of the events emitted during a run.
+type recordingTelemetry struct{ events []string }
+
+func (r *recordingTelemetry) Identify(context.Context) error { return nil }
+
+func (r *recordingTelemetry) Track(_ context.Context, event string, _ map[string]any) error {
+	r.events = append(r.events, event)
+	return nil
+}
+
+func (r *recordingTelemetry) Close() {}
+
+// TestRun_EmitsPlanChangeEventsByDirection verifies the shared flow emits the
+// upgrade- or downgrade-named events depending on the direction.
+func TestRun_EmitsPlanChangeEventsByDirection(t *testing.T) {
+	tests := []struct {
+		name      string
+		direction Direction
+		want      []string
+	}{
+		{
+			name:      "upgrade",
+			direction: DirectionUpgrade,
+			want: []string{
+				telemetry.EventApplicationUpgradeStarted,
+				telemetry.EventApplicationUpgradeAcceptedTerms,
+				telemetry.EventApplicationUpgradeCompleted,
+			},
+		},
+		{
+			name:      "downgrade",
+			direction: DirectionDowngrade,
+			want: []string{
+				telemetry.EventApplicationDowngradeStarted,
+				telemetry.EventApplicationDowngradeAcceptedTerms,
+				telemetry.EventApplicationDowngradeCompleted,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newServer(t, `{"has_payment_method": true}`)
+			srv.currentPlanLabel = "Grow"
+			defer srv.Close()
+
+			stubPicker(t, 0)
+			defer prompt.StubConfirm(true)()
+
+			opts, _, _ := newOpts(t, srv, true)
+			opts.Direction = tt.direction
+
+			rec := &recordingTelemetry{}
+			ctx := telemetry.WithTelemetryClient(context.Background(), rec)
+
+			require.NoError(t, Run(ctx, opts))
+			assert.Equal(t, tt.want, rec.events)
+		})
+	}
+}
+
+// TestRun_EmitsDeclinedTermsEvent verifies declining the terms emits the
+// direction-specific declined-terms event and nothing after it.
+func TestRun_EmitsDeclinedTermsEvent(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Grow"
+	defer srv.Close()
+
+	stubPicker(t, 0)
+	defer prompt.StubConfirm(false)()
+
+	opts, _, _ := newOpts(t, srv, true)
+	opts.Direction = DirectionDowngrade
+
+	rec := &recordingTelemetry{}
+	ctx := telemetry.WithTelemetryClient(context.Background(), rec)
+
+	require.NoError(t, Run(ctx, opts))
+	assert.Equal(t, []string{
+		telemetry.EventApplicationDowngradeStarted,
+		telemetry.EventApplicationDowngradeDeclinedTerms,
+	}, rec.events)
+	assert.Equal(t, 0, srv.patchCalls)
 }
 
 func TestRun_UnknownCurrentPlanShowsAllPlans(t *testing.T) {
