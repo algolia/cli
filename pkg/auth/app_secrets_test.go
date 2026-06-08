@@ -35,7 +35,10 @@ func TestAppSecrets_PerAppIsolationAndOptionalCrawlerKey(t *testing.T) {
 	keyring.MockInit()
 
 	require.NoError(t, SaveAppSecrets("APP1", AppSecrets{APIKey: "key-1"}))
-	require.NoError(t, SaveAppSecrets("APP2", AppSecrets{APIKey: "key-2", CrawlerAPIKey: "crawler-2"}))
+	require.NoError(
+		t,
+		SaveAppSecrets("APP2", AppSecrets{APIKey: "key-2", CrawlerAPIKey: "crawler-2"}),
+	)
 
 	app1, err := LoadAppSecrets("APP1")
 	require.NoError(t, err)
