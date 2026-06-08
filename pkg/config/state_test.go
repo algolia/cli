@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -70,4 +71,13 @@ func TestState_ApplicationByAlias(t *testing.T) {
 
 	_, found = state.ApplicationByAlias("missing")
 	assert.False(t, found)
+}
+
+func TestState_LoadCorruptFileReturnsError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(`key = "unterminated`), 0o600))
+
+	state, err := LoadState(path)
+	require.Error(t, err)
+	assert.Nil(t, state)
 }
