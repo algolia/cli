@@ -83,3 +83,14 @@ func (s *State) UpsertApplication(appID string, app ApplicationState) {
 	}
 	s.Applications[appID] = app
 }
+
+// ApplicationByAlias returns the application ID whose entry carries the given
+// alias, and whether such an entry was found.
+func (s *State) ApplicationByAlias(alias string) (string, bool) {
+	for appID, app := range s.Applications {
+		if app.Alias == alias {
+			return appID, true
+		}
+	}
+	return "", false
+}

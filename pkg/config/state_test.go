@@ -55,3 +55,19 @@ func TestState_MutatorsPersist(t *testing.T) {
 	assert.Equal(t, "uuid-2", loaded.Applications["APP1"].APIKeyUUID)
 	assert.Equal(t, "staging", loaded.Applications["APP1"].Alias)
 }
+
+func TestState_ApplicationByAlias(t *testing.T) {
+	state := &State{
+		Applications: map[string]ApplicationState{
+			"APP1": {Alias: "prod"},
+			"APP2": {Alias: "staging"},
+		},
+	}
+
+	appID, found := state.ApplicationByAlias("staging")
+	assert.True(t, found)
+	assert.Equal(t, "APP2", appID)
+
+	_, found = state.ApplicationByAlias("missing")
+	assert.False(t, found)
+}
