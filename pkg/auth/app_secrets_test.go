@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,4 +52,30 @@ func TestAppSecrets_PerAppIsolationAndOptionalCrawlerKey(t *testing.T) {
 	require.NotNil(t, app2)
 	assert.Equal(t, "key-2", app2.APIKey)
 	assert.Equal(t, "crawler-2", app2.CrawlerAPIKey)
+}
+
+func TestAppSecrets_EmptyAppIDIsRejected(t *testing.T) {
+	keyring.MockInit()
+
+	require.Error(t, SaveAppSecrets("", AppSecrets{APIKey: "key-1"}))
+
+	_, err := LoadAppSecrets("")
+	require.Error(t, err)
+}
+
+func TestAppSecrets_LoadKeychainErrorPropagates(t *testing.T) {
+	keyring.MockInitWithError(errors.New("keychain unavailable"))
+
+	loaded, err := LoadAppSecrets("APP1")
+	require.Error(t, err)
+	assert.Nil(t, loaded)
+}
+
+func TestAppSecrets_LoadMalformedJSONReturnsError(t *testing.T) {
+	keyring.MockInit()
+	require.NoError(t, keyring.Set(keyringService, appSecretsUser("BAD"), "not-json"))
+
+	loaded, err := LoadAppSecrets("BAD")
+	require.Error(t, err)
+	assert.Nil(t, loaded)
 }

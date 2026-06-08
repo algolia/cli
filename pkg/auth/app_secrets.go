@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/zalando/go-keyring"
 )
@@ -25,6 +26,10 @@ func appSecretsUser(appID string) string {
 
 // SaveAppSecrets persists the secrets for an application to the OS keychain.
 func SaveAppSecrets(appID string, secrets AppSecrets) error {
+	if appID == "" {
+		return fmt.Errorf("appID is required")
+	}
+
 	data, err := json.Marshal(secrets)
 	if err != nil {
 		return err
@@ -37,6 +42,10 @@ func SaveAppSecrets(appID string, secrets AppSecrets) error {
 // entry is not an error: it returns (nil, nil). Real failures (keychain
 // unavailable, malformed data) return an error.
 func LoadAppSecrets(appID string) (*AppSecrets, error) {
+	if appID == "" {
+		return nil, fmt.Errorf("appID is required")
+	}
+
 	secret, err := keyring.Get(keyringService, appSecretsUser(appID))
 	if errors.Is(err, keyring.ErrNotFound) {
 		return nil, nil
