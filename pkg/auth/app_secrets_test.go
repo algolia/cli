@@ -30,3 +30,22 @@ func TestAppSecrets_LoadMissingReturnsNil(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, loaded)
 }
+
+func TestAppSecrets_PerAppIsolationAndOptionalCrawlerKey(t *testing.T) {
+	keyring.MockInit()
+
+	require.NoError(t, SaveAppSecrets("APP1", AppSecrets{APIKey: "key-1"}))
+	require.NoError(t, SaveAppSecrets("APP2", AppSecrets{APIKey: "key-2", CrawlerAPIKey: "crawler-2"}))
+
+	app1, err := LoadAppSecrets("APP1")
+	require.NoError(t, err)
+	require.NotNil(t, app1)
+	assert.Equal(t, "key-1", app1.APIKey)
+	assert.Empty(t, app1.CrawlerAPIKey) // never set → stays empty
+
+	app2, err := LoadAppSecrets("APP2")
+	require.NoError(t, err)
+	require.NotNil(t, app2)
+	assert.Equal(t, "key-2", app2.APIKey)
+	assert.Equal(t, "crawler-2", app2.CrawlerAPIKey)
+}
