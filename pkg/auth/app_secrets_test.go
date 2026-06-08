@@ -22,3 +22,11 @@ func TestAppSecrets_SaveAndLoadRoundTrip(t *testing.T) {
 	assert.Equal(t, "key-1", loaded.APIKey)
 	assert.Equal(t, "crawler-1", loaded.CrawlerAPIKey)
 }
+
+func TestAppSecrets_LoadMissingReturnsNil(t *testing.T) {
+	keyring.MockInit()
+
+	loaded, err := LoadAppSecrets("UNKNOWN")
+	require.NoError(t, err)
+	assert.Nil(t, loaded)
+}
