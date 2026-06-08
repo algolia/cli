@@ -1,4 +1,4 @@
-package auth
+package keychain
 
 import (
 	"errors"
@@ -73,7 +73,7 @@ func TestAppSecrets_LoadKeychainErrorPropagates(t *testing.T) {
 
 func TestAppSecrets_LoadMalformedJSONReturnsError(t *testing.T) {
 	keyring.MockInit()
-	require.NoError(t, keyring.Set(keyringService, appSecretsUser("BAD"), "not-json"))
+	require.NoError(t, keyring.Set(service, appSecretsUser("BAD"), "not-json"))
 
 	loaded, err := LoadAppSecrets("BAD")
 	require.Error(t, err)

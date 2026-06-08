@@ -1,4 +1,4 @@
-package auth
+package keychain
 
 import (
 	"encoding/json"
@@ -8,9 +8,15 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-// appSecretsUserPrefix namespaces per-application keychain entries so they
-// never collide with the OAuth token entry under the same service.
-const appSecretsUserPrefix = "app:"
+const (
+	// service is the OS keychain service the CLI stores secrets under. It is
+	// shared with the OAuth token entry (pkg/auth); per-application secrets are
+	// namespaced by their user key so they never collide.
+	service = "algolia-cli"
+
+	// appSecretsUserPrefix namespaces per-application keychain entries.
+	appSecretsUserPrefix = "app:"
+)
 
 // AppSecrets holds the secret credentials for a single application, persisted
 // as a JSON blob in the OS keychain.
@@ -35,7 +41,7 @@ func SaveAppSecrets(appID string, secrets AppSecrets) error {
 		return err
 	}
 
-	return keyring.Set(keyringService, appSecretsUser(appID), string(data))
+	return keyring.Set(service, appSecretsUser(appID), string(data))
 }
 
 // LoadAppSecrets reads an application's secrets from the OS keychain. A missing
@@ -46,7 +52,7 @@ func LoadAppSecrets(appID string) (*AppSecrets, error) {
 		return nil, fmt.Errorf("appID is required")
 	}
 
-	secret, err := keyring.Get(keyringService, appSecretsUser(appID))
+	secret, err := keyring.Get(service, appSecretsUser(appID))
 	if errors.Is(err, keyring.ErrNotFound) {
 		return nil, nil
 	}
