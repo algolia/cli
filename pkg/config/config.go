@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/algolia/cli/pkg/utils"
@@ -38,7 +39,12 @@ type Config struct {
 
 	CurrentProfile Profile
 
-	File string
+	File      string
+	StateFile string
+
+	// state is the parsed state.toml, loaded once per command via loadState.
+	stateOnce sync.Once
+	state     *State
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -49,6 +55,7 @@ func (c *Config) InitConfig() {
 		configFolder := c.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 		configFile := filepath.Join(configFolder, "config.toml")
 		c.File = configFile
+		c.StateFile = filepath.Join(configFolder, "state.toml")
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(configFile)
 		viper.SetConfigPermissions(os.FileMode(0o600))
@@ -80,6 +87,21 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 	}
 
 	return filepath.Join(configPath, "algolia")
+}
+
+// loadState reads state.toml once per command and caches it. A missing or
+// corrupt file degrades to an empty State so resolution can fall back to
+// config.toml rather than crash.
+func (c *Config) loadState() *State {
+	c.stateOnce.Do(func() {
+		st, err := LoadState(c.StateFile)
+		if err != nil {
+			log.Warnf("ignoring unreadable state file %q: %s", c.StateFile, err)
+			st = &State{Applications: map[string]ApplicationState{}}
+		}
+		c.state = st
+	})
+	return c.state
 }
 
 // ConfiguredProfiles return the profiles in the configuration file
