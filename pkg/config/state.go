@@ -70,3 +70,16 @@ func (s *State) Save(path string) error {
 
 	return os.Rename(tmpName, path)
 }
+
+// SetCurrentApplication records appID as the currently selected application.
+func (s *State) SetCurrentApplication(appID string) {
+	s.CurrentApplicationID = appID
+}
+
+// UpsertApplication inserts or replaces the state for a given application ID.
+func (s *State) UpsertApplication(appID string, app ApplicationState) {
+	if s.Applications == nil {
+		s.Applications = map[string]ApplicationState{}
+	}
+	s.Applications[appID] = app
+}
