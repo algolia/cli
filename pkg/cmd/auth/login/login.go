@@ -79,11 +79,9 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Auto-select application by name")
-	cmd.Flags().
-		StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
+	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
 	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the profile as the default")
-	cmd.Flags().
-		BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
+	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
 
 	return cmd
 }
@@ -129,11 +127,7 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 	var appDetails *dashboard.Application
 
 	if len(apps) == 0 {
-		fmt.Fprintf(
-			opts.IO.Out,
-			"\n%s No applications found. Let's create one.\n",
-			cs.WarningIcon(),
-		)
+		fmt.Fprintf(opts.IO.Out, "\n%s No applications found. Let's create one.\n", cs.WarningIcon())
 
 		appDetails, err = apputil.CreateAndFetchApplication(
 			ctx,
@@ -217,11 +211,7 @@ func reuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
 	return false
 }
 
-func selectApplication(
-	opts *LoginOptions,
-	apps []dashboard.Application,
-	interactive bool,
-) (*dashboard.Application, error) {
+func selectApplication(opts *LoginOptions, apps []dashboard.Application, interactive bool) (*dashboard.Application, error) {
 	if opts.AppName != "" {
 		for i := range apps {
 			if apps[i].Name == opts.AppName {

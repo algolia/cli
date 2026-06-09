@@ -24,10 +24,7 @@ func OAuthClientID() string {
 		return v
 	}
 	if DefaultOAuthClientID == "" {
-		fmt.Fprintln(
-			os.Stderr,
-			"fatal: ALGOLIA_OAUTH_CLIENT_ID is not set and no default was compiled in",
-		)
+		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_OAUTH_CLIENT_ID is not set and no default was compiled in")
 		os.Exit(1)
 	}
 	return DefaultOAuthClientID

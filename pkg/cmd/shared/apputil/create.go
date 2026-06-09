@@ -59,20 +59,13 @@ func CreateApplicationWithRetry(
 
 		var clusterErr *dashboard.ErrClusterUnavailable
 		if errors.As(err, &clusterErr) {
-			fmt.Fprintf(
-				io.Out,
-				"%s No cluster available in region %q. Please select another region.\n",
-				cs.WarningIcon(),
-				region,
-			)
+			fmt.Fprintf(io.Out, "%s No cluster available in region %q. Please select another region.\n",
+				cs.WarningIcon(), region)
 			region = ""
 
 			if !io.CanPrompt() {
 				trackCreateFailed(ctx, triggeredFrom, err)
-				return nil, "", fmt.Errorf(
-					"no cluster available in region %q — try a different --region",
-					clusterErr.Region,
-				)
+				return nil, "", fmt.Errorf("no cluster available in region %q — try a different --region", clusterErr.Region)
 			}
 			continue
 		}
@@ -198,8 +191,7 @@ func ConfigureProfile(
 	}
 	profileName = strings.ToLower(profileName)
 
-	if exists, existingAppID := cfg.ApplicationIDForProfile(profileName); exists &&
-		existingAppID != appDetails.ID {
+	if exists, existingAppID := cfg.ApplicationIDForProfile(profileName); exists && existingAppID != appDetails.ID {
 		profileName = strings.ToLower(appDetails.Name + "-" + appDetails.ID)
 	}
 
