@@ -34,7 +34,10 @@ type IConfig interface {
 	Default() *Profile
 }
 
-// Config handles all overall configuration for the CLI
+// Config handles all overall configuration for the CLI.
+//
+// It must not be copied after InitConfig: it holds sync primitives (govet
+// copylocks) and CurrentProfile holds a back-pointer to it. Pass it by pointer.
 type Config struct {
 	ApplicationName string
 
@@ -147,9 +150,10 @@ func (c *Config) resolveActiveApplicationID() string {
 }
 
 // appSecretsFor returns the cached keychain secrets for an application, loading
-// them once. A missing entry or a keychain failure yields nil, so resolution
-// falls back to config.toml. Guarded by a mutex since the getters may be
-// reached from more than one goroutine (e.g. the background update check).
+// them once. A missing entry or a keychain failure yields nil (also cached, so
+// a single command never hits the keychain twice for the same app). The mutex
+// keeps the cache safe if a getter is ever called concurrently; resolution runs
+// on the main goroutine today.
 func (c *Config) appSecretsFor(appID string) *keychain.AppSecrets {
 	c.secretsMu.Lock()
 	defer c.secretsMu.Unlock()

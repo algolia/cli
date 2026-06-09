@@ -66,6 +66,12 @@ func TestConfig_ActiveApplicationID(t *testing.T) {
 		cfg := &Config{StateFile: path}
 		assert.Equal(t, "CURRENT", cfg.activeApplicationID())
 	})
+
+	t.Run("unknown profile alias defers to config.toml, not current", func(t *testing.T) {
+		cfg := &Config{StateFile: path}
+		cfg.CurrentProfile.Name = "nope"
+		assert.Empty(t, cfg.activeApplicationID()) // "" → legacy profile-by-name, not CURRENT
+	})
 }
 
 func TestConfig_AppSecretsForCaches(t *testing.T) {
@@ -78,6 +84,10 @@ func TestConfig_AppSecretsForCaches(t *testing.T) {
 	assert.Equal(t, "key-1", got.APIKey)
 
 	// Missing app → nil, and a keychain error must not panic.
+	assert.Nil(t, cfg.appSecretsFor("MISSING"))
+
+	// The nil result is cached: a later keychain write isn't picked up mid-command.
+	require.NoError(t, keychain.SaveAppSecrets("MISSING", keychain.AppSecrets{APIKey: "late"}))
 	assert.Nil(t, cfg.appSecretsFor("MISSING"))
 }
 
@@ -163,4 +173,33 @@ func TestProfile_FallsBackToConfigToml(t *testing.T) {
 	key, err := cfg.Profile().GetAPIKey()
 	require.NoError(t, err)
 	assert.Equal(t, "legacy-key", key)
+}
+
+func TestProfile_GetAPIKey_ActiveAppWithoutKeyErrors(t *testing.T) {
+	keyring.MockInit()
+	statePath := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(
+		t,
+		os.WriteFile(statePath, []byte("current_application_id = \"APP1\"\n"), 0o600),
+	)
+
+	// A legacy default profile whose key must NOT leak for the resolved APP1.
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte("[legacy]\napplication_id = \"LEGACY\"\napi_key = \"legacy-key\"\ndefault = true\n"),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: statePath}
+	cfg.CurrentProfile.config = cfg
+
+	// APP1 resolved from state but no keychain key → error, never "legacy-key".
+	_, err := cfg.Profile().GetAPIKey()
+	require.Error(t, err)
 }

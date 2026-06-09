@@ -81,12 +81,14 @@ func (p *Profile) GetAPIKey() (string, error) {
 		return p.APIKey, nil
 	}
 
-	// New model: active application's key from the OS keychain.
+	// New model: once an application is resolved, its key comes only from that
+	// application's keychain entry — never a different profile's config.toml key.
 	if p.config != nil {
 		if appID := p.config.activeApplicationID(); appID != "" {
 			if secrets := p.config.appSecretsFor(appID); secrets != nil && secrets.APIKey != "" {
 				return secrets.APIKey, nil
 			}
+			return "", ErrAPIKeyNotConfigured
 		}
 	}
 
@@ -182,13 +184,15 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 		return os.Getenv("ALGOLIA_CRAWLER_API_KEY"), nil
 	}
 
-	// New model: active application's crawler key from the OS keychain.
+	// New model: once an application is resolved, its crawler key comes only from
+	// that application's keychain entry — never a different profile's.
 	if p.config != nil {
 		if appID := p.config.activeApplicationID(); appID != "" {
 			if secrets := p.config.appSecretsFor(appID); secrets != nil &&
 				secrets.CrawlerAPIKey != "" {
 				return secrets.CrawlerAPIKey, nil
 			}
+			return "", ErrCrawlerAPIKeyNotConfigured
 		}
 	}
 
