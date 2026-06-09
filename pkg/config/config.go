@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/algolia/cli/pkg/keychain"
 	"github.com/algolia/cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -49,6 +50,10 @@ type Config struct {
 	// activeApp is the resolved current application ID, computed once.
 	activeAppOnce sync.Once
 	activeApp     string
+
+	// secretsCache memoizes per-application keychain lookups (guarded by secretsMu).
+	secretsMu    sync.Mutex
+	secretsCache map[string]*keychain.AppSecrets
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -137,6 +142,30 @@ func (c *Config) resolveActiveApplicationID() string {
 	}
 
 	return st.CurrentApplicationID
+}
+
+// appSecretsFor returns the cached keychain secrets for an application, loading
+// them once. A missing entry or a keychain failure yields nil, so resolution
+// falls back to config.toml. Guarded by a mutex since the getters may be
+// reached from more than one goroutine (e.g. the background update check).
+func (c *Config) appSecretsFor(appID string) *keychain.AppSecrets {
+	c.secretsMu.Lock()
+	defer c.secretsMu.Unlock()
+
+	if c.secretsCache == nil {
+		c.secretsCache = map[string]*keychain.AppSecrets{}
+	}
+	if cached, ok := c.secretsCache[appID]; ok {
+		return cached
+	}
+
+	secrets, err := keychain.LoadAppSecrets(appID)
+	if err != nil {
+		log.Warnf("ignoring keychain error for application %q: %s", appID, err)
+		secrets = nil
+	}
+	c.secretsCache[appID] = secrets
+	return secrets
 }
 
 // ConfiguredProfiles return the profiles in the configuration file

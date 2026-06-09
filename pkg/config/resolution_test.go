@@ -7,6 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zalando/go-keyring"
+
+	"github.com/algolia/cli/pkg/keychain"
 )
 
 func TestConfig_LoadStateCachesAndToleratesMissing(t *testing.T) {
@@ -62,4 +65,17 @@ func TestConfig_ActiveApplicationID(t *testing.T) {
 		cfg := &Config{StateFile: path}
 		assert.Equal(t, "CURRENT", cfg.activeApplicationID())
 	})
+}
+
+func TestConfig_AppSecretsForCaches(t *testing.T) {
+	keyring.MockInit()
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "key-1"}))
+
+	cfg := &Config{}
+	got := cfg.appSecretsFor("APP1")
+	require.NotNil(t, got)
+	assert.Equal(t, "key-1", got.APIKey)
+
+	// Missing app → nil, and a keychain error must not panic.
+	assert.Nil(t, cfg.appSecretsFor("MISSING"))
 }
