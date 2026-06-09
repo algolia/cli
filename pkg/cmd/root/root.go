@@ -134,7 +134,7 @@ func Execute() exitCode {
 	// Set up the update notifier.
 	updateMessageChan := make(chan *update.ReleaseInfo)
 	go func() {
-		rel, err := checkForUpdate(cfg, version.Version)
+		rel, err := checkForUpdate(&cfg, version.Version)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error checking for update: %s\n", err)
 		}
@@ -148,7 +148,7 @@ func Execute() exitCode {
 	authError := errors.New("authError")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if auth.IsAuthCheckEnabled(cmd) {
-			if err := auth.CheckAuth(cfg); err != nil {
+			if err := auth.CheckAuth(&cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
 				fmt.Fprintln(
 					stderr,
@@ -305,7 +305,7 @@ func shouldCheckForUpdate() bool {
 	return !utils.IsCI() && utils.IsTerminal(os.Stdout) && utils.IsTerminal(os.Stderr)
 }
 
-func checkForUpdate(cfg config.Config, currentVersion string) (*update.ReleaseInfo, error) {
+func checkForUpdate(cfg *config.Config, currentVersion string) (*update.ReleaseInfo, error) {
 	if !shouldCheckForUpdate() {
 		return nil, nil
 	}
