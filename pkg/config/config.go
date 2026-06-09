@@ -77,6 +77,8 @@ func (c *Config) InitConfig() {
 		}
 	}
 
+	c.CurrentProfile.config = c
+
 	_ = viper.ReadInConfig()
 }
 

@@ -22,6 +22,11 @@ type Profile struct {
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
 	Default bool `mapstructure:"default"`
+
+	// config back-references the owning Config for new-model (state.toml +
+	// keychain) resolution. nil for standalone profiles (e.g. those returned by
+	// ConfiguredProfiles), which then resolve from config.toml only.
+	config *Config
 }
 
 func (p *Profile) GetFieldName(field string) string {
@@ -44,6 +49,13 @@ func (p *Profile) GetApplicationID() (string, error) {
 
 	if p.ApplicationID != "" {
 		return p.ApplicationID, nil
+	}
+
+	// New model: state.toml current/selected application.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			return appID, nil
+		}
 	}
 
 	if p.Name == "" {

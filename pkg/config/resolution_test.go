@@ -79,3 +79,15 @@ func TestConfig_AppSecretsForCaches(t *testing.T) {
 	// Missing app → nil, and a keychain error must not panic.
 	assert.Nil(t, cfg.appSecretsFor("MISSING"))
 }
+
+func TestProfile_GetApplicationID_NewModel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	appID, err := cfg.Profile().GetApplicationID()
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", appID)
+}
