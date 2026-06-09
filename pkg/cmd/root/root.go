@@ -83,8 +83,10 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
-	_ = cmd.PersistentFlags().
-		MarkDeprecated("profile", "use --application-id or 'algolia application select' instead")
+	// Deprecated but kept visible in help (MarkDeprecated would also hide it).
+	cmd.PersistentFlags().
+		Lookup("profile").
+		Deprecated = "use --application-id or 'algolia application select' instead"
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
 	cmd.PersistentFlags().
