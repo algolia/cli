@@ -175,6 +175,46 @@ func TestProfile_FallsBackToConfigToml(t *testing.T) {
 	assert.Equal(t, "legacy-key", key)
 }
 
+func TestProfile_DefaultedNameDoesNotMaskCurrentApplication(t *testing.T) {
+	// CheckAuth calls LoadDefault() before any getter runs. The defaulted
+	// legacy profile name must NOT be mistaken for an explicit --profile flag,
+	// otherwise the legacy default application silently wins over state.toml's
+	// current_application_id.
+	keyring.MockInit()
+	statePath := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(
+		t,
+		os.WriteFile(statePath, []byte("current_application_id = \"APP1\"\n"), 0o600),
+	)
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "app1-key"}))
+
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte("[legacy]\napplication_id = \"LEGACY\"\napi_key = \"legacy-key\"\ndefault = true\n"),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: statePath}
+	cfg.CurrentProfile.config = cfg
+
+	cfg.CurrentProfile.LoadDefault() // what CheckAuth does when no --profile is given
+	require.Equal(t, "legacy", cfg.CurrentProfile.Name)
+
+	appID, err := cfg.Profile().GetApplicationID()
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", appID)
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "app1-key", key)
+}
+
 func TestProfile_GetAPIKey_ActiveAppWithoutKeyErrors(t *testing.T) {
 	keyring.MockInit()
 	statePath := filepath.Join(t.TempDir(), "state.toml")

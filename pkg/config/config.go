@@ -139,7 +139,9 @@ func (c *Config) resolveActiveApplicationID() string {
 	}
 
 	st := c.loadState()
-	if p.Name != "" { // --profile <name>: resolve against the stored alias
+	// Only a Name set explicitly (--profile flag) counts here: a name filled by
+	// LoadDefault must not shadow the state.toml current application.
+	if p.Name != "" && !p.nameFromDefault {
 		if appID, ok := st.ApplicationByAlias(p.Name); ok {
 			return appID
 		}

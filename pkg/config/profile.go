@@ -27,6 +27,11 @@ type Profile struct {
 	// keychain) resolution. nil for standalone profiles (e.g. those returned by
 	// ConfiguredProfiles), which then resolve from config.toml only.
 	config *Config
+
+	// nameFromDefault records that Name was filled by LoadDefault rather than
+	// by an explicit --profile flag, so the new-model resolver doesn't let the
+	// legacy default profile shadow state.toml's current application.
+	nameFromDefault bool
 }
 
 func (p *Profile) GetFieldName(field string) string {
@@ -38,6 +43,7 @@ func (p *Profile) LoadDefault() {
 	for appName := range configs {
 		if viper.GetBool(appName + ".default") {
 			p.Name = appName
+			p.nameFromDefault = true
 		}
 	}
 }
