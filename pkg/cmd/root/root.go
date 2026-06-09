@@ -83,11 +83,14 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
+	_ = cmd.PersistentFlags().
+		MarkDeprecated("profile", "use --application-id or 'algolia application select' instead")
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
 	cmd.PersistentFlags().
-		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
+		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID (defaults to the current application, set with 'algolia application select')")
+	cmd.PersistentFlags().
+		StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key (defaults to the key stored for the current application)")
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
 	_ = cmd.PersistentFlags().MarkDeprecated("admin-api-key", "use --api-key instead")
@@ -152,7 +155,7 @@ func Execute() exitCode {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
 				fmt.Fprintln(
 					stderr,
-					"Please run `algolia profile add` to configure your first profile.",
+					"Please run `algolia auth login` to get started.",
 				)
 				return authError
 			}
