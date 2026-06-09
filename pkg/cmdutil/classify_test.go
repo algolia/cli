@@ -71,9 +71,15 @@ func TestClassifyError(t *testing.T) {
 			wantSource: ErrorSourceNetwork,
 		},
 		{
-			name:       "generic error falls back to local",
+			name:       "generic error falls back to unknown",
 			err:        errors.New("something went wrong"),
-			wantClass:  "*errors.errorString",
+			wantClass:  "unknown",
+			wantSource: ErrorSourceLocal,
+		},
+		{
+			name:       "wrapped generic error stays unknown",
+			err:        fmt.Errorf("outer: %w", errors.New("inner")),
+			wantClass:  "unknown",
 			wantSource: ErrorSourceLocal,
 		},
 	}

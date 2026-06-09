@@ -192,8 +192,11 @@ func Execute() exitCode {
 			return err
 		}
 
-		// Command Invoked; flushed at the end of Execute with the command's other events.
-		err = telemetryClient.Track(ctx, telemetry.EventCommandInvoked, nil)
+		// Command Invoked; flushed at the end of Execute with the command's other
+		// events. The client is called directly (not telemetry.Track) so debug
+		// runs surface the enqueue error.
+		invoked := telemetry.CommandInvoked()
+		err = telemetryClient.Track(ctx, invoked.Name, invoked.Properties)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}

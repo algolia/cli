@@ -68,7 +68,8 @@ func ClassifyError(err error) (class, source string, httpStatus int) {
 		return "network_error", ErrorSourceNetwork, 0
 	}
 
-	// Fall back to the error's type name: stable/low-cardinality for typed errors.
+	// Fall back to the root cause's type name: stable and low-cardinality for
+	// typed errors, "unknown" for generic ones.
 	return rootCauseType(err), ErrorSourceLocal, 0
 }
 
@@ -78,13 +79,22 @@ func ErrorClass(err error) string {
 	return class
 }
 
-// rootCauseType returns the type name of the deepest wrapped error.
+// rootCauseType returns the type name of the deepest wrapped error, or
+// "unknown" for the generic types every errors.New/fmt.Errorf produces —
+// otherwise that one type name would dominate the error_class dimension
+// while carrying no signal.
 func rootCauseType(err error) string {
 	for {
 		next := errors.Unwrap(err)
 		if next == nil {
-			return fmt.Sprintf("%T", err)
+			break
 		}
 		err = next
+	}
+	switch name := fmt.Sprintf("%T", err); name {
+	case "*errors.errorString", "*errors.joinError", "*fmt.wrapError", "*fmt.wrapErrors":
+		return "unknown"
+	default:
+		return name
 	}
 }

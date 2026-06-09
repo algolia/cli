@@ -49,8 +49,9 @@ const (
 	TriggeredFromAuthFlow        = "auth_flow"
 	TriggeredFromExplicitCommand = "explicit_command"
 
-	// step: where the auth flow failed (CLI Auth Failed).
-	AuthStepBrowser   = "browser"
+	// step: where the auth flow failed (CLI Auth Failed). Browser launch
+	// failures are not a step here: they have their own non-fatal event,
+	// CLI Auth Browser Failed.
 	AuthStepCallback  = "callback"
 	AuthStepExchange  = "exchange"
 	AuthStepAppsFetch = "apps_fetch"
