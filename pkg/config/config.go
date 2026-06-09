@@ -30,6 +30,12 @@ type IConfig interface {
 
 	SetCrawlerAuth(profileName, crawlerUserID, crawlerAPIKey string) error
 
+	// New model (state.toml + OS keychain).
+	ActiveApplicationID() string
+	ApplicationIDByAlias(alias string) (string, bool)
+	SaveApplication(appID, alias, apiKeyUUID, apiKey string, setCurrent bool) error
+	SetCrawlerAPIKey(appID, crawlerAPIKey string) error
+
 	Profile() *Profile
 	Default() *Profile
 }
