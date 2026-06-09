@@ -37,7 +37,7 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 		Use:               "remove <profile>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
-		Short:             "Remove the specified profile",
+		Short:             "[Deprecated] Remove the specified profile",
 		Long:              `Remove the specified profile from the configuration.`,
 		Example: heredoc.Doc(`
 			# Remove the profile named "my-app" from the configuration
@@ -81,6 +81,8 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 
 // runRemoveCmd executes the remove command
 func runRemoveCmd(opts *RemoveOptions) error {
+	fmt.Fprintf(opts.IO.ErrOut,
+		"warning: `algolia profile remove` is deprecated, profiles are replaced by `algolia application select` and the OS keychain\n")
 	if opts.DoConfirm {
 		var confirmed bool
 		err := prompt.Confirm(

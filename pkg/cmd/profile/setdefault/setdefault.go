@@ -30,7 +30,7 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 		Use:               "setdefault <profile>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
-		Short:             "Set the default profile",
+		Short:             "[Deprecated] Set the default profile",
 		Example: heredoc.Doc(`
 			# Set the default profile to "my-app"
 			$ algolia profile setdefault my-app
@@ -55,6 +55,8 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 
 // runSetDefaultCmd executes the setdefault command
 func runSetDefaultCmd(opts *SetDefaultOptions) error {
+	fmt.Fprintf(opts.IO.ErrOut,
+		"warning: `algolia profile setdefault` is deprecated, use `algolia application select` instead\n")
 	var defaultName string
 	for _, profile := range opts.config.ConfiguredProfiles() {
 		if profile.Default {
