@@ -293,6 +293,51 @@ func TestCreateApplication_Success(t *testing.T) {
 	assert.Equal(t, "My App", app.Name)
 }
 
+func TestCreateAPIKey_ReturnsValueAndUUID(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+		w.WriteHeader(http.StatusCreated)
+		require.NoError(t, json.NewEncoder(w).Encode(CreateAPIKeyResponse{
+			Data: APIKeyResource{
+				ID:         "key-uuid-123",
+				Type:       "api_key",
+				Attributes: APIKeyAttributes{Value: "secret-key"},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	created, err := client.CreateAPIKey("test-token", "APP1", WriteACL, "Algolia CLI")
+	require.NoError(t, err)
+	assert.Equal(t, "secret-key", created.Value)
+	assert.Equal(t, "key-uuid-123", created.UUID)
+}
+
+func TestCreateAPIKey_EmptyValueReturnsError(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		require.NoError(t, json.NewEncoder(w).Encode(CreateAPIKeyResponse{
+			Data: APIKeyResource{
+				ID:         "key-uuid-123",
+				Attributes: APIKeyAttributes{Value: ""},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.CreateAPIKey("test-token", "APP1", WriteACL, "Algolia CLI")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no key was returned")
+}
+
 func TestUpdateApplication_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/applications/APP1", func(w http.ResponseWriter, r *http.Request) {

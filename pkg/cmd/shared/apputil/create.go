@@ -129,13 +129,14 @@ func EnsureAPIKey(
 ) error {
 	cs := io.ColorScheme()
 	io.StartProgressIndicatorWithLabel("Generating API key")
-	apiKey, err := client.CreateAPIKey(accessToken, app.ID, dashboard.WriteACL, "Algolia CLI")
+	created, err := client.CreateAPIKey(accessToken, app.ID, dashboard.WriteACL, "Algolia CLI")
 	io.StopProgressIndicator()
 	if err != nil {
 		return fmt.Errorf("failed to generate API key: %w", err)
 	}
 
-	app.APIKey = apiKey
+	app.APIKey = created.Value
+	app.APIKeyUUID = created.UUID
 	fmt.Fprintf(io.Out, "%s API key generated for application %s\n",
 		cs.SuccessIcon(), cs.Bold(app.ID))
 	return nil
