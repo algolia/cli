@@ -81,6 +81,15 @@ func (p *Profile) GetAPIKey() (string, error) {
 		return p.APIKey, nil
 	}
 
+	// New model: active application's key from the OS keychain.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			if secrets := p.config.appSecretsFor(appID); secrets != nil && secrets.APIKey != "" {
+				return secrets.APIKey, nil
+			}
+		}
+	}
+
 	if p.Name == "" {
 		p.LoadDefault()
 	}
