@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
@@ -119,4 +120,47 @@ func TestProfile_GetCrawlerAPIKey_FromKeychain(t *testing.T) {
 	key, err := cfg.Profile().GetCrawlerAPIKey()
 	require.NoError(t, err)
 	assert.Equal(t, "crawler-key", key)
+}
+
+func TestProfile_EnvWinsOverKeychain(t *testing.T) {
+	keyring.MockInit()
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "keychain-key"}))
+	t.Setenv("ALGOLIA_API_KEY", "env-key")
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "env-key", key) // env beats the keychain
+}
+
+func TestProfile_FallsBackToConfigToml(t *testing.T) {
+	// No state.toml entry and no keychain → resolve from the legacy config.toml.
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte(
+			"[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy-key\"\ndefault = true\n",
+		),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: filepath.Join(t.TempDir(), "absent.toml")}
+	cfg.CurrentProfile.config = cfg
+
+	appID, err := cfg.Profile().GetApplicationID()
+	require.NoError(t, err)
+	assert.Equal(t, "LEGACY_APP", appID)
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-key", key)
 }
