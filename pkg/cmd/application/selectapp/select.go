@@ -42,9 +42,6 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 			Select an Algolia application to use as the current application for
 			all CLI commands. Fetches your applications from the API and lets
 			you pick one.
-
-			The application's API key is reused when one is already stored,
-			or generated otherwise, and saved securely in the OS keychain.
 		`),
 		Example: heredoc.Doc(`
 			# Select interactively
