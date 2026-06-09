@@ -1,6 +1,7 @@
 package selectapp
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -58,7 +59,7 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := runSelectCmd(opts)
+			_, err := runSelectCmd(cmd.Context(), opts)
 			return err
 		},
 	}
@@ -73,7 +74,7 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 // chosen application. Other commands (e.g. open) use it to ensure an
 // application is selected before proceeding. A nil application is returned
 // when the account has no applications.
-func Run(f *cmdutil.Factory) (*dashboard.Application, error) {
+func Run(ctx context.Context, f *cmdutil.Factory) (*dashboard.Application, error) {
 	opts := &SelectOptions{
 		IO:     f.IOStreams,
 		Config: f.Config,
@@ -82,14 +83,14 @@ func Run(f *cmdutil.Factory) (*dashboard.Application, error) {
 		},
 	}
 
-	return runSelectCmd(opts)
+	return runSelectCmd(ctx, opts)
 }
 
-func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
+func runSelectCmd(ctx context.Context, opts *SelectOptions) (*dashboard.Application, error) {
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
-	accessToken, err := auth.EnsureAuthenticated(opts.IO, client)
+	accessToken, err := auth.EnsureAuthenticated(ctx, opts.IO, client)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 	apps, err := client.ListApplications(accessToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
-		newToken, reAuthErr := auth.ReauthenticateIfExpired(opts.IO, client, err)
+		newToken, reAuthErr := auth.ReauthenticateIfExpired(ctx, opts.IO, client, err)
 		if reAuthErr != nil {
 			return nil, reAuthErr
 		}

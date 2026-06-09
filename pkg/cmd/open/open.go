@@ -1,6 +1,7 @@
 package open
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -106,8 +107,8 @@ type OpenOptions struct {
 
 	PrintFlags *cmdutil.PrintFlags
 
-	Authenticate       func(*iostreams.IOStreams, *dashboard.Client) (string, error)
-	SelectApplication  func() (*dashboard.Application, error)
+	Authenticate       func(context.Context, *iostreams.IOStreams, *dashboard.Client) (string, error)
+	SelectApplication  func(context.Context) (*dashboard.Application, error)
 	ListApplications   func(*dashboard.Client, string) ([]dashboard.Application, error)
 	NewDashboardClient func(clientID string) *dashboard.Client
 	Browser            func(string) error
@@ -119,8 +120,8 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 		config:       f.Config,
 		PrintFlags:   cmdutil.NewPrintFlags(),
 		Authenticate: auth.EnsureAuthenticated,
-		SelectApplication: func() (*dashboard.Application, error) {
-			return selectapp.Run(f)
+		SelectApplication: func(ctx context.Context) (*dashboard.Application, error) {
+			return selectapp.Run(ctx, f)
 		},
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
@@ -174,7 +175,7 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 			if len(args) > 0 {
 				opts.Shortcut = args[0]
 			}
-			return runOpenCmd(opts)
+			return runOpenCmd(cmd.Context(), opts)
 		},
 	}
 
@@ -186,7 +187,7 @@ func NewOpenCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runOpenCmd(opts *OpenOptions) error {
+func runOpenCmd(ctx context.Context, opts *OpenOptions) error {
 	listing := opts.List || opts.Shortcut == ""
 
 	// With an output format, emit page metadata instead of opening a browser.
@@ -206,11 +207,11 @@ func runOpenCmd(opts *OpenOptions) error {
 		if resource.AppPath != "" {
 			if _, err := opts.config.Profile().GetApplicationID(); err == nil {
 				client := opts.NewDashboardClient(auth.OAuthClientID())
-				accessToken, err := opts.Authenticate(opts.IO, client)
+				accessToken, err := opts.Authenticate(ctx, opts.IO, client)
 				if err != nil {
 					return err
 				}
-				appID, err := opts.resolveApplicationForAccount(client, accessToken)
+				appID, err := opts.resolveApplicationForAccount(ctx, client, accessToken)
 				if err != nil {
 					return err
 				}
@@ -224,7 +225,7 @@ func runOpenCmd(opts *OpenOptions) error {
 
 	// Application pages require sign-in and an application scope.
 	if target, ok := dashboardTargets[opts.Shortcut]; ok {
-		return openDashboardTarget(opts, target)
+		return openDashboardTarget(ctx, opts, target)
 	}
 
 	return unsupportedShortcutError(opts.Shortcut)
@@ -310,14 +311,14 @@ func (opts *OpenOptions) allEntries() []pageEntry {
 
 // openDashboardTarget signs the user in, resolves the current application
 // (selecting one if needed), then opens the dashboard page.
-func openDashboardTarget(opts *OpenOptions, target dashboardTarget) error {
+func openDashboardTarget(ctx context.Context, opts *OpenOptions, target dashboardTarget) error {
 	client := opts.NewDashboardClient(auth.OAuthClientID())
-	accessToken, err := opts.Authenticate(opts.IO, client)
+	accessToken, err := opts.Authenticate(ctx, opts.IO, client)
 	if err != nil {
 		return err
 	}
 
-	appID, err := opts.resolveApplicationForAccount(client, accessToken)
+	appID, err := opts.resolveApplicationForAccount(ctx, client, accessToken)
 	if err != nil {
 		return err
 	}
@@ -347,6 +348,7 @@ func applicationInAccount(apps []dashboard.Application, appID string) bool {
 }
 
 func (opts *OpenOptions) fetchAccountApplications(
+	ctx context.Context,
 	client *dashboard.Client,
 	accessToken string,
 ) ([]dashboard.Application, error) {
@@ -361,7 +363,7 @@ func (opts *OpenOptions) fetchAccountApplications(
 	apps, err := listFn(client, accessToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
-		newToken, reAuthErr := auth.ReauthenticateIfExpired(opts.IO, client, err)
+		newToken, reAuthErr := auth.ReauthenticateIfExpired(ctx, opts.IO, client, err)
 		if reAuthErr != nil {
 			return nil, reAuthErr
 		}
@@ -381,10 +383,11 @@ func (opts *OpenOptions) fetchAccountApplications(
 // appears in the account's application list; otherwise the user is prompted to
 // select one.
 func (opts *OpenOptions) resolveApplicationForAccount(
+	ctx context.Context,
 	client *dashboard.Client,
 	accessToken string,
 ) (string, error) {
-	apps, err := opts.fetchAccountApplications(client, accessToken)
+	apps, err := opts.fetchAccountApplications(ctx, client, accessToken)
 	if err != nil {
 		return "", err
 	}
@@ -394,7 +397,7 @@ func (opts *OpenOptions) resolveApplicationForAccount(
 		return appID, nil
 	}
 
-	app, selErr := opts.SelectApplication()
+	app, selErr := opts.SelectApplication(ctx)
 	if selErr != nil {
 		return "", selErr
 	}

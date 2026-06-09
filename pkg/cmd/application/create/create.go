@@ -137,13 +137,13 @@ func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
 
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
-	token, err := auth.EnsureAuthenticated(opts.IO, client)
+	token, err := auth.EnsureAuthenticated(ctx, opts.IO, client)
 	if err != nil {
 		return err
 	}
 
 	var plans []dashboard.Plan
-	if err := callWithReauth(opts.IO, client, &token, "Fetching plans", func(t string) error {
+	if err := callWithReauth(ctx, opts.IO, client, &token, "Fetching plans", func(t string) error {
 		var e error
 		plans, e = client.GetSelfServePlans(t)
 		return e
@@ -156,7 +156,7 @@ func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
 
 	// Best-effort: continue without billing status if /1/user fails.
 	var user *dashboard.DashboardUser
-	if err := callWithReauth(opts.IO, client, &token, "Checking account", func(t string) error {
+	if err := callWithReauth(ctx, opts.IO, client, &token, "Checking account", func(t string) error {
 		var e error
 		user, e = client.GetUser(t)
 		return e
@@ -204,7 +204,7 @@ func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
 	}
 
 	if !target.IsFree() {
-		if err := callWithReauth(opts.IO, client, &token, "Applying plan", func(t string) error {
+		if err := callWithReauth(ctx, opts.IO, client, &token, "Applying plan", func(t string) error {
 			_, e := client.ChangeApplicationPlan(t, appDetails.ID, target.ID)
 			return e
 		}); err != nil {
@@ -400,6 +400,7 @@ func offerBilling(opts *CreateOptions, client *dashboard.Client, plan dashboard.
 
 // callWithReauth runs fn, re-authenticating once and retrying on an expired session.
 func callWithReauth(
+	ctx context.Context,
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	token *string,
@@ -413,7 +414,7 @@ func callWithReauth(
 		return nil
 	}
 
-	newToken, reAuthErr := auth.ReauthenticateIfExpired(io, client, err)
+	newToken, reAuthErr := auth.ReauthenticateIfExpired(ctx, io, client, err)
 	if reAuthErr != nil {
 		return reAuthErr
 	}

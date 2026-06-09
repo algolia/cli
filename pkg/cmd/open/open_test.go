@@ -1,6 +1,7 @@
 package open
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -59,11 +60,11 @@ func newTestOptions(
 		IO:         io,
 		config:     cfg,
 		PrintFlags: cmdutil.NewPrintFlags(),
-		Authenticate: func(_ *iostreams.IOStreams, _ *dashboard.Client) (string, error) {
+		Authenticate: func(_ context.Context, _ *iostreams.IOStreams, _ *dashboard.Client) (string, error) {
 			*authed = true
 			return "test-token", nil
 		},
-		SelectApplication: func() (*dashboard.Application, error) {
+		SelectApplication: func(context.Context) (*dashboard.Application, error) {
 			return nil, errors.New("SelectApplication should not be called")
 		},
 		NewDashboardClient: func(string) *dashboard.Client {
@@ -94,7 +95,7 @@ func TestRunOpenCmd_ResourceShortcutNoAuth(t *testing.T) {
 	opts, opened, authed := newTestOptions(io, test.NewDefaultConfigStub())
 	opts.Shortcut = "docs"
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.False(t, *authed, "resource shortcuts must not require sign-in")
 	assert.Equal(t, "https://algolia.com/doc/", *opened)
@@ -113,7 +114,7 @@ func TestRunOpenCmd_ResourceShortcutWithAppID(t *testing.T) {
 		return &dashboard.Client{DashboardURL: "https://staging.algolia.test"}
 	}
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.True(t, *authed, "app-scoped status validates the profile application against the signed-in account")
 	assert.Equal(t, "https://staging.algolia.test/apps/APP123/monitoring/status", *opened)
@@ -131,7 +132,7 @@ func TestRunOpenCmd_ResourceShortcutNoAppUsesDefault(t *testing.T) {
 	opts, opened, _ := newTestOptions(io, cfg)
 	opts.Shortcut = "status"
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.Equal(t, "https://status.algolia.com/", *opened)
 }
@@ -148,7 +149,7 @@ func TestRunOpenCmd_DashboardTargetConfiguredApp(t *testing.T) {
 	opts, opened, authed := newTestOptions(io, cfg)
 	opts.Shortcut = "billing"
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.True(t, *authed, "application pages require sign-in")
 	assert.Equal(
@@ -170,7 +171,7 @@ func TestRunOpenCmd_DashboardTargetAppScoped(t *testing.T) {
 	opts, opened, _ := newTestOptions(io, cfg)
 	opts.Shortcut = "dashboard"
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.Equal(t, "https://dashboard.algolia.com/apps/APP123/dashboard", *opened)
 }
@@ -190,7 +191,7 @@ func TestRunOpenCmd_DashboardTargetUsesConfiguredDashboardURL(t *testing.T) {
 		return &dashboard.Client{DashboardURL: "https://staging.algolia.test"}
 	}
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.Equal(
 		t,
@@ -216,12 +217,12 @@ func TestRunOpenCmd_DashboardTargetIgnoresStaleProfileApp(t *testing.T) {
 	opts.ListApplications = func(_ *dashboard.Client, _ string) ([]dashboard.Application, error) {
 		return []dashboard.Application{{ID: "USER_B_APP", Name: "User B App"}}, nil
 	}
-	opts.SelectApplication = func() (*dashboard.Application, error) {
+	opts.SelectApplication = func(context.Context) (*dashboard.Application, error) {
 		selectCalled = true
 		return &dashboard.Application{ID: "USER_B_APP", Name: "User B App"}, nil
 	}
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.True(t, selectCalled, "stale profile application must trigger selection")
 	assert.Equal(
@@ -244,11 +245,11 @@ func TestRunOpenCmd_DashboardTargetSelectsAppWhenNoneConfigured(t *testing.T) {
 
 	opts, opened, _ := newTestOptions(io, cfg)
 	opts.Shortcut = "dashboard"
-	opts.SelectApplication = func() (*dashboard.Application, error) {
+	opts.SelectApplication = func(context.Context) (*dashboard.Application, error) {
 		return &dashboard.Application{ID: "SELECTED", Name: "Picked"}, nil
 	}
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 	assert.Equal(t, "https://dashboard.algolia.com/apps/SELECTED/dashboard", *opened)
 }
@@ -259,7 +260,7 @@ func TestRunOpenCmd_Unsupported(t *testing.T) {
 	opts, opened, authed := newTestOptions(io, test.NewDefaultConfigStub())
 	opts.Shortcut = "bogus"
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported open command, given: bogus")
 	assert.Contains(t, err.Error(), "Available shortcuts:")
@@ -275,7 +276,7 @@ func TestRunOpenCmd_ListIncludesBothKinds(t *testing.T) {
 	opts, _, _ := newTestOptions(io, test.NewDefaultConfigStub())
 	opts.List = true
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 
 	out := stdout.String()
@@ -296,7 +297,7 @@ func TestRunOpenCmd_ListJSONOutput(t *testing.T) {
 	opts.List = true
 	withOutputFormat(opts, "json")
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 
 	var entries []pageEntry
@@ -339,7 +340,7 @@ func TestRunOpenCmd_SingleShortcutJSONOutput(t *testing.T) {
 	opts.Shortcut = "billing"
 	withOutputFormat(opts, "json")
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.NoError(t, err)
 
 	var entry pageEntry
@@ -366,7 +367,7 @@ func TestRunOpenCmd_UnsupportedWithJSONOutput(t *testing.T) {
 	opts.Shortcut = "bogus"
 	withOutputFormat(opts, "json")
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported open command, given: bogus")
 	assert.Contains(t, err.Error(), "Available shortcuts:")
@@ -379,7 +380,7 @@ func TestRunOpenCmd_InvalidOutputFormat(t *testing.T) {
 	opts.List = true
 	withOutputFormat(opts, "yaml")
 
-	err := runOpenCmd(opts)
+	err := runOpenCmd(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to match a printer")
 }

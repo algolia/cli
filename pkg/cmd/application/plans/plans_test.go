@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -95,7 +96,7 @@ func Test_runPlansCmd(t *testing.T) {
 	defer srv.Close()
 
 	opts, out := newOpts(t, srv, true, "")
-	require.NoError(t, runPlansCmd(opts))
+	require.NoError(t, runPlansCmd(context.Background(), opts))
 
 	got := out.String()
 	assert.Contains(t, got, "Build")
@@ -109,7 +110,7 @@ func Test_runPlansCmd_outputJSON(t *testing.T) {
 	defer srv.Close()
 
 	opts, out := newOpts(t, srv, false, "json")
-	require.NoError(t, runPlansCmd(opts))
+	require.NoError(t, runPlansCmd(context.Background(), opts))
 
 	got := out.String()
 	assert.Contains(t, got, `"name":"Build"`)

@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
@@ -51,7 +52,7 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUpdateCmd(opts)
+			return runUpdateCmd(cmd.Context(), opts)
 		},
 	}
 
@@ -63,7 +64,7 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runUpdateCmd(opts *UpdateOptions) error {
+func runUpdateCmd(ctx context.Context, opts *UpdateOptions) error {
 	cs := opts.IO.ColorScheme()
 
 	appID, err := opts.Config.Profile().GetApplicationID()
@@ -76,7 +77,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
-	accessToken, err := auth.EnsureAuthenticated(opts.IO, client)
+	accessToken, err := auth.EnsureAuthenticated(ctx, opts.IO, client)
 	if err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	app, err := client.UpdateApplication(accessToken, appID, opts.Name)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
-		newToken, reAuthErr := auth.ReauthenticateIfExpired(opts.IO, client, err)
+		newToken, reAuthErr := auth.ReauthenticateIfExpired(ctx, opts.IO, client, err)
 		if reAuthErr != nil {
 			return reAuthErr
 		}

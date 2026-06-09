@@ -11,8 +11,11 @@ import (
 
 // EnsureAuthenticated returns a valid access token from the stored session.
 // If no valid session exists and the terminal is interactive, it triggers the
-// browser-based OAuth login flow automatically.
+// browser-based OAuth login flow automatically. ctx carries the command's
+// telemetry context so lazy logins emit the same auth flow events as the
+// dedicated auth login/signup commands.
 func EnsureAuthenticated(
+	ctx context.Context,
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 ) (string, error) {
@@ -24,14 +27,13 @@ func EnsureAuthenticated(
 	cs := io.ColorScheme()
 	fmt.Fprintf(io.Out, "%s %s\n", cs.WarningIcon(), err)
 
-	// Lazy login from another command: no request-scoped telemetry context here,
-	// so OAuth flow events are emitted only by the dedicated auth login/signup commands.
-	return RunOAuth(context.Background(), io, client, false, true)
+	return RunOAuth(ctx, io, client, false, true)
 }
 
 // ReauthenticateIfExpired checks if err is a session-expired error from the API.
 // If so, it clears the invalid token and triggers the login flow.
 func ReauthenticateIfExpired(
+	ctx context.Context,
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	err error,
@@ -44,5 +46,5 @@ func ReauthenticateIfExpired(
 	ClearToken()
 	fmt.Fprintf(io.Out, "%s Session expired.\n", cs.WarningIcon())
 
-	return RunOAuth(context.Background(), io, client, false, true)
+	return RunOAuth(ctx, io, client, false, true)
 }

@@ -72,13 +72,13 @@ func Run(ctx context.Context, opts *Options) error {
 
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
-	token, err := auth.EnsureAuthenticated(opts.IO, client)
+	token, err := auth.EnsureAuthenticated(ctx, opts.IO, client)
 	if err != nil {
 		return err
 	}
 
 	var plans []dashboard.Plan
-	if err := callWithReauth(opts.IO, client, &token, "Fetching plans", func(t string) error {
+	if err := callWithReauth(ctx, opts.IO, client, &token, "Fetching plans", func(t string) error {
 		var e error
 		plans, e = client.GetSelfServePlans(t)
 		return e
@@ -92,7 +92,7 @@ func Run(ctx context.Context, opts *Options) error {
 	// Billing status is best-effort. If /1/user is unavailable we continue
 	// without it and let the server enforce billing validity.
 	var user *dashboard.DashboardUser
-	if err := callWithReauth(opts.IO, client, &token, "Checking account", func(t string) error {
+	if err := callWithReauth(ctx, opts.IO, client, &token, "Checking account", func(t string) error {
 		var e error
 		user, e = client.GetUser(t)
 		return e
@@ -100,7 +100,7 @@ func Run(ctx context.Context, opts *Options) error {
 		user = nil
 	}
 
-	app := fetchApplication(opts, client, &token, appID)
+	app := fetchApplication(ctx, opts, client, &token, appID)
 
 	target, err := resolveTarget(opts, appID, app, plans)
 	if err != nil {
@@ -165,7 +165,7 @@ func Run(ctx context.Context, opts *Options) error {
 	}
 	telemetry.Track(ctx, ev.acceptedTerms(fromPlan, target.ID))
 
-	if err := callWithReauth(opts.IO, client, &token, "Changing plan", func(t string) error {
+	if err := callWithReauth(ctx, opts.IO, client, &token, "Changing plan", func(t string) error {
 		_, e := client.ChangeApplicationPlan(t, appID, target.ID)
 		return e
 	}); err != nil {
@@ -299,13 +299,14 @@ func resolveTarget(
 
 // fetchApplication returns the current application, or nil if it can't be fetched.
 func fetchApplication(
+	ctx context.Context,
 	opts *Options,
 	client *dashboard.Client,
 	token *string,
 	appID string,
 ) *dashboard.Application {
 	var app *dashboard.Application
-	if err := callWithReauth(opts.IO, client, token, "Fetching application", func(t string) error {
+	if err := callWithReauth(ctx, opts.IO, client, token, "Fetching application", func(t string) error {
 		var e error
 		app, e = client.GetApplication(t, appID)
 		return e
@@ -512,6 +513,7 @@ func planChoices(plans []dashboard.Plan) []string {
 // session-expired error it re-authenticates once and retries, mirroring the
 // retry pattern used by the other application commands.
 func callWithReauth(
+	ctx context.Context,
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	token *string,
@@ -525,7 +527,7 @@ func callWithReauth(
 		return nil
 	}
 
-	newToken, reAuthErr := auth.ReauthenticateIfExpired(io, client, err)
+	newToken, reAuthErr := auth.ReauthenticateIfExpired(ctx, io, client, err)
 	if reAuthErr != nil {
 		return reAuthErr
 	}

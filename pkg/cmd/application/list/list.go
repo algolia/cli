@@ -1,6 +1,7 @@
 package list
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -55,7 +56,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runListCmd(opts)
+			return runListCmd(cmd.Context(), opts)
 		},
 	}
 
@@ -64,11 +65,11 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runListCmd(opts *ListOptions) error {
+func runListCmd(ctx context.Context, opts *ListOptions) error {
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
-	accessToken, err := auth.EnsureAuthenticated(opts.IO, client)
+	accessToken, err := auth.EnsureAuthenticated(ctx, opts.IO, client)
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func runListCmd(opts *ListOptions) error {
 	apps, err := client.ListApplications(accessToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
-		newToken, reAuthErr := auth.ReauthenticateIfExpired(opts.IO, client, err)
+		newToken, reAuthErr := auth.ReauthenticateIfExpired(ctx, opts.IO, client, err)
 		if reAuthErr != nil {
 			return reAuthErr
 		}

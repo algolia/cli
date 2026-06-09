@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -84,7 +85,7 @@ func Test_runUpdateCmd(t *testing.T) {
 	defer srv.Close()
 
 	opts, out := newOpts(t, srv, true, "")
-	require.NoError(t, runUpdateCmd(opts))
+	require.NoError(t, runUpdateCmd(context.Background(), opts))
 
 	got := out.String()
 	assert.Contains(t, got, "APP1")
@@ -96,7 +97,7 @@ func Test_runUpdateCmd_outputJSON(t *testing.T) {
 	defer srv.Close()
 
 	opts, out := newOpts(t, srv, false, "json")
-	require.NoError(t, runUpdateCmd(opts))
+	require.NoError(t, runUpdateCmd(context.Background(), opts))
 
 	got := out.String()
 	assert.Contains(t, got, `"id":"APP1"`)
