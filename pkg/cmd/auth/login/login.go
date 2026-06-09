@@ -127,7 +127,7 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 		}
 
 		appDetails = app
-		if !reuseExistingAPIKey(opts.Config, appDetails) {
+		if !apputil.ReuseExistingAPIKey(opts.Config, appDetails) {
 			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
 				return err
 			}
@@ -166,18 +166,6 @@ func applyStoredIdentity(ctx context.Context) bool {
 
 	metadata.SetUser(token.UserID, token.Email, token.Name)
 	return true
-}
-
-// reuseExistingAPIKey checks if a local profile already has an API key for
-// the given application. If so, it sets app.APIKey and returns true.
-func reuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
-	for _, p := range cfg.ConfiguredProfiles() {
-		if p.ApplicationID == app.ID && p.APIKey != "" {
-			app.APIKey = p.APIKey
-			return true
-		}
-	}
-	return false
 }
 
 func selectApplication(opts *LoginOptions, apps []dashboard.Application, interactive bool) (*dashboard.Application, error) {
