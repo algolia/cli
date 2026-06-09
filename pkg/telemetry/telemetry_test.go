@@ -305,3 +305,25 @@ func TestTrack_MergesCustomProperties(t *testing.T) {
 	assert.Contains(t, track.Properties, "invocation_id")
 	assert.Contains(t, track.Properties, "command")
 }
+
+// TestTrack_AddsVersionAndEventIndex verifies every event carries the CLI
+// version (to split dev/prod traffic downstream) and a 1-based emit-order
+// index (the deterministic ordering ground truth).
+func TestTrack_AddsVersionAndEventIndex(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "A", nil))
+	require.NoError(t, client.Track(ctx, "B", nil))
+	require.Len(t, fake.messages, 2)
+
+	for i, m := range fake.messages {
+		track, ok := m.(analytics.Track)
+		require.True(t, ok)
+		assert.Equal(t, metadata.CLIVersion, track.Properties["version"])
+		assert.Equal(t, int64(i+1), track.Properties["event_index"])
+	}
+}

@@ -46,8 +46,9 @@ type AnalyticsTelemetryClient struct {
 	client analytics.Client
 	debug  bool
 
-	mu     sync.Mutex
-	lastTS time.Time
+	mu         sync.Mutex
+	lastTS     time.Time
+	eventIndex int64
 }
 
 type AnalyticsTelemetryLogger struct {
@@ -309,6 +310,13 @@ func (a *AnalyticsTelemetryClient) Track(
 		"app_id":        metadata.AppID,
 		"command":       metadata.CommandPath,
 		"flags":         metadata.CommandFlags,
+		// version lets downstream destinations split released binaries
+		// (semver) from source builds ("main").
+		"version": metadata.CLIVersion,
+		// event_index is the emit order within one invocation: the
+		// vendor-independent ground truth for sequencing, since Amplitude's
+		// tie-breaking on identical timestamps is undocumented.
+		"event_index": a.nextEventIndex(),
 	}
 	for k, v := range properties {
 		props[k] = v
@@ -336,6 +344,14 @@ func (a *AnalyticsTelemetryClient) Track(
 	}
 
 	return a.client.Enqueue(track)
+}
+
+// nextEventIndex returns 1, 2, 3... in emit order for this command run.
+func (a *AnalyticsTelemetryClient) nextEventIndex() int64 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.eventIndex++
+	return a.eventIndex
 }
 
 // nextTimestamp returns strictly increasing timestamps at least 1ms apart.
