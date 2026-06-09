@@ -182,6 +182,16 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 		return os.Getenv("ALGOLIA_CRAWLER_API_KEY"), nil
 	}
 
+	// New model: active application's crawler key from the OS keychain.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			if secrets := p.config.appSecretsFor(appID); secrets != nil &&
+				secrets.CrawlerAPIKey != "" {
+				return secrets.CrawlerAPIKey, nil
+			}
+		}
+	}
+
 	if p.Name == "" {
 		p.LoadDefault()
 	}

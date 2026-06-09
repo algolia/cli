@@ -91,3 +91,32 @@ func TestProfile_GetApplicationID_NewModel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "APP1", appID)
 }
+
+func TestProfile_GetAPIKey_FromKeychain(t *testing.T) {
+	keyring.MockInit()
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "secret-key"}))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "secret-key", key)
+}
+
+func TestProfile_GetCrawlerAPIKey_FromKeychain(t *testing.T) {
+	keyring.MockInit()
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+	require.NoError(t, keychain.SaveAppSecrets("APP1",
+		keychain.AppSecrets{APIKey: "k", CrawlerAPIKey: "crawler-key"}))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	key, err := cfg.Profile().GetCrawlerAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "crawler-key", key)
+}
