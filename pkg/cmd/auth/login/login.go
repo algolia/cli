@@ -78,8 +78,8 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Auto-select application by name")
-	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
-	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the profile as the default")
+	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the application name)")
+	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the application as the current one")
 	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
 
 	return cmd

@@ -37,13 +37,14 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "select",
-		Short: "Select an application to use as the active profile",
+		Short: "Select the current application",
 		Long: heredoc.Doc(`
-			Select an Algolia application to use as the default CLI profile.
-			Fetches your applications from the API and lets you pick one.
+			Select an Algolia application to use as the current application for
+			all CLI commands. Fetches your applications from the API and lets
+			you pick one.
 
-			If the selected application already has a local profile, it is set
-			as the default. Otherwise, a new profile is created and set as default.
+			The application's API key is reused when one is already stored,
+			or generated otherwise, and saved securely in the OS keychain.
 		`),
 		Example: heredoc.Doc(`
 			# Select interactively

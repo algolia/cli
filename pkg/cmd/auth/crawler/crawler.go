@@ -33,7 +33,7 @@ func NewCrawlerCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "crawler",
-		Short: "Load crawler auth details for the current profile",
+		Short: "Configure the crawler API key for the current application",
 		Args:  validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCrawlerCmd(opts)
