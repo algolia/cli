@@ -439,25 +439,41 @@ func TestRun_SamePlanIsNoOp(t *testing.T) {
 	assert.Contains(t, out.String(), "no change needed")
 }
 
-// recordingTelemetry records the names of the events emitted during a run.
-type recordingTelemetry struct{ events []string }
+// recordedEvent is one Track call seen by recordingTelemetry.
+type recordedEvent struct {
+	name  string
+	props map[string]any
+}
+
+// recordingTelemetry records the events emitted during a run.
+type recordingTelemetry struct{ events []recordedEvent }
 
 func (r *recordingTelemetry) Identify(context.Context) error { return nil }
 
-func (r *recordingTelemetry) Track(_ context.Context, event string, _ map[string]any) error {
-	r.events = append(r.events, event)
+func (r *recordingTelemetry) Track(_ context.Context, event string, props map[string]any) error {
+	r.events = append(r.events, recordedEvent{name: event, props: props})
 	return nil
 }
 
 func (r *recordingTelemetry) Close() {}
 
+func (r *recordingTelemetry) names() []string {
+	names := make([]string, 0, len(r.events))
+	for _, e := range r.events {
+		names = append(names, e.name)
+	}
+	return names
+}
+
 // TestRun_EmitsPlanChangeEventsByDirection verifies the shared flow emits the
-// upgrade- or downgrade-named events depending on the direction.
+// upgrade- or downgrade-named events depending on the direction, with the
+// from_plan/to_plan pair resolved from the current plan and the picked target.
 func TestRun_EmitsPlanChangeEventsByDirection(t *testing.T) {
 	tests := []struct {
 		name      string
 		direction Direction
 		want      []string
+		wantTo    string
 	}{
 		{
 			name:      "upgrade",
@@ -467,6 +483,7 @@ func TestRun_EmitsPlanChangeEventsByDirection(t *testing.T) {
 				telemetry.EventApplicationUpgradeAcceptedTerms,
 				telemetry.EventApplicationUpgradeCompleted,
 			},
+			wantTo: "grow-plus",
 		},
 		{
 			name:      "downgrade",
@@ -476,6 +493,7 @@ func TestRun_EmitsPlanChangeEventsByDirection(t *testing.T) {
 				telemetry.EventApplicationDowngradeAcceptedTerms,
 				telemetry.EventApplicationDowngradeCompleted,
 			},
+			wantTo: "build",
 		},
 	}
 
@@ -495,7 +513,14 @@ func TestRun_EmitsPlanChangeEventsByDirection(t *testing.T) {
 			ctx := telemetry.WithTelemetryClient(context.Background(), rec)
 
 			require.NoError(t, Run(ctx, opts))
-			assert.Equal(t, tt.want, rec.events)
+			assert.Equal(t, tt.want, rec.names())
+
+			// Started comes from the interactive picker: no requested_plan.
+			assert.Empty(t, rec.events[0].props)
+
+			wantPlans := map[string]any{"from_plan": "grow", "to_plan": tt.wantTo}
+			assert.Equal(t, wantPlans, rec.events[1].props)
+			assert.Equal(t, wantPlans, rec.events[2].props)
 		})
 	}
 }
@@ -520,8 +545,33 @@ func TestRun_EmitsDeclinedTermsEvent(t *testing.T) {
 	assert.Equal(t, []string{
 		telemetry.EventApplicationDowngradeStarted,
 		telemetry.EventApplicationDowngradeDeclinedTerms,
-	}, rec.events)
+	}, rec.names())
+	assert.Equal(
+		t,
+		map[string]any{"from_plan": "grow", "to_plan": "build"},
+		rec.events[1].props,
+	)
 	assert.Equal(t, 0, srv.patchCalls)
+}
+
+// TestRun_StartedCarriesRequestedPlan verifies an explicit --plan value lands
+// on the Started event as requested_plan.
+func TestRun_StartedCarriesRequestedPlan(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.currentPlanLabel = "Grow"
+	defer srv.Close()
+
+	opts, _, _ := newOpts(t, srv, false)
+	opts.Plan = "grow-plus"
+	opts.AcceptTerms = true
+
+	rec := &recordingTelemetry{}
+	ctx := telemetry.WithTelemetryClient(context.Background(), rec)
+
+	require.NoError(t, Run(ctx, opts))
+	require.NotEmpty(t, rec.events)
+	assert.Equal(t, telemetry.EventApplicationUpgradeStarted, rec.events[0].name)
+	assert.Equal(t, map[string]any{"requested_plan": "grow-plus"}, rec.events[0].props)
 }
 
 func TestRun_UnknownCurrentPlanShowsAllPlans(t *testing.T) {

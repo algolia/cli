@@ -110,6 +110,10 @@ func Run(ctx context.Context, opts *Options) error {
 		return nil
 	}
 
+	// The application's current plan, resolved against the self-serve list so
+	// from_plan and to_plan share the plan-id vocabulary in telemetry.
+	fromPlan := currentPlanID(plans, app)
+
 	if isCurrentPlan(app, *target) {
 		fmt.Fprintf(
 			opts.IO.Out,
@@ -151,7 +155,7 @@ func Run(ctx context.Context, opts *Options) error {
 		return err
 	}
 	if !accepted {
-		telemetry.Track(ctx, ev.declinedTerms(target.ID))
+		telemetry.Track(ctx, ev.declinedTerms(fromPlan, target.ID))
 		fmt.Fprintf(
 			opts.IO.Out,
 			"%s Plan change aborted; no changes were made.\n",
@@ -159,17 +163,17 @@ func Run(ctx context.Context, opts *Options) error {
 		)
 		return nil
 	}
-	telemetry.Track(ctx, ev.acceptedTerms(target.ID))
+	telemetry.Track(ctx, ev.acceptedTerms(fromPlan, target.ID))
 
 	if err := callWithReauth(opts.IO, client, &token, "Changing plan", func(t string) error {
 		_, e := client.ChangeApplicationPlan(t, appID, target.ID)
 		return e
 	}); err != nil {
 		class, _, status := cmdutil.ClassifyError(err)
-		telemetry.Track(ctx, ev.failed(target.ID, class, status))
+		telemetry.Track(ctx, ev.failed(fromPlan, target.ID, class, status))
 		return err
 	}
-	telemetry.Track(ctx, ev.completed(target.ID))
+	telemetry.Track(ctx, ev.completed(fromPlan, target.ID))
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()
@@ -203,11 +207,11 @@ func Run(ctx context.Context, opts *Options) error {
 // shared flow emits upgrade- or downgrade-named events without branching at
 // each call site.
 type planChangeEvents struct {
-	started       func(plan string) telemetry.Event
-	acceptedTerms func(plan string) telemetry.Event
-	declinedTerms func(plan string) telemetry.Event
-	failed        func(plan, errorClass string, httpStatus int) telemetry.Event
-	completed     func(plan string) telemetry.Event
+	started       func(requestedPlan string) telemetry.Event
+	acceptedTerms func(fromPlan, toPlan string) telemetry.Event
+	declinedTerms func(fromPlan, toPlan string) telemetry.Event
+	failed        func(fromPlan, toPlan, errorClass string, httpStatus int) telemetry.Event
+	completed     func(fromPlan, toPlan string) telemetry.Event
 }
 
 func planChangeEventsFor(dir Direction) planChangeEvents {
@@ -349,6 +353,16 @@ func currentPlanIndex(plans []dashboard.Plan, app *dashboard.Application) int {
 		}
 	}
 	return -1
+}
+
+// currentPlanID returns the id of the plan the application is currently on,
+// or "unknown" when the application or its plan can't be resolved (explicit
+// value so the telemetry dimension groups cleanly).
+func currentPlanID(plans []dashboard.Plan, app *dashboard.Application) string {
+	if idx := currentPlanIndex(plans, app); idx >= 0 {
+		return plans[idx].ID
+	}
+	return "unknown"
 }
 
 // isCurrentPlan reports whether target is the plan the application is already on.

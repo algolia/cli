@@ -209,37 +209,43 @@ func ApplicationCreateAborted(triggeredFrom string) Event {
 }
 
 // --- Application upgrade events ---------------------------------------------
+//
+// Plan properties share one vocabulary across the upgrade/downgrade events:
+// requested_plan is the raw --plan input (omitted when the user picked
+// interactively), from_plan is the plan the application is on when the change
+// is attempted ("unknown" when it can't be resolved), and to_plan is the
+// resolved target plan id.
 
 // ApplicationUpgradeStarted is emitted when the user starts the upgrade flow.
-func ApplicationUpgradeStarted(plan string) Event {
+// requestedPlan is the raw --plan value; empty (interactive picker) is omitted.
+func ApplicationUpgradeStarted(requestedPlan string) Event {
 	return Event{
-		Name: EventApplicationUpgradeStarted,
+		Name:       EventApplicationUpgradeStarted,
+		Properties: requestedPlanProps(requestedPlan),
 	}
 }
 
 // ApplicationUpgradeAcceptedTerms is emitted when the user accepts the T&C.
-func ApplicationUpgradeAcceptedTerms(plan string) Event {
+func ApplicationUpgradeAcceptedTerms(fromPlan, toPlan string) Event {
 	return Event{
 		Name:       EventApplicationUpgradeAcceptedTerms,
-		Properties: map[string]any{"plan": plan},
+		Properties: planChangeProps(fromPlan, toPlan),
 	}
 }
 
 // ApplicationUpgradeDeclinedTerms is emitted when the user declines the T&C.
-func ApplicationUpgradeDeclinedTerms(plan string) Event {
+func ApplicationUpgradeDeclinedTerms(fromPlan, toPlan string) Event {
 	return Event{
 		Name:       EventApplicationUpgradeDeclinedTerms,
-		Properties: map[string]any{"plan": plan},
+		Properties: planChangeProps(fromPlan, toPlan),
 	}
 }
 
 // ApplicationUpgradeFailed is emitted when the Dashboard API returns an error.
 // httpStatus is omitted when zero.
-func ApplicationUpgradeFailed(plan, errorClass string, httpStatus int) Event {
-	props := map[string]any{
-		"plan":        plan,
-		"error_class": errorClass,
-	}
+func ApplicationUpgradeFailed(fromPlan, toPlan, errorClass string, httpStatus int) Event {
+	props := planChangeProps(fromPlan, toPlan)
+	props["error_class"] = errorClass
 	if httpStatus != 0 {
 		props["http_status"] = httpStatus
 	}
@@ -247,45 +253,45 @@ func ApplicationUpgradeFailed(plan, errorClass string, httpStatus int) Event {
 }
 
 // ApplicationUpgradeCompleted is emitted when the upgrade flow succeeds.
-func ApplicationUpgradeCompleted(plan string) Event {
+func ApplicationUpgradeCompleted(fromPlan, toPlan string) Event {
 	return Event{
 		Name:       EventApplicationUpgradeCompleted,
-		Properties: map[string]any{"plan": plan},
+		Properties: planChangeProps(fromPlan, toPlan),
 	}
 }
 
 // --- Application downgrade events -------------------------------------------
 
 // ApplicationDowngradeStarted is emitted when the user starts the downgrade flow.
-func ApplicationDowngradeStarted(plan string) Event {
+// requestedPlan is the raw --plan value; empty (interactive picker) is omitted.
+func ApplicationDowngradeStarted(requestedPlan string) Event {
 	return Event{
-		Name: EventApplicationDowngradeStarted,
+		Name:       EventApplicationDowngradeStarted,
+		Properties: requestedPlanProps(requestedPlan),
 	}
 }
 
 // ApplicationDowngradeAcceptedTerms is emitted when the user accepts the T&C.
-func ApplicationDowngradeAcceptedTerms(plan string) Event {
+func ApplicationDowngradeAcceptedTerms(fromPlan, toPlan string) Event {
 	return Event{
 		Name:       EventApplicationDowngradeAcceptedTerms,
-		Properties: map[string]any{"plan": plan},
+		Properties: planChangeProps(fromPlan, toPlan),
 	}
 }
 
 // ApplicationDowngradeDeclinedTerms is emitted when the user declines the T&C.
-func ApplicationDowngradeDeclinedTerms(plan string) Event {
+func ApplicationDowngradeDeclinedTerms(fromPlan, toPlan string) Event {
 	return Event{
 		Name:       EventApplicationDowngradeDeclinedTerms,
-		Properties: map[string]any{"plan": plan},
+		Properties: planChangeProps(fromPlan, toPlan),
 	}
 }
 
 // ApplicationDowngradeFailed is emitted when the Dashboard API returns an error.
 // httpStatus is omitted when zero.
-func ApplicationDowngradeFailed(plan, errorClass string, httpStatus int) Event {
-	props := map[string]any{
-		"plan":        plan,
-		"error_class": errorClass,
-	}
+func ApplicationDowngradeFailed(fromPlan, toPlan, errorClass string, httpStatus int) Event {
+	props := planChangeProps(fromPlan, toPlan)
+	props["error_class"] = errorClass
 	if httpStatus != 0 {
 		props["http_status"] = httpStatus
 	}
@@ -293,9 +299,26 @@ func ApplicationDowngradeFailed(plan, errorClass string, httpStatus int) Event {
 }
 
 // ApplicationDowngradeCompleted is emitted when the downgrade flow succeeds.
-func ApplicationDowngradeCompleted(plan string) Event {
+func ApplicationDowngradeCompleted(fromPlan, toPlan string) Event {
 	return Event{
 		Name:       EventApplicationDowngradeCompleted,
-		Properties: map[string]any{"plan": plan},
+		Properties: planChangeProps(fromPlan, toPlan),
+	}
+}
+
+// requestedPlanProps returns the Started properties; nil when the plan wasn't
+// given explicitly (interactive picker).
+func requestedPlanProps(requestedPlan string) map[string]any {
+	if requestedPlan == "" {
+		return nil
+	}
+	return map[string]any{"requested_plan": requestedPlan}
+}
+
+// planChangeProps is the shared from/to property pair of plan-change events.
+func planChangeProps(fromPlan, toPlan string) map[string]any {
+	return map[string]any{
+		"from_plan": fromPlan,
+		"to_plan":   toPlan,
 	}
 }
