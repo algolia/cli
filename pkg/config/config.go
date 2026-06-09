@@ -45,6 +45,10 @@ type Config struct {
 	// state is the parsed state.toml, loaded once per command via loadState.
 	stateOnce sync.Once
 	state     *State
+
+	// activeApp is the resolved current application ID, computed once.
+	activeAppOnce sync.Once
+	activeApp     string
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -102,6 +106,37 @@ func (c *Config) loadState() *State {
 		c.state = st
 	})
 	return c.state
+}
+
+// activeApplicationID resolves (once per command) which application the new
+// model should read against. Returns "" when no new-model app applies, so the
+// caller falls back to config.toml.
+func (c *Config) activeApplicationID() string {
+	c.activeAppOnce.Do(func() {
+		c.activeApp = c.resolveActiveApplicationID()
+	})
+	return c.activeApp
+}
+
+func (c *Config) resolveActiveApplicationID() string {
+	if v := os.Getenv("ALGOLIA_APPLICATION_ID"); v != "" {
+		return v
+	}
+
+	p := &c.CurrentProfile
+	if p.ApplicationID != "" { // --application-id flag
+		return p.ApplicationID
+	}
+
+	st := c.loadState()
+	if p.Name != "" { // --profile <name>: resolve against the stored alias
+		if appID, ok := st.ApplicationByAlias(p.Name); ok {
+			return appID
+		}
+		return "" // unknown alias → let the legacy config.toml profile-by-name handle it
+	}
+
+	return st.CurrentApplicationID
 }
 
 // ConfiguredProfiles return the profiles in the configuration file
