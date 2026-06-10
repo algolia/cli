@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -106,6 +107,58 @@ func (f *FlowTracker) DurationMS() int64 {
 		return 0
 	}
 	return time.Since(f.start).Milliseconds()
+}
+
+// Event is a fully assembled telemetry event, ready to be tracked.
+type Event struct {
+	Name       string
+	Properties map[string]any
+}
+
+// TrackEvent sends the event through the context's telemetry client, silently
+// doing nothing when no client is present.
+func TrackEvent(ctx context.Context, event Event) {
+	client := GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+	_ = client.Track(ctx, event.Name, event.Properties)
+}
+
+// AuthStarted is emitted when the browser-based OAuth flow begins.
+func AuthStarted(flow Flow, noBrowser bool) Event {
+	return Event{EventAuthStarted, map[string]any{
+		"flow":       flow,
+		"no_browser": noBrowser,
+	}}
+}
+
+// AuthCompleted is emitted when the profile is fully configured at the end of
+// the auth flow.
+func AuthCompleted(flow Flow, tracker *FlowTracker) Event {
+	return Event{EventAuthCompleted, map[string]any{
+		"flow":        flow,
+		"duration_ms": tracker.DurationMS(),
+	}}
+}
+
+// AuthAborted is emitted when the user cancelled the auth flow, with the step
+// they stopped at.
+func AuthAborted(flow Flow, tracker *FlowTracker) Event {
+	return Event{EventAuthAborted, map[string]any{
+		"flow": flow,
+		"step": tracker.Step(),
+	}}
+}
+
+// AuthFailed is emitted when the auth flow failed, with the step it failed at.
+func AuthFailed(flow Flow, tracker *FlowTracker, err error) Event {
+	return Event{EventAuthFailed, map[string]any{
+		"flow":        flow,
+		"step":        tracker.Step(),
+		"duration_ms": tracker.DurationMS(),
+		"error_class": ErrorClass(err),
+	}}
 }
 
 // ErrorClass returns the type of the first informative error of the chain,

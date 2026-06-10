@@ -2,6 +2,7 @@ package login
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/telemetry"
+	"github.com/algolia/cli/pkg/telemetry/telemetrytest"
 	"github.com/algolia/cli/test"
 )
 
@@ -128,6 +130,52 @@ func TestApplyStoredIdentity_TokenWithoutIdentityReturnsFalse(t *testing.T) {
 
 	assert.False(t, applyStoredIdentity(ctx))
 	assert.Empty(t, metadata.UserID)
+}
+
+func TestTrackOAuthFlowOutcome(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		wantEvent string
+		wantStep  bool
+	}{
+		{
+			name:      "success",
+			err:       nil,
+			wantEvent: telemetry.EventAuthCompleted,
+		},
+		{
+			name:      "user cancellation",
+			err:       cmdutil.ErrCancel,
+			wantEvent: telemetry.EventAuthAborted,
+			wantStep:  true,
+		},
+		{
+			name:      "failure",
+			err:       errors.New("boom"),
+			wantEvent: telemetry.EventAuthFailed,
+			wantStep:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &telemetrytest.RecordingClient{}
+			ctx := telemetry.WithTelemetryClient(context.Background(), client)
+			tracker := telemetry.NewFlowTracker()
+			tracker.SetStep(telemetry.StepAppsFetch)
+
+			trackOAuthFlowOutcome(ctx, telemetry.FlowLogin, tracker, tt.err)
+
+			require.Len(t, client.Events, 1)
+			event := client.Events[0]
+			assert.Equal(t, tt.wantEvent, event.Name)
+			assert.Equal(t, telemetry.FlowLogin, event.Properties["flow"])
+			if tt.wantStep {
+				assert.Equal(t, telemetry.StepAppsFetch, event.Properties["step"])
+			}
+		})
+	}
 }
 
 func TestSelectApplication_MultipleApps_NonInteractive_NoAppName(t *testing.T) {
