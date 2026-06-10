@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/BurntSushi/toml"
+	"github.com/algolia/cli/pkg/keychain"
 	"github.com/algolia/cli/pkg/utils"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -32,13 +34,29 @@ type IConfig interface {
 	Default() *Profile
 }
 
-// Config handles all overall configuration for the CLI
+// Config handles all overall configuration for the CLI.
+//
+// It must not be copied after InitConfig: it holds sync primitives (govet
+// copylocks) and CurrentProfile holds a back-pointer to it. Pass it by pointer.
 type Config struct {
 	ApplicationName string
 
 	CurrentProfile Profile
 
-	File string
+	File      string
+	StateFile string
+
+	// state is the parsed state.toml, loaded once per command via loadState.
+	stateOnce sync.Once
+	state     *State
+
+	// activeApp is the resolved current application ID, computed once.
+	activeAppOnce sync.Once
+	activeApp     string
+
+	// secretsCache memoizes per-application keychain lookups (guarded by secretsMu).
+	secretsMu    sync.Mutex
+	secretsCache map[string]*keychain.AppSecrets
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -49,6 +67,7 @@ func (c *Config) InitConfig() {
 		configFolder := c.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 		configFile := filepath.Join(configFolder, "config.toml")
 		c.File = configFile
+		c.StateFile = filepath.Join(configFolder, "state.toml")
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(configFile)
 		viper.SetConfigPermissions(os.FileMode(0o600))
@@ -60,6 +79,8 @@ func (c *Config) InitConfig() {
 			log.Fatalf("%s", err)
 		}
 	}
+
+	c.CurrentProfile.config = c
 
 	_ = viper.ReadInConfig()
 }
@@ -80,6 +101,79 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 	}
 
 	return filepath.Join(configPath, "algolia")
+}
+
+// loadState reads state.toml once per command and caches it. A missing or
+// corrupt file degrades to an empty State so resolution can fall back to
+// config.toml rather than crash.
+func (c *Config) loadState() *State {
+	c.stateOnce.Do(func() {
+		st, err := LoadState(c.StateFile)
+		if err != nil {
+			log.Warnf("ignoring unreadable state file %q: %s", c.StateFile, err)
+			st = &State{Applications: map[string]ApplicationState{}}
+		}
+		c.state = st
+	})
+	return c.state
+}
+
+// activeApplicationID resolves (once per command) which application the new
+// model should read against. Returns "" when no new-model app applies, so the
+// caller falls back to config.toml.
+func (c *Config) activeApplicationID() string {
+	c.activeAppOnce.Do(func() {
+		c.activeApp = c.resolveActiveApplicationID()
+	})
+	return c.activeApp
+}
+
+func (c *Config) resolveActiveApplicationID() string {
+	if v := os.Getenv("ALGOLIA_APPLICATION_ID"); v != "" {
+		return v
+	}
+
+	p := &c.CurrentProfile
+	if p.ApplicationID != "" { // --application-id flag
+		return p.ApplicationID
+	}
+
+	st := c.loadState()
+	// Only a Name set explicitly (--profile flag) counts here: a name filled by
+	// LoadDefault must not shadow the state.toml current application.
+	if p.Name != "" && !p.nameFromDefault {
+		if appID, ok := st.ApplicationByAlias(p.Name); ok {
+			return appID
+		}
+		return "" // unknown alias → let the legacy config.toml profile-by-name handle it
+	}
+
+	return st.CurrentApplicationID
+}
+
+// appSecretsFor returns the cached keychain secrets for an application, loading
+// them once. A missing entry or a keychain failure yields nil (also cached, so
+// a single command never hits the keychain twice for the same app). The mutex
+// keeps the cache safe if a getter is ever called concurrently; resolution runs
+// on the main goroutine today.
+func (c *Config) appSecretsFor(appID string) *keychain.AppSecrets {
+	c.secretsMu.Lock()
+	defer c.secretsMu.Unlock()
+
+	if c.secretsCache == nil {
+		c.secretsCache = map[string]*keychain.AppSecrets{}
+	}
+	if cached, ok := c.secretsCache[appID]; ok {
+		return cached
+	}
+
+	secrets, err := keychain.LoadAppSecrets(appID)
+	if err != nil {
+		log.Warnf("ignoring keychain error for application %q: %s", appID, err)
+		secrets = nil
+	}
+	c.secretsCache[appID] = secrets
+	return secrets
 }
 
 // ConfiguredProfiles return the profiles in the configuration file

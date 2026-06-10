@@ -22,6 +22,16 @@ type Profile struct {
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
 	Default bool `mapstructure:"default"`
+
+	// config back-references the owning Config for new-model (state.toml +
+	// keychain) resolution. nil for standalone profiles (e.g. those returned by
+	// ConfiguredProfiles), which then resolve from config.toml only.
+	config *Config
+
+	// nameFromDefault records that Name was filled by LoadDefault rather than
+	// by an explicit --profile flag, so the new-model resolver doesn't let the
+	// legacy default profile shadow state.toml's current application.
+	nameFromDefault bool
 }
 
 func (p *Profile) GetFieldName(field string) string {
@@ -33,6 +43,7 @@ func (p *Profile) LoadDefault() {
 	for appName := range configs {
 		if viper.GetBool(appName + ".default") {
 			p.Name = appName
+			p.nameFromDefault = true
 		}
 	}
 }
@@ -44,6 +55,13 @@ func (p *Profile) GetApplicationID() (string, error) {
 
 	if p.ApplicationID != "" {
 		return p.ApplicationID, nil
+	}
+
+	// New model: state.toml current/selected application.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			return appID, nil
+		}
 	}
 
 	if p.Name == "" {
@@ -67,6 +85,17 @@ func (p *Profile) GetAPIKey() (string, error) {
 
 	if p.APIKey != "" {
 		return p.APIKey, nil
+	}
+
+	// New model: once an application is resolved, its key comes only from that
+	// application's keychain entry — never a different profile's config.toml key.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			if secrets := p.config.appSecretsFor(appID); secrets != nil && secrets.APIKey != "" {
+				return secrets.APIKey, nil
+			}
+			return "", ErrAPIKeyNotConfigured
+		}
 	}
 
 	if p.Name == "" {
@@ -159,6 +188,18 @@ func (p *Profile) GetCrawlerUserID() (string, error) {
 func (p *Profile) GetCrawlerAPIKey() (string, error) {
 	if os.Getenv("ALGOLIA_CRAWLER_API_KEY") != "" {
 		return os.Getenv("ALGOLIA_CRAWLER_API_KEY"), nil
+	}
+
+	// New model: once an application is resolved, its crawler key comes only from
+	// that application's keychain entry — never a different profile's.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			if secrets := p.config.appSecretsFor(appID); secrets != nil &&
+				secrets.CrawlerAPIKey != "" {
+				return secrets.CrawlerAPIKey, nil
+			}
+			return "", ErrCrawlerAPIKeyNotConfigured
+		}
 	}
 
 	if p.Name == "" {
