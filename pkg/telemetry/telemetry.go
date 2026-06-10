@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
@@ -29,12 +30,16 @@ type telemetryClientKey struct{}
 
 type TelemetryClient interface {
 	Identify(ctx context.Context) error
-	Track(ctx context.Context, event string) error
+	Track(ctx context.Context, event string, properties map[string]any) error
 	Close()
 }
 
 type AnalyticsTelemetryClient struct {
 	client analytics.Client
+	// sequence numbers the Track events of one invocation so their order can
+	// be reconstructed downstream: Segment stores timestamps with millisecond
+	// precision, so back-to-back events can tie.
+	sequence atomic.Int64
 }
 
 type AnalyticsTelemetryLogger struct {
@@ -237,19 +242,30 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	return a.client.Enqueue(identify)
 }
 
-// Track tracks the event with the provided properties
-func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) error {
+// Track tracks the event with the provided custom properties, merged with the
+// base properties of the invocation
+func (a *AnalyticsTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
 	metadata := GetEventMetadata(ctx)
+
+	props := make(map[string]any, len(properties)+5)
+	for k, v := range properties {
+		props[k] = v
+	}
+	// Base properties are set last so custom ones can never override them.
+	props["invocation_id"] = metadata.InvocationID
+	props["app_id"] = metadata.AppID
+	props["command"] = metadata.CommandPath
+	props["flags"] = metadata.CommandFlags
+	props["sequence"] = a.sequence.Add(1)
 
 	track := analytics.Track{
 		Event:       event,
 		AnonymousId: metadata.AnonymousID,
-		Properties: map[string]interface{}{
-			"invocation_id": metadata.InvocationID,
-			"app_id":        metadata.AppID,
-			"command":       metadata.CommandPath,
-			"flags":         metadata.CommandFlags,
-		},
+		Properties:  props,
 		Context: &analytics.Context{
 			Device: analytics.DeviceInfo{
 				Id: metadata.AnonymousID,
@@ -269,6 +285,14 @@ func (a *AnalyticsTelemetryClient) Close() {
 	_ = a.client.Close()
 }
 
-func (a *NoOpTelemetryClient) Identify(ctx context.Context) error            { return nil }
-func (a *NoOpTelemetryClient) Track(ctx context.Context, event string) error { return nil }
-func (a *NoOpTelemetryClient) Close()                                        {}
+func (a *NoOpTelemetryClient) Identify(ctx context.Context) error { return nil }
+
+func (a *NoOpTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
+	return nil
+}
+
+func (a *NoOpTelemetryClient) Close() {}

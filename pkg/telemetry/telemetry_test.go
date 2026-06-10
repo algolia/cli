@@ -130,7 +130,7 @@ func TestTrack_IncludesUserWhenAuthenticated(t *testing.T) {
 	metadata.SetUser("user-42", "user@test.com", "Test User")
 	ctx := WithEventMetadata(context.Background(), metadata)
 
-	require.NoError(t, client.Track(ctx, "Command Invoked"))
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
 	require.Len(t, fake.messages, 1)
 
 	track, ok := fake.messages[0].(analytics.Track)
@@ -146,10 +146,66 @@ func TestTrack_OmitsUserWhenAnonymous(t *testing.T) {
 	metadata := NewEventMetadata()
 	ctx := WithEventMetadata(context.Background(), metadata)
 
-	require.NoError(t, client.Track(ctx, "Command Invoked"))
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
 	require.Len(t, fake.messages, 1)
 
 	track, ok := fake.messages[0].(analytics.Track)
 	require.True(t, ok)
 	assert.Empty(t, track.UserId)
+}
+
+func TestTrack_MergesCustomProperties(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	metadata.SetAppID("app-id")
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "CLI Auth Started", map[string]any{"flow": "login"}))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, "login", track.Properties["flow"])
+	assert.Equal(t, metadata.InvocationID, track.Properties["invocation_id"])
+	assert.Equal(t, "app-id", track.Properties["app_id"])
+}
+
+func TestTrack_SequenceIsMonotonic(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	for i := 0; i < 3; i++ {
+		require.NoError(t, client.Track(ctx, "Command Invoked", nil))
+	}
+	require.Len(t, fake.messages, 3)
+
+	for i, msg := range fake.messages {
+		track, ok := msg.(analytics.Track)
+		require.True(t, ok)
+		assert.Equal(t, int64(i+1), track.Properties["sequence"])
+	}
+}
+
+func TestTrack_CustomPropertiesCannotOverrideBase(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "Command Invoked", map[string]any{
+		"invocation_id": "spoofed",
+		"sequence":      int64(999),
+	}))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, metadata.InvocationID, track.Properties["invocation_id"])
+	assert.Equal(t, int64(1), track.Properties["sequence"])
 }

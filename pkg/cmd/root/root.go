@@ -193,7 +193,7 @@ func Execute() exitCode {
 		}
 
 		// Send telemetry.
-		err = telemetryClient.Track(ctx, "Command Invoked")
+		err = telemetryClient.Track(ctx, "Command Invoked", nil)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}
