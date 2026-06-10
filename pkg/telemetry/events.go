@@ -108,18 +108,20 @@ func (f *FlowTracker) DurationMS() int64 {
 	return time.Since(f.start).Milliseconds()
 }
 
-// ErrorClass returns the type of the root cause of an error, never its
-// message, which could contain user data.
+// ErrorClass returns the type of the first informative error of the chain,
+// skipping the anonymous wrappers created by fmt.Errorf. It never returns an
+// error message, which could contain user data.
 func ErrorClass(err error) string {
-	if err == nil {
-		return ""
-	}
-	for {
-		unwrapped := errors.Unwrap(err)
-		if unwrapped == nil {
-			break
+	for err != nil {
+		class := fmt.Sprintf("%T", err)
+		switch class {
+		case "*fmt.wrapError", "*fmt.wrapErrors", "*errors.joinError":
+			if unwrapped := errors.Unwrap(err); unwrapped != nil {
+				err = unwrapped
+				continue
+			}
 		}
-		err = unwrapped
+		return class
 	}
-	return fmt.Sprintf("%T", err)
+	return ""
 }

@@ -210,13 +210,15 @@ func Execute() (code exitCode) {
 	// functions run last-in-first-out).
 	var executedCmd *cobra.Command
 	var executeErr error
+	var elapsed time.Duration
 	defer func() {
-		trackCommandCompleted(ctx, executedCmd, code, executeErr, time.Since(start))
+		trackCommandCompleted(ctx, executedCmd, code, executeErr, elapsed)
 	}()
 
-	// Run the command.
+	// Run the command. The duration is measured right away so it never
+	// includes the update-notifier wait below.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
-	executedCmd, executeErr = cmd, err
+	executedCmd, executeErr, elapsed = cmd, err, time.Since(start)
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
@@ -264,6 +266,13 @@ func trackCommandCompleted(
 	elapsed time.Duration,
 ) {
 	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
+		return
+	}
+	// An empty command path means PersistentPreRunE never ran (--help,
+	// --version, unknown flag or command, failed auth check): no Command
+	// Invoked was sent, so don't send an orphan Command Completed either.
+	metadata := telemetry.GetEventMetadata(ctx)
+	if metadata == nil || metadata.CommandPath == "" {
 		return
 	}
 	client := telemetry.GetTelemetryClient(ctx)

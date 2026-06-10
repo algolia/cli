@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/segmentio/analytics-go/v3"
@@ -76,10 +77,13 @@ func TestSetUser(t *testing.T) {
 // fakeAnalyticsClient captures the messages enqueued by the telemetry client so
 // tests can assert on the payload without hitting the network.
 type fakeAnalyticsClient struct {
+	mu       sync.Mutex
 	messages []analytics.Message
 }
 
 func (f *fakeAnalyticsClient) Enqueue(msg analytics.Message) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.messages = append(f.messages, msg)
 	return nil
 }
@@ -188,6 +192,36 @@ func TestTrack_SequenceIsMonotonic(t *testing.T) {
 		track, ok := msg.(analytics.Track)
 		require.True(t, ok)
 		assert.Equal(t, int64(i+1), track.Properties["sequence"])
+	}
+}
+
+func TestTrack_SequenceIsUniqueUnderConcurrency(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	const n = 100
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = client.Track(ctx, "Command Invoked", nil)
+		}()
+	}
+	wg.Wait()
+
+	require.Len(t, fake.messages, n)
+	seen := make(map[int64]bool, n)
+	for _, msg := range fake.messages {
+		track, ok := msg.(analytics.Track)
+		require.True(t, ok)
+		seq, ok := track.Properties["sequence"].(int64)
+		require.True(t, ok)
+		assert.False(t, seen[seq], "duplicate sequence %d", seq)
+		seen[seq] = true
 	}
 }
 
