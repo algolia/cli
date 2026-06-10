@@ -3,6 +3,7 @@ package planchange
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,8 +18,80 @@ import (
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
+	"github.com/algolia/cli/pkg/telemetry/telemetrytest"
 	"github.com/algolia/cli/test"
 )
+
+func TestTrackPlanChangeOutcome(t *testing.T) {
+	tests := []struct {
+		name       string
+		result     planChangeResult
+		err        error
+		wantEvent  string
+		wantReason any
+	}{
+		{
+			name:      "changed",
+			result:    planChangeResult{changed: true, fromPlan: "free", toPlan: "grow"},
+			wantEvent: telemetry.EventApplicationPlanChangeCompleted,
+		},
+		{
+			// The change succeeded; cancelling the post-success courtesy
+			// prompt must not turn it into an abort.
+			name:      "changed but cost-management prompt cancelled",
+			result:    planChangeResult{changed: true, fromPlan: "free", toPlan: "grow"},
+			err:       cmdutil.ErrCancel,
+			wantEvent: telemetry.EventApplicationPlanChangeCompleted,
+		},
+		{
+			name:       "no candidates",
+			result:     planChangeResult{abortReason: telemetry.AbortReasonNoCandidates},
+			wantEvent:  telemetry.EventApplicationPlanChangeAborted,
+			wantReason: telemetry.AbortReasonNoCandidates,
+		},
+		{
+			name:       "billing wall with error",
+			result:     planChangeResult{abortReason: telemetry.AbortReasonBillingRequired},
+			err:        errors.New("payment method required"),
+			wantEvent:  telemetry.EventApplicationPlanChangeAborted,
+			wantReason: telemetry.AbortReasonBillingRequired,
+		},
+		{
+			name:       "user cancellation",
+			err:        cmdutil.ErrCancel,
+			wantEvent:  telemetry.EventApplicationPlanChangeAborted,
+			wantReason: telemetry.AbortReasonCancelled,
+		},
+		{
+			name:      "failure",
+			err:       errors.New("boom"),
+			wantEvent: telemetry.EventApplicationPlanChangeFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &telemetrytest.RecordingClient{}
+			ctx := telemetry.WithTelemetryClient(context.Background(), client)
+
+			trackPlanChangeOutcome(
+				ctx,
+				telemetry.DirectionUpgrade,
+				telemetry.NewFlowTracker(),
+				tt.result,
+				tt.err,
+			)
+
+			require.Len(t, client.Events, 1)
+			event := client.Events[0]
+			assert.Equal(t, tt.wantEvent, event.Name)
+			if tt.wantReason != nil {
+				assert.Equal(t, tt.wantReason, event.Properties["reason"])
+			}
+		})
+	}
+}
 
 // seedToken installs an in-memory keyring with a valid token so
 // auth.EnsureAuthenticated short-circuits without hitting the network.

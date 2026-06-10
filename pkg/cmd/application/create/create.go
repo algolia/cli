@@ -110,13 +110,25 @@ func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
 	telemetry.TrackEvent(ctx, telemetry.ApplicationCreateStarted())
 
 	result, err := createApplication(ctx, opts, tracker)
+	trackCreateOutcome(ctx, tracker, result, err)
+	return err
+}
+
+// trackCreateOutcome reports how the creation flow ended: completed, aborted
+// (with the reason why), or failed.
+func trackCreateOutcome(
+	ctx context.Context,
+	tracker *telemetry.FlowTracker,
+	result createResult,
+	err error,
+) {
 	switch {
 	case err == nil && result.created:
 		telemetry.TrackEvent(
 			ctx,
 			telemetry.ApplicationCreateCompleted(result.region, result.plan, tracker),
 		)
-	case err == nil || cmdutil.IsUserCancellation(err):
+	case err == nil || result.abortReason != "" || cmdutil.IsUserCancellation(err):
 		// Stopped without creating anything: declined terms, billing wall,
 		// or user cancellation.
 		reason := result.abortReason
@@ -127,7 +139,6 @@ func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
 	default:
 		telemetry.TrackEvent(ctx, telemetry.ApplicationCreateFailed(tracker, err))
 	}
-	return err
 }
 
 // printDryRunSummary prints what would be created without sending anything.
@@ -186,6 +197,7 @@ func createApplication(
 
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
+	tracker.SetStep(telemetry.StepAuth)
 	token, err := auth.EnsureAuthenticated(opts.IO, client)
 	if err != nil {
 		return result, err
@@ -218,7 +230,7 @@ func createApplication(
 	if err != nil {
 		return result, err
 	}
-	result.plan = target.ID
+	result.plan = apputil.PlanTelemetryID(*target)
 
 	if !target.IsFree() {
 		billingMissing := !apputil.PlanAvailable(plans, target.ID) ||
@@ -235,12 +247,12 @@ func createApplication(
 		return result, err
 	}
 	if !accepted {
-		telemetry.TrackEvent(ctx, telemetry.ApplicationCreateDeclinedTerms(target.ID))
+		telemetry.TrackEvent(ctx, telemetry.ApplicationCreateDeclinedTerms(result.plan))
 		fmt.Fprintf(opts.IO.Out, "%s Aborted; no application was created.\n", cs.WarningIcon())
 		result.abortReason = telemetry.AbortReasonDeclinedTerms
 		return result, nil
 	}
-	telemetry.TrackEvent(ctx, telemetry.ApplicationCreateAcceptedTerms(target.ID))
+	telemetry.TrackEvent(ctx, telemetry.ApplicationCreateAcceptedTerms(result.plan))
 
 	appDetails, createdRegion, err := apputil.CreateAndFetchApplication(
 		opts.IO,

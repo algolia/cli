@@ -3,6 +3,7 @@ package create
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,8 +18,66 @@ import (
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
+	"github.com/algolia/cli/pkg/telemetry/telemetrytest"
 	"github.com/algolia/cli/test"
 )
+
+func TestTrackCreateOutcome(t *testing.T) {
+	tests := []struct {
+		name       string
+		result     createResult
+		err        error
+		wantEvent  string
+		wantReason any
+	}{
+		{
+			name:      "created",
+			result:    createResult{created: true, region: "us-east", plan: "free"},
+			wantEvent: telemetry.EventApplicationCreateCompleted,
+		},
+		{
+			name:       "declined terms",
+			result:     createResult{abortReason: telemetry.AbortReasonDeclinedTerms},
+			wantEvent:  telemetry.EventApplicationCreateAborted,
+			wantReason: telemetry.AbortReasonDeclinedTerms,
+		},
+		{
+			name:       "billing wall with error",
+			result:     createResult{abortReason: telemetry.AbortReasonBillingRequired},
+			err:        errors.New("payment method required"),
+			wantEvent:  telemetry.EventApplicationCreateAborted,
+			wantReason: telemetry.AbortReasonBillingRequired,
+		},
+		{
+			name:       "user cancellation",
+			err:        cmdutil.ErrCancel,
+			wantEvent:  telemetry.EventApplicationCreateAborted,
+			wantReason: telemetry.AbortReasonCancelled,
+		},
+		{
+			name:      "failure",
+			err:       errors.New("boom"),
+			wantEvent: telemetry.EventApplicationCreateFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &telemetrytest.RecordingClient{}
+			ctx := telemetry.WithTelemetryClient(context.Background(), client)
+
+			trackCreateOutcome(ctx, telemetry.NewFlowTracker(), tt.result, tt.err)
+
+			require.Len(t, client.Events, 1)
+			event := client.Events[0]
+			assert.Equal(t, tt.wantEvent, event.Name)
+			if tt.wantReason != nil {
+				assert.Equal(t, tt.wantReason, event.Properties["reason"])
+			}
+		})
+	}
+}
 
 // seedToken installs an in-memory keyring with a valid token.
 func seedToken(t *testing.T) {
