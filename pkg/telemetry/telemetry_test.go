@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"testing"
 
@@ -9,7 +10,45 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/algolia/cli/pkg/version"
 )
+
+// captureTransport records the request it receives without hitting the network.
+type captureTransport struct {
+	req *http.Request
+}
+
+func (c *captureTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	c.req = req
+	return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody}, nil
+}
+
+func TestEnvHeaderTransport_SetsHeaderWithoutMutatingRequest(t *testing.T) {
+	capture := &captureTransport{}
+	transport := &envHeaderTransport{base: capture, env: "prod"}
+
+	req, err := http.NewRequest(http.MethodPost, "https://example.com/v1/batch", nil)
+	require.NoError(t, err)
+
+	_, err = transport.RoundTrip(req)
+	require.NoError(t, err)
+
+	assert.Equal(t, "prod", capture.req.Header.Get(envHeader))
+	// RoundTrippers must not mutate the caller's request.
+	assert.Empty(t, req.Header.Get(envHeader))
+}
+
+func TestTelemetryEnv(t *testing.T) {
+	orig := version.Version
+	t.Cleanup(func() { version.Version = orig })
+
+	version.Version = "main"
+	assert.Equal(t, "dev", telemetryEnv())
+
+	version.Version = "1.20.0"
+	assert.Equal(t, "prod", telemetryEnv())
+}
 
 // Context-related tests.
 func TestEventMetadataWithGet(t *testing.T) {
