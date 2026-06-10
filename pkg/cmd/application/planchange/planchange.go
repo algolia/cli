@@ -13,6 +13,7 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -84,15 +85,30 @@ func Run(ctx context.Context, opts *Options) error {
 	telemetry.TrackEvent(ctx, telemetry.ApplicationPlanChangeStarted(direction))
 
 	result, err := changePlan(ctx, opts, tracker)
+	trackPlanChangeOutcome(ctx, direction, tracker, result, err)
+	return err
+}
+
+// trackPlanChangeOutcome reports how the plan change flow ended: completed,
+// aborted (with the reason why), or failed.
+func trackPlanChangeOutcome(
+	ctx context.Context,
+	direction telemetry.Direction,
+	tracker *telemetry.FlowTracker,
+	result planChangeResult,
+	err error,
+) {
 	switch {
-	case err == nil && result.changed:
+	case result.changed:
+		// The plan was changed: report Completed even when a post-success
+		// step (courtesy prompt, output printing) failed.
 		telemetry.TrackEvent(
 			ctx,
 			telemetry.ApplicationPlanChangeCompleted(direction, result.fromPlan, result.toPlan, tracker),
 		)
-	case err == nil || cmdutil.IsUserCancellation(err):
+	case err == nil || result.abortReason != "" || cmdutil.IsUserCancellation(err):
 		// Stopped without changing anything: declined terms, already on the
-		// plan, nothing to change to, or user cancellation.
+		// plan, nothing to change to, billing wall, or user cancellation.
 		reason := result.abortReason
 		if reason == "" && cmdutil.IsUserCancellation(err) {
 			reason = telemetry.AbortReasonCancelled
@@ -104,7 +120,6 @@ func Run(ctx context.Context, opts *Options) error {
 	default:
 		telemetry.TrackEvent(ctx, telemetry.ApplicationPlanChangeFailed(direction, tracker, err))
 	}
-	return err
 }
 
 func changePlan(
@@ -115,6 +130,7 @@ func changePlan(
 	var result planChangeResult
 	cs := opts.IO.ColorScheme()
 
+	tracker.SetStep(telemetry.StepAuth)
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
 		return result, fmt.Errorf(
@@ -156,7 +172,7 @@ func changePlan(
 
 	app := fetchApplication(opts, client, &token, appID)
 	if app != nil {
-		result.fromPlan = normalizePlanKey(app.PlanLabel)
+		result.fromPlan = currentPlanTelemetryID(plans, app)
 	}
 
 	target, err := resolveTarget(opts, appID, app, plans)
@@ -167,7 +183,7 @@ func changePlan(
 		result.abortReason = telemetry.AbortReasonNoCandidates
 		return result, nil
 	}
-	result.toPlan = target.ID
+	result.toPlan = apputil.PlanTelemetryID(*target)
 
 	if isCurrentPlan(app, *target) {
 		fmt.Fprintf(
@@ -185,6 +201,7 @@ func changePlan(
 	// block when we positively know there is none (user fetched, flag false);
 	// otherwise defer to the server.
 	if !target.IsFree() && user != nil && !user.HasPaymentMethod {
+		result.abortReason = telemetry.AbortReasonBillingRequired
 		return result, fmt.Errorf(
 			"the %q plan requires a payment method, which the CLI can't collect; add one in the Algolia dashboard (Settings → Billing) and try again",
 			target.Name,
@@ -214,7 +231,10 @@ func changePlan(
 	if !accepted {
 		telemetry.TrackEvent(
 			ctx,
-			telemetry.ApplicationPlanChangeDeclinedTerms(opts.telemetryDirection(), target.ID),
+			telemetry.ApplicationPlanChangeDeclinedTerms(
+				opts.telemetryDirection(),
+				apputil.PlanTelemetryID(*target),
+			),
 		)
 		fmt.Fprintf(
 			opts.IO.Out,
@@ -226,7 +246,10 @@ func changePlan(
 	}
 	telemetry.TrackEvent(
 		ctx,
-		telemetry.ApplicationPlanChangeAcceptedTerms(opts.telemetryDirection(), target.ID),
+		telemetry.ApplicationPlanChangeAcceptedTerms(
+			opts.telemetryDirection(),
+			apputil.PlanTelemetryID(*target),
+		),
 	)
 
 	tracker.SetStep(telemetry.StepAPICall)
@@ -369,6 +392,16 @@ func filterByDirection(
 // the current plan to the self-serve list by matching label against Name.
 func normalizePlanKey(s string) string {
 	return strings.TrimSpace(strings.ToLower(s))
+}
+
+// currentPlanTelemetryID maps the app's current plan to the identifier used in
+// telemetry properties, falling back to the normalized label when the plan is
+// not in the self-serve list.
+func currentPlanTelemetryID(plans []dashboard.Plan, app *dashboard.Application) string {
+	if idx := currentPlanIndex(plans, app); idx >= 0 {
+		return apputil.PlanTelemetryID(plans[idx])
+	}
+	return normalizePlanKey(app.PlanLabel)
 }
 
 // currentPlanIndex returns the index of the app's current plan in plans, or -1.

@@ -121,6 +121,7 @@ func CreateAndFetchApplication(
 		return nil, "", err
 	}
 
+	tracker.SetStep(telemetry.StepAPIKey)
 	if err := EnsureAPIKey(io, client, accessToken, app); err != nil {
 		return nil, "", err
 	}

@@ -56,11 +56,13 @@ const (
 	StepProfileConfigure Step = "profile_configure"
 
 	// Application create and plan change flow steps.
+	StepAuth      Step = "auth"
 	StepName      Step = "name"
 	StepPlan      Step = "plan"
 	StepTerms     Step = "terms"
 	StepRegion    Step = "region"
 	StepAPICall   Step = "api_call"
+	StepAPIKey    Step = "api_key"
 	StepApplyPlan Step = "apply_plan"
 )
 
