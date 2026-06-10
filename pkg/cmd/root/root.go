@@ -122,7 +122,8 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func Execute() exitCode {
+func Execute() (code exitCode) {
+	start := time.Now()
 	hasDebug := os.Getenv("DEBUG") != ""
 	hasTelemetry := os.Getenv("ALGOLIA_CLI_TELEMETRY") != "0"
 
@@ -193,7 +194,7 @@ func Execute() exitCode {
 		}
 
 		// Send telemetry.
-		err = telemetryClient.Track(ctx, "Command Invoked", nil)
+		err = telemetryClient.Track(ctx, telemetry.EventCommandInvoked, nil)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}
@@ -205,8 +206,17 @@ func Execute() exitCode {
 	ctx := createContext(rootCmd, stderr, hasDebug, hasTelemetry)
 	defer closeTelemetry(ctx)
 
+	// Report how the command ended just before the final flush (deferred
+	// functions run last-in-first-out).
+	var executedCmd *cobra.Command
+	var executeErr error
+	defer func() {
+		trackCommandCompleted(ctx, executedCmd, code, executeErr, time.Since(start))
+	}()
+
 	// Run the command.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
+	executedCmd, executeErr = cmd, err
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
@@ -242,6 +252,36 @@ func Execute() exitCode {
 	}
 
 	return exitOK
+}
+
+// trackCommandCompleted reports how the command ended: success, failure (with
+// the class of the error) or user cancellation.
+func trackCommandCompleted(
+	ctx context.Context,
+	cmd *cobra.Command,
+	code exitCode,
+	err error,
+	elapsed time.Duration,
+) {
+	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
+		return
+	}
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+
+	props := map[string]any{
+		"succeeded":   code == exitOK,
+		"exit_code":   int(code),
+		"duration_ms": elapsed.Milliseconds(),
+	}
+	if err != nil {
+		props["error_class"] = telemetry.ErrorClass(err)
+		props["user_cancelled"] = cmdutil.IsUserCancellation(err)
+	}
+
+	_ = client.Track(ctx, telemetry.EventCommandCompleted, props)
 }
 
 // closeTelemetry flushes the pending telemetry events, giving up after a

@@ -1,0 +1,35 @@
+package telemetry
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+type testRootError struct{}
+
+func (testRootError) Error() string { return "boom" }
+
+func TestErrorClass_ReturnsRootCauseType(t *testing.T) {
+	wrapped := fmt.Errorf("outer: %w", fmt.Errorf("inner: %w", testRootError{}))
+	assert.Equal(t, "telemetry.testRootError", ErrorClass(wrapped))
+}
+
+func TestErrorClass_NilError(t *testing.T) {
+	assert.Equal(t, "", ErrorClass(nil))
+}
+
+func TestFlowTracker_NilTrackerIsSafe(t *testing.T) {
+	var tracker *FlowTracker
+	tracker.SetStep(StepTerms)
+	assert.Equal(t, Step(""), tracker.Step())
+	assert.Equal(t, int64(0), tracker.DurationMS())
+}
+
+func TestFlowTracker_TracksStepAndDuration(t *testing.T) {
+	tracker := NewFlowTracker()
+	tracker.SetStep(StepPlan)
+	assert.Equal(t, StepPlan, tracker.Step())
+	assert.GreaterOrEqual(t, tracker.DurationMS(), int64(0))
+}
