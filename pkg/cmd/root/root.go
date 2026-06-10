@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/MakeNowJust/heredoc"
@@ -197,17 +198,12 @@ func Execute() exitCode {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}
 
-		go telemetryClient.Close() // flush telemetry events
-
 		return nil
 	}
 
 	// Command context is used to pass information to the telemetry client.
-	ctx, err := createContext(rootCmd, stderr, hasDebug, hasTelemetry)
-	if err != nil {
-		printError(stderr, err, rootCmd, hasDebug)
-		return exitError
-	}
+	ctx := createContext(rootCmd, stderr, hasDebug, hasTelemetry)
+	defer closeTelemetry(ctx)
 
 	// Run the command.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
@@ -248,31 +244,49 @@ func Execute() exitCode {
 	return exitOK
 }
 
+// closeTelemetry flushes the pending telemetry events, giving up after a
+// short timeout so an unreachable telemetry endpoint never delays exit.
+func closeTelemetry(ctx context.Context) {
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		client.Close()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+	}
+}
+
 // createContext creates a context with telemetry.
 func createContext(
 	cmd *cobra.Command,
 	stderr io.Writer,
 	hasDebug bool,
 	hasTelemetry bool,
-) (context.Context, error) {
+) context.Context {
 	ctx := context.Background()
 	telemetryMetadata := telemetry.NewEventMetadata()
 	updatedCtx := telemetry.WithEventMetadata(ctx, telemetryMetadata)
 
-	var telemetryClient telemetry.TelemetryClient
-	var err error
+	var telemetryClient telemetry.TelemetryClient = &telemetry.NoOpTelemetryClient{}
 	if hasTelemetry {
-		telemetryClient, err = telemetry.NewAnalyticsTelemetryClient(hasDebug)
-		// Fail silently if telemetry is not available unless in debug mode.
-		if err != nil && hasDebug {
-			fmt.Fprintf(stderr, "Error creating telemetry client: %s\n", err)
-			return nil, err
+		client, err := telemetry.NewAnalyticsTelemetryClient(hasDebug)
+		if err != nil {
+			// Fail silently (fall back to no-op telemetry) unless in debug mode.
+			if hasDebug {
+				fmt.Fprintf(stderr, "Error creating telemetry client: %s\n", err)
+			}
+		} else {
+			telemetryClient = client
 		}
-	} else {
-		telemetryClient = &telemetry.NoOpTelemetryClient{}
 	}
 	contextWithTelemetry := telemetry.WithTelemetryClient(updatedCtx, telemetryClient)
-	return contextWithTelemetry, nil
+	return contextWithTelemetry
 }
 
 // printError prints an error to the stderr, with additional information if applicable.

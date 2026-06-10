@@ -63,6 +63,7 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	client, err := analytics.NewWithConfig("", analytics.Config{
 		Endpoint: telemetryAnalyticsURL,
 		Logger:   newTelemetryLogger(debug),
+		Verbose:  debug,
 	})
 	if err != nil {
 		return nil, err
