@@ -71,6 +71,48 @@ func TestAuthFailed(t *testing.T) {
 	assert.Contains(t, event.Properties, "duration_ms")
 }
 
+func TestApplicationCreateCompleted(t *testing.T) {
+	event := ApplicationCreateCompleted("us-east", "grow", NewFlowTracker())
+	assert.Equal(t, EventApplicationCreateCompleted, event.Name)
+	assert.Equal(t, "us-east", event.Properties["region"])
+	assert.Equal(t, "grow", event.Properties["plan"])
+	assert.Contains(t, event.Properties, "duration_ms")
+}
+
+func TestApplicationPlanChangeAborted_WithReason(t *testing.T) {
+	tracker := NewFlowTracker()
+	tracker.SetStep(StepPlan)
+
+	event := ApplicationPlanChangeAborted(DirectionUpgrade, tracker, AbortReasonAlreadyOnPlan)
+	assert.Equal(t, EventApplicationPlanChangeAborted, event.Name)
+	assert.Equal(t, DirectionUpgrade, event.Properties["direction"])
+	assert.Equal(t, StepPlan, event.Properties["step"])
+	assert.Equal(t, AbortReasonAlreadyOnPlan, event.Properties["reason"])
+}
+
+func TestApplicationPlanChangeAborted_WithoutReason(t *testing.T) {
+	event := ApplicationPlanChangeAborted(DirectionDowngrade, NewFlowTracker(), "")
+	assert.NotContains(t, event.Properties, "reason")
+}
+
+func TestApplicationCreateAborted_WithReason(t *testing.T) {
+	tracker := NewFlowTracker()
+	tracker.SetStep(StepTerms)
+
+	event := ApplicationCreateAborted(tracker, AbortReasonDeclinedTerms)
+	assert.Equal(t, EventApplicationCreateAborted, event.Name)
+	assert.Equal(t, StepTerms, event.Properties["step"])
+	assert.Equal(t, AbortReasonDeclinedTerms, event.Properties["reason"])
+}
+
+func TestApplicationPlanChangeCompleted(t *testing.T) {
+	event := ApplicationPlanChangeCompleted(DirectionUpgrade, "free", "grow", NewFlowTracker())
+	assert.Equal(t, EventApplicationPlanChangeCompleted, event.Name)
+	assert.Equal(t, "free", event.Properties["from_plan"])
+	assert.Equal(t, "grow", event.Properties["to_plan"])
+	assert.Contains(t, event.Properties, "duration_ms")
+}
+
 func TestFlowTracker_NilTrackerIsSafe(t *testing.T) {
 	var tracker *FlowTracker
 	tracker.SetStep(StepTerms)
