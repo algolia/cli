@@ -18,6 +18,7 @@ const (
 	EventAuthCompleted = "CLI Auth Completed"
 	EventAuthFailed    = "CLI Auth Failed"
 	EventAuthAborted   = "CLI Auth Aborted"
+	EventAuthLogout    = "CLI Auth Logout"
 
 	EventApplicationCreateStarted       = "CLI Application Create Started"
 	EventApplicationCreateAcceptedTerms = "CLI Application Create Accepted Terms"
@@ -40,6 +41,7 @@ type Flow string
 const (
 	FlowLogin  Flow = "login"
 	FlowSignup Flow = "signup"
+	FlowLogout Flow = "logout"
 )
 
 // Step locates where the user is inside an interactive flow, so aborts and
@@ -148,6 +150,16 @@ func AuthAborted(flow Flow, tracker *FlowTracker) Event {
 	return Event{EventAuthAborted, map[string]any{
 		"flow": flow,
 		"step": tracker.Step(),
+	}}
+}
+
+// AuthLogout is emitted when the user signs out. It must be tracked before
+// the local state is cleared, while the user identifier is still attached to
+// the telemetry metadata; no Identify follows, since Segment's identity graph
+// has no concept of un-identifying.
+func AuthLogout() Event {
+	return Event{EventAuthLogout, map[string]any{
+		"flow": FlowLogout,
 	}}
 }
 
