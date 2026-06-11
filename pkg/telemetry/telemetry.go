@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"runtime"
 	"sync/atomic"
 
@@ -19,8 +20,10 @@ import (
 )
 
 const (
-	AppName               = "cli"
-	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+	AppName = "cli"
+	// No trailing slash: analytics-go appends "/v1/batch" to the endpoint.
+	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com"
+	envHeader             = "X-Algolia-CLI-Env"
 )
 
 type telemetryMetadataKey struct{}
@@ -68,11 +71,41 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 		Endpoint: telemetryAnalyticsURL,
 		Logger:   newTelemetryLogger(debug),
 		Verbose:  debug,
+		Transport: &envHeaderTransport{
+			base: http.DefaultTransport,
+			env:  telemetryEnv(),
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &AnalyticsTelemetryClient{client: client}, nil
+}
+
+// envHeaderTransport adds the X-Algolia-CLI-Env header to every telemetry
+// request, so the proxy can route release builds to the production Segment
+// source and everything else to the development one. Until the proxy routes
+// on the header, all events keep going to the development source.
+type envHeaderTransport struct {
+	base http.RoundTripper
+	env  string
+}
+
+func (t *envHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// RoundTrippers must not mutate the caller's request.
+	req = req.Clone(req.Context())
+	req.Header.Set(envHeader, t.env)
+	return t.base.RoundTrip(req)
+}
+
+// telemetryEnv reports which environment the events belong to: "prod" for
+// release builds (goreleaser injects a semver version), "dev" for source
+// builds (the version stays "main").
+func telemetryEnv() string {
+	if version.Version == "main" {
+		return "dev"
+	}
+	return "prod"
 }
 
 // anonymousID is a unique identifier for an anonymous user of the CLI (basically the hash of the mac address)

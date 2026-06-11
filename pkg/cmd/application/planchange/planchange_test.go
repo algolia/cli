@@ -1,7 +1,9 @@
 package planchange
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,8 +18,80 @@ import (
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
+	"github.com/algolia/cli/pkg/telemetry/telemetrytest"
 	"github.com/algolia/cli/test"
 )
+
+func TestTrackPlanChangeOutcome(t *testing.T) {
+	tests := []struct {
+		name       string
+		result     planChangeResult
+		err        error
+		wantEvent  string
+		wantReason any
+	}{
+		{
+			name:      "changed",
+			result:    planChangeResult{changed: true, fromPlan: "free", toPlan: "grow"},
+			wantEvent: telemetry.EventApplicationPlanChangeCompleted,
+		},
+		{
+			// The change succeeded; cancelling the post-success courtesy
+			// prompt must not turn it into an abort.
+			name:      "changed but cost-management prompt cancelled",
+			result:    planChangeResult{changed: true, fromPlan: "free", toPlan: "grow"},
+			err:       cmdutil.ErrCancel,
+			wantEvent: telemetry.EventApplicationPlanChangeCompleted,
+		},
+		{
+			name:       "no candidates",
+			result:     planChangeResult{abortReason: telemetry.AbortReasonNoCandidates},
+			wantEvent:  telemetry.EventApplicationPlanChangeAborted,
+			wantReason: telemetry.AbortReasonNoCandidates,
+		},
+		{
+			name:       "billing wall with error",
+			result:     planChangeResult{abortReason: telemetry.AbortReasonBillingRequired},
+			err:        errors.New("payment method required"),
+			wantEvent:  telemetry.EventApplicationPlanChangeAborted,
+			wantReason: telemetry.AbortReasonBillingRequired,
+		},
+		{
+			name:       "user cancellation",
+			err:        cmdutil.ErrCancel,
+			wantEvent:  telemetry.EventApplicationPlanChangeAborted,
+			wantReason: telemetry.AbortReasonCancelled,
+		},
+		{
+			name:      "failure",
+			err:       errors.New("boom"),
+			wantEvent: telemetry.EventApplicationPlanChangeFailed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := &telemetrytest.RecordingClient{}
+			ctx := telemetry.WithTelemetryClient(context.Background(), client)
+
+			trackPlanChangeOutcome(
+				ctx,
+				telemetry.DirectionUpgrade,
+				telemetry.NewFlowTracker(),
+				tt.result,
+				tt.err,
+			)
+
+			require.Len(t, client.Events, 1)
+			event := client.Events[0]
+			assert.Equal(t, tt.wantEvent, event.Name)
+			if tt.wantReason != nil {
+				assert.Equal(t, tt.wantReason, event.Properties["reason"])
+			}
+		})
+	}
+}
 
 // seedToken installs an in-memory keyring with a valid token so
 // auth.EnsureAuthenticated short-circuits without hitting the network.
@@ -196,7 +270,7 @@ func TestRun_WithPlanFlag(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
 	assert.Contains(t, out.String(), "Grow")
@@ -211,7 +285,7 @@ func TestRun_FreeTargetNotBilled(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	// "free" maps to the free-type template, whose id is "build".
 	assert.Equal(t, "build", srv.lastPlan)
@@ -226,7 +300,7 @@ func TestRun_BillingBlock(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	err := Run(opts)
+	err := Run(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payment method")
 	assert.Equal(t, 0, srv.patchCalls)
@@ -241,7 +315,7 @@ func TestRun_ToSDeclineAborts(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "aborted")
 }
@@ -253,7 +327,7 @@ func TestRun_NonInteractiveRequiresPlan(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, false)
 	// No --plan and no TTY.
 
-	err := Run(opts)
+	err := Run(context.Background(), opts)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--plan is required")
 	assert.Equal(t, 0, srv.patchCalls)
@@ -274,7 +348,7 @@ func TestRun_InteractivePicker(t *testing.T) {
 
 	opts, out, _ := newOpts(t, srv, true)
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow", srv.lastPlan)
 	assert.Contains(t, out.String(), "Current application: APP1 (My App)")
@@ -288,7 +362,7 @@ func TestRun_DryRunDoesNotCallAPI(t *testing.T) {
 	opts.Plan = "grow"
 	opts.DryRun = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "Dry run")
 	assert.Contains(t, out.String(), "Grow")
@@ -303,7 +377,7 @@ func TestRun_OfferCostManagementBudget(t *testing.T) {
 	opts, out, opened := newOpts(t, srv, true)
 	opts.Plan = "grow"
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Contains(t, out.String(), "create a budget")
 	assert.Equal(
@@ -323,7 +397,7 @@ func TestRun_FreePlanSkipsCostManagementBudget(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.NotContains(t, out.String(), "create a budget")
 	assert.Empty(t, *opened)
@@ -338,7 +412,7 @@ func TestRun_OutputJSON(t *testing.T) {
 	opts.AcceptTerms = true
 	opts.PrintFlags = newPrintFlags("json")
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Contains(t, out.String(), `"plan":"grow"`)
 	assert.Contains(t, out.String(), `"application_id":"APP1"`)
@@ -355,7 +429,7 @@ func TestRun_UpgradeFiltersToHigherPlans(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionUpgrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "grow-plus", srv.lastPlan)
 	assert.Contains(t, out.String(), "current plan: Grow")
@@ -372,7 +446,7 @@ func TestRun_DowngradeFiltersToLowerPlans(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionDowngrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
 }
@@ -385,7 +459,7 @@ func TestRun_UpgradeAtHighestPlanIsNoOp(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionUpgrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the highest")
 	assert.Contains(t, out.String(), "nothing to upgrade")
@@ -399,7 +473,7 @@ func TestRun_DowngradeAtLowestPlanIsNoOp(t *testing.T) {
 	opts, out, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionDowngrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the lowest")
 	assert.Contains(t, out.String(), "nothing to downgrade")
@@ -417,7 +491,7 @@ func TestRun_PlanFlagOverridesDirection(t *testing.T) {
 	opts.Plan = "free"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
 }
@@ -431,7 +505,7 @@ func TestRun_SamePlanIsNoOp(t *testing.T) {
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 0, srv.patchCalls)
 	assert.Contains(t, out.String(), "already on the Grow plan")
 	assert.Contains(t, out.String(), "no change needed")
@@ -448,7 +522,7 @@ func TestRun_UnknownCurrentPlanShowsAllPlans(t *testing.T) {
 	opts, _, _ := newOpts(t, srv, true)
 	opts.Direction = DirectionUpgrade
 
-	require.NoError(t, Run(opts))
+	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
 }

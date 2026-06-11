@@ -153,7 +153,9 @@ func runOAuthFlowSteps(
 		fmt.Fprintf(opts.IO.Out, "\n%s No applications found. Let's create one.\n", cs.WarningIcon())
 
 		tracker.SetStep(telemetry.StepAppCreate)
-		appDetails, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, "", opts.AppName)
+		// No create tracker: this creation belongs to the auth funnel, which
+		// stays on the app_create step.
+		appDetails, _, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, "", opts.AppName, nil)
 		if err != nil {
 			return err
 		}

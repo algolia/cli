@@ -58,11 +58,13 @@ const (
 	StepProfileConfigure Step = "profile_configure"
 
 	// Application create and plan change flow steps.
+	StepAuth      Step = "auth"
 	StepName      Step = "name"
 	StepPlan      Step = "plan"
 	StepTerms     Step = "terms"
 	StepRegion    Step = "region"
 	StepAPICall   Step = "api_call"
+	StepAPIKey    Step = "api_key"
 	StepApplyPlan Step = "apply_plan"
 )
 
@@ -72,6 +74,17 @@ type Direction string
 const (
 	DirectionUpgrade   Direction = "upgrade"
 	DirectionDowngrade Direction = "downgrade"
+)
+
+// AbortReason tells why the user stopped a flow.
+type AbortReason string
+
+const (
+	AbortReasonDeclinedTerms   AbortReason = "declined_terms"
+	AbortReasonCancelled       AbortReason = "cancelled"
+	AbortReasonBillingRequired AbortReason = "billing_required"
+	AbortReasonAlreadyOnPlan   AbortReason = "already_on_plan"
+	AbortReasonNoCandidates    AbortReason = "no_candidates"
 )
 
 // FlowTracker carries the state of one interactive flow: the step the user is
@@ -167,6 +180,128 @@ func AuthLogout() Event {
 func AuthFailed(flow Flow, tracker *FlowTracker, err error) Event {
 	return Event{EventAuthFailed, map[string]any{
 		"flow":        flow,
+		"step":        tracker.Step(),
+		"duration_ms": tracker.DurationMS(),
+		"error_class": ErrorClass(err),
+	}}
+}
+
+// ApplicationCreateStarted is emitted when the application creation flow
+// begins (dry runs are not tracked).
+func ApplicationCreateStarted() Event {
+	return Event{EventApplicationCreateStarted, nil}
+}
+
+// ApplicationCreateAcceptedTerms is emitted when the user accepted the terms
+// of the selected plan.
+func ApplicationCreateAcceptedTerms(plan string) Event {
+	return Event{EventApplicationCreateAcceptedTerms, map[string]any{
+		"plan": plan,
+	}}
+}
+
+// ApplicationCreateDeclinedTerms is emitted when the user declined the terms
+// of the selected plan.
+func ApplicationCreateDeclinedTerms(plan string) Event {
+	return Event{EventApplicationCreateDeclinedTerms, map[string]any{
+		"plan": plan,
+	}}
+}
+
+// ApplicationCreateCompleted is emitted when the application was created, with
+// the region and plan the user chose.
+func ApplicationCreateCompleted(region, plan string, tracker *FlowTracker) Event {
+	return Event{EventApplicationCreateCompleted, map[string]any{
+		"region":      region,
+		"plan":        plan,
+		"duration_ms": tracker.DurationMS(),
+	}}
+}
+
+// ApplicationCreateAborted is emitted when the user stopped the creation flow,
+// with the step they stopped at and the reason why.
+func ApplicationCreateAborted(tracker *FlowTracker, reason AbortReason) Event {
+	props := map[string]any{
+		"step": tracker.Step(),
+	}
+	if reason != "" {
+		props["reason"] = reason
+	}
+	return Event{EventApplicationCreateAborted, props}
+}
+
+// ApplicationCreateFailed is emitted when the creation flow failed, with the
+// step it failed at.
+func ApplicationCreateFailed(tracker *FlowTracker, err error) Event {
+	return Event{EventApplicationCreateFailed, map[string]any{
+		"step":        tracker.Step(),
+		"duration_ms": tracker.DurationMS(),
+		"error_class": ErrorClass(err),
+	}}
+}
+
+// ApplicationPlanChangeStarted is emitted when the plan change flow begins
+// (dry runs are not tracked).
+func ApplicationPlanChangeStarted(direction Direction) Event {
+	return Event{EventApplicationPlanChangeStarted, map[string]any{
+		"direction": direction,
+	}}
+}
+
+// ApplicationPlanChangeAcceptedTerms is emitted when the user accepted the
+// terms of the target plan.
+func ApplicationPlanChangeAcceptedTerms(direction Direction, plan string) Event {
+	return Event{EventApplicationPlanChangeAcceptedTerms, map[string]any{
+		"direction": direction,
+		"plan":      plan,
+	}}
+}
+
+// ApplicationPlanChangeDeclinedTerms is emitted when the user declined the
+// terms of the target plan.
+func ApplicationPlanChangeDeclinedTerms(direction Direction, plan string) Event {
+	return Event{EventApplicationPlanChangeDeclinedTerms, map[string]any{
+		"direction": direction,
+		"plan":      plan,
+	}}
+}
+
+// ApplicationPlanChangeCompleted is emitted when the plan was changed.
+func ApplicationPlanChangeCompleted(
+	direction Direction,
+	fromPlan, toPlan string,
+	tracker *FlowTracker,
+) Event {
+	return Event{EventApplicationPlanChangeCompleted, map[string]any{
+		"direction":   direction,
+		"from_plan":   fromPlan,
+		"to_plan":     toPlan,
+		"duration_ms": tracker.DurationMS(),
+	}}
+}
+
+// ApplicationPlanChangeAborted is emitted when the user stopped the plan
+// change flow, with the step they stopped at and the reason why.
+func ApplicationPlanChangeAborted(
+	direction Direction,
+	tracker *FlowTracker,
+	reason AbortReason,
+) Event {
+	props := map[string]any{
+		"direction": direction,
+		"step":      tracker.Step(),
+	}
+	if reason != "" {
+		props["reason"] = reason
+	}
+	return Event{EventApplicationPlanChangeAborted, props}
+}
+
+// ApplicationPlanChangeFailed is emitted when the plan change flow failed,
+// with the step it failed at.
+func ApplicationPlanChangeFailed(direction Direction, tracker *FlowTracker, err error) Event {
+	return Event{EventApplicationPlanChangeFailed, map[string]any{
+		"direction":   direction,
 		"step":        tracker.Step(),
 		"duration_ms": tracker.DurationMS(),
 		"error_class": ErrorClass(err),
