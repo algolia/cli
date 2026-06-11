@@ -57,6 +57,10 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 func runSetDefaultCmd(opts *SetDefaultOptions) error {
 	fmt.Fprintf(opts.IO.ErrOut,
 		"warning: `algolia profile setdefault` is deprecated, use `algolia application select` instead\n")
+	if opts.config.StateFileExists() {
+		fmt.Fprintf(opts.IO.ErrOut,
+			"warning: the CLI now stores credentials in state.toml and the OS keychain; changes to config.toml profiles will be ignored in a future version\n")
+	}
 	var defaultName string
 	for _, profile := range opts.config.ConfiguredProfiles() {
 		if profile.Default {

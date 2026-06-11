@@ -35,6 +35,7 @@ type IConfig interface {
 	ApplicationIDByAlias(alias string) (string, bool)
 	SaveApplication(appID, alias, apiKeyUUID, apiKey string, setCurrent bool) error
 	SetCrawlerAPIKey(appID, crawlerAPIKey string) error
+	StateFileExists() bool
 
 	Profile() *Profile
 	Default() *Profile
@@ -122,6 +123,16 @@ func (c *Config) loadState() *State {
 		c.state = st
 	})
 	return c.state
+}
+
+// StateFileExists reports whether state.toml exists on disk, i.e. the new
+// storage model (state.toml + OS keychain) is already in use on this machine.
+func (c *Config) StateFileExists() bool {
+	if c.StateFile == "" {
+		return false
+	}
+	_, err := os.Stat(c.StateFile)
+	return err == nil
 }
 
 // activeApplicationID resolves (once per command) which application the new

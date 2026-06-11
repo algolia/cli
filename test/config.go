@@ -27,6 +27,7 @@ type ConfigStub struct {
 	CurrentAppID string
 	SavedApps    map[string]SavedApplication
 	CrawlerKeys  map[string]string
+	HasStateFile bool
 }
 
 func (c *ConfigStub) InitConfig() {}
@@ -172,6 +173,10 @@ func (c *ConfigStub) SaveApplication(appID, alias, apiKeyUUID, apiKey string, se
 		c.CurrentAppID = appID
 	}
 	return nil
+}
+
+func (c *ConfigStub) StateFileExists() bool {
+	return c.HasStateFile
 }
 
 func (c *ConfigStub) SetCrawlerAPIKey(appID, crawlerAPIKey string) error {

@@ -83,6 +83,10 @@ func NewRemoveCmd(f *cmdutil.Factory, runF func(*RemoveOptions) error) *cobra.Co
 func runRemoveCmd(opts *RemoveOptions) error {
 	fmt.Fprintf(opts.IO.ErrOut,
 		"warning: `algolia profile remove` is deprecated, profiles are replaced by `algolia application select` and the OS keychain\n")
+	if opts.config.StateFileExists() {
+		fmt.Fprintf(opts.IO.ErrOut,
+			"warning: the CLI now stores credentials in state.toml and the OS keychain; changes to config.toml profiles will be ignored in a future version\n")
+	}
 	if opts.DoConfirm {
 		var confirmed bool
 		err := prompt.Confirm(

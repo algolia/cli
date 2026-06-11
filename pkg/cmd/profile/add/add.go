@@ -141,6 +141,10 @@ func NewAddCmd(f *cmdutil.Factory, runF func(*AddOptions) error) *cobra.Command 
 func runAddCmd(opts *AddOptions) error {
 	fmt.Fprintf(opts.IO.ErrOut,
 		"warning: `algolia profile add` is deprecated, use `algolia auth login` or `algolia application select` instead\n")
+	if opts.config.StateFileExists() {
+		fmt.Fprintf(opts.IO.ErrOut,
+			"warning: the CLI now stores credentials in state.toml and the OS keychain; changes to config.toml profiles will be ignored in a future version\n")
+	}
 	var defaultProfile *config.Profile
 	for _, profile := range opts.config.ConfiguredProfiles() {
 		if profile.Default {
