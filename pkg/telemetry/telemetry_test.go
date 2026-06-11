@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/segmentio/analytics-go/v3"
@@ -76,10 +77,13 @@ func TestSetUser(t *testing.T) {
 // fakeAnalyticsClient captures the messages enqueued by the telemetry client so
 // tests can assert on the payload without hitting the network.
 type fakeAnalyticsClient struct {
+	mu       sync.Mutex
 	messages []analytics.Message
 }
 
 func (f *fakeAnalyticsClient) Enqueue(msg analytics.Message) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.messages = append(f.messages, msg)
 	return nil
 }
@@ -130,7 +134,7 @@ func TestTrack_IncludesUserWhenAuthenticated(t *testing.T) {
 	metadata.SetUser("user-42", "user@test.com", "Test User")
 	ctx := WithEventMetadata(context.Background(), metadata)
 
-	require.NoError(t, client.Track(ctx, "Command Invoked"))
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
 	require.Len(t, fake.messages, 1)
 
 	track, ok := fake.messages[0].(analytics.Track)
@@ -146,10 +150,96 @@ func TestTrack_OmitsUserWhenAnonymous(t *testing.T) {
 	metadata := NewEventMetadata()
 	ctx := WithEventMetadata(context.Background(), metadata)
 
-	require.NoError(t, client.Track(ctx, "Command Invoked"))
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
 	require.Len(t, fake.messages, 1)
 
 	track, ok := fake.messages[0].(analytics.Track)
 	require.True(t, ok)
 	assert.Empty(t, track.UserId)
+}
+
+func TestTrack_MergesCustomProperties(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	metadata.SetAppID("app-id")
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "CLI Auth Started", map[string]any{"flow": "login"}))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, "login", track.Properties["flow"])
+	assert.Equal(t, metadata.InvocationID, track.Properties["invocation_id"])
+	assert.Equal(t, "app-id", track.Properties["app_id"])
+}
+
+func TestTrack_SequenceIsMonotonic(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	for i := 0; i < 3; i++ {
+		require.NoError(t, client.Track(ctx, "Command Invoked", nil))
+	}
+	require.Len(t, fake.messages, 3)
+
+	for i, msg := range fake.messages {
+		track, ok := msg.(analytics.Track)
+		require.True(t, ok)
+		assert.Equal(t, int64(i+1), track.Properties["sequence"])
+	}
+}
+
+func TestTrack_SequenceIsUniqueUnderConcurrency(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	const n = 100
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = client.Track(ctx, "Command Invoked", nil)
+		}()
+	}
+	wg.Wait()
+
+	require.Len(t, fake.messages, n)
+	seen := make(map[int64]bool, n)
+	for _, msg := range fake.messages {
+		track, ok := msg.(analytics.Track)
+		require.True(t, ok)
+		seq, ok := track.Properties["sequence"].(int64)
+		require.True(t, ok)
+		assert.False(t, seen[seq], "duplicate sequence %d", seq)
+		seen[seq] = true
+	}
+}
+
+func TestTrack_CustomPropertiesCannotOverrideBase(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "Command Invoked", map[string]any{
+		"invocation_id": "spoofed",
+		"sequence":      int64(999),
+	}))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, metadata.InvocationID, track.Properties["invocation_id"])
+	assert.Equal(t, int64(1), track.Properties["sequence"])
 }
