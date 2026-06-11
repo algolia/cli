@@ -122,44 +122,12 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 		return nil, err
 	}
 
-	// If a profile already exists for this app, switch the default
-	// and ensure it has an API key.
-	if exists, profileName := opts.Config.ApplicationIDExists(chosen.ID); exists {
-		// Read the profile BEFORE SetDefaultProfile, because viper.Set() calls
-		// inside SetDefaultProfile pollute the override map and cause
-		// UnmarshalKey to return empty fields (known viper issue).
-		var existingProfile *config.Profile
-		for _, p := range opts.Config.ConfiguredProfiles() {
-			if p.Name == profileName {
-				existingProfile = p
-				break
-			}
+	// Reuse a key already stored for this application (keychain, then legacy
+	// config.toml) before creating a new one on the dashboard.
+	if !apputil.ReuseExistingAPIKey(opts.Config, chosen) {
+		if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, chosen); err != nil {
+			return nil, err
 		}
-
-		if err := opts.Config.SetDefaultProfile(profileName); err != nil {
-			return nil, fmt.Errorf("failed to set default profile: %w", err)
-		}
-		fmt.Fprintf(opts.IO.Out, "%s Switched to profile %q (application %s).\n",
-			cs.SuccessIcon(), profileName, cs.Bold(chosen.ID))
-
-		if existingProfile != nil && existingProfile.APIKey == "" {
-			app := &dashboard.Application{ID: chosen.ID, Name: chosen.Name}
-			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, app); err != nil {
-				return nil, err
-			}
-			existingProfile.ApplicationID = chosen.ID
-			existingProfile.APIKey = app.APIKey
-			if err := existingProfile.Add(); err != nil {
-				return nil, err
-			}
-			fmt.Fprintf(opts.IO.Out, "%s Profile %q updated with API key.\n",
-				cs.SuccessIcon(), profileName)
-		}
-		return chosen, nil
-	}
-
-	if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, chosen); err != nil {
-		return nil, err
 	}
 
 	if err := apputil.ConfigureProfile(opts.IO, opts.Config, chosen, "", true); err != nil {

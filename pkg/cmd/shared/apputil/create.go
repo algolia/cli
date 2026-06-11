@@ -10,6 +10,7 @@ import (
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/keychain"
 	"github.com/algolia/cli/pkg/prompt"
 )
 
@@ -142,8 +143,8 @@ func EnsureAPIKey(
 	return nil
 }
 
-// ConfigureProfile creates a CLI profile from application details and
-// optionally sets it as the default.
+// ConfigureProfile persists the application credentials in the new model
+// (state.toml + OS keychain) and optionally makes it the current application.
 func ConfigureProfile(
 	io *iostreams.IOStreams,
 	cfg config.IConfig,
@@ -161,31 +162,42 @@ func ConfigureProfile(
 	}
 	profileName = strings.ToLower(profileName)
 
-	if exists, existingAppID := cfg.ApplicationIDForProfile(profileName); exists && existingAppID != appDetails.ID {
+	// Another application already carries this alias: derive a unique one.
+	if otherID, ok := cfg.ApplicationIDByAlias(profileName); ok && otherID != appDetails.ID {
 		profileName = strings.ToLower(appDetails.Name + "-" + appDetails.ID)
 	}
 
-	profile := config.Profile{
-		Name:          profileName,
-		ApplicationID: appDetails.ID,
-		APIKey:        appDetails.APIKey,
-		Default:       setDefault,
-	}
-
-	if err := profile.Add(); err != nil {
+	if err := cfg.SaveApplication(
+		appDetails.ID, profileName, appDetails.APIKeyUUID, appDetails.APIKey, setDefault,
+	); err != nil {
 		return err
 	}
 
-	if setDefault {
-		if err := cfg.SetDefaultProfile(profileName); err != nil {
-			fmt.Fprintf(io.ErrOut, "%s Could not set default profile: %s\n", cs.WarningIcon(), err)
-		}
-	}
-
 	if io.IsStdoutTTY() {
-		fmt.Fprintf(io.Out, "%s Profile %q configured for application %s.\n",
-			cs.SuccessIcon(), profileName, cs.Bold(appDetails.ID))
+		fmt.Fprintf(io.Out, "%s Application %s configured (alias %q).\n",
+			cs.SuccessIcon(), cs.Bold(appDetails.ID), profileName)
 	}
 
 	return nil
+}
+
+// ReuseExistingAPIKey looks for an API key already stored for the application
+// (keychain first, then legacy config.toml profiles). If found, it sets
+// app.APIKey and returns true so callers skip creating a new key. A key reused
+// from a legacy profile has no known UUID, so api_key_uuid is left as-is.
+func ReuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
+	if secrets, err := keychain.LoadAppSecrets(app.ID); err == nil && secrets != nil &&
+		secrets.APIKey != "" {
+		app.APIKey = secrets.APIKey
+		return true
+	}
+
+	for _, p := range cfg.ConfiguredProfiles() {
+		if p.ApplicationID == app.ID && p.APIKey != "" {
+			app.APIKey = p.APIKey
+			return true
+		}
+	}
+
+	return false
 }
