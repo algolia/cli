@@ -92,17 +92,54 @@ func runLoginCmd(ctx context.Context, opts *LoginOptions) error {
 // RunOAuthFlow runs the full browser-based OAuth + profile setup flow.
 // If signup is true, the browser opens to the sign-up page instead of sign-in.
 func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
+	flow := telemetry.FlowLogin
+	if signup {
+		flow = telemetry.FlowSignup
+	}
+	tracker := telemetry.NewFlowTracker()
+	telemetry.TrackEvent(ctx, telemetry.AuthStarted(flow, opts.NoBrowser))
+
+	err := runOAuthFlowSteps(ctx, opts, signup, tracker)
+	trackOAuthFlowOutcome(ctx, flow, tracker, err)
+	return err
+}
+
+// trackOAuthFlowOutcome reports how the auth flow ended: completed, aborted by
+// the user, or failed.
+func trackOAuthFlowOutcome(
+	ctx context.Context,
+	flow telemetry.Flow,
+	tracker *telemetry.FlowTracker,
+	err error,
+) {
+	switch {
+	case err == nil:
+		telemetry.TrackEvent(ctx, telemetry.AuthCompleted(flow, tracker))
+	case cmdutil.IsUserCancellation(err):
+		telemetry.TrackEvent(ctx, telemetry.AuthAborted(flow, tracker))
+	default:
+		telemetry.TrackEvent(ctx, telemetry.AuthFailed(flow, tracker, err))
+	}
+}
+
+func runOAuthFlowSteps(
+	ctx context.Context,
+	opts *LoginOptions,
+	signup bool,
+	tracker *telemetry.FlowTracker,
+) error {
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
 	openBrowser := !opts.NoBrowser
-	accessToken, err := auth.RunOAuth(opts.IO, client, signup, openBrowser)
+	accessToken, err := auth.RunOAuth(opts.IO, client, signup, openBrowser, tracker)
 	if err != nil {
 		return err
 	}
 
 	identifyAuthenticatedUser(ctx)
 
+	tracker.SetStep(telemetry.StepAppsFetch)
 	opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
 	apps, err := client.ListApplications(accessToken)
 	opts.IO.StopProgressIndicator()
@@ -115,11 +152,13 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 	if len(apps) == 0 {
 		fmt.Fprintf(opts.IO.Out, "\n%s No applications found. Let's create one.\n", cs.WarningIcon())
 
+		tracker.SetStep(telemetry.StepAppCreate)
 		appDetails, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, "", opts.AppName)
 		if err != nil {
 			return err
 		}
 	} else {
+		tracker.SetStep(telemetry.StepAppSelect)
 		interactive := opts.IO.CanPrompt()
 		app, err := selectApplication(opts, apps, interactive)
 		if err != nil {
@@ -139,15 +178,21 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 		profileName = appDetails.Name
 	}
 
+	tracker.SetStep(telemetry.StepProfileConfigure)
 	return apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default)
 }
 
 // identifyAuthenticatedUser emits a telemetry Identify for the user that just
 // authenticated. It is a no-op when no identified token is present.
 func identifyAuthenticatedUser(ctx context.Context) {
-	if applyStoredIdentity(ctx) {
-		telemetry.IdentifyOnce(ctx)
+	if !applyStoredIdentity(ctx) {
+		return
 	}
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+	_ = client.Identify(ctx)
 }
 
 // applyStoredIdentity copies the persisted user identity from the stored token

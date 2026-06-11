@@ -23,7 +23,9 @@ func EnsureAuthenticated(
 	cs := io.ColorScheme()
 	fmt.Fprintf(io.Out, "%s %s\n", cs.WarningIcon(), err)
 
-	return RunOAuth(io, client, false, true)
+	// No flow tracker: this re-authentication belongs to the calling flow,
+	// not to an `auth login` funnel.
+	return RunOAuth(io, client, false, true, nil)
 }
 
 // ReauthenticateIfExpired checks if err is a session-expired error from the API.
@@ -41,5 +43,7 @@ func ReauthenticateIfExpired(
 	ClearToken()
 	fmt.Fprintf(io.Out, "%s Session expired.\n", cs.WarningIcon())
 
-	return RunOAuth(io, client, false, true)
+	// No flow tracker: this re-authentication belongs to the calling flow,
+	// not to an `auth login` funnel.
+	return RunOAuth(io, client, false, true, nil)
 }
