@@ -32,7 +32,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		Use:     "list",
 		Aliases: []string{"l"},
 		Args:    validators.NoArgs(),
-		Short:   "List the configured profile(s)",
+		Short:   "[Deprecated] List the configured profile(s)",
 		Example: heredoc.Doc(`
 			# List the configured profiles
 			$ algolia profile list
@@ -51,6 +51,8 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 
 // runListCmd executes the list command
 func runListCmd(opts *ListOptions) error {
+	fmt.Fprintf(opts.IO.ErrOut,
+		"warning: `algolia profile list` is deprecated, use `algolia application list` instead\n")
 	profiles := opts.config.ConfiguredProfiles()
 	if len(profiles) == 0 {
 		fmt.Fprintln(opts.IO.ErrOut, "No configured profiles")
