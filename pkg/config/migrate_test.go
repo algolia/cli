@@ -72,9 +72,8 @@ func TestConfig_ShouldMigrate_unresolvedPaths(t *testing.T) {
 	assert.False(t, cfg.ShouldMigrate())
 }
 
-// migrationConfig writes a config.toml with the given content, points the
-// global viper at it (ConfiguredProfiles reads through viper) and returns a
-// Config ready to migrate.
+// migrationConfig writes a config.toml, points the global viper at it
+// (ConfiguredProfiles reads through viper) and returns a Config ready to migrate.
 func migrationConfig(t *testing.T, content string) *Config {
 	t.Helper()
 
@@ -109,7 +108,6 @@ api_key = "key-2"
 
 	require.NoError(t, cfg.Migrate())
 
-	// Secrets land in the keychain, crawler key included when set.
 	prod, err := keychain.LoadAppSecrets("APP1")
 	require.NoError(t, err)
 	require.NotNil(t, prod)
@@ -122,8 +120,6 @@ api_key = "key-2"
 	assert.Equal(t, "key-2", dev.APIKey)
 	assert.Empty(t, dev.CrawlerAPIKey)
 
-	// state.toml: one entry per application, alias = profile name, current
-	// application = the default profile's one.
 	st, err := LoadState(cfg.StateFile)
 	require.NoError(t, err)
 	assert.Equal(t, "APP1", st.CurrentApplicationID)
@@ -131,7 +127,6 @@ api_key = "key-2"
 	assert.Equal(t, "dev", st.Applications["APP2"].Alias)
 	assert.Empty(t, st.Applications["APP1"].APIKeyUUID) // unknown for legacy keys
 
-	// state.toml now exists: the trigger turns off.
 	assert.False(t, cfg.ShouldMigrate())
 }
 
@@ -156,8 +151,7 @@ func TestConfig_Migrate_EmptyConfigStillWritesState(t *testing.T) {
 
 	require.NoError(t, cfg.Migrate())
 
-	// An empty state.toml must exist, otherwise the migration would re-run
-	// (and re-log) on every command.
+	// An empty state.toml must exist, otherwise the migration re-runs forever.
 	st, err := LoadState(cfg.StateFile)
 	require.NoError(t, err)
 	assert.Empty(t, st.CurrentApplicationID)
@@ -174,8 +168,7 @@ api_key = "key-1"
 
 	require.Error(t, cfg.Migrate())
 
-	// state.toml untouched: ShouldMigrate keeps firing so the migration
-	// retries on the next run.
+	// state.toml untouched: the migration retries on the next run.
 	assert.NoFileExists(t, cfg.StateFile)
 	assert.True(t, cfg.ShouldMigrate())
 }
@@ -199,8 +192,7 @@ admin_api_key = "admin-key"
 
 	require.NoError(t, cfg.Migrate())
 
-	// Nothing migrated: no keychain entries, an empty state.toml that still
-	// turns the trigger off.
+	// Nothing migrated, but the trigger still turns off.
 	for _, appID := range []string{"APP3", "APP4"} {
 		secrets, err := keychain.LoadAppSecrets(appID)
 		require.NoError(t, err)
@@ -211,7 +203,6 @@ admin_api_key = "admin-key"
 	assert.Empty(t, st.Applications)
 	assert.False(t, cfg.ShouldMigrate())
 
-	// Each skip got its log line, plus the admin_api_key notice.
 	logs := make([]string, 0, len(hook.AllEntries()))
 	for _, entry := range hook.AllEntries() {
 		logs = append(logs, entry.Message)
@@ -243,7 +234,6 @@ default = true
 
 	require.NoError(t, cfg.Migrate())
 
-	// One single entry for APP1: the default profile's alias and key.
 	st, err := LoadState(cfg.StateFile)
 	require.NoError(t, err)
 	require.Len(t, st.Applications, 1)
@@ -267,7 +257,6 @@ default = true
 
 	require.NoError(t, cfg.Migrate())
 
-	// The search key migrates; the admin key has no slot in the new model.
 	secrets, err := keychain.LoadAppSecrets("APP1")
 	require.NoError(t, err)
 	require.NotNil(t, secrets)

@@ -11,10 +11,8 @@ import (
 )
 
 // ShouldMigrate reports whether the one-time config.toml → state.toml +
-// keychain migration still has to run: a legacy config.toml exists and
-// state.toml does not. state.toml is only written when the migration (or any
-// new-model write) succeeds, so its absence doubles as the "not migrated yet"
-// marker — an aborted migration naturally retries on the next run.
+// keychain migration still has to run: config.toml exists and state.toml
+// (only written on success, so doubling as the "migrated" marker) does not.
 func (c *Config) ShouldMigrate() bool {
 	if c.File == "" {
 		return false
@@ -26,14 +24,9 @@ func (c *Config) ShouldMigrate() bool {
 }
 
 // Migrate moves the legacy config.toml profiles into the new model (state.toml
-// + OS keychain). config.toml itself is never modified.
-//
-// Secrets go to the keychain first; state.toml is only written — atomically,
-// via State.Save's temp + rename — once every profile's keys are stored. A
-// keychain failure mid-run therefore leaves state.toml absent and the whole
-// migration retries on the next command; entries already written are simply
-// rewritten then. With nothing to migrate an empty state.toml still gets
-// written, so ShouldMigrate stops firing on every command.
+// + OS keychain); config.toml is never modified. Keychain first, state.toml
+// last (atomic): a failure leaves state.toml absent, so the migration retries
+// on the next run.
 func (c *Config) Migrate() error {
 	state := &State{Applications: map[string]ApplicationState{}}
 
@@ -46,8 +39,6 @@ func (c *Config) Migrate() error {
 			return err
 		}
 
-		// api_key_uuid is unknown for legacy keys: left empty until an API
-		// lookup can backfill it.
 		state.UpsertApplication(profile.ApplicationID, ApplicationState{Alias: profile.Name})
 		if profile.Default {
 			state.SetCurrentApplication(profile.ApplicationID)
@@ -57,19 +48,10 @@ func (c *Config) Migrate() error {
 	return state.Save(c.StateFile)
 }
 
-// migratableProfiles applies the migration skip rules to the config.toml
-// profiles before any keychain write happens:
-//
-//   - admin_api_key never moves to the new model: one log line points to its
-//     replacements, whether the profile migrates or not.
-//   - A profile without application_id or with an empty api_key has nothing
-//     usable to migrate: skipped with a log line.
-//   - Profiles sharing the same application_id would overwrite each other's
-//     keychain entry: the default = true profile wins, the others are logged
-//     as conflicts and skipped.
-//
-// Profiles are processed in name order so conflict resolution and logs stay
-// deterministic (ConfiguredProfiles iterates a map).
+// migratableProfiles applies the skip rules: profiles without application_id
+// or api_key are dropped, admin_api_key never migrates, and the default
+// profile wins when several share an application_id. Name order keeps the
+// conflict resolution deterministic (ConfiguredProfiles iterates a map).
 func (c *Config) migratableProfiles() []*Profile {
 	profiles := c.ConfiguredProfiles()
 	sort.Slice(profiles, func(i, j int) bool { return profiles[i].Name < profiles[j].Name })
