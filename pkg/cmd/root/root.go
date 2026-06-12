@@ -136,6 +136,16 @@ func Execute() exitCode {
 	cmdFactory := factory.New(version.Version, &cfg)
 	stderr := cmdFactory.IOStreams.ErrOut
 
+	// One-time config.toml → state.toml + keychain migration (GROUT-363).
+	// Must run before the command executes: credential resolution reads
+	// state.toml once per invocation and caches it. A failed migration never
+	// blocks the command — state.toml stays absent, so it retries next run.
+	if cfg.ShouldMigrate() {
+		if err := cfg.Migrate(); err != nil && hasDebug {
+			fmt.Fprintf(stderr, "config migration failed (will retry on next run): %s\n", err)
+		}
+	}
+
 	// Set up the update notifier.
 	updateMessageChan := make(chan *update.ReleaseInfo)
 	go func() {
