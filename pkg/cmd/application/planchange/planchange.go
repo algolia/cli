@@ -223,6 +223,12 @@ func changePlan(
 		)
 	}
 
+	// With --plan the interactive picker (which shows the current application)
+	// is skipped; show which application the terms apply to before asking.
+	if opts.Plan != "" {
+		printCurrentApplication(opts, appID, app)
+	}
+
 	tracker.SetStep(telemetry.StepTerms)
 	accepted, err := confirmToS(opts, *target)
 	if err != nil {
@@ -457,7 +463,8 @@ func reportNoCandidates(
 	)
 }
 
-// printCurrentApplication prints the current app and plan before the picker.
+// printCurrentApplication prints the current app and plan before the picker
+// or, with --plan, before the terms confirmation.
 func printCurrentApplication(opts *Options, appID string, app *dashboard.Application) {
 	cs := opts.IO.ColorScheme()
 	label := cs.Bold(appID)
