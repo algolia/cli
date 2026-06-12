@@ -28,6 +28,12 @@ func (c *Config) ShouldMigrate() bool {
 // last (atomic): a failure leaves state.toml absent, so the migration retries
 // on the next run.
 func (c *Config) Migrate() error {
+	// An unparseable config.toml must not mark the migration as done: abort
+	// before writing state.toml so it retries once the file is fixed.
+	if err := viper.ReadInConfig(); err != nil {
+		return err
+	}
+
 	state := &State{Applications: map[string]ApplicationState{}}
 
 	for _, profile := range c.migratableProfiles() {
@@ -53,7 +59,18 @@ func (c *Config) Migrate() error {
 // profile wins when several share an application_id. Name order keeps the
 // conflict resolution deterministic (ConfiguredProfiles iterates a map).
 func (c *Config) migratableProfiles() []*Profile {
-	profiles := c.ConfiguredProfiles()
+	// Decode the profiles here rather than through ConfiguredProfiles, whose
+	// log.Fatalf on an undecodable entry would brick every command at startup.
+	configs := viper.AllSettings()
+	profiles := make([]*Profile, 0, len(configs))
+	for name := range configs {
+		profile := &Profile{Name: name}
+		if err := viper.UnmarshalKey(name, profile); err != nil {
+			log.Warnf("config migration: skipping profile %q: %s", name, err)
+			continue
+		}
+		profiles = append(profiles, profile)
+	}
 	sort.Slice(profiles, func(i, j int) bool { return profiles[i].Name < profiles[j].Name })
 
 	selected := make([]*Profile, 0, len(profiles))

@@ -266,3 +266,47 @@ default = true
 	require.NoError(t, err)
 	assert.Equal(t, "prod", st.Applications["APP1"].Alias)
 }
+
+func TestConfig_Migrate_UndecodableProfileSkipped(t *testing.T) {
+	keyring.MockInit()
+	cfg := migrationConfig(t, `telemetry = "off"
+
+[prod]
+application_id = "APP1"
+api_key = "key-1"
+default = true
+
+[bad]
+application_id = "APP2"
+api_key = ["a", "b"]
+`)
+
+	// Undecodable entries (root scalar, wrong types) are skipped, not fatal.
+	require.NoError(t, cfg.Migrate())
+
+	st, err := LoadState(cfg.StateFile)
+	require.NoError(t, err)
+	require.Len(t, st.Applications, 1)
+	assert.Equal(t, "APP1", st.CurrentApplicationID)
+	assert.Equal(t, "prod", st.Applications["APP1"].Alias)
+}
+
+func TestConfig_Migrate_UnreadableConfigAborts(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	configFile := filepath.Join(dir, "config.toml")
+	require.NoError(t, os.WriteFile(configFile, []byte("not [ valid ### toml\n"), 0o600))
+
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	_ = viper.ReadInConfig() // swallowed, like InitConfig does
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{File: configFile, StateFile: filepath.Join(dir, "state.toml")}
+
+	// No state.toml written: the migration retries once the file is fixed.
+	require.Error(t, cfg.Migrate())
+	assert.NoFileExists(t, cfg.StateFile)
+	assert.True(t, cfg.ShouldMigrate())
+}
