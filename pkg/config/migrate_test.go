@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -177,4 +178,102 @@ api_key = "key-1"
 	// retries on the next run.
 	assert.NoFileExists(t, cfg.StateFile)
 	assert.True(t, cfg.ShouldMigrate())
+}
+
+func TestConfig_Migrate_SkipRules(t *testing.T) {
+	keyring.MockInit()
+	hook := logtest.NewGlobal()
+	t.Cleanup(hook.Reset)
+
+	cfg := migrationConfig(t, `[nokey]
+application_id = "APP3"
+api_key = ""
+
+[noapp]
+api_key = "key-x"
+
+[adminonly]
+application_id = "APP4"
+admin_api_key = "admin-key"
+`)
+
+	require.NoError(t, cfg.Migrate())
+
+	// Nothing migrated: no keychain entries, an empty state.toml that still
+	// turns the trigger off.
+	for _, appID := range []string{"APP3", "APP4"} {
+		secrets, err := keychain.LoadAppSecrets(appID)
+		require.NoError(t, err)
+		assert.Nil(t, secrets)
+	}
+	st, err := LoadState(cfg.StateFile)
+	require.NoError(t, err)
+	assert.Empty(t, st.Applications)
+	assert.False(t, cfg.ShouldMigrate())
+
+	// Each skip got its log line, plus the admin_api_key notice.
+	logs := make([]string, 0, len(hook.AllEntries()))
+	for _, entry := range hook.AllEntries() {
+		logs = append(logs, entry.Message)
+	}
+	assert.Contains(t, logs,
+		`config migration: skipping profile "nokey": empty api_key`)
+	assert.Contains(t, logs,
+		`config migration: skipping profile "noapp": no application_id`)
+	assert.Contains(t, logs,
+		`config migration: skipping profile "adminonly": empty api_key`)
+	assert.Contains(
+		t,
+		logs,
+		`config migration: profile "adminonly": admin_api_key is not migrated, use ALGOLIA_ADMIN_API_KEY or --api-key instead`,
+	)
+}
+
+func TestConfig_Migrate_DuplicateApplicationKeepsDefault(t *testing.T) {
+	keyring.MockInit()
+	cfg := migrationConfig(t, `[backup]
+application_id = "APP1"
+api_key = "backup-key"
+
+[prod]
+application_id = "APP1"
+api_key = "prod-key"
+default = true
+`)
+
+	require.NoError(t, cfg.Migrate())
+
+	// One single entry for APP1: the default profile's alias and key.
+	st, err := LoadState(cfg.StateFile)
+	require.NoError(t, err)
+	require.Len(t, st.Applications, 1)
+	assert.Equal(t, "prod", st.Applications["APP1"].Alias)
+	assert.Equal(t, "APP1", st.CurrentApplicationID)
+
+	secrets, err := keychain.LoadAppSecrets("APP1")
+	require.NoError(t, err)
+	require.NotNil(t, secrets)
+	assert.Equal(t, "prod-key", secrets.APIKey)
+}
+
+func TestConfig_Migrate_AdminKeyAlongsideAPIKeyStillMigrates(t *testing.T) {
+	keyring.MockInit()
+	cfg := migrationConfig(t, `[prod]
+application_id = "APP1"
+api_key = "key-1"
+admin_api_key = "admin-1"
+default = true
+`)
+
+	require.NoError(t, cfg.Migrate())
+
+	// The search key migrates; the admin key has no slot in the new model.
+	secrets, err := keychain.LoadAppSecrets("APP1")
+	require.NoError(t, err)
+	require.NotNil(t, secrets)
+	assert.Equal(t, "key-1", secrets.APIKey)
+
+	st, err := LoadState(cfg.StateFile)
+	require.NoError(t, err)
+	assert.Equal(t, "prod", st.Applications["APP1"].Alias)
 }
