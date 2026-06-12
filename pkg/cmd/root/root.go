@@ -219,6 +219,7 @@ func Execute() (code exitCode) {
 	// includes the update-notifier wait below.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
 	executedCmd, executeErr, elapsed = cmd, err, time.Since(start)
+	identifyNewlyAuthenticatedUser(ctx, cmd)
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
@@ -254,6 +255,33 @@ func Execute() (code exitCode) {
 	}
 
 	return exitOK
+}
+
+// identifyNewlyAuthenticatedUser re-sends an Identify when the user signed in
+// during the command (e.g. `application create` while logged out): the
+// Identify from PersistentPreRunE went out anonymous, so the identity would
+// otherwise only ship on the next invocation. Runs before the deferred
+// Command Completed so that event carries the user too.
+func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
+	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
+		return
+	}
+	// Same gating as trackCommandCompleted: an empty command path means
+	// PersistentPreRunE never ran, so no login could have happened either.
+	metadata := telemetry.GetEventMetadata(ctx)
+	if metadata == nil || metadata.CommandPath == "" || metadata.UserID != "" {
+		return
+	}
+	token := auth.LoadToken()
+	if token == nil || token.UserID == "" {
+		return
+	}
+	metadata.SetUser(token.UserID, token.Email, token.Name)
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+	_ = client.Identify(ctx)
 }
 
 // trackCommandCompleted reports how the command ended: success, failure (with
