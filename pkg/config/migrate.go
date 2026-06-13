@@ -45,7 +45,11 @@ func (c *Config) Migrate() error {
 			return err
 		}
 
-		state.UpsertApplication(profile.ApplicationID, ApplicationState{Alias: profile.Name})
+		state.UpsertApplication(profile.ApplicationID, ApplicationState{
+			Alias:         profile.Name,
+			SearchHosts:   profile.SearchHosts,
+			CrawlerUserID: viper.GetString(profile.GetFieldName("crawler_user_id")),
+		})
 		if profile.Default {
 			state.SetCurrentApplication(profile.ApplicationID)
 		}

@@ -146,6 +146,16 @@ func (p *Profile) GetSearchHosts() []string {
 		return p.SearchHosts
 	}
 
+	// New model: hosts recorded for the resolved application. Empty falls
+	// through to the legacy config.toml lookup while both models coexist.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			if hosts := p.config.loadState().Applications[appID].SearchHosts; len(hosts) > 0 {
+				return hosts
+			}
+		}
+	}
+
 	if p.Name == "" {
 		p.LoadDefault()
 	}
@@ -168,6 +178,16 @@ func (p *Profile) GetSearchHosts() []string {
 func (p *Profile) GetCrawlerUserID() (string, error) {
 	if os.Getenv("ALGOLIA_CRAWLER_USER_ID") != "" {
 		return os.Getenv("ALGOLIA_CRAWLER_USER_ID"), nil
+	}
+
+	// New model: the user ID recorded for the resolved application. Empty
+	// falls through to the legacy config.toml lookup.
+	if p.config != nil {
+		if appID := p.config.activeApplicationID(); appID != "" {
+			if userID := p.config.loadState().Applications[appID].CrawlerUserID; userID != "" {
+				return userID, nil
+			}
+		}
 	}
 
 	if p.Name == "" {

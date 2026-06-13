@@ -11,8 +11,10 @@ import (
 // ApplicationState holds the non-secret, per-application data persisted in
 // state.toml. Secrets (API keys) live in the OS keychain, not here.
 type ApplicationState struct {
-	APIKeyUUID string `toml:"api_key_uuid"`
-	Alias      string `toml:"alias"`
+	APIKeyUUID    string   `toml:"api_key_uuid"`
+	Alias         string   `toml:"alias"`
+	SearchHosts   []string `toml:"search_hosts,omitempty"`
+	CrawlerUserID string   `toml:"crawler_user_id,omitempty"`
 }
 
 // State is the in-memory representation of state.toml, the new source of truth

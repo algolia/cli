@@ -99,6 +99,8 @@ func TestConfig_Migrate(t *testing.T) {
 application_id = "APP1"
 api_key = "key-1"
 crawler_api_key = "crawler-1"
+crawler_user_id = "crawler-user"
+search_hosts = ["h1.algolia.net", "h2.algolia.net"]
 default = true
 
 [dev]
@@ -126,6 +128,14 @@ api_key = "key-2"
 	assert.Equal(t, "prod", st.Applications["APP1"].Alias)
 	assert.Equal(t, "dev", st.Applications["APP2"].Alias)
 	assert.Empty(t, st.Applications["APP1"].APIKeyUUID) // unknown for legacy keys
+	assert.Equal(
+		t,
+		[]string{"h1.algolia.net", "h2.algolia.net"},
+		st.Applications["APP1"].SearchHosts,
+	)
+	assert.Equal(t, "crawler-user", st.Applications["APP1"].CrawlerUserID)
+	assert.Empty(t, st.Applications["APP2"].SearchHosts)
+	assert.Empty(t, st.Applications["APP2"].CrawlerUserID)
 
 	assert.False(t, cfg.ShouldMigrate())
 }
