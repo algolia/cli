@@ -1,6 +1,7 @@
 package create
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	pkgopen "github.com/algolia/cli/pkg/open"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -78,7 +80,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.nameProvided = cmd.Flags().Changed("name")
-			return runCreateCmd(opts)
+			return runCreateCmd(cmd.Context(), opts)
 		},
 	}
 
@@ -99,57 +101,119 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runCreateCmd(opts *CreateOptions) error {
-	cs := opts.IO.ColorScheme()
+func runCreateCmd(ctx context.Context, opts *CreateOptions) error {
+	if opts.DryRun {
+		return printDryRunSummary(opts)
+	}
 
+	tracker := telemetry.NewFlowTracker()
+	telemetry.TrackEvent(ctx, telemetry.ApplicationCreateStarted())
+
+	result, err := createApplication(ctx, opts, tracker)
+	trackCreateOutcome(ctx, tracker, result, err)
+	return err
+}
+
+// trackCreateOutcome reports how the creation flow ended: completed, aborted
+// (with the reason why), or failed.
+func trackCreateOutcome(
+	ctx context.Context,
+	tracker *telemetry.FlowTracker,
+	result createResult,
+	err error,
+) {
+	switch {
+	case err == nil && result.created:
+		telemetry.TrackEvent(
+			ctx,
+			telemetry.ApplicationCreateCompleted(result.region, result.plan, tracker),
+		)
+	case err == nil || result.abortReason != "" || cmdutil.IsUserCancellation(err):
+		// Stopped without creating anything: declined terms, billing wall,
+		// or user cancellation.
+		reason := result.abortReason
+		if reason == "" && cmdutil.IsUserCancellation(err) {
+			reason = telemetry.AbortReasonCancelled
+		}
+		telemetry.TrackEvent(ctx, telemetry.ApplicationCreateAborted(tracker, reason))
+	default:
+		telemetry.TrackEvent(ctx, telemetry.ApplicationCreateFailed(tracker, err))
+	}
+}
+
+// printDryRunSummary prints what would be created without sending anything.
+func printDryRunSummary(opts *CreateOptions) error {
 	name, err := resolveName(opts)
 	if err != nil {
 		return err
 	}
 
-	if opts.DryRun {
-		planLabel := opts.Plan
-		if planLabel == "" {
-			planLabel = dashboard.PlanTypeFree
-		}
-		summary := map[string]any{
-			"action":  "create_application",
-			"name":    name,
-			"region":  opts.Region,
-			"plan":    planLabel,
-			"default": opts.Default,
-			"dryRun":  true,
-		}
-		return cmdutil.PrintRunSummary(
-			opts.IO,
-			opts.PrintFlags,
-			summary,
-			fmt.Sprintf(
-				"Dry run: would create application %q in region %q on the %q plan",
-				name,
-				opts.Region,
-				planLabel,
-			),
-		)
+	planLabel := opts.Plan
+	if planLabel == "" {
+		planLabel = dashboard.PlanTypeFree
+	}
+	summary := map[string]any{
+		"action":  "create_application",
+		"name":    name,
+		"region":  opts.Region,
+		"plan":    planLabel,
+		"default": opts.Default,
+		"dryRun":  true,
+	}
+	return cmdutil.PrintRunSummary(
+		opts.IO,
+		opts.PrintFlags,
+		summary,
+		fmt.Sprintf(
+			"Dry run: would create application %q in region %q on the %q plan",
+			name,
+			opts.Region,
+			planLabel,
+		),
+	)
+}
+
+// createResult carries what the creation flow produced, for telemetry.
+type createResult struct {
+	created     bool
+	region      string
+	plan        string
+	abortReason telemetry.AbortReason
+}
+
+func createApplication(
+	ctx context.Context,
+	opts *CreateOptions,
+	tracker *telemetry.FlowTracker,
+) (createResult, error) {
+	var result createResult
+	cs := opts.IO.ColorScheme()
+
+	tracker.SetStep(telemetry.StepName)
+	name, err := resolveName(opts)
+	if err != nil {
+		return result, err
 	}
 
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
+	tracker.SetStep(telemetry.StepAuth)
 	token, err := auth.EnsureAuthenticated(opts.IO, client)
 	if err != nil {
-		return err
+		return result, err
 	}
 
+	tracker.SetStep(telemetry.StepPlan)
 	var plans []dashboard.Plan
 	if err := callWithReauth(opts.IO, client, &token, "Fetching plans", func(t string) error {
 		var e error
 		plans, e = client.GetSelfServePlans(t)
 		return e
 	}); err != nil {
-		return err
+		return result, err
 	}
 	if len(plans) == 0 {
-		return fmt.Errorf("no self-serve plans are available")
+		return result, fmt.Errorf("no self-serve plans are available")
 	}
 
 	// Best-effort: continue without billing status if /1/user fails.
@@ -164,32 +228,48 @@ func runCreateCmd(opts *CreateOptions) error {
 
 	target, err := selectPlan(opts, plans, user)
 	if err != nil {
-		return err
+		return result, err
 	}
+	result.plan = apputil.PlanTelemetryID(*target)
 
 	if !target.IsFree() {
 		billingMissing := !apputil.PlanAvailable(plans, target.ID) ||
 			(user != nil && !user.HasPaymentMethod)
 		if billingMissing {
-			return offerBilling(opts, client, *target)
+			result.abortReason = telemetry.AbortReasonBillingRequired
+			return result, offerBilling(opts, client, *target)
 		}
 	}
 
+	tracker.SetStep(telemetry.StepTerms)
 	accepted, err := confirmToS(opts, *target)
 	if err != nil {
-		return err
+		return result, err
 	}
 	if !accepted {
+		telemetry.TrackEvent(ctx, telemetry.ApplicationCreateDeclinedTerms(result.plan))
 		fmt.Fprintf(opts.IO.Out, "%s Aborted; no application was created.\n", cs.WarningIcon())
-		return nil
+		result.abortReason = telemetry.AbortReasonDeclinedTerms
+		return result, nil
 	}
+	telemetry.TrackEvent(ctx, telemetry.ApplicationCreateAcceptedTerms(result.plan))
 
-	appDetails, err := apputil.CreateAndFetchApplication(opts.IO, client, token, opts.Region, name)
+	appDetails, createdRegion, err := apputil.CreateAndFetchApplication(
+		opts.IO,
+		client,
+		token,
+		opts.Region,
+		name,
+		tracker,
+	)
 	if err != nil {
-		return err
+		return result, err
 	}
+	result.created = true
+	result.region = createdRegion
 
 	if !target.IsFree() {
+		tracker.SetStep(telemetry.StepApplyPlan)
 		if err := callWithReauth(opts.IO, client, &token, "Applying plan", func(t string) error {
 			_, e := client.ChangeApplicationPlan(t, appDetails.ID, target.ID)
 			return e
@@ -216,7 +296,7 @@ func runCreateCmd(opts *CreateOptions) error {
 					opts.Default,
 				)
 			}
-			return fmt.Errorf(
+			return result, fmt.Errorf(
 				"failed to apply the %q plan to application %s: %w",
 				target.Name,
 				appDetails.ID,
@@ -235,12 +315,13 @@ func runCreateCmd(opts *CreateOptions) error {
 	if opts.structuredOutput() {
 		p, err := opts.PrintFlags.ToPrinter()
 		if err != nil {
-			return err
+			return result, err
 		}
-		return p.Print(opts.IO, appDetails)
+		return result, p.Print(opts.IO, appDetails)
 	}
 
-	return apputil.ConfigureProfile(
+	tracker.SetStep(telemetry.StepProfileConfigure)
+	return result, apputil.ConfigureProfile(
 		opts.IO,
 		opts.Config,
 		appDetails,

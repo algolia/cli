@@ -49,7 +49,7 @@ func NewDowngradeCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return planchange.Run(opts)
+			return planchange.Run(cmd.Context(), opts)
 		},
 	}
 
