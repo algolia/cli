@@ -242,4 +242,74 @@ func TestProfile_GetAPIKey_ActiveAppWithoutKeyErrors(t *testing.T) {
 	// APP1 resolved from state but no keychain key → error, never "legacy-key".
 	_, err := cfg.Profile().GetAPIKey()
 	require.Error(t, err)
+	// The message names the application and points to a fix, rather than the
+	// generic "not configured yet".
+	assert.Contains(t, err.Error(), "APP1")
+	assert.Contains(t, err.Error(), "application select")
+}
+
+func TestProfile_GetSearchHosts_FromState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\nsearch_hosts = [\"h1\", \"h2\"]\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	assert.Equal(t, []string{"h1", "h2"}, cfg.Profile().GetSearchHosts())
+}
+
+func TestProfile_GetSearchHosts_StateEmptyFallsBackToConfigToml(t *testing.T) {
+	statePath := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(
+		t,
+		os.WriteFile(statePath, []byte("current_application_id = \"APP1\"\n"), 0o600),
+	)
+
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte(
+			"[legacy]\napplication_id = \"APP1\"\nsearch_hosts = [\"legacy-host\"]\ndefault = true\n",
+		),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: statePath}
+	cfg.CurrentProfile.config = cfg
+
+	// No hosts in state.toml for APP1: the legacy lookup still answers while
+	// config.toml exists.
+	assert.Equal(t, []string{"legacy-host"}, cfg.Profile().GetSearchHosts())
+}
+
+func TestProfile_GetCrawlerUserID_FromState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\ncrawler_user_id = \"crawler-user\"\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	userID, err := cfg.Profile().GetCrawlerUserID()
+	require.NoError(t, err)
+	assert.Equal(t, "crawler-user", userID)
+}
+
+func TestConfig_ApplicationInState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	assert.True(t, cfg.ApplicationInState("APP1"))
+	assert.False(t, cfg.ApplicationInState("APP2"))
 }

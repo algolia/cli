@@ -104,20 +104,14 @@ func runListCmd(opts *ListOptions) error {
 		return nil
 	}
 
-	configuredProfiles := opts.Config.ConfiguredProfiles()
-	configuredAppIDs := make(map[string]string)
-	for _, p := range configuredProfiles {
-		configuredAppIDs[p.ApplicationID] = p.Name
-	}
-
 	fmt.Fprintf(opts.IO.Out, "\nYour applications:\n\n")
 	unconfigured := make([]dashboard.Application, 0)
 
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	for _, app := range apps {
-		profileName, configured := configuredAppIDs[app.ID]
 		label := fmt.Sprintf("  %s  %s", app.ID, app.Name)
-		if configured {
-			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Greenf("(configured: %s)", profileName))
+		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
+			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Green("(configured)"))
 		} else {
 			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Gray("(not configured)"))
 			unconfigured = append(unconfigured, app)

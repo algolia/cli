@@ -152,21 +152,15 @@ func pickApplication(
 		return nil, fmt.Errorf("--app-name is required in non-interactive mode")
 	}
 
-	configuredProfiles := opts.Config.ConfiguredProfiles()
-	configuredAppIDs := make(map[string]string)
-	for _, p := range configuredProfiles {
-		configuredAppIDs[p.ApplicationID] = p.Name
-	}
-
 	cs := opts.IO.ColorScheme()
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	appOptions := make([]string, len(apps))
 	for i, app := range apps {
 		label := fmt.Sprintf("%s (%s)", app.ID, app.Name)
-		if profileName, ok := configuredAppIDs[app.ID]; ok {
-			appOptions[i] = fmt.Sprintf("%s  %s", label, cs.Greenf("profile: %s", profileName))
-		} else {
-			appOptions[i] = label
+		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
+			label = fmt.Sprintf("%s  %s", label, cs.Green("(configured)"))
 		}
+		appOptions[i] = label
 	}
 
 	var selected int
