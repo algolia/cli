@@ -335,7 +335,7 @@ func closeTelemetry(ctx context.Context) {
 	}()
 	select {
 	case <-done:
-	case <-time.After(3 * time.Second):
+	case <-time.After(500 * time.Millisecond):
 	}
 }
 
