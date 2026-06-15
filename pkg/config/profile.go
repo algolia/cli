@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,7 +95,12 @@ func (p *Profile) GetAPIKey() (string, error) {
 			if secrets := p.config.appSecretsFor(appID); secrets != nil && secrets.APIKey != "" {
 				return secrets.APIKey, nil
 			}
-			return "", ErrAPIKeyNotConfigured
+			// The application is set but its key isn't in this machine's
+			// keychain (e.g. state.toml synced across machines without it).
+			return "", fmt.Errorf(
+				"no API key stored in your keychain for the current application %q; run `algolia application select` to store one, or set ALGOLIA_API_KEY",
+				appID,
+			)
 		}
 	}
 
@@ -218,7 +224,12 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 				secrets.CrawlerAPIKey != "" {
 				return secrets.CrawlerAPIKey, nil
 			}
-			return "", ErrCrawlerAPIKeyNotConfigured
+			// The application is set but its crawler key isn't in this
+			// machine's keychain.
+			return "", fmt.Errorf(
+				"no Crawler API key stored in your keychain for the current application %q; run `algolia auth crawler` to store one, or set ALGOLIA_CRAWLER_API_KEY",
+				appID,
+			)
 		}
 	}
 

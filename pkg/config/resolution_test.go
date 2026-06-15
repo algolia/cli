@@ -242,6 +242,10 @@ func TestProfile_GetAPIKey_ActiveAppWithoutKeyErrors(t *testing.T) {
 	// APP1 resolved from state but no keychain key → error, never "legacy-key".
 	_, err := cfg.Profile().GetAPIKey()
 	require.Error(t, err)
+	// The message names the application and points to a fix, rather than the
+	// generic "not configured yet".
+	assert.Contains(t, err.Error(), "APP1")
+	assert.Contains(t, err.Error(), "application select")
 }
 
 func TestProfile_GetSearchHosts_FromState(t *testing.T) {
