@@ -13,14 +13,16 @@ import (
 // ShouldMigrate reports whether the one-time config.toml → state.toml +
 // keychain migration still has to run: config.toml exists and state.toml
 // (only written on success, so doubling as the "migrated" marker) does not.
+//
+// The state.toml check comes first so an already-migrated machine — the
+// steady state, hit on every command — settles in a single stat instead of
+// also stat-ing config.toml.
 func (c *Config) ShouldMigrate() bool {
-	if c.File == "" {
+	if c.File == "" || c.StateFileExists() {
 		return false
 	}
-	if _, err := os.Stat(c.File); err != nil {
-		return false
-	}
-	return !c.StateFileExists()
+	_, err := os.Stat(c.File)
+	return err == nil
 }
 
 // Migrate moves the legacy config.toml profiles into the new model (state.toml
