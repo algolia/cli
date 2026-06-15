@@ -298,3 +298,14 @@ func TestProfile_GetCrawlerUserID_FromState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "crawler-user", userID)
 }
+
+func TestConfig_ApplicationInState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	assert.True(t, cfg.ApplicationInState("APP1"))
+	assert.False(t, cfg.ApplicationInState("APP2"))
+}

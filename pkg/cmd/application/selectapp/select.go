@@ -135,6 +135,17 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 	return chosen, nil
 }
 
+// applicationConfigured reports whether an application is already known to the
+// CLI. state.toml is the source of truth; the legacy config.toml profiles are
+// a fallback while config.toml is still supported (remove once it's gone).
+func applicationConfigured(cfg config.IConfig, appID string) bool {
+	if cfg.ApplicationInState(appID) {
+		return true
+	}
+	exists, _ := cfg.ApplicationIDExists(appID)
+	return exists
+}
+
 func pickApplication(
 	opts *SelectOptions,
 	apps []dashboard.Application,
@@ -152,21 +163,14 @@ func pickApplication(
 		return nil, fmt.Errorf("--app-name is required in non-interactive mode")
 	}
 
-	configuredProfiles := opts.Config.ConfiguredProfiles()
-	configuredAppIDs := make(map[string]string)
-	for _, p := range configuredProfiles {
-		configuredAppIDs[p.ApplicationID] = p.Name
-	}
-
 	cs := opts.IO.ColorScheme()
 	appOptions := make([]string, len(apps))
 	for i, app := range apps {
 		label := fmt.Sprintf("%s (%s)", app.ID, app.Name)
-		if profileName, ok := configuredAppIDs[app.ID]; ok {
-			appOptions[i] = fmt.Sprintf("%s  %s", label, cs.Greenf("profile: %s", profileName))
-		} else {
-			appOptions[i] = label
+		if applicationConfigured(opts.Config, app.ID) {
+			label = fmt.Sprintf("%s  %s", label, cs.Green("(configured)"))
 		}
+		appOptions[i] = label
 	}
 
 	var selected int

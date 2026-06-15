@@ -147,6 +147,11 @@ func (c *ConfigStub) ActiveApplicationID() string {
 	return c.ActiveAppID
 }
 
+func (c *ConfigStub) ApplicationInState(appID string) bool {
+	_, ok := c.SavedApps[appID]
+	return ok
+}
+
 func (c *ConfigStub) ApplicationIDByAlias(alias string) (string, bool) {
 	for appID, app := range c.SavedApps {
 		if app.Alias == alias {
@@ -156,7 +161,10 @@ func (c *ConfigStub) ApplicationIDByAlias(alias string) (string, bool) {
 	return "", false
 }
 
-func (c *ConfigStub) SaveApplication(appID, alias, apiKeyUUID, apiKey string, setCurrent bool) error {
+func (c *ConfigStub) SaveApplication(
+	appID, alias, apiKeyUUID, apiKey string,
+	setCurrent bool,
+) error {
 	if c.SavedApps == nil {
 		c.SavedApps = map[string]SavedApplication{}
 	}
