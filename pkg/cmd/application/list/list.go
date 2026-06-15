@@ -107,9 +107,10 @@ func runListCmd(opts *ListOptions) error {
 	fmt.Fprintf(opts.IO.Out, "\nYour applications:\n\n")
 	unconfigured := make([]dashboard.Application, 0)
 
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	for _, app := range apps {
 		label := fmt.Sprintf("  %s  %s", app.ID, app.Name)
-		if apputil.ApplicationConfigured(opts.Config, app.ID) {
+		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
 			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Green("(configured)"))
 		} else {
 			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Gray("(not configured)"))

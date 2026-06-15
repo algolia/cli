@@ -153,10 +153,11 @@ func pickApplication(
 	}
 
 	cs := opts.IO.ColorScheme()
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	appOptions := make([]string, len(apps))
 	for i, app := range apps {
 		label := fmt.Sprintf("%s (%s)", app.ID, app.Name)
-		if apputil.ApplicationConfigured(opts.Config, app.ID) {
+		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
 			label = fmt.Sprintf("%s  %s", label, cs.Green("(configured)"))
 		}
 		appOptions[i] = label
