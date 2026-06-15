@@ -135,17 +135,6 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 	return chosen, nil
 }
 
-// applicationConfigured reports whether an application is already known to the
-// CLI. state.toml is the source of truth; the legacy config.toml profiles are
-// a fallback while config.toml is still supported (remove once it's gone).
-func applicationConfigured(cfg config.IConfig, appID string) bool {
-	if cfg.ApplicationInState(appID) {
-		return true
-	}
-	exists, _ := cfg.ApplicationIDExists(appID)
-	return exists
-}
-
 func pickApplication(
 	opts *SelectOptions,
 	apps []dashboard.Application,
@@ -167,7 +156,7 @@ func pickApplication(
 	appOptions := make([]string, len(apps))
 	for i, app := range apps {
 		label := fmt.Sprintf("%s (%s)", app.ID, app.Name)
-		if applicationConfigured(opts.Config, app.ID) {
+		if apputil.ApplicationConfigured(opts.Config, app.ID) {
 			label = fmt.Sprintf("%s  %s", label, cs.Green("(configured)"))
 		}
 		appOptions[i] = label
