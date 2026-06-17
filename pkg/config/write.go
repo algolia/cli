@@ -11,6 +11,17 @@ func (c *Config) ActiveApplicationID() string {
 	return c.activeApplicationID()
 }
 
+// APIKeyUUID returns the CLI-managed API key UUID recorded in state.toml for
+// the given application, and whether one is stored. A configured application
+// with no UUID (a legacy setup) returns ("", false).
+func (c *Config) APIKeyUUID(appID string) (string, bool) {
+	app, ok := c.loadState().Applications[appID]
+	if !ok || app.APIKeyUUID == "" {
+		return "", false
+	}
+	return app.APIKeyUUID, true
+}
+
 // ApplicationIDByAlias returns the application ID carrying the given alias in
 // state.toml, and whether one was found.
 func (c *Config) ApplicationIDByAlias(alias string) (string, bool) {
