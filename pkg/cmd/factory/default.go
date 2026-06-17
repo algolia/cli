@@ -13,6 +13,7 @@ import (
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
@@ -22,6 +23,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 		ExecutableName: "gh",
 	}
 	f.IOStreams = ioStreams(f)
+	f.Prompter = interactive.NewSurveyPrompter(f.IOStreams)
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 	f.CompositionClient = compositionClient(f, appVersion)
