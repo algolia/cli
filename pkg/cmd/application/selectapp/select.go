@@ -121,8 +121,12 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 	}
 
 	// Reuse a key already stored for this application (keychain, then legacy
-	// config.toml) before creating a new one on the dashboard.
-	if !apputil.ReuseExistingAPIKey(opts.Config, chosen) {
+	// config.toml) before creating a new one on the dashboard. A migrated
+	// application may have a usable key but no stored UUID (legacy config.toml
+	// never recorded one); without a UUID, commands like `apikeys rotate` can't
+	// target it, so regenerate a fresh CLI-managed key whenever none is on record.
+	_, hasUUID := opts.Config.APIKeyUUID(chosen.ID)
+	if !hasUUID || !apputil.ReuseExistingAPIKey(opts.Config, chosen) {
 		if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, chosen); err != nil {
 			return nil, err
 		}

@@ -127,7 +127,11 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 		}
 
 		appDetails = app
-		if !apputil.ReuseExistingAPIKey(opts.Config, appDetails) {
+		// A migrated application may have a usable key but no stored UUID, which
+		// commands like `apikeys rotate` need; regenerate a fresh CLI-managed key
+		// whenever none is on record (mirrors `application select`).
+		_, hasUUID := opts.Config.APIKeyUUID(appDetails.ID)
+		if !hasUUID || !apputil.ReuseExistingAPIKey(opts.Config, appDetails) {
 			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
 				return err
 			}
