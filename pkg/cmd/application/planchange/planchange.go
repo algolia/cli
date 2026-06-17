@@ -133,7 +133,7 @@ func changePlan(
 	tracker.SetStep(telemetry.StepAuth)
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
-		return fmt.Errorf(
+		return result, fmt.Errorf(
 			"no current application configured; run \"algolia auth login\" or \"algolia application select\" first: %w",
 			err,
 		)
