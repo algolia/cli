@@ -598,6 +598,65 @@ func (c *Client) CreateAPIKey(
 	return CreatedAPIKey{Value: key, UUID: keyResp.Data.ID}, nil
 }
 
+// RotateAPIKey regenerates the secret value of the API key identified by keyUUID
+// for the given application, via the Public API. The key keeps its UUID; only
+// its value changes. Returns the new value and the (unchanged) UUID.
+func (c *Client) RotateAPIKey(accessToken, appID, keyUUID string) (CreatedAPIKey, error) {
+	endpoint := fmt.Sprintf(
+		"%s/1/applications/%s/api-keys/%s/rotate",
+		c.APIURL,
+		url.PathEscape(appID),
+		url.PathEscape(keyUUID),
+	)
+	req, err := http.NewRequest(http.MethodPost, endpoint, nil)
+	if err != nil {
+		return CreatedAPIKey{}, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return CreatedAPIKey{}, fmt.Errorf("rotate API key request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return CreatedAPIKey{}, ErrSessionExpired
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return CreatedAPIKey{}, fmt.Errorf("failed to read API key response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return CreatedAPIKey{}, fmt.Errorf(
+			"rotate API key failed with status %d: %s",
+			resp.StatusCode,
+			string(respBody),
+		)
+	}
+
+	var keyResp CreateAPIKeyResponse
+	if err := json.Unmarshal(respBody, &keyResp); err != nil {
+		return CreatedAPIKey{}, fmt.Errorf(
+			"failed to parse API key response: %w (body: %s)",
+			err,
+			string(respBody),
+		)
+	}
+
+	key := keyResp.Data.Attributes.Value
+	if key == "" {
+		return CreatedAPIKey{}, fmt.Errorf(
+			"API key rotation succeeded but no key was returned in the response: %s",
+			string(respBody),
+		)
+	}
+
+	return CreatedAPIKey{Value: key, UUID: keyResp.Data.ID}, nil
+}
+
 // GetCrawlerUser gets the crawler API user data for the current authenticated user
 func (c *Client) GetCrawlerUser(accessToken string) (*DashboardCrawlerUserData, error) {
 	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/crawler/user", nil)

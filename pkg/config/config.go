@@ -32,6 +32,7 @@ type IConfig interface {
 
 	// New model (state.toml + OS keychain).
 	ActiveApplicationID() string
+	APIKeyUUID(appID string) (string, bool)
 	ApplicationInState(appID string) bool
 	ApplicationIDByAlias(alias string) (string, bool)
 	SaveApplication(appID, alias, apiKeyUUID, apiKey string, setCurrent bool) error

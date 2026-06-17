@@ -123,3 +123,32 @@ func TestConfig_ActiveApplicationIDAndAliasAccessors(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "APP1", appID)
 }
+
+func TestConfig_APIKeyUUID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(
+		path,
+		[]byte("[applications.APP1]\napi_key_uuid = \"uuid-1\"\nalias = \"prod\"\n\n[applications.APP2]\nalias = \"legacy\"\n"),
+		0o600,
+	))
+	cfg := &Config{StateFile: path}
+
+	tests := []struct {
+		name     string
+		appID    string
+		wantUUID string
+		wantOK   bool
+	}{
+		{"stored UUID", "APP1", "uuid-1", true},
+		{"present but no UUID (legacy)", "APP2", "", false},
+		{"absent application", "APP3", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uuid, ok := cfg.APIKeyUUID(tt.appID)
+			assert.Equal(t, tt.wantOK, ok)
+			assert.Equal(t, tt.wantUUID, uuid)
+		})
+	}
+}
