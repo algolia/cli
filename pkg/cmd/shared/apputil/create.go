@@ -12,21 +12,27 @@ import (
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/keychain"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
 // CreateApplicationWithRetry creates an application, retrying with a different
 // region if the selected one has no available cluster.
+//
+// The optional tracker (nil-safe) records which step the flow is in, so the
+// telemetry of the calling flow can tell where the user stopped.
 func CreateApplicationWithRetry(
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	accessToken string,
 	region string,
 	appName string,
+	tracker *telemetry.FlowTracker,
 ) (*dashboard.Application, string, error) {
 	cs := io.ColorScheme()
 
 	for {
 		if region == "" {
+			tracker.SetStep(telemetry.StepRegion)
 			var err error
 			region, err = PromptRegion(io, client, accessToken)
 			if err != nil {
@@ -34,6 +40,7 @@ func CreateApplicationWithRetry(
 			}
 		}
 
+		tracker.SetStep(telemetry.StepAPICall)
 		io.StartProgressIndicatorWithLabel("Creating application")
 		app, err := client.CreateApplication(accessToken, region, appName)
 		io.StopProgressIndicator()
@@ -102,22 +109,25 @@ func PromptRegion(
 }
 
 // CreateAndFetchApplication creates an application (with region retry) and
-// generates an API key for it.
+// generates an API key for it. It returns the region the application was
+// actually created in, which may differ from the requested one.
 func CreateAndFetchApplication(
 	io *iostreams.IOStreams,
 	client *dashboard.Client,
 	accessToken, region, appName string,
-) (*dashboard.Application, error) {
-	app, _, err := CreateApplicationWithRetry(io, client, accessToken, region, appName)
+	tracker *telemetry.FlowTracker,
+) (*dashboard.Application, string, error) {
+	app, createdRegion, err := CreateApplicationWithRetry(io, client, accessToken, region, appName, tracker)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
+	tracker.SetStep(telemetry.StepAPIKey)
 	if err := EnsureAPIKey(io, client, accessToken, app); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return app, nil
+	return app, createdRegion, nil
 }
 
 // EnsureAPIKey generates a write API key for the application.

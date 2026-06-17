@@ -8,6 +8,7 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
 // DefaultOAuthClientID is a public OAuth client ID (PKCE flow, not a secret).
@@ -35,7 +36,15 @@ func OAuthClientID() string {
 // launched, e.g. SSH / containers).
 //
 // If signup is true the browser opens to the sign-up page.
-func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBrowser bool) (string, error) {
+//
+// The optional tracker (nil-safe) records which step the flow is in, so the
+// telemetry of the calling flow can tell where the user stopped.
+func RunOAuth(
+	io *iostreams.IOStreams,
+	client *dashboard.Client,
+	signup, openBrowser bool,
+	tracker *telemetry.FlowTracker,
+) (string, error) {
 	cs := io.ColorScheme()
 
 	redirectURI, resultCh, err := StartCallbackServer()
@@ -69,6 +78,7 @@ func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBro
 	}
 
 	fmt.Fprintf(io.Out, "Waiting for authentication...\n")
+	tracker.SetStep(telemetry.StepBrowserWait)
 	cbResult := <-resultCh
 
 	if cbResult.Error != "" {
@@ -78,6 +88,7 @@ func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBro
 		return "", fmt.Errorf("no authorization code received")
 	}
 
+	tracker.SetStep(telemetry.StepCodeExchange)
 	io.StartProgressIndicatorWithLabel("Exchanging code for tokens")
 	tokenResp, err := client.AuthorizationCodeGrant(cbResult.Code, codeVerifier, redirectURI)
 	io.StopProgressIndicator()
