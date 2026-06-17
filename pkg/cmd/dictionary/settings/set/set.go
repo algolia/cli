@@ -21,6 +21,8 @@ type SetOptions struct {
 	DisableStandardEntries []string
 	EnableStandardEntries  []string
 	ResetStandardEntries   bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewSetCmd creates and returns a set command for dictionaries' settings.
@@ -29,6 +31,7 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:  "set --disable-standard-entries <languages...>  --enable-standard-entries <languages...> [--reset-standard-entries]",
@@ -112,6 +115,8 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 		cmdutil.StringCompletionFunc(supportedLanguages),
 	)
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -158,6 +163,14 @@ func runSetCmd(opts *SetOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
+	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

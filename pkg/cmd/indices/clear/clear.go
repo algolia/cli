@@ -23,6 +23,8 @@ type ClearOptions struct {
 	Index     string
 	DoConfirm bool
 	Wait      bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewClearCmd creates and returns a clear command for indices
@@ -31,6 +33,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var confirm bool
@@ -72,6 +75,8 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -115,6 +120,14 @@ func runClearCmd(opts *ClearOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
+	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {
