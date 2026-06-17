@@ -10,6 +10,7 @@ import (
 
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
@@ -20,6 +21,10 @@ type Factory struct {
 	CrawlerClient     func() (*crawler.Client, error)
 	CompositionClient func() (*composition.APIClient, error)
 
+	// Prompter is the interactive input source used by commands that support
+	// an --interactive mode. Defaulted to a real SurveyPrompter in factory.New;
+	// tests set it to an interactive.ScriptedPrompter.
+	Prompter       interactive.Prompter
 	ExecutableName string
 }
 
