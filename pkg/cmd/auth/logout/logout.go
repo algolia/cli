@@ -1,6 +1,7 @@
 package logout
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
@@ -10,6 +11,7 @@ import (
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/telemetry"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -38,14 +40,14 @@ func NewLogoutCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runLogoutCmd(opts)
+			return runLogoutCmd(cmd.Context(), opts)
 		},
 	}
 
 	return cmd
 }
 
-func runLogoutCmd(opts *LogoutOptions) error {
+func runLogoutCmd(ctx context.Context, opts *LogoutOptions) error {
 	cs := opts.IO.ColorScheme()
 	stored := auth.LoadToken()
 
@@ -67,6 +69,10 @@ func runLogoutCmd(opts *LogoutOptions) error {
 			fmt.Fprintf(opts.IO.ErrOut, "%s Failed to revoke refresh token: %s\n", cs.WarningIcon(), err)
 		}
 	}
+
+	// Tracked before clearing the local state, while the user identifier is
+	// still attached to the telemetry metadata.
+	telemetry.TrackEvent(ctx, telemetry.AuthLogout())
 
 	auth.ClearToken()
 

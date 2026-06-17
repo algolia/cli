@@ -5,6 +5,7 @@
 package planchange
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -12,11 +13,13 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	pkgopen "github.com/algolia/cli/pkg/open"
 	"github.com/algolia/cli/pkg/prompt"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
 // Direction selects whether the flow offers higher-tier (upgrade) or
@@ -53,10 +56,81 @@ type changeResult struct {
 	Price         string `json:"price"`
 }
 
+// telemetryDirection maps the flow direction to its telemetry value.
+func (opts *Options) telemetryDirection() telemetry.Direction {
+	if opts.Direction == DirectionDowngrade {
+		return telemetry.DirectionDowngrade
+	}
+	return telemetry.DirectionUpgrade
+}
+
+// planChangeResult carries what the plan change flow produced, for telemetry.
+type planChangeResult struct {
+	changed     bool
+	fromPlan    string
+	toPlan      string
+	abortReason telemetry.AbortReason
+}
+
 // Run executes the shared plan-change flow.
-func Run(opts *Options) error {
+func Run(ctx context.Context, opts *Options) error {
+	if opts.DryRun {
+		// A dry run is not a funnel: no events, no tracker.
+		_, err := changePlan(ctx, opts, nil)
+		return err
+	}
+
+	direction := opts.telemetryDirection()
+	tracker := telemetry.NewFlowTracker()
+	telemetry.TrackEvent(ctx, telemetry.ApplicationPlanChangeStarted(direction))
+
+	result, err := changePlan(ctx, opts, tracker)
+	trackPlanChangeOutcome(ctx, direction, tracker, result, err)
+	return err
+}
+
+// trackPlanChangeOutcome reports how the plan change flow ended: completed,
+// aborted (with the reason why), or failed.
+func trackPlanChangeOutcome(
+	ctx context.Context,
+	direction telemetry.Direction,
+	tracker *telemetry.FlowTracker,
+	result planChangeResult,
+	err error,
+) {
+	switch {
+	case result.changed:
+		// The plan was changed: report Completed even when a post-success
+		// step (courtesy prompt, output printing) failed.
+		telemetry.TrackEvent(
+			ctx,
+			telemetry.ApplicationPlanChangeCompleted(direction, result.fromPlan, result.toPlan, tracker),
+		)
+	case err == nil || result.abortReason != "" || cmdutil.IsUserCancellation(err):
+		// Stopped without changing anything: declined terms, already on the
+		// plan, nothing to change to, billing wall, or user cancellation.
+		reason := result.abortReason
+		if reason == "" && cmdutil.IsUserCancellation(err) {
+			reason = telemetry.AbortReasonCancelled
+		}
+		telemetry.TrackEvent(
+			ctx,
+			telemetry.ApplicationPlanChangeAborted(direction, tracker, reason),
+		)
+	default:
+		telemetry.TrackEvent(ctx, telemetry.ApplicationPlanChangeFailed(direction, tracker, err))
+	}
+}
+
+func changePlan(
+	ctx context.Context,
+	opts *Options,
+	tracker *telemetry.FlowTracker,
+) (planChangeResult, error) {
+	var result planChangeResult
 	cs := opts.IO.ColorScheme()
 
+	tracker.SetStep(telemetry.StepAuth)
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
 		return fmt.Errorf(
@@ -69,19 +143,20 @@ func Run(opts *Options) error {
 
 	token, err := auth.EnsureAuthenticated(opts.IO, client)
 	if err != nil {
-		return err
+		return result, err
 	}
 
+	tracker.SetStep(telemetry.StepPlan)
 	var plans []dashboard.Plan
 	if err := callWithReauth(opts.IO, client, &token, "Fetching plans", func(t string) error {
 		var e error
 		plans, e = client.GetSelfServePlans(t)
 		return e
 	}); err != nil {
-		return err
+		return result, err
 	}
 	if len(plans) == 0 {
-		return fmt.Errorf("no self-serve plans are available")
+		return result, fmt.Errorf("no self-serve plans are available")
 	}
 
 	// Billing status is best-effort. If /1/user is unavailable we continue
@@ -96,14 +171,19 @@ func Run(opts *Options) error {
 	}
 
 	app := fetchApplication(opts, client, &token, appID)
+	if app != nil {
+		result.fromPlan = currentPlanTelemetryID(plans, app)
+	}
 
 	target, err := resolveTarget(opts, appID, app, plans)
 	if err != nil {
-		return err
+		return result, err
 	}
 	if target == nil {
-		return nil
+		result.abortReason = telemetry.AbortReasonNoCandidates
+		return result, nil
 	}
+	result.toPlan = apputil.PlanTelemetryID(*target)
 
 	if isCurrentPlan(app, *target) {
 		fmt.Fprintf(
@@ -113,14 +193,16 @@ func Run(opts *Options) error {
 			cs.Bold(appID),
 			cs.Bold(target.Name),
 		)
-		return nil
+		result.abortReason = telemetry.AbortReasonAlreadyOnPlan
+		return result, nil
 	}
 
 	// Paid plans require a payment method that the CLI cannot collect. Only
 	// block when we positively know there is none (user fetched, flag false);
 	// otherwise defer to the server.
 	if !target.IsFree() && user != nil && !user.HasPaymentMethod {
-		return fmt.Errorf(
+		result.abortReason = telemetry.AbortReasonBillingRequired
+		return result, fmt.Errorf(
 			"the %q plan requires a payment method, which the CLI can't collect; add one in the Algolia dashboard (Settings → Billing) and try again",
 			target.Name,
 		)
@@ -133,7 +215,7 @@ func Run(opts *Options) error {
 			"plan":        target.ID,
 			"dryRun":      true,
 		}
-		return cmdutil.PrintRunSummary(
+		return result, cmdutil.PrintRunSummary(
 			opts.IO,
 			opts.PrintFlags,
 			summary,
@@ -141,32 +223,56 @@ func Run(opts *Options) error {
 		)
 	}
 
+	// With --plan the interactive picker (which shows the current application)
+	// is skipped; show which application the terms apply to before asking.
+	if opts.Plan != "" {
+		printCurrentApplication(opts, appID, app)
+	}
+
+	tracker.SetStep(telemetry.StepTerms)
 	accepted, err := confirmToS(opts, *target)
 	if err != nil {
-		return err
+		return result, err
 	}
 	if !accepted {
+		telemetry.TrackEvent(
+			ctx,
+			telemetry.ApplicationPlanChangeDeclinedTerms(
+				opts.telemetryDirection(),
+				apputil.PlanTelemetryID(*target),
+			),
+		)
 		fmt.Fprintf(
 			opts.IO.Out,
 			"%s Plan change aborted; no changes were made.\n",
 			cs.WarningIcon(),
 		)
-		return nil
+		result.abortReason = telemetry.AbortReasonDeclinedTerms
+		return result, nil
 	}
+	telemetry.TrackEvent(
+		ctx,
+		telemetry.ApplicationPlanChangeAcceptedTerms(
+			opts.telemetryDirection(),
+			apputil.PlanTelemetryID(*target),
+		),
+	)
 
+	tracker.SetStep(telemetry.StepAPICall)
 	if err := callWithReauth(opts.IO, client, &token, "Changing plan", func(t string) error {
 		_, e := client.ChangeApplicationPlan(t, appID, target.ID)
 		return e
 	}); err != nil {
-		return err
+		return result, err
 	}
+	result.changed = true
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()
 		if err != nil {
-			return err
+			return result, err
 		}
-		return p.Print(opts.IO, changeResult{
+		return result, p.Print(opts.IO, changeResult{
 			ApplicationID: appID,
 			Plan:          target.ID,
 			PlanName:      target.Name,
@@ -183,10 +289,10 @@ func Run(opts *Options) error {
 	)
 
 	if target.IsFree() {
-		return nil
+		return result, nil
 	}
 
-	return offerCostManagementBudget(opts, client.DashboardURL, appID)
+	return result, offerCostManagementBudget(opts, client.DashboardURL, appID)
 }
 
 // offerCostManagementBudget tells the user they can create a budget and, when
@@ -294,6 +400,16 @@ func normalizePlanKey(s string) string {
 	return strings.TrimSpace(strings.ToLower(s))
 }
 
+// currentPlanTelemetryID maps the app's current plan to the identifier used in
+// telemetry properties, falling back to the normalized label when the plan is
+// not in the self-serve list.
+func currentPlanTelemetryID(plans []dashboard.Plan, app *dashboard.Application) string {
+	if idx := currentPlanIndex(plans, app); idx >= 0 {
+		return apputil.PlanTelemetryID(plans[idx])
+	}
+	return normalizePlanKey(app.PlanLabel)
+}
+
 // currentPlanIndex returns the index of the app's current plan in plans, or -1.
 func currentPlanIndex(plans []dashboard.Plan, app *dashboard.Application) int {
 	if app == nil {
@@ -347,7 +463,8 @@ func reportNoCandidates(
 	)
 }
 
-// printCurrentApplication prints the current app and plan before the picker.
+// printCurrentApplication prints the current app and plan before the picker
+// or, with --plan, before the terms confirmation.
 func printCurrentApplication(opts *Options, appID string, app *dashboard.Application) {
 	cs := opts.IO.ColorScheme()
 	label := cs.Bold(appID)

@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
+	"net/http"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
@@ -19,8 +20,10 @@ import (
 )
 
 const (
-	AppName               = "cli"
-	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+	AppName = "cli"
+	// No trailing slash: analytics-go appends "/v1/batch" to the endpoint.
+	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com"
+	envHeader             = "X-Algolia-CLI-Env"
 )
 
 type telemetryMetadataKey struct{}
@@ -29,12 +32,16 @@ type telemetryClientKey struct{}
 
 type TelemetryClient interface {
 	Identify(ctx context.Context) error
-	Track(ctx context.Context, event string) error
+	Track(ctx context.Context, event string, properties map[string]any) error
 	Close()
 }
 
 type AnalyticsTelemetryClient struct {
 	client analytics.Client
+	// sequence numbers the Track events of one invocation so their order can
+	// be reconstructed downstream: Segment stores timestamps with millisecond
+	// precision, so back-to-back events can tie.
+	sequence atomic.Int64
 }
 
 type AnalyticsTelemetryLogger struct {
@@ -63,6 +70,11 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	client, err := analytics.NewWithConfig("", analytics.Config{
 		Endpoint: telemetryAnalyticsURL,
 		Logger:   newTelemetryLogger(debug),
+		Verbose:  debug,
+		Transport: &envHeaderTransport{
+			base: http.DefaultTransport,
+			env:  telemetryEnv(),
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -70,24 +82,30 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	return &AnalyticsTelemetryClient{client: client}, nil
 }
 
-// IdentifyOnce sends a single Identify event through a short-lived client and
-// flushes it before returning. It is meant for one-shot identification (for
-// example, right after authentication fills the token) where the command's
-// request-scoped client may already have been closed. It honors the same
-// ALGOLIA_CLI_TELEMETRY and DEBUG environment variables as the root command and
-// fails silently so telemetry never blocks the user.
-func IdentifyOnce(ctx context.Context) {
-	if os.Getenv("ALGOLIA_CLI_TELEMETRY") == "0" {
-		return
-	}
+// envHeaderTransport adds the X-Algolia-CLI-Env header to every telemetry
+// request, so the proxy can route release builds to the production Segment
+// source and everything else to the development one. Until the proxy routes
+// on the header, all events keep going to the development source.
+type envHeaderTransport struct {
+	base http.RoundTripper
+	env  string
+}
 
-	client, err := NewAnalyticsTelemetryClient(os.Getenv("DEBUG") != "")
-	if err != nil {
-		return
-	}
-	defer client.Close()
+func (t *envHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// RoundTrippers must not mutate the caller's request.
+	req = req.Clone(req.Context())
+	req.Header.Set(envHeader, t.env)
+	return t.base.RoundTrip(req)
+}
 
-	_ = client.Identify(ctx)
+// telemetryEnv reports which environment the events belong to: "prod" for
+// release builds (goreleaser injects a semver version), "dev" for source
+// builds (the version stays "main").
+func telemetryEnv() string {
+	if version.Version == "main" {
+		return "dev"
+	}
+	return "prod"
 }
 
 // anonymousID is a unique identifier for an anonymous user of the CLI (basically the hash of the mac address)
@@ -236,19 +254,30 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	return a.client.Enqueue(identify)
 }
 
-// Track tracks the event with the provided properties
-func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) error {
+// Track tracks the event with the provided custom properties, merged with the
+// base properties of the invocation
+func (a *AnalyticsTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
 	metadata := GetEventMetadata(ctx)
+
+	props := make(map[string]any, len(properties)+5)
+	for k, v := range properties {
+		props[k] = v
+	}
+	// Base properties are set last so custom ones can never override them.
+	props["invocation_id"] = metadata.InvocationID
+	props["app_id"] = metadata.AppID
+	props["command"] = metadata.CommandPath
+	props["flags"] = metadata.CommandFlags
+	props["sequence"] = a.sequence.Add(1)
 
 	track := analytics.Track{
 		Event:       event,
 		AnonymousId: metadata.AnonymousID,
-		Properties: map[string]interface{}{
-			"invocation_id": metadata.InvocationID,
-			"app_id":        metadata.AppID,
-			"command":       metadata.CommandPath,
-			"flags":         metadata.CommandFlags,
-		},
+		Properties:  props,
 		Context: &analytics.Context{
 			Device: analytics.DeviceInfo{
 				Id: metadata.AnonymousID,
@@ -268,6 +297,14 @@ func (a *AnalyticsTelemetryClient) Close() {
 	_ = a.client.Close()
 }
 
-func (a *NoOpTelemetryClient) Identify(ctx context.Context) error            { return nil }
-func (a *NoOpTelemetryClient) Track(ctx context.Context, event string) error { return nil }
-func (a *NoOpTelemetryClient) Close()                                        {}
+func (a *NoOpTelemetryClient) Identify(ctx context.Context) error { return nil }
+
+func (a *NoOpTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
+	return nil
+}
+
+func (a *NoOpTelemetryClient) Close() {}

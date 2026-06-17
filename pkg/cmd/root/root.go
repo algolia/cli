@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/MakeNowJust/heredoc"
@@ -126,7 +127,8 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func Execute() exitCode {
+func Execute() (code exitCode) {
+	start := time.Now()
 	hasDebug := os.Getenv("DEBUG") != ""
 	hasTelemetry := os.Getenv("ALGOLIA_CLI_TELEMETRY") != "0"
 
@@ -205,25 +207,32 @@ func Execute() exitCode {
 		}
 
 		// Send telemetry.
-		err = telemetryClient.Track(ctx, "Command Invoked")
+		err = telemetryClient.Track(ctx, telemetry.EventCommandInvoked, nil)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error tracking telemetry: %s\n", err)
 		}
-
-		go telemetryClient.Close() // flush telemetry events
 
 		return nil
 	}
 
 	// Command context is used to pass information to the telemetry client.
-	ctx, err := createContext(rootCmd, stderr, hasDebug, hasTelemetry)
-	if err != nil {
-		printError(stderr, err, rootCmd, hasDebug)
-		return exitError
-	}
+	ctx := createContext(rootCmd, stderr, hasDebug, hasTelemetry)
+	defer closeTelemetry(ctx)
 
-	// Run the command.
+	// Report how the command ended just before the final flush (deferred
+	// functions run last-in-first-out).
+	var executedCmd *cobra.Command
+	var executeErr error
+	var elapsed time.Duration
+	defer func() {
+		trackCommandCompleted(ctx, executedCmd, code, executeErr, elapsed)
+	}()
+
+	// Run the command. The duration is measured right away so it never
+	// includes the update-notifier wait below.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
+	executedCmd, executeErr, elapsed = cmd, err, time.Since(start)
+	identifyNewlyAuthenticatedUser(ctx, cmd)
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
@@ -261,31 +270,113 @@ func Execute() exitCode {
 	return exitOK
 }
 
+// identifyNewlyAuthenticatedUser re-sends an Identify when the user signed in
+// during the command (e.g. `application create` while logged out): the
+// Identify from PersistentPreRunE went out anonymous, so the identity would
+// otherwise only ship on the next invocation. Runs before the deferred
+// Command Completed so that event carries the user too.
+func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
+	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
+		return
+	}
+	// Same gating as trackCommandCompleted: an empty command path means
+	// PersistentPreRunE never ran, so no login could have happened either.
+	metadata := telemetry.GetEventMetadata(ctx)
+	if metadata == nil || metadata.CommandPath == "" || metadata.UserID != "" {
+		return
+	}
+	token := auth.LoadToken()
+	if token == nil || token.UserID == "" {
+		return
+	}
+	metadata.SetUser(token.UserID, token.Email, token.Name)
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+	_ = client.Identify(ctx)
+}
+
+// trackCommandCompleted reports how the command ended: success, failure (with
+// the class of the error) or user cancellation.
+func trackCommandCompleted(
+	ctx context.Context,
+	cmd *cobra.Command,
+	code exitCode,
+	err error,
+	elapsed time.Duration,
+) {
+	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
+		return
+	}
+	// An empty command path means PersistentPreRunE never ran (--help,
+	// --version, unknown flag or command, failed auth check): no Command
+	// Invoked was sent, so don't send an orphan Command Completed either.
+	metadata := telemetry.GetEventMetadata(ctx)
+	if metadata == nil || metadata.CommandPath == "" {
+		return
+	}
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+
+	props := map[string]any{
+		"succeeded":   code == exitOK,
+		"exit_code":   int(code),
+		"duration_ms": elapsed.Milliseconds(),
+	}
+	if err != nil {
+		props["error_class"] = telemetry.ErrorClass(err)
+		props["user_cancelled"] = cmdutil.IsUserCancellation(err)
+	}
+
+	_ = client.Track(ctx, telemetry.EventCommandCompleted, props)
+}
+
+// closeTelemetry flushes the pending telemetry events, giving up after a
+// short timeout so an unreachable telemetry endpoint never delays exit.
+func closeTelemetry(ctx context.Context) {
+	client := telemetry.GetTelemetryClient(ctx)
+	if client == nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		client.Close()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+	}
+}
+
 // createContext creates a context with telemetry.
 func createContext(
 	cmd *cobra.Command,
 	stderr io.Writer,
 	hasDebug bool,
 	hasTelemetry bool,
-) (context.Context, error) {
+) context.Context {
 	ctx := context.Background()
 	telemetryMetadata := telemetry.NewEventMetadata()
 	updatedCtx := telemetry.WithEventMetadata(ctx, telemetryMetadata)
 
-	var telemetryClient telemetry.TelemetryClient
-	var err error
+	var telemetryClient telemetry.TelemetryClient = &telemetry.NoOpTelemetryClient{}
 	if hasTelemetry {
-		telemetryClient, err = telemetry.NewAnalyticsTelemetryClient(hasDebug)
-		// Fail silently if telemetry is not available unless in debug mode.
-		if err != nil && hasDebug {
-			fmt.Fprintf(stderr, "Error creating telemetry client: %s\n", err)
-			return nil, err
+		client, err := telemetry.NewAnalyticsTelemetryClient(hasDebug)
+		if err != nil {
+			// Fail silently (fall back to no-op telemetry) unless in debug mode.
+			if hasDebug {
+				fmt.Fprintf(stderr, "Error creating telemetry client: %s\n", err)
+			}
+		} else {
+			telemetryClient = client
 		}
-	} else {
-		telemetryClient = &telemetry.NoOpTelemetryClient{}
 	}
 	contextWithTelemetry := telemetry.WithTelemetryClient(updatedCtx, telemetryClient)
-	return contextWithTelemetry, nil
+	return contextWithTelemetry
 }
 
 // printError prints an error to the stderr, with additional information if applicable.

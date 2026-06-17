@@ -75,6 +75,16 @@ func PlanChoices(plans []dashboard.Plan) []string {
 	return choices
 }
 
+// PlanTelemetryID returns the plan identifier used in telemetry properties:
+// the user-facing "free" for the free tier (whose underlying template id is
+// not fixed and can be "build"), the plan id otherwise.
+func PlanTelemetryID(p dashboard.Plan) string {
+	if p.IsFree() {
+		return dashboard.PlanTypeFree
+	}
+	return p.ID
+}
+
 // SelectablePlans returns the plans a user may choose from. When hideNonFree is
 // true (no payment method on file) only the free plan(s) are offered, because
 // paid plans require billing details the CLI can't collect.
