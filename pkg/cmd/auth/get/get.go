@@ -1,39 +1,39 @@
 package get
 
 import (
-	"fmt"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
 )
 
-// GetOptions represents the options for the get command.
 type GetOptions struct {
-	IO *iostreams.IOStreams
-
-	LoadToken func() *auth.StoredToken
-
-	PrintFlags *cmdutil.PrintFlags
+	IO                  *iostreams.IOStreams
+	LoadToken           func() *auth.StoredToken
+	PrintFlags          *cmdutil.PrintFlags
+	NewDashboardClient  func(clientID string) *dashboard.Client
+	EnsureAuthenticated func(io *iostreams.IOStreams, client *dashboard.Client) (string, error)
 }
 
-// Identity is the authenticated user, without any token information.
 type Identity struct {
 	UserID string `json:"user_id,omitempty"`
 	Email  string `json:"email,omitempty"`
 	Name   string `json:"name,omitempty"`
 }
 
-// NewGetCmd returns a new instance of the get command.
 func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &GetOptions{
 		IO:         f.IOStreams,
 		LoadToken:  auth.LoadToken,
 		PrintFlags: cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		NewDashboardClient: func(clientID string) *dashboard.Client {
+			return dashboard.NewClient(clientID)
+		},
+		EnsureAuthenticated: auth.EnsureAuthenticated,
 	}
 
 	cmd := &cobra.Command{
@@ -58,16 +58,13 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-// runGetCmd runs the get command.
 func runGetCmd(opts *GetOptions) error {
-	stored := opts.LoadToken()
-	if stored == nil {
-		return fmt.Errorf("you are not logged in — run `algolia auth login` first")
+	client := opts.NewDashboardClient(auth.OAuthClientID())
+	if _, err := opts.EnsureAuthenticated(opts.IO, client); err != nil {
+		return err
 	}
 
-	if stored.IsExpired() {
-		return fmt.Errorf("your session has expired — run `algolia auth login` again")
-	}
+	stored := opts.LoadToken()
 
 	identity := Identity{
 		UserID: stored.UserID,
