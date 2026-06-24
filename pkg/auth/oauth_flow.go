@@ -8,11 +8,11 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/telemetry"
 )
 
-// DefaultOAuthClientID is injected at build time via ldflags.
-// Override with ALGOLIA_OAUTH_CLIENT_ID environment variable for local development.
-var DefaultOAuthClientID = ""
+// DefaultOAuthClientID is a public OAuth client ID (PKCE flow, not a secret).
+var DefaultOAuthClientID = "-6xbCNF7usNqkcacFHKt0WHCJIZ2rlp2bP2_VH12xQE"
 
 // OAuthClientID returns the OAuth client ID, preferring the ALGOLIA_OAUTH_CLIENT_ID
 // environment variable over the compiled-in default (set via ldflags).
@@ -36,7 +36,15 @@ func OAuthClientID() string {
 // launched, e.g. SSH / containers).
 //
 // If signup is true the browser opens to the sign-up page.
-func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBrowser bool) (string, error) {
+//
+// The optional tracker (nil-safe) records which step the flow is in, so the
+// telemetry of the calling flow can tell where the user stopped.
+func RunOAuth(
+	io *iostreams.IOStreams,
+	client *dashboard.Client,
+	signup, openBrowser bool,
+	tracker *telemetry.FlowTracker,
+) (string, error) {
 	cs := io.ColorScheme()
 
 	redirectURI, resultCh, err := StartCallbackServer()
@@ -70,6 +78,7 @@ func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBro
 	}
 
 	fmt.Fprintf(io.Out, "Waiting for authentication...\n")
+	tracker.SetStep(telemetry.StepBrowserWait)
 	cbResult := <-resultCh
 
 	if cbResult.Error != "" {
@@ -79,6 +88,7 @@ func RunOAuth(io *iostreams.IOStreams, client *dashboard.Client, signup, openBro
 		return "", fmt.Errorf("no authorization code received")
 	}
 
+	tracker.SetStep(telemetry.StepCodeExchange)
 	io.StartProgressIndicatorWithLabel("Exchanging code for tokens")
 	tokenResp, err := client.AuthorizationCodeGrant(cbResult.Code, codeVerifier, redirectURI)
 	io.StopProgressIndicator()

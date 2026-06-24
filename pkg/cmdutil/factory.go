@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 
 	"github.com/algolia/cli/api/agentstudio"
@@ -18,6 +19,7 @@ type Factory struct {
 	Config            config.IConfig
 	SearchClient      func() (*search.APIClient, error)
 	CrawlerClient     func() (*crawler.Client, error)
+	CompositionClient func() (*composition.APIClient, error)
 	AgentStudioClient func() (*agentstudio.Client, error)
 
 	ExecutableName string

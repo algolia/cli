@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/segmentio/analytics-go/v3"
 	"github.com/spf13/cobra"
@@ -18,8 +20,10 @@ import (
 )
 
 const (
-	AppName               = "cli"
-	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com/"
+	AppName = "cli"
+	// No trailing slash: analytics-go appends "/v1/batch" to the endpoint.
+	telemetryAnalyticsURL = "https://telemetry-proxy.algolia.com"
+	envHeader             = "X-Algolia-CLI-Env"
 )
 
 type telemetryMetadataKey struct{}
@@ -28,12 +32,16 @@ type telemetryClientKey struct{}
 
 type TelemetryClient interface {
 	Identify(ctx context.Context) error
-	Track(ctx context.Context, event string) error
+	Track(ctx context.Context, event string, properties map[string]any) error
 	Close()
 }
 
 type AnalyticsTelemetryClient struct {
 	client analytics.Client
+	// sequence numbers the Track events of one invocation so their order can
+	// be reconstructed downstream: Segment stores timestamps with millisecond
+	// precision, so back-to-back events can tie.
+	sequence atomic.Int64
 }
 
 type AnalyticsTelemetryLogger struct {
@@ -62,11 +70,42 @@ func NewAnalyticsTelemetryClient(debug bool) (TelemetryClient, error) {
 	client, err := analytics.NewWithConfig("", analytics.Config{
 		Endpoint: telemetryAnalyticsURL,
 		Logger:   newTelemetryLogger(debug),
+		Verbose:  debug,
+		Transport: &envHeaderTransport{
+			base: http.DefaultTransport,
+			env:  telemetryEnv(),
+		},
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &AnalyticsTelemetryClient{client: client}, nil
+}
+
+// envHeaderTransport adds the X-Algolia-CLI-Env header to every telemetry
+// request, so the proxy can route release builds to the production Segment
+// source and everything else to the development one. Until the proxy routes
+// on the header, all events keep going to the development source.
+type envHeaderTransport struct {
+	base http.RoundTripper
+	env  string
+}
+
+func (t *envHeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// RoundTrippers must not mutate the caller's request.
+	req = req.Clone(req.Context())
+	req.Header.Set(envHeader, t.env)
+	return t.base.RoundTrip(req)
+}
+
+// telemetryEnv reports which environment the events belong to: "prod" for
+// release builds (goreleaser injects a semver version), "dev" for source
+// builds (the version stays "main").
+func telemetryEnv() string {
+	if version.Version == "main" {
+		return "dev"
+	}
+	return "prod"
 }
 
 // anonymousID is a unique identifier for an anonymous user of the CLI (basically the hash of the mac address)
@@ -92,7 +131,9 @@ type NoOpTelemetryClient struct{}
 
 type CLIAnalyticsEventMetadata struct {
 	AnonymousID              string   // the anonymous id is the hash of the mac address of the machine
-	UserID                   string   // TODO: Once we implement OAuth
+	UserID                   string   // the authenticated user's id from the OAuth token; empty when logged out
+	Email                    string   // the authenticated user's email, when available
+	Name                     string   // the authenticated user's name, when available
 	InvocationID             string   // the invocation id is unique to each context object and represents all events coming from one command
 	ConfiguredApplicationsNb int      // the number of configured applications
 	AppID                    string   // the app id with which the command was called
@@ -167,6 +208,13 @@ func (e *CLIAnalyticsEventMetadata) SetConfiguredApplicationsNb(nb int) {
 	e.ConfiguredApplicationsNb = nb
 }
 
+// SetUser sets the authenticated user identity on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetUser(userID, email, name string) {
+	e.UserID = userID
+	e.Email = email
+	e.Name = name
+}
+
 // Identify tracks the user with the provided properties
 func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 	metadata := GetEventMetadata(ctx)
@@ -176,41 +224,72 @@ func (a *AnalyticsTelemetryClient) Identify(ctx context.Context) error {
 		isCI = 1
 	}
 
-	return a.client.Enqueue(analytics.Identify{
+	traits := analytics.Traits{
+		"configured_applications": metadata.ConfiguredApplicationsNb,
+		"version":                 metadata.CLIVersion,
+		"operating_system":        metadata.OS,
+		"is_ci":                   isCI,
+	}
+
+	identify := analytics.Identify{
 		AnonymousId: metadata.AnonymousID,
-		Traits: map[string]interface{}{
-			"configured_applications": metadata.ConfiguredApplicationsNb,
-			"version":                 metadata.CLIVersion,
-			"operating_system":        metadata.OS,
-			"is_ci":                   isCI,
-		},
+		Traits:      traits,
 		Context: &analytics.Context{
 			Device: analytics.DeviceInfo{
 				Id: metadata.AnonymousID,
 			},
 		},
-	})
+	}
+
+	if metadata.UserID != "" {
+		identify.UserId = metadata.UserID
+		if metadata.Email != "" {
+			traits["email"] = metadata.Email
+		}
+		if metadata.Name != "" {
+			traits["name"] = metadata.Name
+		}
+	}
+
+	return a.client.Enqueue(identify)
 }
 
-// Track tracks the event with the provided properties
-func (a *AnalyticsTelemetryClient) Track(ctx context.Context, event string) error {
+// Track tracks the event with the provided custom properties, merged with the
+// base properties of the invocation
+func (a *AnalyticsTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
 	metadata := GetEventMetadata(ctx)
 
-	return a.client.Enqueue(analytics.Track{
+	props := make(map[string]any, len(properties)+5)
+	for k, v := range properties {
+		props[k] = v
+	}
+	// Base properties are set last so custom ones can never override them.
+	props["invocation_id"] = metadata.InvocationID
+	props["app_id"] = metadata.AppID
+	props["command"] = metadata.CommandPath
+	props["flags"] = metadata.CommandFlags
+	props["sequence"] = a.sequence.Add(1)
+
+	track := analytics.Track{
 		Event:       event,
 		AnonymousId: metadata.AnonymousID,
-		Properties: map[string]interface{}{
-			"invocation_id": metadata.InvocationID,
-			"app_id":        metadata.AppID,
-			"command":       metadata.CommandPath,
-			"flags":         metadata.CommandFlags,
-		},
+		Properties:  props,
 		Context: &analytics.Context{
 			Device: analytics.DeviceInfo{
 				Id: metadata.AnonymousID,
 			},
 		},
-	})
+	}
+
+	if metadata.UserID != "" {
+		track.UserId = metadata.UserID
+	}
+
+	return a.client.Enqueue(track)
 }
 
 // Close closes the client, waiting for all pending events to be sent.
@@ -218,6 +297,14 @@ func (a *AnalyticsTelemetryClient) Close() {
 	_ = a.client.Close()
 }
 
-func (a *NoOpTelemetryClient) Identify(ctx context.Context) error            { return nil }
-func (a *NoOpTelemetryClient) Track(ctx context.Context, event string) error { return nil }
-func (a *NoOpTelemetryClient) Close()                                        {}
+func (a *NoOpTelemetryClient) Identify(ctx context.Context) error { return nil }
+
+func (a *NoOpTelemetryClient) Track(
+	ctx context.Context,
+	event string,
+	properties map[string]any,
+) error {
+	return nil
+}
+
+func (a *NoOpTelemetryClient) Close() {}

@@ -34,10 +34,9 @@ type Flag struct {
 
 func newFlag(flag *pflag.Flag) Flag {
 	return Flag{
-		Name:      flag.Name,
-		Shorthand: flag.Shorthand,
-		// Add two spaces before each newline to force a newline in markdown
-		Description: strings.ReplaceAll(flag.Usage, "\n", "  \n"),
+		Name:        flag.Name,
+		Shorthand:   flag.Shorthand,
+		Description: strings.TrimSpace(flag.Usage),
 		Default:     flag.DefValue,
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 	"github.com/algolia/cli/api/crawler"
@@ -84,6 +85,16 @@ func NewFactory(
 			return crawler.NewClientWithHTTPClient("id", "key", &http.Client{
 				Transport: r,
 			}), nil
+		}
+		f.CompositionClient = func() (*composition.APIClient, error) {
+			cfg := composition.CompositionConfiguration{
+				Configuration: transport.Configuration{
+					AppID:     "default",
+					ApiKey:    "default",
+					Requester: r,
+				},
+			}
+			return composition.NewClientWithConfig(cfg)
 		}
 	}
 

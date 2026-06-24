@@ -1,0 +1,24 @@
+{
+  "name": "@algolia/cli-darwin-x64",
+  "version": "5.8.2",
+  "description": "darwin x64 binary for @algolia/cli",
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "files": [
+    "bin/algolia",
+    "index.js"
+  ],
+  "license": "MIT",
+  "homepage": "https://algolia.com/doc/tools/cli/",
+  "bugs": {
+    "url": "https://github.com/algolia/cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/algolia/cli.git"
+  }
+}

@@ -12,6 +12,22 @@ See [Algolia CLI](https://algolia.com/doc/tools/cli/) in the Algolia documentati
 
 ## Installation
 
+### npm (any platform)
+
+The Algolia CLI is published on npm as [`@algolia/cli`](https://www.npmjs.com/package/@algolia/cli).
+
+Run without installing:
+
+```sh
+npx @algolia/cli --help
+```
+
+Or install globally:
+
+```sh
+npm install -g @algolia/cli
+```
+
 ### macOS
 
 The Algolia CLI is available on [Homebrew](https://brew.sh/) and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
@@ -59,7 +75,7 @@ To build the Algolia CLI from source, you'll need:
 - Go version 1.23 or later
 - [Go task](https://taskfile.dev/)
 
-1. Clone the repo: `git clone https://github.com/kai687/cli.git algolia-cli && cd algolia-cli`
+1. Clone the repo: `git clone https://github.com/algolia/cli.git algolia-cli && cd algolia-cli`
 1. Run: `task build`
 
 To also produce **`algolia-beta`** (beside `algolia`), run **`task build-beta`**. **Point `.env` at production endpoints before you build** if you need prod hosts baked in. The binary prints only **`[BETA] WARNING: This version should not be used in production.`** on **stderr** when you use **`agents`** (optional yellow/bold on a TTY).

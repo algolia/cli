@@ -8,3 +8,12 @@ linters:
 issues:
   exclude-dirs:
     - tmp
+  exclude-rules:
+    # The dashboard client surfaces user-facing CLI errors that are intentionally
+    # written as capitalized, human-readable sentences (e.g. "Couldn't get the
+    # list of plans: 404"), so the ST1005 "error strings should not be
+    # capitalized" check is disabled for this file only.
+    - path: api/dashboard/client.go
+      linters:
+        - stylecheck
+      text: ST1005

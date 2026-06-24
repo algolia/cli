@@ -5,6 +5,7 @@ on:
       - "v*"
 permissions:
   contents: write # publishing releases
+  id-token: write # OIDC token for npm trusted publishing + provenance
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -42,6 +43,15 @@ jobs:
           ALGOLIA_API_URL: ${{ secrets.ALGOLIA_API_URL }}
           ALGOLIA_OAUTH_CLIENT_ID: ${{ secrets.ALGOLIA_OAUTH_CLIENT_ID }}
           ALGOLIA_OAUTH_SCOPE: ${{ secrets.ALGOLIA_OAUTH_SCOPE }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      - name: Publish npm packages
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: ./scripts/npm-publish.sh
       - name: Docs checkout
         uses: actions/checkout@v4
         with:

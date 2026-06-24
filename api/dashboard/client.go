@@ -11,17 +11,11 @@ import (
 	"strings"
 )
 
-// DefaultDashboardURL and DefaultAPIURL are empty by default and must be
-// injected at build time via ldflags, e.g.:
-//
-//	go build -ldflags "-X github.com/algolia/cli/api/dashboard.DefaultDashboardURL=https://..."
-//
-// They can also be overridden at runtime with ALGOLIA_DASHBOARD_URL / ALGOLIA_API_URL / ALGOLIA_OAUTH_SCOPE
-// environment variables.
+// Production defaults; overridable via ldflags or ALGOLIA_DASHBOARD_URL / ALGOLIA_API_URL / ALGOLIA_OAUTH_SCOPE env vars.
 var (
-	DefaultDashboardURL = ""
-	DefaultAPIURL       = ""
-	DefaultOAuthScope   = ""
+	DefaultDashboardURL = "https://dashboard.algolia.com"
+	DefaultAPIURL       = "https://api.dashboard.algolia.com"
+	DefaultOAuthScope   = "public applications:manage keys:manage"
 )
 
 // Client interacts with the Algolia Dashboard OAuth endpoint and the Public API.
@@ -42,7 +36,10 @@ func NewClient(clientID string) *Client {
 		dashboardURL = strings.TrimRight(v, "/")
 	}
 	if dashboardURL == "" {
-		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_DASHBOARD_URL is not set and no default was compiled in")
+		fmt.Fprintln(
+			os.Stderr,
+			"fatal: ALGOLIA_DASHBOARD_URL is not set and no default was compiled in",
+		)
 		os.Exit(1)
 	}
 
@@ -60,7 +57,10 @@ func NewClient(clientID string) *Client {
 		oauthScope = v
 	}
 	if oauthScope == "" {
-		fmt.Fprintln(os.Stderr, "fatal: ALGOLIA_OAUTH_SCOPE is not set and no default was compiled in")
+		fmt.Fprintln(
+			os.Stderr,
+			"fatal: ALGOLIA_OAUTH_SCOPE is not set and no default was compiled in",
+		)
 		os.Exit(1)
 	}
 
@@ -93,7 +93,10 @@ func (c *Client) SignupAuthorizeURL(codeChallenge, redirectURI string) string {
 	return c.buildAuthorizeURL(codeChallenge, redirectURI, map[string]string{"screen": "signup"})
 }
 
-func (c *Client) buildAuthorizeURL(codeChallenge, redirectURI string, extra map[string]string) string {
+func (c *Client) buildAuthorizeURL(
+	codeChallenge, redirectURI string,
+	extra map[string]string,
+) string {
 	params := url.Values{
 		"client_id":             {c.ClientID},
 		"response_type":         {"code"},
@@ -110,7 +113,9 @@ func (c *Client) buildAuthorizeURL(codeChallenge, redirectURI string, extra map[
 
 // AuthorizationCodeGrant exchanges an authorization code + PKCE code_verifier
 // for an access token. The redirectURI must match the one used in the authorize URL.
-func (c *Client) AuthorizationCodeGrant(code, codeVerifier, redirectURI string) (*OAuthTokenResponse, error) {
+func (c *Client) AuthorizationCodeGrant(
+	code, codeVerifier, redirectURI string,
+) (*OAuthTokenResponse, error) {
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
 		"client_id":     {c.ClientID},
@@ -119,7 +124,11 @@ func (c *Client) AuthorizationCodeGrant(code, codeVerifier, redirectURI string) 
 		"redirect_uri":  {redirectURI},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/token", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.DashboardURL+"/2/oauth/token",
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +161,11 @@ func (c *Client) RefreshToken(refreshToken string) (*OAuthTokenResponse, error) 
 		"refresh_token": {refreshToken},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/token", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.DashboardURL+"/2/oauth/token",
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +197,11 @@ func (c *Client) RevokeToken(token string) error {
 		"token":     {token},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, c.DashboardURL+"/2/oauth/revoke", strings.NewReader(form.Encode()))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.DashboardURL+"/2/oauth/revoke",
+		strings.NewReader(form.Encode()),
+	)
 	if err != nil {
 		return err
 	}
@@ -252,7 +269,11 @@ func (c *Client) ListApplications(accessToken string) ([]Application, error) {
 
 // GetApplication returns a single application by its ID.
 func (c *Client) GetApplication(accessToken, appID string) (*Application, error) {
-	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/application/"+url.PathEscape(appID), nil)
+	req, err := http.NewRequest(
+		http.MethodGet,
+		c.APIURL+"/1/application/"+url.PathEscape(appID),
+		nil,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -305,12 +326,20 @@ func (c *Client) CreateApplication(accessToken, region, name string) (*Applicati
 		respBody, _ := io.ReadAll(resp.Body)
 		respStr := string(respBody)
 
-		if strings.Contains(strings.ToLower(respStr), "cluster") && strings.Contains(strings.ToLower(respStr), "not available") ||
+		if strings.Contains(strings.ToLower(respStr), "cluster") &&
+			strings.Contains(strings.ToLower(respStr), "not available") ||
 			strings.Contains(strings.ToLower(respStr), "no cluster") {
-			return nil, &ErrClusterUnavailable{Region: region, Message: fmt.Sprintf("no cluster available in region %q", region)}
+			return nil, &ErrClusterUnavailable{
+				Region:  region,
+				Message: fmt.Sprintf("no cluster available in region %q", region),
+			}
 		}
 
-		return nil, fmt.Errorf("create application failed with status %d: %s", resp.StatusCode, respStr)
+		return nil, fmt.Errorf(
+			"create application failed with status %d: %s",
+			resp.StatusCode,
+			respStr,
+		)
 	}
 
 	var singleResp SingleApplicationResponse
@@ -320,6 +349,161 @@ func (c *Client) CreateApplication(accessToken, region, name string) (*Applicati
 
 	app := singleResp.Data.toApplication()
 	return &app, nil
+}
+
+// UpdateApplication renames an existing application.
+func (c *Client) UpdateApplication(accessToken, appID, name string) (*Application, error) {
+	payload := UpdateApplicationRequest{Name: name}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint := c.APIURL + "/1/applications/" + url.PathEscape(appID)
+	req, err := http.NewRequest(http.MethodPatch, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("update application request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, fmt.Errorf(
+				"no existing application found; select one using 'algolia application select' or create a new one with 'algolia application create'",
+			)
+		}
+		return nil, fmt.Errorf(
+			"update application failed with status %d: %s",
+			resp.StatusCode,
+			string(respBody),
+		)
+	}
+
+	var singleResp SingleApplicationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&singleResp); err != nil {
+		return nil, fmt.Errorf("failed to parse application response: %w", err)
+	}
+
+	app := singleResp.Data.toApplication()
+	return &app, nil
+}
+
+// GetSelfServePlans returns the available plans
+func (c *Client) GetSelfServePlans(accessToken string) ([]Plan, error) {
+	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/plan-templates/self-serve", nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't get the list of plans: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Couldn't get the list of plans: %d", resp.StatusCode)
+	}
+
+	var plansResp PlanTemplatesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&plansResp); err != nil {
+		return nil, fmt.Errorf("Couldn't get the list of plans: %w", err)
+	}
+
+	plans := make([]Plan, 0, len(plansResp.Data))
+	for i := range plansResp.Data {
+		plans = append(plans, plansResp.Data[i].toPlan())
+	}
+	return plans, nil
+}
+
+// GetUser returns account-level information for the authenticated user
+func (c *Client) GetUser(accessToken string) (*DashboardUser, error) {
+	req, err := http.NewRequest(http.MethodGet, c.APIURL+"/1/user", nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't get your account details: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Couldn't get your account details: %d", resp.StatusCode)
+	}
+
+	var userResp userResponse
+	if err := json.NewDecoder(resp.Body).Decode(&userResp); err != nil {
+		return nil, fmt.Errorf("Couldn't get your account details: %w", err)
+	}
+
+	user := userResp.toUser()
+	return &user, nil
+}
+
+// ChangeApplicationPlan changes the plan of an application
+func (c *Client) ChangeApplicationPlan(accessToken, appID, plan string) (*Application, error) {
+	payload := ChangePlanRequest{Plan: plan}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	endpoint := fmt.Sprintf(
+		"%s/1/applications/%s/plan/self-serve",
+		c.APIURL,
+		url.PathEscape(appID),
+	)
+	req, err := http.NewRequest(http.MethodPatch, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't change your application's plan: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("Couldn't change your application's plan: %d", resp.StatusCode)
+	}
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var singleResp SingleApplicationResponse
+	if err := json.Unmarshal(respBody, &singleResp); err == nil &&
+		singleResp.Data.Attributes.ApplicationID != "" {
+		app := singleResp.Data.toApplication()
+		return &app, nil
+	}
+	return &Application{ID: appID}, nil
 }
 
 // ListRegions returns the allowed hosting regions for application creation.
@@ -356,7 +540,11 @@ var WriteACL = []string{
 }
 
 // CreateAPIKey creates a new API key with the given ACL for the specified application.
-func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, description string) (string, error) {
+func (c *Client) CreateAPIKey(
+	accessToken, appID string,
+	acl []string,
+	description string,
+) (string, error) {
 	payload := CreateAPIKeyRequest{ACL: acl, Description: description}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -383,17 +571,28 @@ func (c *Client) CreateAPIKey(accessToken, appID string, acl []string, descripti
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("create API key failed with status %d: %s", resp.StatusCode, string(respBody))
+		return "", fmt.Errorf(
+			"create API key failed with status %d: %s",
+			resp.StatusCode,
+			string(respBody),
+		)
 	}
 
 	var keyResp CreateAPIKeyResponse
 	if err := json.Unmarshal(respBody, &keyResp); err != nil {
-		return "", fmt.Errorf("failed to parse API key response: %w (body: %s)", err, string(respBody))
+		return "", fmt.Errorf(
+			"failed to parse API key response: %w (body: %s)",
+			err,
+			string(respBody),
+		)
 	}
 
 	key := keyResp.Data.Attributes.Value
 	if key == "" {
-		return "", fmt.Errorf("API key creation succeeded but no key was returned in the response: %s", string(respBody))
+		return "", fmt.Errorf(
+			"API key creation succeeded but no key was returned in the response: %s",
+			string(respBody),
+		)
 	}
 
 	return key, nil

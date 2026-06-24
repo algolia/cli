@@ -34,7 +34,7 @@ func NewSignupCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return login.RunOAuthFlow(opts, true)
+			return login.RunOAuthFlow(cmd.Context(), opts, true)
 		},
 	}
 
