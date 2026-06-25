@@ -23,6 +23,7 @@ type Identity struct {
 	UserID string `json:"user_id,omitempty"`
 	Email  string `json:"email,omitempty"`
 	Name   string `json:"name,omitempty"`
+	Token  string `json:"token,omitempty"`
 }
 
 func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
@@ -70,6 +71,7 @@ func runGetCmd(opts *GetOptions) error {
 		UserID: stored.UserID,
 		Email:  stored.Email,
 		Name:   stored.Name,
+		Token:  stored.AccessToken,
 	}
 
 	p, err := opts.PrintFlags.ToPrinter()

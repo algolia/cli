@@ -139,13 +139,14 @@ func TestGet_RefreshesExpiredToken(t *testing.T) {
 	// Identity preserved from the pre-refresh token (refresh response has no user).
 	assert.Contains(t, out.String(), `"user_id":"42"`)
 	assert.Contains(t, out.String(), `"email":"user@example.com"`)
-	assert.NotContains(t, out.String(), "new-access")
+	// Refreshed access token is surfaced in the identity output.
+	assert.Contains(t, out.String(), `"token":"new-access"`)
 
 	// Refreshed token was persisted.
 	assert.Equal(t, "new-access", auth.LoadToken().AccessToken)
 }
 
-func TestGet_PrintsIdentityWithoutTokens(t *testing.T) {
+func TestGet_PrintsIdentityWithAccessToken(t *testing.T) {
 	keyring.MockInit()
 	t.Cleanup(auth.ClearToken)
 	require.NoError(t, auth.SaveToken(&dashboard.OAuthTokenResponse{
@@ -168,8 +169,9 @@ func TestGet_PrintsIdentityWithoutTokens(t *testing.T) {
 	assert.Contains(t, out.String(), `"user_id":"42"`)
 	assert.Contains(t, out.String(), `"email":"user@example.com"`)
 	assert.Contains(t, out.String(), `"name":"Test User"`)
-	assert.NotContains(t, out.String(), "secret-access")
+	// Access token is surfaced under the "token" field.
+	assert.Contains(t, out.String(), `"token":"secret-access"`)
+	// Refresh token is never exposed.
 	assert.NotContains(t, out.String(), "secret-refresh")
-	assert.NotContains(t, out.String(), "access_token")
 	assert.NotContains(t, out.String(), "refresh_token")
 }
