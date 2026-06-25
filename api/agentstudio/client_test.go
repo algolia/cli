@@ -6,10 +6,10 @@ package agentstudio
 // method tests live in <tag>_test.go (agents_test.go,
 // completions_test.go, providers_test.go, configuration_test.go).
 //
-// The error-mapping and ctx-cancellation tests use ListAgents as a
-// vehicle: it's the simplest GET endpoint in the package and exercising
-// it keeps the assertions concrete. They are infra tests, not method
-// tests — moving them to agents_test.go would obscure their intent.
+// The error-mapping and ctx-cancellation tests use DuplicateAgent as a
+// vehicle: it's a simple endpoint that still lives in this package and
+// exercising it keeps the assertions concrete. They are infra tests, not
+// method tests — moving them to agents_test.go would obscure their intent.
 
 import (
 	"context"
@@ -158,13 +158,13 @@ func TestCheckResponse_ErrorMapping(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mux := http.NewServeMux()
-			mux.HandleFunc("/1/agents", func(w http.ResponseWriter, _ *http.Request) {
+			mux.HandleFunc("/1/agents/abc/duplicate", func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.status)
 				writeTestJSONResponse(w, []byte(tc.body))
 			})
 			_, c := newTestClient(t, mux)
 
-			_, err := c.ListAgents(context.Background(), ListAgentsParams{})
+			_, err := c.DuplicateAgent(context.Background(), "abc")
 			require.Error(t, err)
 
 			var apiErr *APIError
@@ -182,7 +182,7 @@ func TestCheckResponse_ErrorMapping(t *testing.T) {
 
 func TestRequest_ContextCancellation(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(_ http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/1/agents/abc/duplicate", func(_ http.ResponseWriter, r *http.Request) {
 		<-r.Context().Done()
 	})
 	_, c := newTestClient(t, mux)
@@ -190,16 +190,16 @@ func TestRequest_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	_, err := c.ListAgents(ctx, ListAgentsParams{})
+	_, err := c.DuplicateAgent(ctx, "abc")
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, context.Canceled), "got %v", err)
 }
 
 func TestSetHeaders_OmitsUserIDWhenEmpty(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/1/agents/abc/duplicate", func(w http.ResponseWriter, r *http.Request) {
 		assert.Empty(t, r.Header.Get(HeaderUserID))
-		writeTestJSONResponse(w, []byte(`{"data":[],"pagination":{"page":1,"limit":10,"totalCount":0,"totalPages":0}}`))
+		writeTestJSONResponse(w, []byte(`{"id":"abc","name":"x","status":"draft","instructions":"","createdAt":"2025-01-01T00:00:00Z"}`))
 	})
 
 	ts := httptest.NewServer(mux)
@@ -213,6 +213,6 @@ func TestSetHeaders_OmitsUserIDWhenEmpty(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = c.ListAgents(context.Background(), ListAgentsParams{})
+	_, err = c.DuplicateAgent(context.Background(), "abc")
 	require.NoError(t, err)
 }

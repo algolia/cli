@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -18,8 +18,8 @@ type DeleteOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	AgentID   string
 	DoConfirm bool
@@ -27,9 +27,9 @@ type DeleteOptions struct {
 
 func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
 	opts := &DeleteOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags(),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags(),
 	}
 
 	var confirm bool
@@ -78,7 +78,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 func runDeleteCmd(opts *DeleteOptions) error {
 	cs := opts.IO.ColorScheme()
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	// Pre-fetch so 404 surfaces cleanly and the prompt can
 	// show name+status for sanity-check.
-	agent, err := client.GetAgent(ctx, opts.AgentID)
+	agent, err := client.GetAgent(client.NewApiGetAgentRequest(opts.AgentID), agentStudio.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Deleting agent")
-	err = client.DeleteAgent(ctx, opts.AgentID)
+	err = client.DeleteAgent(client.NewApiDeleteAgentRequest(opts.AgentID), agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

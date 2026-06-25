@@ -3,11 +3,12 @@ package domains
 import (
 	"context"
 	"fmt"
+	"time"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -16,18 +17,18 @@ import (
 )
 
 type ListOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	AgentID           string
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	AgentID              string
 }
 
 func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags(),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:     "list <agent-id>",
@@ -51,12 +52,15 @@ func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 }
 
 func runListCmd(opts *ListOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching allowed domains")
-	res, err := client.ListAllowedDomains(shared.OrBackground(opts.Ctx), opts.AgentID)
+	res, err := client.ListAgentAllowedDomains(
+		client.NewApiListAgentAllowedDomainsRequest(opts.AgentID),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -73,9 +77,13 @@ func runListCmd(opts *ListOptions) error {
 		table.EndRow()
 	}
 	for _, d := range res.Domains {
-		table.AddField(d.ID, nil, nil)
+		created := "-"
+		if t, err := time.Parse(time.RFC3339, d.CreatedAt); err == nil {
+			created = humanize.RelTime(now, t, "from now", "ago")
+		}
+		table.AddField(d.Id, nil, nil)
 		table.AddField(d.Domain, nil, nil)
-		table.AddField(humanize.RelTime(now, d.CreatedAt, "from now", "ago"), nil, nil)
+		table.AddField(created, nil, nil)
 		table.EndRow()
 	}
 	if err := table.Render(); err != nil {

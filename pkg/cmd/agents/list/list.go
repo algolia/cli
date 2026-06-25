@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -25,7 +25,7 @@ type ListOptions struct {
 	Config config.IConfig
 	Ctx    context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 
@@ -36,10 +36,10 @@ type ListOptions struct {
 
 func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:                f.IOStreams,
-		Config:            f.Config,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags(),
+		IO:                   f.IOStreams,
+		Config:               f.Config,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -83,7 +83,7 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 }
 
 func runListCmd(opts *ListOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -93,12 +93,19 @@ func runListCmd(opts *ListOptions) error {
 		ctx = context.Background()
 	}
 
+	req := client.NewApiListAgentsRequest()
+	if opts.Page > 0 {
+		req = req.WithPage(int32(opts.Page))
+	}
+	if opts.PerPage > 0 {
+		req = req.WithLimit(int32(opts.PerPage))
+	}
+	if opts.ProviderID != "" {
+		req = req.WithProviderId(opts.ProviderID)
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Fetching agents")
-	res, err := client.ListAgents(ctx, agentstudio.ListAgentsParams{
-		Page:       opts.Page,
-		Limit:      opts.PerPage,
-		ProviderID: opts.ProviderID,
-	})
+	res, err := client.ListAgents(req, agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -120,11 +127,11 @@ func runListCmd(opts *ListOptions) error {
 	}
 
 	for _, a := range res.Data {
-		table.AddField(a.ID, nil, nil)
+		table.AddField(a.Id, nil, nil)
 		table.AddField(a.Name, nil, nil)
 		table.AddField(string(a.Status), nil, nil)
-		table.AddField(stringOrDash(a.ProviderID), nil, nil)
-		table.AddField(relTimeOrDash(a.UpdatedAt, now), nil, nil)
+		table.AddField(stringOrDash(a.GetProviderId()), nil, nil)
+		table.AddField(relTimeOrDash(a.GetUpdatedAt(), now), nil, nil)
 		table.EndRow()
 	}
 
@@ -146,18 +153,22 @@ func runListCmd(opts *ListOptions) error {
 	return nil
 }
 
-func stringOrDash(s *string) string {
-	if s == nil || *s == "" {
+func stringOrDash(s string) string {
+	if s == "" {
 		return "-"
 	}
-	return *s
+	return s
 }
 
-func relTimeOrDash(t *time.Time, now time.Time) string {
-	if t == nil || t.IsZero() {
+func relTimeOrDash(ts string, now time.Time) string {
+	if ts == "" {
+		return "-"
+	}
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil || t.IsZero() {
 		return "-"
 	}
 	// Order matches existing CLI usage (see pkg/cmd/apikeys/list): label
 	// for "future" first, label for "past" second.
-	return humanize.RelTime(now, *t, "from now", "ago")
+	return humanize.RelTime(now, t, "from now", "ago")
 }

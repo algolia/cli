@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -19,8 +19,8 @@ type CreateOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	File          string
 	Show          bool
@@ -29,9 +29,9 @@ type CreateOptions struct {
 
 func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -83,20 +83,32 @@ func runCreateCmd(opts *CreateOptions) error {
 		return err
 	}
 
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
+	// Send the body verbatim through the pass-through POST: the typed
+	// ProviderAuthenticationCreate.Input is a discriminated union that would
+	// reshape provider-specific input fields.
+	var bodyMap map[string]any
+	if err := json.Unmarshal(body, &bodyMap); err != nil {
+		return cmdutil.FlagErrorf("provider body must be a JSON object: %v", err)
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Creating provider")
-	p, err := client.CreateProvider(ctx, json.RawMessage(body))
+	p, err := client.CustomPost(
+		client.NewApiCustomPostRequest("1/providers").WithBody(bodyMap),
+		agentStudio.WithContext(ctx),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
 	}
+	var out any = p
 	if !opts.Show {
-		p.Input = shared.MaskInput(p.Input)
+		out = shared.MaskSecretsInValue(p)
 	}
-	return opts.PrintFlags.Print(opts.IO, p)
+	return opts.PrintFlags.Print(opts.IO, out)
 }

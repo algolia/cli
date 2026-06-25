@@ -2,9 +2,9 @@ package keys
 
 import (
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
@@ -31,7 +31,7 @@ func NewKeysCmd(f *cmdutil.Factory) *cobra.Command {
 }
 
 // maskKey returns a copy of k with Value redacted unless show is set.
-func maskKey(k agentstudio.SecretKey, show bool) agentstudio.SecretKey {
+func maskKey(k agentStudio.SecretKeyResponse, show bool) agentStudio.SecretKeyResponse {
 	if show {
 		return k
 	}

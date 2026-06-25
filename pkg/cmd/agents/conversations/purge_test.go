@@ -26,7 +26,7 @@ func Test_runPurgeCmd_RefusesDateless(t *testing.T) {
 
 func Test_runPurgeCmd_AcceptsOpenEndedStart(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/conversations", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/conversations", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, "1970-01-01", r.URL.Query().Get("startDate"))
 		assert.Empty(t, r.URL.Query().Get("endDate"))
@@ -36,7 +36,7 @@ func Test_runPurgeCmd_AcceptsOpenEndedStart(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "purge agent-1 --start-date 1970-01-01 -y", out)
@@ -45,7 +45,7 @@ func Test_runPurgeCmd_AcceptsOpenEndedStart(t *testing.T) {
 
 func Test_runPurgeCmd_HitsBackendWithDateRange(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/conversations", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/conversations", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, "2026-01-01", r.URL.Query().Get("startDate"))
 		w.WriteHeader(http.StatusNoContent)
@@ -54,7 +54,7 @@ func Test_runPurgeCmd_HitsBackendWithDateRange(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "purge agent-1 --start-date 2026-01-01 -y", out)

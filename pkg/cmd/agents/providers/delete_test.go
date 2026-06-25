@@ -15,7 +15,7 @@ import (
 func Test_runDeleteCmd_PrefetchesBeforeDelete(t *testing.T) {
 	var getCalls, deleteCalls int
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers/p1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers/p1", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			getCalls++
@@ -33,7 +33,7 @@ func Test_runDeleteCmd_PrefetchesBeforeDelete(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "delete p1 -y", out)
@@ -53,7 +53,7 @@ func Test_runDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 
 func Test_runDeleteCmd_PropagatesConflict(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers/p1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers/p1", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			_, _ = w.Write([]byte(`{
@@ -70,7 +70,7 @@ func Test_runDeleteCmd_PropagatesConflict(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	_, err := test.Execute(cmd, "delete p1 -y", out)

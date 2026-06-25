@@ -40,9 +40,15 @@ func NewProvidersCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func relTimeOrDash(t *time.Time, now time.Time) string {
-	if t == nil || t.IsZero() {
+// relTimeOrDash formats an RFC3339 timestamp as a humanized relative time, or
+// "-" when the value is empty or unparseable.
+func relTimeOrDash(ts string, now time.Time) string {
+	if ts == "" {
 		return "-"
 	}
-	return humanize.RelTime(now, *t, "from now", "ago")
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil || t.IsZero() {
+		return "-"
+	}
+	return humanize.RelTime(now, t, "from now", "ago")
 }

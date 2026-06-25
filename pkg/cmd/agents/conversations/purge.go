@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -18,7 +18,7 @@ type PurgeOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	AgentID   string
 	StartDate string
@@ -28,8 +28,8 @@ type PurgeOptions struct {
 
 func newPurgeCmd(f *cmdutil.Factory, runF func(*PurgeOptions) error) *cobra.Command {
 	opts := &PurgeOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 	var confirm bool
 
@@ -108,17 +108,22 @@ func runPurgeCmd(opts *PurgeOptions) error {
 		}
 	}
 
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
+	req := client.NewApiDeleteAgentConversationsRequest(opts.AgentID)
+	if opts.StartDate != "" {
+		req = req.WithStartDate(opts.StartDate)
+	}
+	if opts.EndDate != "" {
+		req = req.WithEndDate(opts.EndDate)
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Purging conversations")
-	err = client.PurgeConversations(ctx, opts.AgentID, agentstudio.PurgeConversationsParams{
-		StartDate: opts.StartDate,
-		EndDate:   opts.EndDate,
-	})
+	err = client.DeleteAgentConversations(req, agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

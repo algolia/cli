@@ -4,29 +4,29 @@ import (
 	"context"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
 type CreateOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	Name              string
-	AgentIDs          []string
-	ShowSecret        bool
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	Name                 string
+	AgentIDs             []string
+	ShowSecret           bool
 }
 
 func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:   "create --name <name> [--agent-id <id> ...]",
@@ -56,13 +56,16 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	body := agentstudio.SecretKeyCreate{Name: opts.Name, AgentIDs: opts.AgentIDs}
-	client, err := opts.AgentStudioClient()
+	body := &agentStudio.SecretKeyCreate{Name: opts.Name, AgentIds: opts.AgentIDs}
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Creating secret key")
-	k, err := client.CreateSecretKey(shared.OrBackground(opts.Ctx), body)
+	k, err := client.CreateSecretKey(
+		client.NewApiCreateSecretKeyRequest(body),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

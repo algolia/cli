@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -37,7 +37,7 @@ type InvalidateOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	AgentID   string
 	Before    string
@@ -46,8 +46,8 @@ type InvalidateOptions struct {
 
 func newInvalidateCmd(f *cmdutil.Factory, runF func(*InvalidateOptions) error) *cobra.Command {
 	opts := &InvalidateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 
 	var confirm bool
@@ -117,14 +117,19 @@ func runInvalidateCmd(opts *InvalidateOptions) error {
 		}
 	}
 
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
+	req := client.NewApiInvalidateAgentCacheRequest(opts.AgentID)
+	if opts.Before != "" {
+		req = req.WithBefore(opts.Before)
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Invalidating agent cache")
-	err = client.InvalidateAgentCache(ctx, opts.AgentID, opts.Before)
+	err = client.InvalidateAgentCache(req, agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

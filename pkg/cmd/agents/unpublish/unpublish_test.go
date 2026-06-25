@@ -14,7 +14,7 @@ import (
 
 func Test_runUnpublishCmd(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123/unpublish", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/abc-123/unpublish", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		_, _ = w.Write([]byte(`{
 			"id":"abc-123",
@@ -29,7 +29,7 @@ func Test_runUnpublishCmd(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewUnpublishCmd(f, nil)
 	result, err := test.Execute(cmd, "abc-123", out)

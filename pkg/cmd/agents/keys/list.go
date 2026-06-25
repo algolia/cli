@@ -3,11 +3,12 @@ package keys
 import (
 	"context"
 	"fmt"
+	"time"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -15,19 +16,19 @@ import (
 )
 
 type ListOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	Page, Limit       int
-	ShowSecret        bool
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	Page, Limit          int
+	ShowSecret           bool
 }
 
 func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags(),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -50,13 +51,19 @@ func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 }
 
 func runListCmd(opts *ListOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
+	req := client.NewApiListSecretKeysRequest()
+	if opts.Page > 0 {
+		req = req.WithPage(int32(opts.Page))
+	}
+	if opts.Limit > 0 {
+		req = req.WithLimit(int32(opts.Limit))
+	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching secret keys")
-	res, err := client.ListSecretKeys(shared.OrBackground(opts.Ctx),
-		agentstudio.ListSecretKeysParams{Page: opts.Page, Limit: opts.Limit})
+	res, err := client.ListSecretKeys(req, agentStudio.WithContext(shared.OrBackground(opts.Ctx)))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -80,17 +87,13 @@ func runListCmd(opts *ListOptions) error {
 		table.EndRow()
 	}
 	for _, k := range res.Data {
-		table.AddField(k.ID, nil, nil)
+		table.AddField(k.Id, nil, nil)
 		table.AddField(k.Name, nil, nil)
 		table.AddField(k.Value, nil, nil)
-		table.AddField(boolWord(k.IsDefault), nil, nil)
-		table.AddField(fmt.Sprintf("%d", len(k.AgentIDs)), nil, nil)
-		if k.LastUsedAt != nil {
-			table.AddField(humanize.RelTime(now, *k.LastUsedAt, "from now", "ago"), nil, nil)
-		} else {
-			table.AddField("-", nil, nil)
-		}
-		table.AddField(humanize.RelTime(now, k.CreatedAt, "from now", "ago"), nil, nil)
+		table.AddField(boolWord(k.GetIsDefault()), nil, nil)
+		table.AddField(fmt.Sprintf("%d", len(k.AgentIds)), nil, nil)
+		table.AddField(relTimeOrDash(k.GetLastUsedAt(), now), nil, nil)
+		table.AddField(relTimeOrDash(k.CreatedAt, now), nil, nil)
 		table.EndRow()
 	}
 	if err := table.Render(); err != nil {
@@ -108,4 +111,17 @@ func boolWord(b bool) string {
 		return "yes"
 	}
 	return "no"
+}
+
+// relTimeOrDash formats an RFC3339 timestamp as a humanized relative time, or
+// "-" when the value is empty or unparseable.
+func relTimeOrDash(ts string, now time.Time) string {
+	if ts == "" {
+		return "-"
+	}
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil || t.IsZero() {
+		return "-"
+	}
+	return humanize.RelTime(now, t, "from now", "ago")
 }

@@ -20,7 +20,7 @@ import (
 
 func Test_runGetCmd_PrintsConfig(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/configuration", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/configuration", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		_, _ = w.Write([]byte(`{"maxRetentionDays":60}`))
 	})
@@ -28,7 +28,7 @@ func Test_runGetCmd_PrintsConfig(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	result, err := test.Execute(cmd, "get", out)
@@ -45,7 +45,7 @@ func Test_runGetCmd_PrintsConfig(t *testing.T) {
 
 func Test_runSetCmd_RetentionDays_BuildsBodyAndPATCHes(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/configuration", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/configuration", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		body, _ := io.ReadAll(r.Body)
 		assert.JSONEq(t, `{"maxRetentionDays":30}`, string(body))
@@ -55,7 +55,7 @@ func Test_runSetCmd_RetentionDays_BuildsBodyAndPATCHes(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set --retention-days 30", out)
@@ -64,9 +64,11 @@ func Test_runSetCmd_RetentionDays_BuildsBodyAndPATCHes(t *testing.T) {
 
 func Test_runSetCmd_File_RoundTripsBody(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/configuration", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/configuration", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		assert.JSONEq(t, `{"maxRetentionDays":90,"futureField":"x"}`, string(body))
+		// Only fields the typed ApplicationConfigPatch knows about are
+		// forwarded; unrecognized fields (futureField) are dropped.
+		assert.JSONEq(t, `{"maxRetentionDays":90}`, string(body))
 		_, _ = w.Write([]byte(`{"maxRetentionDays":90}`))
 	})
 	ts := httptest.NewServer(mux)
@@ -74,7 +76,7 @@ func Test_runSetCmd_File_RoundTripsBody(t *testing.T) {
 
 	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"maxRetentionDays":90,"futureField":"x"}`)
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set -F "+patchPath, out)
@@ -103,7 +105,7 @@ func Test_runSetCmd_RejectsBothFlags(t *testing.T) {
 func Test_runSetCmd_PropagatesValidationError(t *testing.T) {
 	// Backend rejects retention values not in [0, 30, 60, 90].
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/configuration", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/configuration", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		_, _ = w.Write(
 			[]byte(
@@ -115,7 +117,7 @@ func Test_runSetCmd_PropagatesValidationError(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConfigCmd(f)
 	_, err := test.Execute(cmd, "set --retention-days 45", out)

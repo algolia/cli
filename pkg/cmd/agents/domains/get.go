@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -19,18 +19,18 @@ var nowFn = time.Now
 func nowFnOrTime() time.Time { return nowFn() }
 
 type GetOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	AgentID, DomainID string
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	AgentID, DomainID    string
 }
 
 func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command {
 	opts := &GetOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:   "get <agent-id> <domain-id>",
@@ -53,12 +53,15 @@ func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 }
 
 func runGetCmd(opts *GetOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching allowed domain")
-	d, err := client.GetAllowedDomain(shared.OrBackground(opts.Ctx), opts.AgentID, opts.DomainID)
+	d, err := client.GetAllowedDomain(
+		client.NewApiGetAllowedDomainRequest(opts.DomainID, opts.AgentID),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

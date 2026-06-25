@@ -1,15 +1,16 @@
 package userdata
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -17,17 +18,17 @@ import (
 )
 
 type GetOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	UserToken         string
-	OutputFile        string
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	UserToken            string
+	OutputFile           string
 }
 
 func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command {
 	opts := &GetOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 	cmd := &cobra.Command{
 		Use:   "get <user-token>",
@@ -54,31 +55,47 @@ func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 }
 
 func runGetCmd(opts *GetOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching user data")
-	res, err := client.GetUserData(shared.OrBackground(opts.Ctx), opts.UserToken)
+	// Forward the backend payload verbatim — this is a GDPR data dump, so the
+	// inner conversation/memory schemas are not pinned to a Go type.
+	raw, err := shared.RawResponse(client.GetUserDataWithHTTPInfo(
+		client.NewApiGetUserDataRequest(opts.UserToken),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
 	}
-	raw, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal user data: %w", err)
+
+	// Count items for the human summary without pinning the inner schema.
+	var counts struct {
+		Conversations []json.RawMessage `json:"conversations"`
+		Memories      []json.RawMessage `json:"memories"`
 	}
+	_ = json.Unmarshal(raw, &counts)
+
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, raw, "", "  "); err != nil {
+		pretty.Reset()
+		pretty.Write(raw)
+	}
+	out := pretty.Bytes()
+
 	if opts.OutputFile != "" {
-		if err := os.WriteFile(opts.OutputFile, raw, 0o600); err != nil {
+		if err := os.WriteFile(opts.OutputFile, out, 0o600); err != nil {
 			return fmt.Errorf("write %s: %w", opts.OutputFile, err)
 		}
 		if opts.IO.IsStdoutTTY() {
 			fmt.Fprintf(opts.IO.Out,
 				"Wrote %d byte(s) (%d conversation(s), %d memory record(s)) to %s.\n",
-				len(raw), len(res.Conversations), len(res.Memories), opts.OutputFile)
+				len(out), len(counts.Conversations), len(counts.Memories), opts.OutputFile)
 		}
 		return nil
 	}
-	_, err = opts.IO.Out.Write(append(raw, '\n'))
+	_, err = opts.IO.Out.Write(append(out, '\n'))
 	return err
 }

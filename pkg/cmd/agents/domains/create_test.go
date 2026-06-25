@@ -22,7 +22,7 @@ func Test_runCreateCmd_RequiresDomain(t *testing.T) {
 
 func Test_runCreateCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/allowed-domains", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write(
@@ -35,7 +35,7 @@ func Test_runCreateCmd_Live(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	result, err := test.Execute(cmd, "create agent-1 --domain https://x.test", out)
 	require.NoError(t, err)

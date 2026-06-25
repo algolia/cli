@@ -22,14 +22,14 @@ func Test_runDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 
 func Test_runDeleteCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/secret-keys/id1", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/secret-keys/id1", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewKeysCmd(f)
 	_, err := test.Execute(cmd, "delete id1 -y", out)
 	require.NoError(t, err)

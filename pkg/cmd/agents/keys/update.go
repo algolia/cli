@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -14,23 +14,23 @@ import (
 )
 
 type UpdateOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	ID                string
-	Name              string
-	AgentIDs          []string
-	NameSet           bool
-	AgentIDsSet       bool
-	ShowSecret        bool
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	ID                   string
+	Name                 string
+	AgentIDs             []string
+	NameSet              bool
+	AgentIDsSet          bool
+	ShowSecret           bool
 }
 
 func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Command {
 	opts := &UpdateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:   "update <id> [--name <name>] [--agent-id <id> ...]",
@@ -69,26 +69,31 @@ func newUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Co
 }
 
 func runUpdateCmd(opts *UpdateOptions) error {
-	patch := agentstudio.SecretKeyPatch{}
+	patch := &agentStudio.SecretKeyPatch{}
 	if opts.NameSet {
 		n := opts.Name
-		patch.Name = &n
+		patch.Name.Set(&n)
 	}
 	if opts.AgentIDsSet {
+		// Non-nil empty slice clears the allowlist: SecretKeyPatch only omits
+		// AgentIds when it is nil, so an empty slice still serializes as [].
 		ids := make([]string, 0, len(opts.AgentIDs))
 		for _, v := range opts.AgentIDs {
 			if v != "" {
 				ids = append(ids, v)
 			}
 		}
-		patch.AgentIDs = &ids
+		patch.AgentIds = ids
 	}
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Updating secret key")
-	k, err := client.UpdateSecretKey(shared.OrBackground(opts.Ctx), opts.ID, patch)
+	k, err := client.UpdateSecretKey(
+		client.NewApiUpdateSecretKeyRequest(opts.ID, patch),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

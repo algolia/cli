@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -19,8 +19,8 @@ type CreateOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	File          string
 	Body          string
@@ -29,9 +29,9 @@ type CreateOptions struct {
 
 func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -103,13 +103,24 @@ func runCreateCmd(opts *CreateOptions) error {
 		ctx = context.Background()
 	}
 
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 
+	// Send the body verbatim through the SDK's pass-through POST so unknown or
+	// future AgentConfigCreate fields are forwarded untouched (the typed
+	// CreateAgent model would drop them and inject empty required fields).
+	var bodyMap map[string]any
+	if err := json.Unmarshal(body, &bodyMap); err != nil {
+		return cmdutil.FlagErrorf("agent body must be a JSON object: %v", err)
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Creating agent")
-	agent, err := client.CreateAgent(ctx, json.RawMessage(body))
+	agent, err := client.CustomPost(
+		client.NewApiCustomPostRequest("1/agents").WithBody(bodyMap),
+		agentStudio.WithContext(ctx),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

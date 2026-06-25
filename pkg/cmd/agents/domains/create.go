@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -14,18 +14,18 @@ import (
 )
 
 type CreateOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	AgentID, Domain   string
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	AgentID, Domain      string
 }
 
 func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:   "create <agent-id> --domain <pattern>",
@@ -56,12 +56,15 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Adding allowed domain")
-	d, err := client.CreateAllowedDomain(shared.OrBackground(opts.Ctx), opts.AgentID, opts.Domain)
+	d, err := client.CreateAgentAllowedDomain(
+		client.NewApiCreateAgentAllowedDomainRequest(opts.AgentID, agentStudio.NewAllowedDomainCreate(opts.Domain)),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

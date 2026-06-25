@@ -24,7 +24,7 @@ func Test_runCreateCmd_RequiresName(t *testing.T) {
 
 func Test_runCreateCmd_LiveMasksValue(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/secret-keys", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/secret-keys", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var got map[string]any
 		require.NoError(t, json.Unmarshal(body, &got))
@@ -40,7 +40,7 @@ func Test_runCreateCmd_LiveMasksValue(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewKeysCmd(f)
 	result, err := test.Execute(cmd, "create --name k1", out)
 	require.NoError(t, err)

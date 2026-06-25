@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -35,15 +35,15 @@ type GetOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 }
 
 func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command {
 	opts := &GetOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -71,7 +71,7 @@ func newGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 }
 
 func runGetCmd(opts *GetOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func runGetCmd(opts *GetOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching configuration")
-	cfg, err := client.GetConfiguration(ctx)
+	cfg, err := client.GetAgentStudioConfiguration(agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -93,8 +93,8 @@ type SetOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	// RetentionDays: 0 is a valid backend value, so intent is detected
 	// via cmd.Flags().Changed, not the value itself.
@@ -105,9 +105,9 @@ type SetOptions struct {
 
 func newSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command {
 	opts := &SetOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -121,9 +121,9 @@ func newSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 			                       0, 30, 60, or 90; anything else 422s
 			                       with the structured detail.
 
-			  -F file              Send any JSON patch verbatim. Useful
-			                       for future fields the CLI doesn't
-			                       know about yet.
+			  -F file              Send a JSON patch body. Only fields the
+			                       client knows about (currently
+			                       maxRetentionDays) are forwarded.
 
 			Exactly one of the two must be provided.
 		`),
@@ -168,7 +168,7 @@ func runSetCmd(opts *SetOptions) error {
 		return err
 	}
 
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -177,8 +177,18 @@ func runSetCmd(opts *SetOptions) error {
 		ctx = context.Background()
 	}
 
+	// PATCH /configuration has no SDK pass-through, so decode into the typed
+	// patch. Only known fields (currently maxRetentionDays) are forwarded.
+	patch := agentStudio.NewEmptyApplicationConfigPatch()
+	if err := json.Unmarshal(body, patch); err != nil {
+		return cmdutil.FlagErrorf("patch body must be a JSON object: %v", err)
+	}
+
 	opts.IO.StartProgressIndicatorWithLabel("Updating configuration")
-	cfg, err := client.UpdateConfiguration(ctx, json.RawMessage(body))
+	cfg, err := client.UpdateConfiguration(
+		client.NewApiUpdateConfigurationRequest(patch),
+		agentStudio.WithContext(ctx),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

@@ -14,7 +14,7 @@ import (
 
 func Test_runGetCmd_Success(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains/d1", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/allowed-domains/d1", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(
 			[]byte(
 				`{"id":"d1","appId":"APP","agentId":"agent-1","domain":"x","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
@@ -25,7 +25,7 @@ func Test_runGetCmd_Success(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	result, err := test.Execute(cmd, "get agent-1 d1", out)
 	require.NoError(t, err)

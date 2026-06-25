@@ -14,7 +14,7 @@ import (
 
 func Test_runListCmd_MasksSecretsByDefault(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
 			"data":[{
 				"id":"p1","name":"openai-prod","providerName":"openai",
@@ -28,7 +28,7 @@ func Test_runListCmd_MasksSecretsByDefault(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "list --output json", out)
@@ -40,7 +40,7 @@ func Test_runListCmd_MasksSecretsByDefault(t *testing.T) {
 
 func Test_runListCmd_ShowSecretRevealsRawKey(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
 			"data":[{
 				"id":"p1","name":"openai-prod","providerName":"openai",
@@ -54,7 +54,7 @@ func Test_runListCmd_ShowSecretRevealsRawKey(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "list --output json --show-secret", out)

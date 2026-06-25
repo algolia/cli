@@ -6,10 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/sharedtest"
 	"github.com/algolia/cli/test"
 )
@@ -24,7 +24,7 @@ func newCmdAgainst(
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	exec := func(args string) (*test.CmdInOut, error) {
 		cmd := NewGetCmd(f, nil)
@@ -35,7 +35,7 @@ func newCmdAgainst(
 
 func Test_runGetCmd_DefaultsToJSON(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/abc-123", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
 			"id":"abc-123",
 			"name":"Concierge",
@@ -56,7 +56,7 @@ func Test_runGetCmd_DefaultsToJSON(t *testing.T) {
 
 func Test_runGetCmd_WrapsNotFound(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/missing", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/missing", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"detail":"Agent not found"}`))
 	})
@@ -65,7 +65,9 @@ func Test_runGetCmd_WrapsNotFound(t *testing.T) {
 
 	_, err := exec("missing")
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, agentstudio.ErrNotFound), "got %v", err)
+	var apiErr *agentStudio.APIError
+	require.True(t, errors.As(err, &apiErr), "got %v", err)
+	assert.Equal(t, http.StatusNotFound, apiErr.Status)
 }
 
 func Test_runGetCmd_RejectsMissingArg(t *testing.T) {

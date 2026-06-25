@@ -15,7 +15,7 @@ import (
 
 func Test_runCreateCmd_Success(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		body, _ := io.ReadAll(r.Body)
@@ -31,7 +31,7 @@ func Test_runCreateCmd_Success(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, `{"name":"Concierge","instructions":"x"}`)
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewCreateCmd(f, nil)
 	result, err := test.Execute(cmd, "-F -", out)
@@ -57,7 +57,7 @@ func Test_runCreateCmd_RejectsInvalidBodyJSON(t *testing.T) {
 
 func Test_runCreateCmd_FromBody(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		body, _ := io.ReadAll(r.Body)
 		assert.JSONEq(t, `{"name":"Concierge","instructions":"x"}`, string(body))
@@ -68,7 +68,7 @@ func Test_runCreateCmd_FromBody(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewCreateCmd(f, nil)
 	result, err := test.Execute(cmd, `--body '{"name":"Concierge","instructions":"x"}'`, out)

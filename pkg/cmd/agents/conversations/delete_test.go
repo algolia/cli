@@ -22,7 +22,7 @@ func Test_runDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 
 func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/conversations/missing", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/conversations/missing", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"detail":"Conversation not found"}`))
 	})
@@ -30,7 +30,7 @@ func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "delete agent-1 missing -y", out)

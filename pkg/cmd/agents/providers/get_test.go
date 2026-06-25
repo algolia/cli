@@ -14,7 +14,7 @@ import (
 
 func Test_runGetCmd_MasksByDefault(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers/p1", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers/p1", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
 			"id":"p1","name":"openai-prod","providerName":"openai",
 			"input":{"apiKey":"sk-LEAKED"},
@@ -25,7 +25,7 @@ func Test_runGetCmd_MasksByDefault(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "get p1", out)

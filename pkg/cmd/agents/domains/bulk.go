@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -16,20 +16,20 @@ import (
 )
 
 type BulkInsertOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	AgentID           string
-	Domains           []string
-	File              string
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	AgentID              string
+	Domains              []string
+	File                 string
 }
 
 func newBulkInsertCmd(f *cmdutil.Factory, runF func(*BulkInsertOptions) error) *cobra.Command {
 	opts := &BulkInsertOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:   "bulk-insert <agent-id> [--domain x ...] [-F file]",
@@ -77,12 +77,15 @@ func newBulkInsertCmd(f *cmdutil.Factory, runF func(*BulkInsertOptions) error) *
 }
 
 func runBulkInsertCmd(opts *BulkInsertOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Bulk-inserting allowed domains")
-	res, err := client.BulkInsertAllowedDomains(shared.OrBackground(opts.Ctx), opts.AgentID, opts.Domains)
+	res, err := client.BulkCreateAllowedDomains(
+		client.NewApiBulkCreateAllowedDomainsRequest(opts.AgentID, agentStudio.NewAllowedDomainBulkInsert(opts.Domains)),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -91,19 +94,19 @@ func runBulkInsertCmd(opts *BulkInsertOptions) error {
 }
 
 type BulkDeleteOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	AgentID           string
-	DomainIDs         []string
-	File              string
-	DoConfirm         bool
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	AgentID              string
+	DomainIDs            []string
+	File                 string
+	DoConfirm            bool
 }
 
 func newBulkDeleteCmd(f *cmdutil.Factory, runF func(*BulkDeleteOptions) error) *cobra.Command {
 	opts := &BulkDeleteOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 	var confirm bool
 	cmd := &cobra.Command{
@@ -161,7 +164,7 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 			return nil
 		}
 	}
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -175,12 +178,15 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 	var present, absent int
 	if opts.IO.IsStdoutTTY() {
 		opts.IO.StartProgressIndicatorWithLabel("Inspecting allowed domains")
-		current, lerr := client.ListAllowedDomains(ctx, opts.AgentID)
+		current, lerr := client.ListAgentAllowedDomains(
+			client.NewApiListAgentAllowedDomainsRequest(opts.AgentID),
+			agentStudio.WithContext(ctx),
+		)
 		opts.IO.StopProgressIndicator()
 		if lerr == nil {
 			existing := make(map[string]struct{}, len(current.Domains))
 			for _, d := range current.Domains {
-				existing[d.ID] = struct{}{}
+				existing[d.Id] = struct{}{}
 			}
 			for _, id := range opts.DomainIDs {
 				if _, ok := existing[id]; ok {
@@ -193,7 +199,10 @@ func runBulkDeleteCmd(opts *BulkDeleteOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Bulk-deleting allowed domains")
-	err = client.BulkDeleteAllowedDomains(ctx, opts.AgentID, opts.DomainIDs)
+	err = client.BulkDeleteAllowedDomains(
+		client.NewApiBulkDeleteAllowedDomainsRequest(opts.AgentID, agentStudio.NewAllowedDomainBulkDelete(opts.DomainIDs)),
+		agentStudio.WithContext(ctx),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

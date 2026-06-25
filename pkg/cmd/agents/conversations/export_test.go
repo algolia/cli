@@ -17,14 +17,14 @@ import (
 
 func Test_runExportCmd_StdoutPathPrettyPrints(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/conversations/export", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/conversations/export", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`[{"id":"c1"},{"id":"c2"}]`))
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	result, err := test.Execute(cmd, "export agent-1", out)
@@ -37,7 +37,7 @@ func Test_runExportCmd_StdoutPathPrettyPrints(t *testing.T) {
 
 func Test_runExportCmd_OutputFileWritesCompact(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/conversations/export", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/conversations/export", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`[{"id":"c1"}]`))
 	})
 	ts := httptest.NewServer(mux)
@@ -48,7 +48,7 @@ func Test_runExportCmd_OutputFileWritesCompact(t *testing.T) {
 	outPath := filepath.Join(dir, exportFile)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "export agent-1 -O "+outPath, out)
@@ -63,7 +63,7 @@ func Test_runExportCmd_OutputFileWritesCompact(t *testing.T) {
 func Test_runExportCmd_PassesDateRange(t *testing.T) {
 	mux := http.NewServeMux()
 	hit := false
-	mux.HandleFunc("/1/agents/agent-1/conversations/export", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/conversations/export", func(w http.ResponseWriter, r *http.Request) {
 		hit = true
 		assert.Equal(t, "2026-01-01", r.URL.Query().Get("startDate"))
 		assert.Equal(t, "2026-01-31", r.URL.Query().Get("endDate"))
@@ -73,7 +73,7 @@ func Test_runExportCmd_PassesDateRange(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewConversationsCmd(f)
 	_, err := test.Execute(cmd, "export agent-1 --start-date 2026-01-01 --end-date 2026-01-31", out)

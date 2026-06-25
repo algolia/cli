@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -14,17 +14,17 @@ import (
 )
 
 type DeleteOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	ID                string
-	DoConfirm         bool
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	ID                   string
+	DoConfirm            bool
 }
 
 func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
 	opts := &DeleteOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 	var confirm bool
 	cmd := &cobra.Command{
@@ -62,12 +62,15 @@ func runDeleteCmd(opts *DeleteOptions) error {
 			return nil
 		}
 	}
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Deleting secret key")
-	err = client.DeleteSecretKey(shared.OrBackground(opts.Ctx), opts.ID)
+	err = client.DeleteSecretKey(
+		client.NewApiDeleteSecretKeyRequest(opts.ID),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

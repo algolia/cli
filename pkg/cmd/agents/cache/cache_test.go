@@ -15,7 +15,7 @@ import (
 func Test_runInvalidateCmd_NoBefore_HitsBackendWithoutQuery(t *testing.T) {
 	mux := http.NewServeMux()
 	hit := false
-	mux.HandleFunc("/1/agents/abc-123/cache", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/abc-123/cache", func(w http.ResponseWriter, r *http.Request) {
 		hit = true
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Equal(t, "", r.URL.RawQuery)
@@ -25,7 +25,7 @@ func Test_runInvalidateCmd_NoBefore_HitsBackendWithoutQuery(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	_, err := test.Execute(cmd, "invalidate abc-123 -y", out)
@@ -35,7 +35,7 @@ func Test_runInvalidateCmd_NoBefore_HitsBackendWithoutQuery(t *testing.T) {
 
 func Test_runInvalidateCmd_WithBefore_PassesQueryParam(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123/cache", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/abc-123/cache", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "2026-01-15", r.URL.Query().Get("before"))
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -43,7 +43,7 @@ func Test_runInvalidateCmd_WithBefore_PassesQueryParam(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	_, err := test.Execute(cmd, "invalidate abc-123 --before 2026-01-15 -y", out)
@@ -70,7 +70,7 @@ func Test_runInvalidateCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 
 func Test_runInvalidateCmd_PropagatesAPIError(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/missing/cache", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/missing/cache", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"detail":"Agent not found"}`))
 	})
@@ -78,7 +78,7 @@ func Test_runInvalidateCmd_PropagatesAPIError(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewCacheCmd(f)
 	_, err := test.Execute(cmd, "invalidate missing -y", out)

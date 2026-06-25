@@ -41,7 +41,7 @@ func Test_runBulkInsertCmd_RequiresInput(t *testing.T) {
 
 func Test_runBulkInsertCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
 		var got map[string][]string
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
 		assert.Equal(t, []string{"a", "b"}, got["domains"])
@@ -52,7 +52,7 @@ func Test_runBulkInsertCmd_Live(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	_, err := test.Execute(cmd, "bulk-insert agent-1 --domain a --domain b", out)
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func Test_runBulkDeleteCmd_NonTTYWithoutConfirmFails(t *testing.T) {
 
 func Test_runBulkDeleteCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		var got map[string][]string
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
@@ -88,7 +88,7 @@ func Test_runBulkDeleteCmd_Live(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	_, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 -y", out)
 	require.NoError(t, err)
@@ -99,11 +99,11 @@ func Test_runBulkDeleteCmd_Live(t *testing.T) {
 // requested IDs exist on the server, one does not.
 func Test_runBulkDeleteCmd_TTYReportsRemovedAndAbsent(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/allowed-domains", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		_, _ = w.Write([]byte(`{"domains":[{"id":"d1","domain":"a.test"},{"id":"d2","domain":"b.test"}]}`))
 	})
-	mux.HandleFunc("/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/agent-1/allowed-domains/bulk", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		w.WriteHeader(http.StatusNoContent)
 	})
@@ -111,7 +111,7 @@ func Test_runBulkDeleteCmd_TTYReportsRemovedAndAbsent(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(true, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewDomainsCmd(f)
 	result, err := test.Execute(cmd, "bulk-delete agent-1 --domain-id d1 --domain-id d2 --domain-id d-missing -y", out)
 	require.NoError(t, err)

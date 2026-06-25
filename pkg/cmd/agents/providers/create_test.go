@@ -17,7 +17,7 @@ import (
 func Test_runCreateCmd_RoundTripsBody(t *testing.T) {
 	body := `{"name":"openai-prod","providerName":"openai","input":{"apiKey":"sk-XYZ"}}`
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte(`{
@@ -32,7 +32,7 @@ func Test_runCreateCmd_RoundTripsBody(t *testing.T) {
 	specPath := sharedtest.WriteTempJSON(t, "spec.json", body)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "create -F "+specPath, out)
@@ -60,7 +60,7 @@ func Test_runCreateCmd_RequiresFileFlag(t *testing.T) {
 func Test_runCreateCmd_File_PostsOpenAIProviderBody(t *testing.T) {
 	specJSON := `{"name":"prod","providerName":"openai","input":{"apiKey":"sk-env"}}`
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -79,7 +79,7 @@ func Test_runCreateCmd_File_PostsOpenAIProviderBody(t *testing.T) {
 	specPath := sharedtest.WriteTempJSON(t, "spec.json", specJSON)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "create -F "+specPath, out)
@@ -90,7 +90,7 @@ func Test_runCreateCmd_File_PostsOpenAIProviderBody(t *testing.T) {
 func Test_runCreateCmd_FileAcceptsAzureOpenAI(t *testing.T) {
 	specJSON := `{"name":"azure1","providerName":"azure_openai","input":{"apiKey":"k","azureEndpoint":"https://x.openai.azure.com","azureDeployment":"d"}}`
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/providers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/providers", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte(`{
@@ -105,7 +105,7 @@ func Test_runCreateCmd_FileAcceptsAzureOpenAI(t *testing.T) {
 	specPath := sharedtest.WriteTempJSON(t, "spec.json", specJSON)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewProvidersCmd(f)
 	result, err := test.Execute(cmd, "create -F "+specPath, out)

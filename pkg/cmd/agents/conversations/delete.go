@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -18,7 +18,7 @@ type DeleteOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	AgentID        string
 	ConversationID string
@@ -27,8 +27,8 @@ type DeleteOptions struct {
 
 func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
 	opts := &DeleteOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 	var confirm bool
 
@@ -90,14 +90,17 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Deleting conversation")
-	err = client.DeleteConversation(ctx, opts.AgentID, opts.ConversationID)
+	err = client.DeleteConversation(
+		client.NewApiDeleteConversationRequest(opts.ConversationID, opts.AgentID),
+		agentStudio.WithContext(ctx),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

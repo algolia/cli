@@ -15,7 +15,7 @@ import (
 
 func Test_runUpdateCmd_Success(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/abc-123", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		body, _ := io.ReadAll(r.Body)
 		assert.JSONEq(t, `{"name":"Renamed"}`, string(body))
@@ -29,7 +29,7 @@ func Test_runUpdateCmd_Success(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, `{"name":"Renamed"}`)
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewUpdateCmd(f, nil)
 	result, err := test.Execute(cmd, "abc-123 -F -", out)

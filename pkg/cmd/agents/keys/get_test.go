@@ -14,7 +14,7 @@ import (
 
 func Test_runGetCmd_MasksValueByDefault(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/secret-keys/id1", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/secret-keys/id1", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(
 			[]byte(
 				`{"id":"id1","name":"k1","value":"sk-real","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z","lastUsedAt":null,"isDefault":false,"agentIds":[]}`,
@@ -25,7 +25,7 @@ func Test_runGetCmd_MasksValueByDefault(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewKeysCmd(f)
 	result, err := test.Execute(cmd, "get id1", out)
 	require.NoError(t, err)

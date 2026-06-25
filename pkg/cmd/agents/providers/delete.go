@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -19,7 +19,7 @@ type DeleteOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	ProviderID string
 	DoConfirm  bool
@@ -27,8 +27,8 @@ type DeleteOptions struct {
 
 func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Command {
 	opts := &DeleteOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
 	}
 	var confirm bool
 
@@ -73,7 +73,7 @@ func newDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 
 func runDeleteCmd(opts *DeleteOptions) error {
 	cs := opts.IO.ColorScheme()
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,10 @@ func runDeleteCmd(opts *DeleteOptions) error {
 
 	// Pre-fetch so the prompt can show name+providerName,
 	// matching `agents delete`'s contract.
-	p, err := client.GetProvider(ctx, opts.ProviderID)
+	p, err := client.GetProvider(
+		client.NewApiGetProviderRequest(opts.ProviderID),
+		agentStudio.WithContext(ctx),
+	)
 	if err != nil {
 		return err
 	}
@@ -99,7 +102,10 @@ func runDeleteCmd(opts *DeleteOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Deleting provider")
-	err = client.DeleteProvider(ctx, opts.ProviderID)
+	err = client.DeleteProvider(
+		client.NewApiDeleteProviderRequest(opts.ProviderID),
+		agentStudio.WithContext(ctx),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

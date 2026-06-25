@@ -3,12 +3,13 @@ package conversations
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -20,8 +21,8 @@ type ListOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	AgentID         string
 	Page            int
@@ -35,9 +36,9 @@ type ListOptions struct {
 
 func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Command {
 	opts := &ListOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags(),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -97,26 +98,34 @@ func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 }
 
 func runListCmd(opts *ListOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
-	params := agentstudio.ListConversationsParams{
-		Page:            opts.Page,
-		Limit:           opts.PerPage,
-		StartDate:       opts.StartDate,
-		EndDate:         opts.EndDate,
-		IncludeFeedback: opts.IncludeFeedback,
+	req := client.NewApiListAgentConversationsRequest(opts.AgentID)
+	if opts.Page > 0 {
+		req = req.WithPage(int32(opts.Page))
+	}
+	if opts.PerPage > 0 {
+		req = req.WithLimit(int32(opts.PerPage))
+	}
+	if opts.StartDate != "" {
+		req = req.WithStartDate(opts.StartDate)
+	}
+	if opts.EndDate != "" {
+		req = req.WithEndDate(opts.EndDate)
+	}
+	if opts.IncludeFeedback {
+		req = req.WithIncludeFeedback(true)
 	}
 	if opts.feedbackVoteSet {
-		v := opts.FeedbackVote
-		params.FeedbackVote = &v
+		req = req.WithFeedbackVote(int32(opts.FeedbackVote))
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching conversations")
-	res, err := client.ListConversations(ctx, opts.AgentID, params)
+	res, err := client.ListAgentConversations(req, agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -138,17 +147,19 @@ func runListCmd(opts *ListOptions) error {
 	}
 	for _, conv := range res.Data {
 		title := "-"
-		if conv.Title != nil && *conv.Title != "" {
-			title = *conv.Title
+		if t := conv.GetTitle(); t != "" {
+			title = t
 		}
 		last := "-"
-		if conv.LastActivityAt != nil && !conv.LastActivityAt.IsZero() {
-			last = humanize.RelTime(now, *conv.LastActivityAt, "from now", "ago")
+		if la := conv.GetLastActivityAt(); la != "" {
+			if t, err := time.Parse(time.RFC3339, la); err == nil && !t.IsZero() {
+				last = humanize.RelTime(now, t, "from now", "ago")
+			}
 		}
-		table.AddField(conv.ID, nil, nil)
+		table.AddField(conv.Id, nil, nil)
 		table.AddField(title, nil, nil)
-		table.AddField(fmt.Sprintf("%d", conv.MessageCount), nil, nil)
-		table.AddField(fmt.Sprintf("%d", conv.TotalTokens), nil, nil)
+		table.AddField(fmt.Sprintf("%d", conv.GetMessageCount()), nil, nil)
+		table.AddField(fmt.Sprintf("%d", conv.GetTotalTokens()), nil, nil)
 		table.AddField(last, nil, nil)
 		table.EndRow()
 	}

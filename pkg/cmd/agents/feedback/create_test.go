@@ -57,7 +57,7 @@ func Test_runCreateCmd_NotesTooLong(t *testing.T) {
 
 func Test_runCreateCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/feedback", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/feedback", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var got map[string]any
 		require.NoError(t, json.Unmarshal(body, &got))
@@ -74,7 +74,7 @@ func Test_runCreateCmd_Live(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewFeedbackCmd(f)
 	result, err := test.Execute(cmd, "create --agent-id a1 --message-id m1 --vote 1", out)
 	require.NoError(t, err)

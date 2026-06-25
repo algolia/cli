@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -18,7 +18,7 @@ type GetOptions struct {
 	Config config.IConfig
 	Ctx    context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 
@@ -27,10 +27,10 @@ type GetOptions struct {
 
 func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command {
 	opts := &GetOptions{
-		IO:                f.IOStreams,
-		Config:            f.Config,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		Config:               f.Config,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -71,7 +71,7 @@ func NewGetCmd(f *cmdutil.Factory, runF func(*GetOptions) error) *cobra.Command 
 }
 
 func runGetCmd(opts *GetOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func runGetCmd(opts *GetOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching agent")
-	agent, err := client.GetAgent(ctx, opts.AgentID)
+	agent, err := client.GetAgent(client.NewApiGetAgentRequest(opts.AgentID), agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

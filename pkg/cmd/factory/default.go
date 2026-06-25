@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
@@ -27,6 +28,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f.CrawlerClient = crawlerClient(f)
 	f.CompositionClient = compositionClient(f, appVersion)
 	f.AgentStudioClient = agentStudioClient(f, appVersion)
+	f.AgentStudioAPIClient = agentStudioAPIClient(f, appVersion)
 
 	return f
 }
@@ -107,6 +109,50 @@ func agentStudioClient(f *cmdutil.Factory, appVersion string) func() (*agentstud
 			UserID:        userID,
 			UserAgent:     fmt.Sprintf("algolia-cli/%s agentstudio", appVersion),
 		})
+	}
+}
+
+// agentStudioAPIClient builds the official Agent Studio SDK client used for
+// the standard CRUD surface. Unlike the local client it does not consult
+// resolveAgentStudioBaseURL: it pins a single read-write host so every request
+// goes to https://<appID>.algolia.net/agent-studio/1/... (the SDK prepends the
+// /agent-studio/1 path itself). The X-Algolia-User-ID header preserves the same
+// cli / cli-<profile> attribution the local client sends.
+func agentStudioAPIClient(f *cmdutil.Factory, appVersion string) func() (*agentStudio.APIClient, error) {
+	return func() (*agentStudio.APIClient, error) {
+		profile := f.Config.Profile()
+		appID, err := profile.GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := profile.GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		client, err := agentStudio.NewClientWithConfig(agentStudio.AgentStudioConfiguration{
+			Configuration: transport.Configuration{
+				AppID:         appID,
+				ApiKey:        apiKey,
+				DefaultHeader: make(map[string]string),
+				UserAgent:     fmt.Sprintf("algolia-cli/%s agentstudio", appVersion),
+				Requester:     transport.NewDefaultRequester(nil),
+				Hosts: []transport.StatefulHost{
+					transport.NewStatefulHost("https", appID+".algolia.net", call.IsReadWrite),
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		userID := "cli"
+		if profile.Name != "" {
+			userID = "cli-" + profile.Name
+		}
+		client.AddDefaultHeader("X-Algolia-User-ID", userID)
+
+		return client, nil
 	}
 }
 

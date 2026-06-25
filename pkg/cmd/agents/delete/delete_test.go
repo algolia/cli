@@ -38,7 +38,7 @@ func Test_runDeleteCmd_NonTTYWithConfirmDeletes(t *testing.T) {
 	var deleted atomic.Bool
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/abc-123", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/abc-123", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			writeTestJSONResponse(w, []byte(agentJSON("Concierge", "draft")))
@@ -53,7 +53,7 @@ func Test_runDeleteCmd_NonTTYWithConfirmDeletes(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewDeleteCmd(f, nil)
 	_, err := test.Execute(cmd, "abc-123 -y", out)
@@ -63,7 +63,7 @@ func Test_runDeleteCmd_NonTTYWithConfirmDeletes(t *testing.T) {
 
 func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents/missing", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents/missing", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"detail":"Agent not found"}`))
 	})
@@ -71,7 +71,7 @@ func Test_runDeleteCmd_PropagatesNotFound(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	cmd := NewDeleteCmd(f, nil)
 	_, err := test.Execute(cmd, "missing -y", out)

@@ -8,9 +8,9 @@ import (
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -21,8 +21,8 @@ type ExportOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	AgentID    string
 	StartDate  string
@@ -32,9 +32,9 @@ type ExportOptions struct {
 
 func newExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Command {
 	opts := &ExportOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -78,17 +78,26 @@ func newExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 }
 
 func runExportCmd(opts *ExportOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	ctx := shared.OrBackground(opts.Ctx)
 
+	req := client.NewApiExportConversationsRequest(opts.AgentID)
+	if opts.StartDate != "" {
+		req = req.WithStartDate(opts.StartDate)
+	}
+	if opts.EndDate != "" {
+		req = req.WithEndDate(opts.EndDate)
+	}
+
+	// Forward the backend payload verbatim — the export shape is unspecified,
+	// so use the raw response bytes rather than the typed model.
 	opts.IO.StartProgressIndicatorWithLabel("Exporting conversations")
-	raw, err := client.ExportConversations(ctx, opts.AgentID, agentstudio.ExportConversationsParams{
-		StartDate: opts.StartDate,
-		EndDate:   opts.EndDate,
-	})
+	raw, err := shared.RawResponse(
+		client.ExportConversationsWithHTTPInfo(req, agentStudio.WithContext(ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

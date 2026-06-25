@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func newCmdAgainst(
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(isTTY, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
 	return func(args string) (*test.CmdInOut, error) {
 		cmd := NewListCmd(f, nil)
@@ -75,8 +76,11 @@ func Test_runListCmd(t *testing.T) {
 			updated := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 			handler := http.NewServeMux()
-			handler.HandleFunc("/1/agents", func(w http.ResponseWriter, r *http.Request) {
-				assert.Equal(t, tc.wantQuery, r.URL.RawQuery)
+			handler.HandleFunc("/agent-studio/1/agents", func(w http.ResponseWriter, r *http.Request) {
+				// Compare parsed query values so the assertion is independent of
+				// the SDK's parameter ordering.
+				wantValues, _ := url.ParseQuery(tc.wantQuery)
+				assert.Equal(t, wantValues, r.URL.Query())
 				writeTestJSONResponse(w, []byte(`{
 					"data":[{
 						"id":"abc-123",
@@ -101,7 +105,7 @@ func Test_runListCmd(t *testing.T) {
 
 func Test_runListCmd_outputJSON(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{
 			"data":[{
 				"id":"abc-123",
@@ -124,7 +128,7 @@ func Test_runListCmd_outputJSON(t *testing.T) {
 
 func Test_runListCmd_PropagatesAPIError(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/agents", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/agents", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte(`{"message":"This feature is not enabled for this application."}`))
 	})

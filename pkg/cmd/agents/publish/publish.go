@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
@@ -16,17 +16,17 @@ type PublishOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
 
 	AgentID string
 }
 
 func NewPublishCmd(f *cmdutil.Factory, runF func(*PublishOptions) error) *cobra.Command {
 	opts := &PublishOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -58,7 +58,7 @@ func NewPublishCmd(f *cmdutil.Factory, runF func(*PublishOptions) error) *cobra.
 }
 
 func runPublishCmd(opts *PublishOptions) error {
-	client, err := opts.AgentStudioClient()
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func runPublishCmd(opts *PublishOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Publishing agent")
-	agent, err := client.PublishAgent(ctx, opts.AgentID)
+	agent, err := client.PublishAgent(client.NewApiPublishAgentRequest(opts.AgentID), agentStudio.WithContext(ctx))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

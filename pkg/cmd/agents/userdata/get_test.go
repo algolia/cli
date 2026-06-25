@@ -17,14 +17,14 @@ import (
 
 func Test_runGetCmd_Stdout(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/user-data/tok1", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/user-data/tok1", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"conversations":[{"id":"c1"}],"memories":[{"id":"m1"}]}`))
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewUserDataCmd(f)
 	result, err := test.Execute(cmd, "get tok1", out)
 	require.NoError(t, err)
@@ -36,7 +36,7 @@ func Test_runGetCmd_Stdout(t *testing.T) {
 
 func Test_runGetCmd_OutputFile(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/user-data/tok1", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/agent-studio/1/user-data/tok1", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"conversations":[],"memories":[]}`))
 	})
 	ts := httptest.NewServer(mux)
@@ -46,7 +46,7 @@ func Test_runGetCmd_OutputFile(t *testing.T) {
 	dir := t.TempDir()
 	dst := filepath.Join(dir, outFile)
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewUserDataCmd(f)
 	_, err := test.Execute(cmd, "get tok1 -o "+dst, out)
 	require.NoError(t, err)

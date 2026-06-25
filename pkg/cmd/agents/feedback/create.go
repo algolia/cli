@@ -4,32 +4,32 @@ import (
 	"context"
 
 	"github.com/MakeNowJust/heredoc"
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
-	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
 type CreateOptions struct {
-	IO                *iostreams.IOStreams
-	Ctx               context.Context
-	AgentStudioClient func() (*agentstudio.Client, error)
-	PrintFlags        *cmdutil.PrintFlags
-	MessageID         string
-	AgentID           string
-	Vote              int
-	VoteSet           bool
-	Tags              []string
-	Notes             string
+	IO                   *iostreams.IOStreams
+	Ctx                  context.Context
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
+	PrintFlags           *cmdutil.PrintFlags
+	MessageID            string
+	AgentID              string
+	Vote                 int
+	VoteSet              bool
+	Tags                 []string
+	Notes                string
 }
 
 func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Command {
 	opts := &CreateOptions{
-		IO:                f.IOStreams,
-		AgentStudioClient: f.AgentStudioClient,
-		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                   f.IOStreams,
+		AgentStudioAPIClient: f.AgentStudioAPIClient,
+		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 	cmd := &cobra.Command{
 		Use:     "create --agent-id <id> --message-id <id> --vote 0|1 [--tags x,y] [--notes ...]",
@@ -83,19 +83,24 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 }
 
 func runCreateCmd(opts *CreateOptions) error {
-	body := agentstudio.FeedbackCreate{
-		MessageID: opts.MessageID,
-		AgentID:   opts.AgentID,
-		Vote:      opts.Vote,
+	body := &agentStudio.FeedbackCreationRequest{
+		MessageId: opts.MessageID,
+		AgentId:   opts.AgentID,
+		Vote:      agentStudio.VoteEnum(opts.Vote),
 		Tags:      opts.Tags,
-		Notes:     opts.Notes,
 	}
-	client, err := opts.AgentStudioClient()
+	if opts.Notes != "" {
+		body.Notes = &opts.Notes
+	}
+	client, err := opts.AgentStudioAPIClient()
 	if err != nil {
 		return err
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Submitting feedback")
-	fb, err := client.CreateFeedback(shared.OrBackground(opts.Ctx), body)
+	fb, err := client.CreateFeedback(
+		client.NewApiCreateFeedbackRequest(body),
+		agentStudio.WithContext(shared.OrBackground(opts.Ctx)),
+	)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

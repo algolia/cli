@@ -24,7 +24,7 @@ func Test_runUpdateCmd_RequiresAtLeastOneField(t *testing.T) {
 
 func Test_runUpdateCmd_LivePatch(t *testing.T) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/1/secret-keys/id1", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/agent-studio/1/secret-keys/id1", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		body, _ := io.ReadAll(r.Body)
 		var got map[string]any
@@ -40,7 +40,7 @@ func Test_runUpdateCmd_LivePatch(t *testing.T) {
 	t.Cleanup(ts.Close)
 
 	f, out := test.NewFactory(false, nil, nil, "")
-	f.AgentStudioClient = sharedtest.NewClient(t, ts)
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	cmd := NewKeysCmd(f)
 	result, err := test.Execute(cmd, `update id1 --name renamed`, out)
 	require.NoError(t, err)
