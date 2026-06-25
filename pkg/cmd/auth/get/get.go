@@ -17,6 +17,8 @@ type GetOptions struct {
 	PrintFlags          *cmdutil.PrintFlags
 	NewDashboardClient  func(clientID string) *dashboard.Client
 	EnsureAuthenticated func(io *iostreams.IOStreams, client *dashboard.Client) (string, error)
+
+	WithAccessToken bool
 }
 
 type Identity struct {
@@ -47,6 +49,9 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		Example: heredoc.Doc(`
 			# Get the authenticated user
 			$ algolia auth get
+
+			# Include the access token in the output
+			$ algolia auth get --with-access-token
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,6 +59,8 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().
+		BoolVar(&opts.WithAccessToken, "with-access-token", false, "Include the OAuth access token in the output")
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
@@ -71,7 +78,9 @@ func runGetCmd(opts *GetOptions) error {
 		UserID: stored.UserID,
 		Email:  stored.Email,
 		Name:   stored.Name,
-		Token:  stored.AccessToken,
+	}
+	if opts.WithAccessToken {
+		identity.Token = stored.AccessToken
 	}
 
 	p, err := opts.PrintFlags.ToPrinter()
