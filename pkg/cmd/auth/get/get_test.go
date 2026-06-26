@@ -131,6 +131,7 @@ func TestGet_RefreshesExpiredToken(t *testing.T) {
 		// Real auth seam: GetValidToken refreshes via the stubbed client and
 		// succeeds, so the browser flow is never reached.
 		EnsureAuthenticated: auth.EnsureAuthenticated,
+		WithAccessToken:     true,
 	}
 
 	out, err := test.Execute(cmdWithOpts(opts), "--output ndjson", out)
@@ -139,13 +140,45 @@ func TestGet_RefreshesExpiredToken(t *testing.T) {
 	// Identity preserved from the pre-refresh token (refresh response has no user).
 	assert.Contains(t, out.String(), `"user_id":"42"`)
 	assert.Contains(t, out.String(), `"email":"user@example.com"`)
-	assert.NotContains(t, out.String(), "new-access")
+	// Refreshed access token is surfaced in the identity output.
+	assert.Contains(t, out.String(), `"token":"new-access"`)
 
 	// Refreshed token was persisted.
 	assert.Equal(t, "new-access", auth.LoadToken().AccessToken)
 }
 
-func TestGet_PrintsIdentityWithoutTokens(t *testing.T) {
+func TestGet_PrintsIdentityWithAccessToken(t *testing.T) {
+	keyring.MockInit()
+	t.Cleanup(auth.ClearToken)
+	require.NoError(t, auth.SaveToken(&dashboard.OAuthTokenResponse{
+		AccessToken:  "secret-access",
+		RefreshToken: "secret-refresh",
+		CreatedAt:    time.Now().Unix(),
+		ExpiresIn:    3600,
+		User: &dashboard.User{
+			ID:    42,
+			Email: "user@example.com",
+			Name:  "Test User",
+		},
+	}))
+
+	f, out := test.NewFactory(false, nil, nil, "")
+	cmd := NewGetCmd(f)
+	out, err := test.Execute(cmd, "--with-access-token --output ndjson", out)
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), `"user_id":"42"`)
+	assert.Contains(t, out.String(), `"email":"user@example.com"`)
+	assert.Contains(t, out.String(), `"name":"Test User"`)
+	// Access token is surfaced under the "token" field.
+	assert.Contains(t, out.String(), `"token":"secret-access"`)
+	// Refresh token is never exposed.
+	assert.NotContains(t, out.String(), "secret-refresh")
+	assert.NotContains(t, out.String(), "refresh_token")
+}
+
+// Without --with-access-token, no token of any kind appears in the output.
+func TestGet_OmitsAccessTokenByDefault(t *testing.T) {
 	keyring.MockInit()
 	t.Cleanup(auth.ClearToken)
 	require.NoError(t, auth.SaveToken(&dashboard.OAuthTokenResponse{
@@ -168,8 +201,8 @@ func TestGet_PrintsIdentityWithoutTokens(t *testing.T) {
 	assert.Contains(t, out.String(), `"user_id":"42"`)
 	assert.Contains(t, out.String(), `"email":"user@example.com"`)
 	assert.Contains(t, out.String(), `"name":"Test User"`)
+	// No token surfaced by default.
 	assert.NotContains(t, out.String(), "secret-access")
 	assert.NotContains(t, out.String(), "secret-refresh")
-	assert.NotContains(t, out.String(), "access_token")
-	assert.NotContains(t, out.String(), "refresh_token")
+	assert.NotContains(t, out.String(), `"token"`)
 }
