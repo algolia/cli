@@ -38,6 +38,12 @@ Preferred:
 task build
 ```
 
+For a second binary next to a production install (same `.env` / ldflags as `build`, output `algolia-beta`, version string `main+beta` unless you pass `VERSION=…`):
+
+```sh
+task build-beta
+```
+
 ```sh
 go generate ./...
 go build -ldflags "-s -w -X=github.com/algolia/cli/pkg/version.Version=main" -o algolia cmd/algolia/main.go
@@ -45,6 +51,7 @@ go build -v ./...
 ```
 
 - `task build` runs generation first.
+- `task build-beta` runs like `task build`; it injects **`version.Distribution=beta`**. Before building for use against production, **update `.env` to production Algolia URLs** (dashboard, Agent Studio/cluster-proxy host, OAuth—see `.env.example`); defaults are baked in at link time. Every `agents` command (including `agents`/subcommand `--help`) prints only this line on **stderr** (yellow + bold when color is enabled): **`[BETA] WARNING: This version should not be used in production.`** Output binary defaults to **`algolia-beta`** with **`VERSION=main+beta`** (both overridable).
 - CI also checks `go build -v ./...`.
 
 ## Test Commands
@@ -125,6 +132,10 @@ Use narrower verification for small edits.
 - Inject dependencies via `*cmdutil.Factory`.
 - Put shared command logic in focused helper packages, usually `pkg/cmdutil`.
 - Keep docs-generation logic in `internal/docs` and `cmd/docs`.
+
+## Agent Studio (`pkg/cmd/agents/...`, `api/agentstudio/`)
+
+See [`docs/agents.md`](docs/agents.md) for the command surface, file layout, auth/host resolution, streaming protocols, confirmation rules, secret masking, telemetry, and the live-backend gotchas. Don't duplicate that content here or in code comments.
 
 ## Code Style
 

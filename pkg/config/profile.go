@@ -21,6 +21,13 @@ type Profile struct {
 	AdminAPIKey   string   `mapstructure:"admin_api_key"`
 	SearchHosts   []string `mapstructure:"search_hosts"`
 
+	// AgentStudioURL is a per-profile override of the Agent Studio base URL.
+	// Resolution order at runtime is: env > profile > build-time default
+	// (api/agentstudio.DefaultBaseURL) > cluster-proxy fallback derived
+	// from ApplicationID. Mainly used for staging or local debug backends
+	// when a one-shot env var is too coarse.
+	AgentStudioURL string `mapstructure:"agent_studio_url"`
+
 	Default bool `mapstructure:"default"`
 }
 
@@ -173,6 +180,27 @@ func (p *Profile) GetCrawlerAPIKey() (string, error) {
 	}
 
 	return "", ErrCrawlerAPIKeyNotConfigured
+}
+
+// GetAgentStudioURL returns the Agent Studio base URL override, if any.
+// Resolution order matches GetApplicationID: env > profile struct > viper.
+// Empty string means "no override; let the client resolve from region/appID".
+func (p *Profile) GetAgentStudioURL() string {
+	if v := os.Getenv("ALGOLIA_AGENT_STUDIO_URL"); v != "" {
+		return v
+	}
+	if p.AgentStudioURL != "" {
+		return p.AgentStudioURL
+	}
+	if p.Name == "" {
+		p.LoadDefault()
+	}
+	if err := viper.ReadInConfig(); err == nil {
+		if v := viper.GetString(p.GetFieldName("agent_studio_url")); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // Add adds a profile to the configuration, preserving any existing profiles.

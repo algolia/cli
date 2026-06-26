@@ -99,6 +99,21 @@ func setupCmds(
 	}
 }
 
+// envCondition exposes process-env-var checks to testscripts via the
+// `[env:VAR]` and `[!env:VAR]` syntax. Truthy means the var is set to
+// something other than "" or "0" (matches how callers like
+// ALGOLIA_AGENT_STUDIO_E2E=1 set it). Lets a single .txtar file gate
+// itself with `[!env:VAR] skip 'reason'` instead of forking the test
+// runner per-script.
+func envCondition(cond string) (bool, error) {
+	const prefix = "env:"
+	if !strings.HasPrefix(cond, prefix) {
+		return false, fmt.Errorf("unknown condition %q (only env:VAR is registered)", cond)
+	}
+	v := os.Getenv(strings.TrimPrefix(cond, prefix))
+	return v != "" && v != "0", nil
+}
+
 // runTestsInDir runs all test scripts from a directory
 func runTestsInDir(t *testing.T, dirName string) {
 	var testEnv testEnvironment
@@ -108,9 +123,10 @@ func runTestsInDir(t *testing.T, dirName string) {
 	t.Parallel()
 	t.Log("Running e2e tests in", dirName)
 	testscript.Run(t, testscript.Params{
-		Dir:   dirName,
-		Setup: setupEnv(testEnv),
-		Cmds:  setupCmds(testEnv),
+		Dir:       dirName,
+		Setup:     setupEnv(testEnv),
+		Cmds:      setupCmds(testEnv),
+		Condition: envCondition,
 	})
 }
 
@@ -142,6 +158,22 @@ func TestSynonyms(t *testing.T) {
 // TestRules tests `algolia rules` commands
 func TestRules(t *testing.T) {
 	runTestsInDir(t, "testscripts/rules")
+}
+
+// TestAgents tests `algolia agents` commands.
+//
+// Two-tier coverage:
+//   - Ungated scripts (`*.txtar` except list): CLI validation helpers
+//     that exercise `algolia agents` cobra validators without network calls.
+//   - list.txtar: gated on ALGOLIA_AGENT_STUDIO_E2E=1. Read-only
+//     smoke against the live backend. Confirms the wire format we
+//     parse against still matches what the deployed service emits.
+//
+// Write-CRUD live coverage (create → update → delete same id) is
+// not in here yet — testscript's framework needs an id-extraction
+// helper we haven't added.
+func TestAgents(t *testing.T) {
+	runTestsInDir(t, "testscripts/agents")
 }
 
 // TestSearch tests `algolia search`
