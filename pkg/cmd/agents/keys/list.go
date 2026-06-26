@@ -57,10 +57,10 @@ func runListCmd(opts *ListOptions) error {
 	}
 	req := client.NewApiListSecretKeysRequest()
 	if opts.Page > 0 {
-		req = req.WithPage(int32(opts.Page))
+		req = req.WithPage(shared.Int32(opts.Page))
 	}
 	if opts.Limit > 0 {
-		req = req.WithLimit(int32(opts.Limit))
+		req = req.WithLimit(shared.Int32(opts.Limit))
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching secret keys")
 	res, err := client.ListSecretKeys(req, agentStudio.WithContext(shared.OrBackground(opts.Ctx)))

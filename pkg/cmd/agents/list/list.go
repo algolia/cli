@@ -10,6 +10,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -95,10 +96,10 @@ func runListCmd(opts *ListOptions) error {
 
 	req := client.NewApiListAgentsRequest()
 	if opts.Page > 0 {
-		req = req.WithPage(int32(opts.Page))
+		req = req.WithPage(shared.Int32(opts.Page))
 	}
 	if opts.PerPage > 0 {
-		req = req.WithLimit(int32(opts.PerPage))
+		req = req.WithLimit(shared.Int32(opts.PerPage))
 	}
 	if opts.ProviderID != "" {
 		req = req.WithProviderId(opts.ProviderID)

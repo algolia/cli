@@ -86,7 +86,7 @@ func runCreateCmd(opts *CreateOptions) error {
 	body := &agentStudio.FeedbackCreationRequest{
 		MessageId: opts.MessageID,
 		AgentId:   opts.AgentID,
-		Vote:      agentStudio.VoteEnum(opts.Vote),
+		Vote:      agentStudio.VoteEnum(shared.Int32(opts.Vote)),
 		Tags:      opts.Tags,
 	}
 	if opts.Notes != "" {

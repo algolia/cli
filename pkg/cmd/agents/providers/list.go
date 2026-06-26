@@ -80,10 +80,10 @@ func runListCmd(opts *ListOptions) error {
 
 	req := client.NewApiListProvidersRequest()
 	if opts.Page > 0 {
-		req = req.WithPage(int32(opts.Page))
+		req = req.WithPage(shared.Int32(opts.Page))
 	}
 	if opts.PerPage > 0 {
-		req = req.WithLimit(int32(opts.PerPage))
+		req = req.WithLimit(shared.Int32(opts.PerPage))
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching providers")

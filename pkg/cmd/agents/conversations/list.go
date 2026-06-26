@@ -106,10 +106,10 @@ func runListCmd(opts *ListOptions) error {
 
 	req := client.NewApiListAgentConversationsRequest(opts.AgentID)
 	if opts.Page > 0 {
-		req = req.WithPage(int32(opts.Page))
+		req = req.WithPage(shared.Int32(opts.Page))
 	}
 	if opts.PerPage > 0 {
-		req = req.WithLimit(int32(opts.PerPage))
+		req = req.WithLimit(shared.Int32(opts.PerPage))
 	}
 	if opts.StartDate != "" {
 		req = req.WithStartDate(opts.StartDate)
@@ -121,7 +121,7 @@ func runListCmd(opts *ListOptions) error {
 		req = req.WithIncludeFeedback(true)
 	}
 	if opts.feedbackVoteSet {
-		req = req.WithFeedbackVote(int32(opts.FeedbackVote))
+		req = req.WithFeedbackVote(shared.Int32(opts.FeedbackVote))
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching conversations")
