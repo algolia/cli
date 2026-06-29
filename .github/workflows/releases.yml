@@ -53,6 +53,7 @@ jobs:
           VERSION: ${{ github.ref_name }}
         run: ./scripts/npm-publish.sh
       - name: Docs checkout
+        if: ${{ !contains(github.ref_name, '-') }}
         uses: actions/checkout@v4
         with:
           repository: algolia/docs-new
@@ -60,6 +61,7 @@ jobs:
           fetch-depth: 0
           token: ${{secrets.GORELEASER_GITHUB_TOKEN}}
       - name: Update docs
+        if: ${{ !contains(github.ref_name, '-') }}
         env:
           GIT_COMMITTER_NAME: algolia-ci
           GIT_AUTHOR_NAME: algolia-ci
