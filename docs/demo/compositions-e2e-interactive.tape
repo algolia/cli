@@ -9,7 +9,7 @@
 Output compositions-e2e-interactive.gif
 
 Set Shell "bash"
-Set FontSize 18
+Set FontSize 22
 Set Width 1650
 Set Height 1100
 Set Padding 10
@@ -26,6 +26,7 @@ Enter
 Sleep 1.5s
 
 Type "Demo Composition"
+Sleep 600ms
 Enter
 Sleep 600ms
 Enter
@@ -39,25 +40,27 @@ Enter
 Sleep 600ms
 # source union -> search
 Down
+Sleep 1s
 Enter
 Sleep 600ms
 # index
 Type "demo"
 Enter
-Sleep 600ms
+Sleep 800ms
 # Set params? no
 Enter
 Sleep 600ms
 # how many injectedItems -> 0
 Type "0"
+Sleep 800ms
 Enter
 Sleep 600ms
 # Set deduplication? no
 Enter
-Sleep 600ms
+Sleep 1s
 # Set sortingStrategy? no
 Enter
-Sleep 4s
+Sleep 6s
 
 # ── 2. get it back ────────────────────────────────────────────────────────────
 Type "algolia compositions get demo-comp"
@@ -72,6 +75,7 @@ Enter
 Sleep 1.5s
 # Set params? yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 1s
 # multi-select: filter to "query", toggle, confirm
@@ -83,6 +87,7 @@ Enter
 Sleep 1.2s
 # query value
 Type "cake"
+Sleep 4s
 Enter
 
 # search runs -> show the recipe hits

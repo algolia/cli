@@ -9,7 +9,7 @@
 Output compositions-search-parambag-interactive.gif
 
 Set Shell "bash"
-Set FontSize 18
+Set FontSize 20
 Set Width 1650
 Set Height 1100
 Set Padding 10
@@ -26,6 +26,7 @@ Sleep 1.5s
 
 # 1) Set params? — yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 1s
 
@@ -41,18 +42,20 @@ Backspace@80ms 9
 Type "hitsPerPage"
 Sleep 1.2s
 Space
-Sleep 800ms
+Sleep 1s
 Enter
 Sleep 1.5s
 
 # Selected fields are prompted in struct order: queryType, then hitsPerPage.
 # 3) queryType — enum, validated
 Type "prefixAll"
+Sleep 1s
 Enter
 Sleep 1.2s
 
 # 4) hitsPerPage — integer
 Type "5"
+Sleep 1s
 Enter
 
 # search runs -> show the hits
