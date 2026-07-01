@@ -27,6 +27,8 @@ type ClearOptions struct {
 	All          bool
 
 	DoConfirm bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewClearCmd creates and returns a clear command for dictionaries' entries.
@@ -38,6 +40,7 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:       "clear {<dictionary>... | --all} [--confirm]",
@@ -100,6 +103,8 @@ func NewClearCmd(f *cmdutil.Factory, runF func(*ClearOptions) error) *cobra.Comm
 		BoolVarP(&confirm, "confirm", "y", false, "Skip the clear dictionary entry confirmation prompt")
 	cmd.Flags().BoolVarP(&opts.All, "all", "a", false, "Clear all dictionaries")
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -153,17 +158,27 @@ func runClearCmd(opts *ClearOptions) error {
 		}
 	}
 
+	responses := make([]search.UpdatedAtResponse, 0, len(dictionaries))
 	for _, dict := range dictionaries {
 		batchParams := search.NewBatchDictionaryEntriesParams(
 			[]search.BatchDictionaryEntriesRequest{},
 			search.WithBatchDictionaryEntriesParamsClearExistingDictionaryEntries(true),
 		)
-		_, err := client.BatchDictionaryEntries(
+		res, err := client.BatchDictionaryEntries(
 			client.NewApiBatchDictionaryEntriesRequest(dict, batchParams),
 		)
 		if err != nil {
 			return err
 		}
+		responses = append(responses, *res)
+	}
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, responses)
 	}
 
 	if opts.IO.IsStdoutTTY() {

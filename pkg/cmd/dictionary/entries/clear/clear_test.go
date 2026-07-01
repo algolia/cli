@@ -1,6 +1,7 @@
 package clear
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -206,4 +207,44 @@ func Test_runDeleteCmd(t *testing.T) {
 			assert.Equal(t, tt.wantOut, out.String())
 		})
 	}
+}
+
+// Test_runClearCmd_outputJSON checks that the --output json path emits one
+// response per cleared dictionary, in order — i.e. the collection loop.
+func Test_runClearCmd_outputJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	dicts := []search.DictionaryType{
+		search.DICTIONARY_TYPE_PLURALS,
+		search.DICTIONARY_TYPE_COMPOUNDS,
+	}
+	for i, d := range dicts {
+		r.Register(
+			httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/search", d)),
+			httpmock.JSONResponse(search.SearchDictionaryEntriesResponse{
+				Hits: []search.DictionaryEntry{
+					{
+						ObjectID: "1",
+						Language: search.SUPPORTED_LANGUAGE_EN.Ptr(),
+						Words:    []string{"foo"},
+						Type:     search.DICTIONARY_ENTRY_TYPE_CUSTOM.Ptr(),
+					},
+				},
+			}),
+		)
+		r.Register(
+			httpmock.REST("POST", fmt.Sprintf("1/dictionaries/%s/batch", d)),
+			httpmock.JSONResponse(search.UpdatedAtResponse{TaskID: int64((i + 1) * 100)}),
+		)
+	}
+
+	f, out := test.NewFactory(false, &r, nil, "")
+	cmd := NewClearCmd(f, nil)
+	out, err := test.Execute(cmd, "plurals compounds --confirm --output json", out)
+	require.NoError(t, err)
+
+	var got []search.UpdatedAtResponse
+	require.NoError(t, json.Unmarshal([]byte(out.String()), &got))
+	assert.Len(t, got, 2)
+	assert.Equal(t, int64(100), got[0].TaskID)
+	assert.Equal(t, int64(200), got[1].TaskID)
 }

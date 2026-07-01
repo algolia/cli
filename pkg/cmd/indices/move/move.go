@@ -27,6 +27,8 @@ type MoveOptions struct {
 	Wait bool
 
 	DoConfirm bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewMoveCmd creates and returns a move command for indices
@@ -35,6 +37,7 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var confirm bool
@@ -77,6 +80,8 @@ func NewMoveCmd(f *cmdutil.Factory, runF func(*MoveOptions) error) *cobra.Comman
 
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip the move index confirmation prompt")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -135,6 +140,14 @@ func runMoveCmd(opts *MoveOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
+	}
 
 	if opts.IO.IsStdoutTTY() {
 		fmt.Fprintf(

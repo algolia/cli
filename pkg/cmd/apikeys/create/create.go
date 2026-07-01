@@ -27,6 +27,8 @@ type CreateOptions struct {
 	Indices     []string
 	Referers    []string
 	Validity    time.Duration
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewCreateCmd returns a new instance of CreateCmd
@@ -35,6 +37,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:     "create",
@@ -138,6 +141,8 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			"seeUnretrievableAttributes": "retrieve unretrievableAttributes for all operations that return records",
 		}, "can"))
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -163,6 +168,14 @@ func runCreateCmd(opts *CreateOptions) error {
 	res, err := client.AddApiKey(client.NewApiAddApiKeyRequest(&key))
 	if err != nil {
 		return err
+	}
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
 	}
 
 	cs := opts.IO.ColorScheme()
