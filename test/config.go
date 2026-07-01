@@ -11,10 +11,23 @@ type CrawlerAuth struct {
 	APIKey string
 }
 
+// SavedApplication records what SaveApplication stored for an application.
+type SavedApplication struct {
+	Alias      string
+	APIKeyUUID string
+	APIKey     string
+}
+
 type ConfigStub struct {
 	CurrentProfile config.Profile
 	profiles       []*config.Profile
 	CrawlerAuth    map[string]CrawlerAuth
+
+	ActiveAppID  string
+	CurrentAppID string
+	SavedApps    map[string]SavedApplication
+	CrawlerKeys  map[string]string
+	HasStateFile bool
 }
 
 func (c *ConfigStub) InitConfig() {}
@@ -128,4 +141,56 @@ func NewDefaultConfigStub() *ConfigStub {
 			Default:       true,
 		},
 	})
+}
+
+func (c *ConfigStub) ActiveApplicationID() string {
+	return c.ActiveAppID
+}
+
+func (c *ConfigStub) ApplicationInState(appID string) bool {
+	_, ok := c.SavedApps[appID]
+	return ok
+}
+
+func (c *ConfigStub) ApplicationIDByAlias(alias string) (string, bool) {
+	for appID, app := range c.SavedApps {
+		if app.Alias == alias {
+			return appID, true
+		}
+	}
+	return "", false
+}
+
+func (c *ConfigStub) SaveApplication(
+	appID, alias, apiKeyUUID, apiKey string,
+	setCurrent bool,
+) error {
+	if c.SavedApps == nil {
+		c.SavedApps = map[string]SavedApplication{}
+	}
+	saved := c.SavedApps[appID]
+	if alias != "" {
+		saved.Alias = alias
+	}
+	if apiKeyUUID != "" {
+		saved.APIKeyUUID = apiKeyUUID
+	}
+	saved.APIKey = apiKey
+	c.SavedApps[appID] = saved
+	if setCurrent {
+		c.CurrentAppID = appID
+	}
+	return nil
+}
+
+func (c *ConfigStub) StateFileExists() bool {
+	return c.HasStateFile
+}
+
+func (c *ConfigStub) SetCrawlerAPIKey(appID, crawlerAPIKey string) error {
+	if c.CrawlerKeys == nil {
+		c.CrawlerKeys = map[string]string{}
+	}
+	c.CrawlerKeys[appID] = crawlerAPIKey
+	return nil
 }

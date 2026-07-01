@@ -23,7 +23,7 @@ import (
 const (
 	AuthMethodHelpMsg = `In order to use the 'crawler' commands, you will need to authenticate with the Algolia Crawler API. You can do so by either:
   - Export your Algolia Crawler username and API Key as ALGOLIA_CRAWLER_USER_ID and ALGOLIA_CRAWLER_API_KEY environment variables.
-  - Add your Algolia Crawler 'crawler_user_id' and 'crawler_api_key' credentials to your profile file (~/.config/algolia/config.tml).`
+  - Run 'algolia auth crawler' to store your crawler API key securely in the OS keychain.`
 )
 
 // NewCrawlersCmd returns a new command to manage your Algolia Crawlers.

@@ -38,6 +38,11 @@ func NewDescribeCmd(f *cmdutil.Factory) *cobra.Command {
 		Aliases: []string{"schema"},
 		Args:    cobra.ArbitraryArgs,
 		Short:   "Describe commands and flags as JSON.",
+		// Describe only walks the command tree; it needs no credentials and
+		// must work on a machine with nothing configured.
+		Annotations: map[string]string{
+			"skipAuthCheck": "true",
+		},
 		Long: heredoc.Doc(`
 			Describe the CLI's command tree in a machine-readable format.
 			With no arguments, this command describes the root command.

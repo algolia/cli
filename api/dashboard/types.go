@@ -47,10 +47,11 @@ type ApplicationPlan struct {
 
 // Application is a flattened view of an Algolia application for CLI consumption.
 type Application struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	APIKey    string `json:"api_key,omitempty"`
-	PlanLabel string `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	APIKey     string `json:"api_key,omitempty"`
+	APIKeyUUID string `json:"api_key_uuid,omitempty"`
+	PlanLabel  string `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
 }
 
 // PaginationMeta contains page-based pagination metadata.
@@ -143,6 +144,13 @@ type APIKeyAttributes struct {
 // CreateAPIKeyResponse is the JSON:API response from POST /1/applications/{application_id}/api-keys.
 type CreateAPIKeyResponse struct {
 	Data APIKeyResource `json:"data"`
+}
+
+// CreatedAPIKey is the result of creating an API key: its secret value and its
+// UUID, used to reference the key when persisting or managing it later.
+type CreatedAPIKey struct {
+	Value string
+	UUID  string
 }
 
 // DashboardCrawlerUserData contains the user information from the crawler API

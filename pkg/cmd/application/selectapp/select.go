@@ -37,13 +37,11 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "select",
-		Short: "Select an application to use as the active profile",
+		Short: "Select the current application",
 		Long: heredoc.Doc(`
-			Select an Algolia application to use as the default CLI profile.
-			Fetches your applications from the API and lets you pick one.
-
-			If the selected application already has a local profile, it is set
-			as the default. Otherwise, a new profile is created and set as default.
+			Select an Algolia application to use as the current application for
+			all CLI commands. Fetches your applications from the API and lets
+			you pick one.
 		`),
 		Example: heredoc.Doc(`
 			# Select interactively
@@ -122,44 +120,12 @@ func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
 		return nil, err
 	}
 
-	// If a profile already exists for this app, switch the default
-	// and ensure it has an API key.
-	if exists, profileName := opts.Config.ApplicationIDExists(chosen.ID); exists {
-		// Read the profile BEFORE SetDefaultProfile, because viper.Set() calls
-		// inside SetDefaultProfile pollute the override map and cause
-		// UnmarshalKey to return empty fields (known viper issue).
-		var existingProfile *config.Profile
-		for _, p := range opts.Config.ConfiguredProfiles() {
-			if p.Name == profileName {
-				existingProfile = p
-				break
-			}
+	// Reuse a key already stored for this application (keychain, then legacy
+	// config.toml) before creating a new one on the dashboard.
+	if !apputil.ReuseExistingAPIKey(opts.Config, chosen) {
+		if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, chosen); err != nil {
+			return nil, err
 		}
-
-		if err := opts.Config.SetDefaultProfile(profileName); err != nil {
-			return nil, fmt.Errorf("failed to set default profile: %w", err)
-		}
-		fmt.Fprintf(opts.IO.Out, "%s Switched to profile %q (application %s).\n",
-			cs.SuccessIcon(), profileName, cs.Bold(chosen.ID))
-
-		if existingProfile != nil && existingProfile.APIKey == "" {
-			app := &dashboard.Application{ID: chosen.ID, Name: chosen.Name}
-			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, app); err != nil {
-				return nil, err
-			}
-			existingProfile.ApplicationID = chosen.ID
-			existingProfile.APIKey = app.APIKey
-			if err := existingProfile.Add(); err != nil {
-				return nil, err
-			}
-			fmt.Fprintf(opts.IO.Out, "%s Profile %q updated with API key.\n",
-				cs.SuccessIcon(), profileName)
-		}
-		return chosen, nil
-	}
-
-	if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, chosen); err != nil {
-		return nil, err
 	}
 
 	if err := apputil.ConfigureProfile(opts.IO, opts.Config, chosen, "", true); err != nil {
@@ -186,21 +152,15 @@ func pickApplication(
 		return nil, fmt.Errorf("--app-name is required in non-interactive mode")
 	}
 
-	configuredProfiles := opts.Config.ConfiguredProfiles()
-	configuredAppIDs := make(map[string]string)
-	for _, p := range configuredProfiles {
-		configuredAppIDs[p.ApplicationID] = p.Name
-	}
-
 	cs := opts.IO.ColorScheme()
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	appOptions := make([]string, len(apps))
 	for i, app := range apps {
 		label := fmt.Sprintf("%s (%s)", app.ID, app.Name)
-		if profileName, ok := configuredAppIDs[app.ID]; ok {
-			appOptions[i] = fmt.Sprintf("%s  %s", label, cs.Greenf("profile: %s", profileName))
-		} else {
-			appOptions[i] = label
+		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
+			label = fmt.Sprintf("%s  %s", label, cs.Green("(configured)"))
 		}
+		appOptions[i] = label
 	}
 
 	var selected int

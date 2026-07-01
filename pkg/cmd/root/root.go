@@ -84,11 +84,16 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
+	// Deprecated but kept visible in help (MarkDeprecated would also hide it).
+	cmd.PersistentFlags().
+		Lookup("profile").
+		Deprecated = "use --application-id or 'algolia application select' instead"
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
 	cmd.PersistentFlags().
-		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
+		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID (defaults to the current application, set with 'algolia application select')")
+	cmd.PersistentFlags().
+		StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key (defaults to the key stored for the current application)")
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
 	_ = cmd.PersistentFlags().MarkDeprecated("admin-api-key", "use --api-key instead")
@@ -133,10 +138,18 @@ func Execute() (code exitCode) {
 	cmdFactory := factory.New(version.Version, &cfg)
 	stderr := cmdFactory.IOStreams.ErrOut
 
+	// One-time config.toml → state.toml + keychain migration (GROUT-363). Must
+	// run before credential resolution, which caches state.toml per command.
+	if cfg.ShouldMigrate() {
+		if err := cfg.Migrate(); err != nil && hasDebug {
+			fmt.Fprintf(stderr, "config migration failed (will retry on next run): %s\n", err)
+		}
+	}
+
 	// Set up the update notifier.
 	updateMessageChan := make(chan *update.ReleaseInfo)
 	go func() {
-		rel, err := checkForUpdate(cfg, version.Version)
+		rel, err := checkForUpdate(&cfg, version.Version)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error checking for update: %s\n", err)
 		}
@@ -150,11 +163,11 @@ func Execute() (code exitCode) {
 	authError := errors.New("authError")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if auth.IsAuthCheckEnabled(cmd) {
-			if err := auth.CheckAuth(cfg); err != nil {
+			if err := auth.CheckAuth(&cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
 				fmt.Fprintln(
 					stderr,
-					"Please run `algolia profile add` to configure your first profile.",
+					"Please run `algolia auth login` to get started.",
 				)
 				return authError
 			}
@@ -396,7 +409,7 @@ func shouldCheckForUpdate() bool {
 	return !utils.IsCI() && utils.IsTerminal(os.Stdout) && utils.IsTerminal(os.Stderr)
 }
 
-func checkForUpdate(cfg config.Config, currentVersion string) (*update.ReleaseInfo, error) {
+func checkForUpdate(cfg *config.Config, currentVersion string) (*update.ReleaseInfo, error) {
 	if !shouldCheckForUpdate() {
 		return nil, nil
 	}

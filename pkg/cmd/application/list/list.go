@@ -42,8 +42,8 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		Long: heredoc.Doc(`
 			List all Algolia applications associated with your account.
 			Requires an active session (run "algolia auth login" first).
-			Applications that already have a local CLI profile are marked.
-			You can select an unconfigured application to add it as a CLI profile.
+			Applications already configured on this machine are marked.
+			You can select an unconfigured application to configure it.
 		`),
 		Example: heredoc.Doc(`
 			# List applications
@@ -104,20 +104,14 @@ func runListCmd(opts *ListOptions) error {
 		return nil
 	}
 
-	configuredProfiles := opts.Config.ConfiguredProfiles()
-	configuredAppIDs := make(map[string]string)
-	for _, p := range configuredProfiles {
-		configuredAppIDs[p.ApplicationID] = p.Name
-	}
-
 	fmt.Fprintf(opts.IO.Out, "\nYour applications:\n\n")
 	unconfigured := make([]dashboard.Application, 0)
 
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	for _, app := range apps {
-		profileName, configured := configuredAppIDs[app.ID]
 		label := fmt.Sprintf("  %s  %s", app.ID, app.Name)
-		if configured {
-			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Greenf("(profile: %s)", profileName))
+		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
+			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Green("(configured)"))
 		} else {
 			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Gray("(not configured)"))
 			unconfigured = append(unconfigured, app)
@@ -127,7 +121,7 @@ func runListCmd(opts *ListOptions) error {
 	fmt.Fprintln(opts.IO.Out)
 
 	if len(unconfigured) == 0 {
-		fmt.Fprintf(opts.IO.Out, "%s All applications are already configured as CLI profiles.\n", cs.SuccessIcon())
+		fmt.Fprintf(opts.IO.Out, "%s All applications are already configured.\n", cs.SuccessIcon())
 		return nil
 	}
 
@@ -138,7 +132,7 @@ func runListCmd(opts *ListOptions) error {
 	var wantConfigure bool
 	err = prompt.SurveyAskOne(
 		&survey.Confirm{
-			Message: "Would you like to configure an unconfigured application as a CLI profile?",
+			Message: "Would you like to configure one of the unconfigured applications?",
 			Default: true,
 		},
 		&wantConfigure,
@@ -173,7 +167,7 @@ func runListCmd(opts *ListOptions) error {
 	var setDefault bool
 	err = prompt.SurveyAskOne(
 		&survey.Confirm{
-			Message: "Set as the default profile?",
+			Message: "Set as the current application?",
 			Default: false,
 		},
 		&setDefault,

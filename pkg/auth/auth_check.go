@@ -49,7 +49,7 @@ func DisableAuthCheck(cmd *cobra.Command) {
 	cmd.Annotations["skipAuthCheck"] = "true"
 }
 
-func CheckAuth(cfg config.Config) error {
+func CheckAuth(cfg *config.Config) error {
 	if cfg.Profile().Name == "" {
 		cfg.Profile().LoadDefault()
 	}

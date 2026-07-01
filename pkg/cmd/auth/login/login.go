@@ -78,8 +78,8 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Auto-select application by name")
-	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to application name)")
-	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the profile as the default")
+	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the application name)")
+	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the application as the current one")
 	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
 
 	return cmd
@@ -168,7 +168,7 @@ func runOAuthFlowSteps(
 		}
 
 		appDetails = app
-		if !reuseExistingAPIKey(opts.Config, appDetails) {
+		if !apputil.ReuseExistingAPIKey(opts.Config, appDetails) {
 			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
 				return err
 			}
@@ -213,18 +213,6 @@ func applyStoredIdentity(ctx context.Context) bool {
 
 	metadata.SetUser(token.UserID, token.Email, token.Name)
 	return true
-}
-
-// reuseExistingAPIKey checks if a local profile already has an API key for
-// the given application. If so, it sets app.APIKey and returns true.
-func reuseExistingAPIKey(cfg config.IConfig, app *dashboard.Application) bool {
-	for _, p := range cfg.ConfiguredProfiles() {
-		if p.ApplicationID == app.ID && p.APIKey != "" {
-			app.APIKey = p.APIKey
-			return true
-		}
-	}
-	return false
 }
 
 func selectApplication(opts *LoginOptions, apps []dashboard.Application, interactive bool) (*dashboard.Application, error) {
