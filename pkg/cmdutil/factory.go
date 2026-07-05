@@ -5,9 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 
+	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -19,6 +21,13 @@ type Factory struct {
 	SearchClient      func() (*search.APIClient, error)
 	CrawlerClient     func() (*crawler.Client, error)
 	CompositionClient func() (*composition.APIClient, error)
+	// AgentStudioClient is the hand-rolled client kept for endpoints the
+	// official SDK can't serve (SSE streaming for run/try, the x-hidden
+	// internal endpoints, and agent duplication).
+	AgentStudioClient func() (*agentstudio.Client, error)
+	// AgentStudioAPIClient is the official SDK client used for the standard
+	// CRUD surface. Routes to https://<appID>.algolia.net/agent-studio/1/...
+	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
 	ExecutableName string
 }

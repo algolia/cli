@@ -1,0 +1,22 @@
+# `agents domains` — flag-validation.
+
+exec algolia agents domains
+stdout 'allowed domains'
+
+! exec algolia agents domains list
+stderr 'requires exactly 1 argument'
+
+! exec algolia agents domains get agent-1
+stderr 'requires exactly 2 argument'
+
+! exec algolia agents domains create agent-1
+stderr '--domain is required'
+
+! exec algolia agents domains delete agent-1 d1
+stderr '--confirm required'
+
+! exec algolia agents domains bulk-insert agent-1
+stderr 'provide at least one'
+
+! exec algolia agents domains bulk-delete agent-1 --domain-id d1
+stderr '--confirm required'

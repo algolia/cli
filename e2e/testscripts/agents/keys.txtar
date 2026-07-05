@@ -1,0 +1,16 @@
+# `agents keys` — flag-validation.
+
+exec algolia agents keys
+stdout 'secret keys'
+
+! exec algolia agents keys get
+stderr 'requires exactly 1 argument'
+
+! exec algolia agents keys create
+stderr '--name is required'
+
+! exec algolia agents keys update id1
+stderr 'nothing to update'
+
+! exec algolia agents keys delete id1
+stderr '--confirm required'
