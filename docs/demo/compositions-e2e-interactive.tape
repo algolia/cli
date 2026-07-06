@@ -36,6 +36,7 @@ Enter
 Sleep 600ms
 # Set source? yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 600ms
 # source union -> search
@@ -45,6 +46,7 @@ Enter
 Sleep 600ms
 # index
 Type "demo"
+Sleep 1s
 Enter
 Sleep 800ms
 # Set params? no

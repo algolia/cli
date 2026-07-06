@@ -27,6 +27,7 @@ Sleep 1.5s
 
 # 1) Set params? — confirm yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 1s
 

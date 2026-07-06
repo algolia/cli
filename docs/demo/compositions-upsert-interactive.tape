@@ -48,6 +48,7 @@ Sleep 800ms
 
 # 4) Set ...injection.main.source? — confirm yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 1s
 
@@ -59,11 +60,13 @@ Sleep 1s
 
 # 6) search.index — required text input
 Type "demo"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 7) Set ...search.params? — confirm yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 1s
 
@@ -79,21 +82,25 @@ Sleep 2s
 
 # 9) advancedSyntax — bool entered as true/false
 Type "true"
+Sleep 1s
 Enter
 Sleep 1000ms
 
 # 10) how many advancedSyntaxFeatures — integer (count)
 Type "1"
+Sleep 1s
 Enter
 Sleep 2200ms
 
 # 11) advancedSyntaxFeatures[0] — enum, validated against the SDK
 Type "exactPhrase"
+Sleep 1s
 Enter
 Sleep 2200ms
 
 # 12) how many injectedItems — integer; 0 skips the slice
 Type "0"
+Sleep 1s
 Enter
 Sleep 2200ms
 
@@ -103,16 +110,19 @@ Sleep 800ms
 
 # 14) Set sortingStrategy? — confirm yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 15) how many sortingStrategy entries — integer (count)
 Type "1"
+Sleep 1s
 Enter
 Sleep 600ms
 
 # 16) sortingStrategy key[0] — map key
 Type "Price (asc)"
+Sleep 1s
 Enter
 Sleep 600ms
 

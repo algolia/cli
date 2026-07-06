@@ -28,6 +28,7 @@ Sleep 1.5s
 Enter
 Sleep 1.5s
 Type "Demo Composition"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -41,6 +42,7 @@ Sleep 800ms
 
 # 4) Set ...injection.main.source? — yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -54,6 +56,7 @@ Sleep 800ms
 Enter
 Sleep 1.5s
 Type "demo"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -63,22 +66,27 @@ Sleep 800ms
 
 # 8) how many injectedItems — bad value first ("abc"), then 0
 Type "abc"
+Sleep 1s
 Enter
 Sleep 1.8s
 Type "0"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 9) Set ...deduplication? — yes
 Type "y"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 10) deduplication.positioning — invalid enum first, then a valid value
 Type "bogus"
+Sleep 1s
 Enter
 Sleep 2s
 Type "highest"
+Sleep 1s
 Enter
 Sleep 800ms
 

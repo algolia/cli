@@ -29,16 +29,19 @@ Sleep 1.5s
 
 # 1) how many conditions — integer (count)
 Type "1"
+Sleep 1s
 Enter
 Sleep 1s
 
 # 2) conditions[0].pattern — optional text
 Type "cake"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 3) conditions[0].anchoring — enum, validated against the SDK
 Type "contains"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -59,6 +62,7 @@ Sleep 800ms
 
 # 8) Set ...injection.main.source? — confirm yes (a source is required by the API)
 Type "y"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -70,6 +74,7 @@ Sleep 800ms
 
 # 8b) ...search.index — required text input
 Type "demo"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -79,6 +84,7 @@ Sleep 800ms
 
 # 9) how many injectedItems — integer; 0 to skip
 Type "0"
+Sleep 1s
 Enter
 Sleep 800ms
 
@@ -92,21 +98,25 @@ Sleep 600ms
 
 # 12) enabled — optional bool entered as true/false
 Type "true"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 13) how many validity — integer; 0 to skip
 Type "0"
+Sleep 1s
 Enter
 Sleep 800ms
 
 # 14) how many tags — integer (count)
 Type "2"
+Sleep 1s
 Enter
 Sleep 600ms
 
 # 15) tags[0]
 Type "sale"
+Sleep 1s
 Enter
 Sleep 500ms
 
