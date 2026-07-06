@@ -7,6 +7,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/apikeys/delete"
 	"github.com/algolia/cli/pkg/cmd/apikeys/get"
 	"github.com/algolia/cli/pkg/cmd/apikeys/list"
+	"github.com/algolia/cli/pkg/cmd/apikeys/rotate"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -22,6 +23,7 @@ func NewAPIKeysCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(create.NewCreateCmd(f, nil))
 	cmd.AddCommand(delete.NewDeleteCmd(f, nil))
 	cmd.AddCommand(get.NewGetCmd(f, nil))
+	cmd.AddCommand(rotate.NewRotateCmd(f, nil))
 
 	return cmd
 }
