@@ -242,9 +242,11 @@ func selectApplication(opts *LoginOptions, apps []dashboard.Application, interac
 		return nil, fmt.Errorf("multiple applications found - use --app-name to select one")
 	}
 
+	cs := opts.IO.ColorScheme()
+	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	appNames := make([]string, len(apps))
 	for i, app := range apps {
-		appNames[i] = fmt.Sprintf("%s (%s)", app.ID, app.Name)
+		appNames[i] = apputil.AppOptionLabel(opts.Config, profileApps, cs, app)
 	}
 
 	var selected int

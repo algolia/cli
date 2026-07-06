@@ -110,9 +110,13 @@ func runListCmd(opts *ListOptions) error {
 	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	for _, app := range apps {
 		label := fmt.Sprintf("  %s  %s", app.ID, app.Name)
-		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
+		switch apputil.ApplicationStatus(opts.Config, profileApps, app.ID) {
+		case apputil.StatusConfigured:
 			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Green("(configured)"))
-		} else {
+		case apputil.StatusOutOfSync:
+			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Yellow("(select to sync)"))
+			unconfigured = append(unconfigured, app)
+		default:
 			fmt.Fprintf(opts.IO.Out, "%s  %s\n", label, cs.Gray("(not configured)"))
 			unconfigured = append(unconfigured, app)
 		}

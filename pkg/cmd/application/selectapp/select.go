@@ -160,11 +160,7 @@ func pickApplication(
 	profileApps := apputil.ProfileApplicationIDs(opts.Config.ConfiguredProfiles())
 	appOptions := make([]string, len(apps))
 	for i, app := range apps {
-		label := fmt.Sprintf("%s (%s)", app.ID, app.Name)
-		if apputil.ApplicationConfigured(opts.Config, profileApps, app.ID) {
-			label = fmt.Sprintf("%s  %s", label, cs.Green("(configured)"))
-		}
-		appOptions[i] = label
+		appOptions[i] = apputil.AppOptionLabel(opts.Config, profileApps, cs, app)
 	}
 
 	var selected int
