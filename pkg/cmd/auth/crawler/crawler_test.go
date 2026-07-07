@@ -15,15 +15,12 @@ import (
 	"github.com/algolia/cli/test"
 )
 
-func Test_runCrawlerCmd_UsesDefaultProfile(t *testing.T) {
+func Test_runCrawlerCmd_StoresCrawlerKeyForActiveApp(t *testing.T) {
 	io, _, stdout, _ := iostreams.Test()
 	io.SetStdoutTTY(true)
 
-	cfg := test.NewConfigStubWithProfiles([]*config.Profile{
-		{Name: "default", Default: true},
-		{Name: "other"},
-	})
-	cfg.CurrentProfile.Name = ""
+	cfg := test.NewDefaultConfigStub()
+	cfg.ActiveAppID = "APP1"
 
 	server := newCrawlerTestServer(t, "token-1", "crawler-user", "crawler-key")
 	t.Cleanup(server.Close)
@@ -39,39 +36,28 @@ func Test_runCrawlerCmd_UsesDefaultProfile(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, "default", cfg.CurrentProfile.Name)
-	assert.Equal(t, test.CrawlerAuth{UserID: "crawler-user", APIKey: "crawler-key"}, cfg.CrawlerAuth["default"])
-	assert.Contains(t, stdout.String(), "configured for profile: default")
+	assert.Equal(t, "crawler-key", cfg.CrawlerKeys["APP1"])
+	assert.Contains(t, stdout.String(), "configured for application: APP1")
 }
 
-func Test_runCrawlerCmd_UsesExplicitProfile(t *testing.T) {
+func Test_runCrawlerCmd_ErrorsWithoutActiveApplication(t *testing.T) {
 	io, _, stdout, _ := iostreams.Test()
-	io.SetStdoutTTY(true)
 
-	cfg := test.NewConfigStubWithProfiles([]*config.Profile{
-		{Name: "target"},
-		{Name: "default", Default: true},
-	})
-	cfg.CurrentProfile.Name = "target"
-
-	server := newCrawlerTestServer(t, "token-2", "crawler-user-2", "crawler-key-2")
-	t.Cleanup(server.Close)
+	cfg := test.NewDefaultConfigStub() // ActiveAppID left empty
 
 	err := runCrawlerCmd(&CrawlerOptions{
 		IO:                 io,
 		config:             cfg,
 		OAuthClientID:      func() string { return "test-client-id" },
-		NewDashboardClient: newDashboardTestClient(server),
+		NewDashboardClient: func(string) *dashboard.Client { return nil },
 		GetValidToken: func(client *dashboard.Client) (string, error) {
-			return "token-2", nil
+			return "", nil
 		},
 	})
-	require.NoError(t, err)
-
-	assert.Equal(t, test.CrawlerAuth{UserID: "crawler-user-2", APIKey: "crawler-key-2"}, cfg.CrawlerAuth["target"])
-	_, hasDefault := cfg.CrawlerAuth["default"]
-	assert.False(t, hasDefault)
-	assert.Contains(t, stdout.String(), "configured for profile: target")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no application configured")
+	assert.Empty(t, cfg.CrawlerKeys)
+	assert.Empty(t, stdout.String())
 }
 
 func Test_runCrawlerCmd_ReturnsCrawlerAPIError(t *testing.T) {
@@ -81,7 +67,7 @@ func Test_runCrawlerCmd_ReturnsCrawlerAPIError(t *testing.T) {
 	cfg := test.NewConfigStubWithProfiles([]*config.Profile{
 		{Name: "target"},
 	})
-	cfg.CurrentProfile.Name = "target"
+	cfg.ActiveAppID = "APP1"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "Bearer token-3", r.Header.Get("Authorization"))
@@ -104,7 +90,7 @@ func Test_runCrawlerCmd_ReturnsCrawlerAPIError(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get crawler user data: crawler access denied")
-	assert.Empty(t, cfg.CrawlerAuth)
+	assert.Empty(t, cfg.CrawlerKeys)
 	assert.Empty(t, stdout.String())
 }
 

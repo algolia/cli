@@ -134,7 +134,7 @@ func changePlan(
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
 		return result, fmt.Errorf(
-			"no current application configured; configure a profile with \"algolia profile add\" or \"algolia application select\" first: %w",
+			"no current application configured; run \"algolia auth login\" or \"algolia application select\" first: %w",
 			err,
 		)
 	}

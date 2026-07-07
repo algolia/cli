@@ -56,7 +56,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "create",
 		Short: "Create a new Algolia application",
 		Long: heredoc.Doc(`
-			Create a new Algolia application and optionally configure it as a CLI profile.
+			Create a new Algolia application and optionally set it as the current application.
 			Requires an active session (run "algolia auth login" first).`),
 		Example: heredoc.Doc(`
 			# Create an application interactively (prompts for name, plan, and terms)
@@ -68,7 +68,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			# Create on a paid plan (requires a payment method on file)
 			$ algolia application create --name "My App" --region CA --plan grow --accept-terms
 
-			# Create and set the new profile as the default
+			# Create and set the new application as the current one
 			$ algolia application create --name "My App" --region CA --accept-terms --default
 
 			# Preview what would be created without actually creating it
@@ -87,10 +87,10 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&opts.Name, "name", "My First Application", "Name for the application")
 	cmd.Flags().StringVar(&opts.Region, "region", "", "Region code (e.g. EU, UK, USC, USE, USW)")
 	cmd.Flags().
-		StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to app name)")
+		StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the app name)")
 	cmd.Flags().
 		StringVar(&opts.Plan, "plan", "", "Self-serve plan to create the application on (free, grow, grow-plus)")
-	cmd.Flags().BoolVar(&opts.Default, "default", false, "Set the new profile as the default")
+	cmd.Flags().BoolVar(&opts.Default, "default", false, "Set the new application as the current one")
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Preview the create request without sending it")
 	cmd.Flags().

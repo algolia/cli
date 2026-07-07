@@ -25,7 +25,7 @@ func NewDowngradeCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "downgrade",
 		Short: "Downgrade the current application to a lower-tier plan",
 		Long: heredoc.Doc(`
-			Change the application associated with the current CLI profile to a
+			Change the current application to a
 			lower-tier self-serve plan.
 
 			You must accept the target plan's terms of service before the change
