@@ -26,6 +26,8 @@ type SaveOptions struct {
 	Synonym           search.SynonymHit
 	SuccessMessage    string
 	Wait              bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewSaveCmd creates and returns a save command for index synonyms
@@ -34,6 +36,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	flags := &shared.SynonymFlags{}
@@ -123,6 +126,8 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 		StringSliceVarP(&flags.SynonymCorrections, "corrections", "c", nil, "A list of corrections of the word (alt correction synonyms only)")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "", false, "Wait for the operation to complete")
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -143,6 +148,14 @@ func runSaveCmd(opts *SaveOptions) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
 	}
 
 	if opts.IO.IsStdoutTTY() {
