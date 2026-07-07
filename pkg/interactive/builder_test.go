@@ -316,3 +316,20 @@ func TestBuild_MaxDepthFallsBackToRawJSON(t *testing.T) {
 	require.NoError(t, b.Build(&v))
 	assert.Equal(t, "id1", v.ID)
 }
+
+func TestBuild_MapDuplicateKeyDeclineKeepsFirst(t *testing.T) {
+	// The second entry reuses key "k1"; declining the overwrite keeps the first.
+	b := &Builder{Prompter: &ScriptedPrompter{
+		Inputs: map[string]string{
+			"entries": "2",
+			"key[0]":  "k1",
+			"key[1]":  "k1",
+			`["k1"]`:  "v1",
+		},
+		Confirms: map[string]bool{"overwrite": false},
+	}}
+
+	var v stringMapHolder
+	require.NoError(t, b.Build(&v))
+	assert.Equal(t, map[string]string{"k1": "v1"}, v.Labels)
+}

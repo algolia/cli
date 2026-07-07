@@ -435,6 +435,15 @@ func (b *Builder) buildMap(label string, rv reflect.Value, depth int, stack []re
 		if err != nil {
 			return err
 		}
+		if out.MapIndex(reflect.ValueOf(key)).IsValid() {
+			overwrite, err := b.Prompter.Confirm(fmt.Sprintf("%q is already set; overwrite?", key))
+			if err != nil {
+				return err
+			}
+			if !overwrite {
+				continue
+			}
+		}
 		valPtr := reflect.New(valType)
 		if err := b.buildValue(fmt.Sprintf("%s[%q]", label, key), valPtr.Elem(), depth+1, stack); err != nil {
 			return err
