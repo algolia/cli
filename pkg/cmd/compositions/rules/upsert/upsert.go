@@ -85,11 +85,7 @@ func buildRule(opts *UpsertOptions) (algoliaComposition.CompositionRule, error) 
 
 	if opts.Interactive {
 		rule.ObjectID = opts.ObjectID
-		prompter := opts.Prompter
-		if prompter == nil {
-			prompter = interactive.NewSurveyPrompter(opts.IO)
-		}
-		if err := (&interactive.Builder{Prompter: prompter}).Build(&rule); err != nil {
+		if err := (&interactive.Builder{Prompter: opts.Prompter}).Build(&rule); err != nil {
 			return rule, fmt.Errorf("building rule: %w", err)
 		}
 		return rule, nil

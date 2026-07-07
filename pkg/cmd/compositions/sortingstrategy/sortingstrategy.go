@@ -90,11 +90,7 @@ func buildStrategy(opts *Options) (map[string]string, error) {
 		var doc struct {
 			SortingStrategy map[string]string `json:"sortingStrategy"`
 		}
-		prompter := opts.Prompter
-		if prompter == nil {
-			prompter = interactive.NewSurveyPrompter(opts.IO)
-		}
-		if err := (&interactive.Builder{Prompter: prompter}).Build(&doc); err != nil {
+		if err := (&interactive.Builder{Prompter: opts.Prompter}).Build(&doc); err != nil {
 			return nil, fmt.Errorf("building sorting strategy: %w", err)
 		}
 		return doc.SortingStrategy, nil

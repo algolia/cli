@@ -83,11 +83,7 @@ func buildComposition(opts *UpsertOptions) (algoliaComposition.Composition, erro
 
 	if opts.Interactive {
 		comp.ObjectID = opts.CompositionID
-		prompter := opts.Prompter
-		if prompter == nil {
-			prompter = interactive.NewSurveyPrompter(opts.IO)
-		}
-		builder := &interactive.Builder{Prompter: prompter}
+		builder := &interactive.Builder{Prompter: opts.Prompter}
 		if err := builder.Build(&comp); err != nil {
 			return comp, fmt.Errorf("building composition: %w", err)
 		}

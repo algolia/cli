@@ -68,6 +68,9 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 				if !opts.IO.CanPrompt() {
 					return cmdutil.FlagErrorf("`--interactive` requires a terminal")
 				}
+				if len(args) > 1 || cmd.Flags().Changed("hits-per-page") || cmd.Flags().Changed("page") || cmd.Flags().Changed("filters") {
+					return cmdutil.FlagErrorf("`--interactive` builds the whole request; omit the query argument and the --hits-per-page/--page/--filters flags")
+				}
 				return runSearchCmd(opts)
 			}
 
@@ -99,11 +102,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 func buildRequestBody(opts *SearchOptions) (*algoliaComposition.RequestBody, error) {
 	if opts.Interactive {
 		var body algoliaComposition.RequestBody
-		prompter := opts.Prompter
-		if prompter == nil {
-			prompter = interactive.NewSurveyPrompter(opts.IO)
-		}
-		if err := (&interactive.Builder{Prompter: prompter}).Build(&body); err != nil {
+		if err := (&interactive.Builder{Prompter: opts.Prompter}).Build(&body); err != nil {
 			return nil, fmt.Errorf("building search request: %w", err)
 		}
 		return &body, nil

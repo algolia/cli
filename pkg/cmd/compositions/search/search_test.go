@@ -89,3 +89,16 @@ func TestSearchComposition_InteractiveNoTTY(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires a terminal")
 }
+
+func TestSearchComposition_InteractiveRejectsQueryAndFlags(t *testing.T) {
+	// --interactive builds the whole request; a positional query or the flags
+	// would be silently ignored, so they are rejected.
+	for _, cli := range []string{`my-comp "shirt" --interactive`, "my-comp --interactive --hits-per-page 5"} {
+		r := &httpmock.Registry{}
+		f, out := test.NewFactory(true, r, nil, "")
+		cmd := compsearch.NewSearchCmd(f)
+		_, err := test.Execute(cmd, cli, out)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "builds the whole request")
+	}
+}
