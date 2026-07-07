@@ -26,7 +26,7 @@ Guidance for coding agents working in `github.com/algolia/cli`.
 
 ## Tooling
 
-- Preferred toolchain is listed in `devbox.json`.
+- Tool versions are listed in `.tool-versions`.
 - Common tools expected here: `go`, `task`, `golangci-lint`, `gofumpt`, `golines`, `gh`, `curl`.
 - E2E tests require `ALGOLIA_APPLICATION_ID` and `ALGOLIA_API_KEY` in the environment or root `.env`.
 
