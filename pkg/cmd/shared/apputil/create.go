@@ -108,6 +108,28 @@ func PromptRegion(
 	return regions[selected].Code, nil
 }
 
+// PromptName prompts the user for the application name.
+func PromptName() (string, error) {
+	defaultName := "My First Application"
+
+	var name string
+	err := prompt.SurveyAskOne(
+		&survey.Input{
+			Message: "Name:",
+			Default: defaultName,
+		},
+		&name,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if name == "" {
+		name = defaultName
+	}
+	return name, nil
+}
+
 // CreateAndFetchApplication creates an application (with region retry) and
 // generates an API key for it. It returns the region the application was
 // actually created in, which may differ from the requested one.

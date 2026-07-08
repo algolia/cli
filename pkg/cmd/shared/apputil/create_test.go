@@ -3,6 +3,7 @@ package apputil
 import (
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
@@ -11,6 +12,7 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/keychain"
+	"github.com/algolia/cli/pkg/prompt"
 	"github.com/algolia/cli/test"
 )
 
@@ -49,6 +51,34 @@ func TestConfigureProfile_AliasCollisionDerivesUniqueAlias(t *testing.T) {
 	require.NoError(t, ConfigureProfile(io, cfg, app, "", true))
 
 	assert.Equal(t, "my app-app1", cfg.SavedApps["APP1"].Alias)
+}
+
+func TestPromptName(t *testing.T) {
+	t.Run("returns entered value", func(t *testing.T) {
+		origAsk := prompt.SurveyAskOne
+		prompt.SurveyAskOne = func(_ survey.Prompt, response interface{}, _ ...survey.AskOpt) error {
+			*(response.(*string)) = "Typed Name"
+			return nil
+		}
+		t.Cleanup(func() { prompt.SurveyAskOne = origAsk })
+
+		name, err := PromptName()
+		require.NoError(t, err)
+		assert.Equal(t, "Typed Name", name)
+	})
+
+	t.Run("empty input falls back to default", func(t *testing.T) {
+		origAsk := prompt.SurveyAskOne
+		prompt.SurveyAskOne = func(_ survey.Prompt, response interface{}, _ ...survey.AskOpt) error {
+			*(response.(*string)) = ""
+			return nil
+		}
+		t.Cleanup(func() { prompt.SurveyAskOne = origAsk })
+
+		name, err := PromptName()
+		require.NoError(t, err)
+		assert.Equal(t, "My First Application", name)
+	})
 }
 
 func TestReuseExistingAPIKey_FromKeychain(t *testing.T) {
