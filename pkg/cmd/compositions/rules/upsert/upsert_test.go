@@ -11,6 +11,7 @@ import (
 	compinternal "github.com/algolia/cli/pkg/cmd/compositions/internal"
 	"github.com/algolia/cli/pkg/cmd/compositions/rules/upsert"
 	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/test"
 )
 
@@ -99,4 +100,48 @@ func TestUpsertRule_MissingArgs(t *testing.T) {
 	_, err := test.Execute(cmd, "--file -", out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires a <composition-id> and a <rule-id> argument")
+}
+
+func TestUpsertRule_Interactive(t *testing.T) {
+	r := &httpmock.Registry{}
+	r.Register(httpmock.REST("PUT", "1/compositions/my-comp/rules/rule-1"), httpmock.StringResponse(`{"taskID":77}`))
+	r.Register(httpmock.REST("GET", "1/compositions/my-comp/task/77"), httpmock.StringResponse(`{"status":"published"}`))
+
+	compinternal.PollInterval = 1 * time.Millisecond
+	compinternal.Timeout = 50 * time.Millisecond
+	t.Cleanup(func() {
+		compinternal.PollInterval = compinternal.DefaultPollInterval
+		compinternal.Timeout = compinternal.DefaultTimeout
+	})
+
+	f, out := test.NewFactory(true, r, nil, "")
+	// Empty script: pre-populated objectID, first behavior variant, optionals skipped.
+	f.Prompter = &interactive.ScriptedPrompter{}
+
+	cmd := upsert.NewUpsertCmd(f)
+	_, err := test.Execute(cmd, "my-comp rule-1 --interactive", out)
+	require.NoError(t, err)
+
+	// TTY factory prints a success line before the JSON, so assert on substrings.
+	assert.Contains(t, out.String(), `{"taskID":77}`)
+	assert.Contains(t, out.String(), "Upserted rule rule-1")
+	r.Verify(t)
+}
+
+func TestUpsertRule_InteractiveAndFileConflict(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(true, r, nil, "")
+	cmd := upsert.NewUpsertCmd(f)
+	_, err := test.Execute(cmd, "my-comp rule-1 --interactive --file rule.json", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exactly one of `--file` or `--interactive`")
+}
+
+func TestUpsertRule_InteractiveNoTTY(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := upsert.NewUpsertCmd(f)
+	_, err := test.Execute(cmd, "my-comp rule-1 --interactive", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires a terminal")
 }

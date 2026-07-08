@@ -9,6 +9,7 @@ import (
 
 	compsearch "github.com/algolia/cli/pkg/cmd/compositions/search"
 	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/test"
 )
 
@@ -52,11 +53,52 @@ func TestSearchComposition(t *testing.T) {
 	}
 }
 
-func TestSearchComposition_MissingArgs(t *testing.T) {
+func TestSearchComposition_MissingQuery(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := compsearch.NewSearchCmd(f)
 	_, err := test.Execute(cmd, "my-comp", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <composition-id> and a <query> argument")
+	assert.Contains(t, err.Error(), "a <query> argument is required")
+}
+
+func TestSearchComposition_Interactive(t *testing.T) {
+	r := &httpmock.Registry{}
+	r.Register(
+		httpmock.REST("POST", "1/compositions/my-comp/run"),
+		httpmock.StringResponse(`{"hits":[],"nbHits":0}`),
+	)
+
+	f, out := test.NewFactory(true, r, nil, "")
+	// Empty script: decline the optional params, producing an empty request body.
+	f.Prompter = &interactive.ScriptedPrompter{}
+
+	cmd := compsearch.NewSearchCmd(f)
+	_, err := test.Execute(cmd, "my-comp --interactive", out)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, `{"hits":[],"nbHits":0,"results":null}`, strings.TrimSpace(out.String()))
+	r.Verify(t)
+}
+
+func TestSearchComposition_InteractiveNoTTY(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := compsearch.NewSearchCmd(f)
+	_, err := test.Execute(cmd, "my-comp --interactive", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires a terminal")
+}
+
+func TestSearchComposition_InteractiveRejectsQueryAndFlags(t *testing.T) {
+	// --interactive builds the whole request; a positional query or the flags
+	// would be silently ignored, so they are rejected.
+	for _, cli := range []string{`my-comp "shirt" --interactive`, "my-comp --interactive --hits-per-page 5"} {
+		r := &httpmock.Registry{}
+		f, out := test.NewFactory(true, r, nil, "")
+		cmd := compsearch.NewSearchCmd(f)
+		_, err := test.Execute(cmd, cli, out)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "builds the whole request")
+	}
 }
