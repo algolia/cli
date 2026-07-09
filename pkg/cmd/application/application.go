@@ -18,7 +18,7 @@ func NewApplicationCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "application",
 		Aliases: []string{"app"},
-		Short:   "Manage your Algolia applications",
+		Short:   "Create, select, and manage your Algolia applications",
 	}
 
 	cmd.AddCommand(create.NewCreateCmd(f))
