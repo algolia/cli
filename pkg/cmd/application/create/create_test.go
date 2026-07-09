@@ -242,7 +242,7 @@ func newOpts(
 	t.Helper()
 	seedToken(t)
 
-	f, out := test.NewFactory(isTTY, nil, nil, "")
+	f, out := test.NewFactory(isTTY, nil, test.NewDefaultConfigStub(), "")
 	opened := new(string)
 	opts := &CreateOptions{
 		IO:           f.IOStreams,
@@ -275,6 +275,21 @@ func TestRun_FreeNonInteractive(t *testing.T) {
 	require.NoError(t, runCreateCmd(context.Background(), opts))
 	assert.Equal(t, 1, srv.createCalls)
 	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "APP1")
+}
+
+func TestRun_StructuredOutputPersistsProfile(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, false)
+	cfg := opts.Config.(*test.ConfigStub)
+	opts.AcceptTerms = true
+	opts.Default = true
+
+	require.NoError(t, runCreateCmd(context.Background(), opts))
+	assert.Equal(t, "APP1", cfg.CurrentAppID)
+	assert.Equal(t, "test-api-key", cfg.SavedApps["APP1"].APIKey)
 	assert.Contains(t, out.String(), "APP1")
 }
 

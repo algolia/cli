@@ -287,15 +287,13 @@ func createApplication(
 				"  Add a payment method if needed, then retry with: algolia application upgrade --plan %s\n",
 				target.ID,
 			)
-			if !opts.structuredOutput() {
-				_ = apputil.ConfigureProfile(
-					opts.IO,
-					opts.Config,
-					appDetails,
-					opts.ProfileName,
-					opts.Default,
-				)
-			}
+			_ = apputil.ConfigureProfile(
+				opts.IO,
+				opts.Config,
+				appDetails,
+				opts.ProfileName,
+				opts.Default,
+			)
 			return result, fmt.Errorf(
 				"failed to apply the %q plan to application %s: %w",
 				target.Name,
@@ -312,6 +310,17 @@ func createApplication(
 		)
 	}
 
+	tracker.SetStep(telemetry.StepProfileConfigure)
+	if err := apputil.ConfigureProfile(
+		opts.IO,
+		opts.Config,
+		appDetails,
+		opts.ProfileName,
+		opts.Default,
+	); err != nil {
+		return result, err
+	}
+
 	if opts.structuredOutput() {
 		p, err := opts.PrintFlags.ToPrinter()
 		if err != nil {
@@ -319,15 +328,7 @@ func createApplication(
 		}
 		return result, p.Print(opts.IO, appDetails)
 	}
-
-	tracker.SetStep(telemetry.StepProfileConfigure)
-	return result, apputil.ConfigureProfile(
-		opts.IO,
-		opts.Config,
-		appDetails,
-		opts.ProfileName,
-		opts.Default,
-	)
+	return result, nil
 }
 
 func (opts *CreateOptions) structuredOutput() bool {
