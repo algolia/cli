@@ -1,6 +1,9 @@
 package apputil
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -79,6 +82,38 @@ func TestPromptName(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "My First Application", name)
 	})
+}
+
+func TestCreateApplicationWithRetry_PassesRegionNonInteractive(t *testing.T) {
+	var got dashboard.CreateApplicationRequest
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
+		require.NoError(t, json.NewEncoder(w).Encode(dashboard.SingleApplicationResponse{
+			Data: dashboard.ApplicationResource{
+				ID:   "APP1",
+				Type: "application",
+				Attributes: dashboard.ApplicationAttributes{
+					ApplicationID: "APP1",
+					Name:          "My App",
+				},
+			},
+		}))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	client := dashboard.NewClientWithHTTPClient("test", srv.Client())
+	client.APIURL = srv.URL
+
+	io, _, _, _ := iostreams.Test()
+	app, region, err := CreateApplicationWithRetry(io, client, "token", "EU", "My App", nil)
+
+	require.NoError(t, err)
+	assert.Equal(t, "EU", got.RegionCode)
+	assert.Equal(t, "My App", got.Name)
+	assert.Equal(t, "EU", region)
+	assert.Equal(t, "APP1", app.ID)
 }
 
 func TestCreateApplicationWithRetry_NonInteractiveRequiresRegion(t *testing.T) {
