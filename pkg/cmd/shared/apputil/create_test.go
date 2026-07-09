@@ -81,6 +81,17 @@ func TestPromptName(t *testing.T) {
 	})
 }
 
+func TestCreateApplicationWithRetry_NonInteractiveRequiresRegion(t *testing.T) {
+	io, _, _, _ := iostreams.Test()
+
+	app, region, err := CreateApplicationWithRetry(io, nil, "token", "", "My App", nil)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--region")
+	assert.Nil(t, app)
+	assert.Empty(t, region)
+}
+
 func TestReuseExistingAPIKey_FromKeychain(t *testing.T) {
 	keyring.MockInit()
 	require.NoError(t, keychain.SaveAppSecrets("APP1",

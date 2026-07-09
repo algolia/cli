@@ -26,6 +26,7 @@ type LoginOptions struct {
 
 	AppName     string
 	ProfileName string
+	Region      string
 	Default     bool
 
 	// NoBrowser disables automatic browser opening; the authorize URL is
@@ -78,6 +79,8 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Auto-select application by name")
+	cmd.Flags().
+		StringVar(&opts.Region, "region", "", "Region for the first application when the account has none (e.g. EU, UK, USC, USE, USW)")
 	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the application name)")
 	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the application as the current one")
 	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
@@ -164,7 +167,7 @@ func runOAuthFlowSteps(
 
 		// No create tracker: this creation belongs to the auth funnel, which
 		// stays on the app_create step.
-		appDetails, _, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, "", appName, nil)
+		appDetails, _, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, opts.Region, appName, nil)
 		if err != nil {
 			return err
 		}
