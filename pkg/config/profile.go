@@ -98,7 +98,8 @@ func (p *Profile) GetAPIKey() (string, error) {
 			// The application is set but its key isn't in this machine's
 			// keychain (e.g. state.toml synced across machines without it).
 			return "", fmt.Errorf(
-				"no API key stored in your keychain for the current application %q; run `algolia application select` to store one, or set ALGOLIA_API_KEY",
+				"%w %q; run `algolia application select` to store one, or set ALGOLIA_API_KEY",
+				ErrAPIKeyMissingFromKeychain,
 				appID,
 			)
 		}
