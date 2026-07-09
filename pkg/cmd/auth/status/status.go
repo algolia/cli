@@ -36,7 +36,7 @@ func NewStatusCmd(f *cmdutil.Factory) *cobra.Command {
 
 			This command is read-only: it never prompts, opens a browser, or
 			modifies stored credentials. It exits with a non-zero status when
-			no usable credentials are found.
+			neither a session nor API credentials are found.
 		`),
 		Example: heredoc.Doc(`
 			# Check the authentication status
