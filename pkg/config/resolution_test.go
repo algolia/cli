@@ -249,6 +249,7 @@ func TestProfile_GetAPIKey_ActiveAppWithoutKeyErrors(t *testing.T) {
 }
 
 func TestProfile_GetSearchHosts_FromState(t *testing.T) {
+	t.Setenv("ALGOLIA_SEARCH_HOSTS", "")
 	path := filepath.Join(t.TempDir(), "state.toml")
 	require.NoError(t, os.WriteFile(path, []byte(
 		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\nsearch_hosts = [\"h1\", \"h2\"]\n",
@@ -261,6 +262,7 @@ func TestProfile_GetSearchHosts_FromState(t *testing.T) {
 }
 
 func TestProfile_GetSearchHosts_StateEmptyFallsBackToConfigToml(t *testing.T) {
+	t.Setenv("ALGOLIA_SEARCH_HOSTS", "")
 	statePath := filepath.Join(t.TempDir(), "state.toml")
 	require.NoError(
 		t,

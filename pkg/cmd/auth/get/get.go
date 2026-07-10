@@ -1,6 +1,8 @@
 package get
 
 import (
+	"fmt"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 
@@ -73,6 +75,11 @@ func runGetCmd(opts *GetOptions) error {
 	}
 
 	stored := opts.LoadToken()
+	if stored == nil {
+		return fmt.Errorf(
+			"authentication succeeded, but the token could not be read back from the OS keychain; credentials were not persisted",
+		)
+	}
 
 	identity := Identity{
 		UserID: stored.UserID,
