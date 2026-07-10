@@ -166,10 +166,9 @@ func Execute() (code exitCode) {
 		if auth.IsAuthCheckEnabled(cmd) {
 			if err := auth.CheckAuth(&cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
-				fmt.Fprintln(
-					stderr,
-					"Please run `algolia auth login` to get started.",
-				)
+				if hint := authRemediation(err); hint != "" {
+					fmt.Fprintln(stderr, hint)
+				}
 				return authError
 			}
 
@@ -269,6 +268,17 @@ func Execute() (code exitCode) {
 	}
 
 	return exitOK
+}
+
+func authRemediation(err error) string {
+	if errors.Is(err, config.ErrAPIKeyMissingFromKeychain) {
+		return ""
+	}
+	if (errors.Is(err, config.ErrApplicationIDNotConfigured) || errors.Is(err, config.ErrAPIKeyNotConfigured)) &&
+		auth.LoadToken() != nil {
+		return "You're signed in, but no application is selected.\nRun `algolia application select`, or pass --application-id."
+	}
+	return "Please run `algolia auth login` to get started."
 }
 
 // identifyNewlyAuthenticatedUser re-sends an Identify when the user signed in

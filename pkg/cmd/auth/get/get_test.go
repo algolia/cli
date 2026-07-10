@@ -94,6 +94,23 @@ func TestGet_ReturnsErrorWhenLoginFails(t *testing.T) {
 	assert.Equal(t, "authorization failed: access_denied", err.Error())
 }
 
+func TestGet_ErrorsWhenTokenNotPersisted(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	opts := &GetOptions{
+		IO:                 f.IOStreams,
+		LoadToken:          func() *auth.StoredToken { return nil },
+		PrintFlags:         cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		NewDashboardClient: func(clientID string) *dashboard.Client { return nil },
+		EnsureAuthenticated: func(_ *iostreams.IOStreams, _ *dashboard.Client) (string, error) {
+			return "in-memory-token", nil
+		},
+	}
+
+	_, err := test.Execute(cmdWithOpts(opts), "", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "keychain")
+}
+
 func TestGet_RefreshesExpiredToken(t *testing.T) {
 	keyring.MockInit()
 	t.Cleanup(auth.ClearToken)

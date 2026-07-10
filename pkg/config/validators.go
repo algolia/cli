@@ -9,6 +9,8 @@ var (
 	ErrAPIKeyNotConfigured = errors.New("you have not configured your API key yet")
 	// ErrApplicationIDNotConfigured is the error returned when the loaded profile is missing the application_id property
 	ErrApplicationIDNotConfigured = errors.New("you have not configured your Application ID yet")
+	// ErrAPIKeyMissingFromKeychain is the error returned when the current application has no API key in the OS keychain
+	ErrAPIKeyMissingFromKeychain = errors.New("no API key stored in your keychain for the current application")
 
 	// ErrCrawlerAPIKeyNotConfigured is the error returned when the loaded profile is missing the crawler_api_key property
 	ErrCrawlerAPIKeyNotConfigured = errors.New("you have not configured your Crawler API key yet")
