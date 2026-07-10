@@ -32,6 +32,11 @@ func CreateApplicationWithRetry(
 
 	for {
 		if region == "" {
+			if !io.CanPrompt() {
+				return nil, "", fmt.Errorf(
+					"no region specified; pass --region (e.g. EU, UK, USC, USE, USW)",
+				)
+			}
 			tracker.SetStep(telemetry.StepRegion)
 			var err error
 			region, err = PromptRegion(io, client, accessToken)
