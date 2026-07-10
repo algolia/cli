@@ -65,6 +65,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Example: heredoc.Doc(`
+			$ algolia auth login
 			$ algolia search MOVIES --query "toy story"
 			$ algolia objects browse MOVIES
 			$ algolia apikeys create --acl search
