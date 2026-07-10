@@ -39,6 +39,8 @@ func NewSignupCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.AppName, "app-name", "", "Name for the first application")
+	cmd.Flags().
+		StringVar(&opts.Region, "region", "", "Region for the first application (e.g. EU, UK, USC, USE, USW)")
 	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the application name)")
 	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the application as the current one")
 	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
