@@ -3,10 +3,10 @@ package crawler
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -60,25 +60,31 @@ func (c *Client) request(
 	}
 
 	if resp.StatusCode >= 400 {
+		raw, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		message := strings.TrimSpace(string(raw))
+
 		var errResp ErrResponse
-		if err := unmarshalTo(resp, &errResp); err != nil {
-			return err
-		}
-
-		if errResp.Err.Errors != nil {
-			var errs []string
-			for _, e := range errResp.Err.Errors {
-				errs = append(errs, e.Message)
+		if json.Unmarshal(raw, &errResp) == nil {
+			if errResp.Err.Errors != nil {
+				var errs []string
+				for _, e := range errResp.Err.Errors {
+					errs = append(errs, e.Message)
+				}
+				message = fmt.Sprintf("[%s] %s", errResp.Err.Code, errs)
+			} else if errResp.Err.Message != "" {
+				message = fmt.Sprintf("[%s] %s", errResp.Err.Code, errResp.Err.Message)
+			} else if errResp.Err.Code != "" {
+				message = errResp.Err.Code
 			}
-			return fmt.Errorf("[%s] %s", errResp.Err.Code, errs)
 		}
 
-		// Message might be empty
-		if errResp.Err.Message == "" {
-			return errors.New(errResp.Err.Code)
-		} else {
-			return fmt.Errorf("[%s] %s", errResp.Err.Code, errResp.Err.Message)
+		if message == "" {
+			message = http.StatusText(resp.StatusCode)
 		}
+
+		return &APIError{StatusCode: resp.StatusCode, Message: message}
 	}
 
 	if res != nil {

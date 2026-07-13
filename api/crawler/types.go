@@ -6,6 +6,16 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 )
 
+// APIError is an error returned by the Crawler API, carrying the HTTP status.
+type APIError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *APIError) Error() string {
+	return e.Message
+}
+
 // ErrResponse is a Crawler API error response.
 type ErrResponse struct {
 	Err Err `json:"error"`

@@ -1,7 +1,9 @@
 package list
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 
 	"github.com/MakeNowJust/heredoc"
@@ -88,6 +90,10 @@ func runListCmd(opts *ListOptions) error {
 		opts.IO.UpdateProgressIndicatorLabel(fmt.Sprintf("Fetching Crawler %s details", item.ID))
 		c, err := client.Get(item.ID, true)
 		if err != nil {
+			var apiErr *crawler.APIError
+			if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden {
+				continue
+			}
 			opts.IO.StopProgressIndicator()
 			return err
 		}
