@@ -75,6 +75,8 @@ task build
 
 `task build` runs `go generate ./...` first, then produces the `algolia` binary at the root of the repository.
 
+You can then use it by doing `./algolia your_command ...`
+
 Build-time defaults (dashboard URL, OAuth client ID, and so on) are injected from environment variables. If you need non-default values, copy [`.env.example`](.env.example) to `.env` and fill it in.
 
 ## Tests
