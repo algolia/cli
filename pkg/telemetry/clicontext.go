@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/algolia/cli/pkg/utils"
@@ -36,6 +37,17 @@ var agentEnvVars = []struct {
 	{"KIRO_AGENT_PATH", "kiro"},
 }
 
+var genericAgentNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
+
+var booleanishValues = map[string]bool{
+	"true":  true,
+	"false": true,
+	"yes":   true,
+	"no":    true,
+	"on":    true,
+	"off":   true,
+}
+
 func DetectCLIContext() string {
 	return detectCLIContext(
 		os.Getenv,
@@ -53,7 +65,7 @@ func detectCLIContext(getenv func(string) string, stdinTTY, stdoutTTY, isCI bool
 	}
 	for _, key := range []string{"AI_AGENT", "AGENT"} {
 		v, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(getenv(key))), "_")
-		if v != "" {
+		if genericAgentNameRe.MatchString(v) && !booleanishValues[v] {
 			return "agent:" + v
 		}
 	}

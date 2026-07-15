@@ -72,6 +72,21 @@ func TestDetectCLIContext_LeadingUnderscoreGenericVar(t *testing.T) {
 	assert.Equal(t, "human", got)
 }
 
+func TestDetectCLIContext_NumericGenericVar(t *testing.T) {
+	got := detectCLIContext(fakeEnv(map[string]string{"AGENT": "1"}), true, true, false)
+	assert.Equal(t, "human", got)
+}
+
+func TestDetectCLIContext_BooleanishGenericVar(t *testing.T) {
+	got := detectCLIContext(fakeEnv(map[string]string{"AGENT": "true"}), true, true, false)
+	assert.Equal(t, "human", got)
+}
+
+func TestDetectCLIContext_OverlongGenericVar(t *testing.T) {
+	got := detectCLIContext(fakeEnv(map[string]string{"AI_AGENT": "a-very-long-agent-name-exceeding-32-characters"}), true, true, false)
+	assert.Equal(t, "human", got)
+}
+
 func TestDetectCLIContext_NamedVarWinsOverGeneric(t *testing.T) {
 	env := fakeEnv(map[string]string{"CLAUDECODE": "1", "AI_AGENT": "other"})
 	assert.Equal(t, "agent:claude-code", detectCLIContext(env, true, true, false))
