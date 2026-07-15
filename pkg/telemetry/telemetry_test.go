@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -213,6 +214,31 @@ func TestTrack_MergesCustomProperties(t *testing.T) {
 	assert.Equal(t, "login", track.Properties["flow"])
 	assert.Equal(t, metadata.InvocationID, track.Properties["invocation_id"])
 	assert.Equal(t, "app-id", track.Properties["app_id"])
+}
+
+func TestTrack_IncludesCLIContext(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	metadata.CLIContext = "agent:claude-code"
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, "agent:claude-code", track.Properties["cli_context"])
+}
+
+func TestNewEventMetadata_DetectsCLIContext(t *testing.T) {
+	metadata := NewEventMetadata()
+	assert.NotEmpty(t, metadata.CLIContext)
+	valid := metadata.CLIContext == ContextHuman ||
+		metadata.CLIContext == ContextAgentUnknown ||
+		strings.HasPrefix(metadata.CLIContext, "agent:")
+	assert.True(t, valid)
 }
 
 func TestTrack_SequenceIsMonotonic(t *testing.T) {
