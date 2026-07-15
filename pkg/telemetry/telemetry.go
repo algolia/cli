@@ -141,6 +141,7 @@ type CLIAnalyticsEventMetadata struct {
 	CommandFlags             []string // the command flags is the full list of flags passed to the command
 	CLIVersion               string   // the version of the CLI
 	OS                       string   // the OS of the system
+	CLIContext               string
 }
 
 // NewEventMetadata initializes an instance of CLIAnalyticsEventContext
@@ -150,6 +151,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewRandom().String(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
+		CLIContext:   DetectCLIContext(),
 	}
 }
 
@@ -263,7 +265,7 @@ func (a *AnalyticsTelemetryClient) Track(
 ) error {
 	metadata := GetEventMetadata(ctx)
 
-	props := make(map[string]any, len(properties)+5)
+	props := make(map[string]any, len(properties)+6)
 	for k, v := range properties {
 		props[k] = v
 	}
@@ -273,6 +275,7 @@ func (a *AnalyticsTelemetryClient) Track(
 	props["command"] = metadata.CommandPath
 	props["flags"] = metadata.CommandFlags
 	props["sequence"] = a.sequence.Add(1)
+	props["cli_context"] = metadata.CLIContext
 
 	track := analytics.Track{
 		Event:       event,
