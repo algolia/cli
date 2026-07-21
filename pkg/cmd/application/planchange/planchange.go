@@ -533,6 +533,9 @@ func pickPlan(candidates []dashboard.Plan) (*dashboard.Plan, error) {
 	}
 	labels := make([]string, len(candidates))
 	for i, p := range candidates {
+		if p.Price == "" {
+			p.Price = "Pay as you go"
+		}
 		labels[i] = fmt.Sprintf("%s — %s", p.Name, p.Price)
 	}
 	var selected int
