@@ -237,7 +237,7 @@ func createApplication(
 			(user != nil && !user.HasPaymentMethod)
 		if billingMissing {
 			result.abortReason = telemetry.AbortReasonBillingRequired
-			return result, offerBilling(opts, client, *target)
+			return result, apputil.OfferBilling(opts.IO, opts.Browser, client.DashboardURL, *target)
 		}
 	}
 
@@ -428,42 +428,6 @@ func confirmToS(opts *CreateOptions, plan dashboard.Plan) (bool, error) {
 		return false, err
 	}
 	return accepted, nil
-}
-
-// offerBilling tells the user a paid plan needs billing and offers the billing page.
-func offerBilling(opts *CreateOptions, client *dashboard.Client, plan dashboard.Plan) error {
-	cs := opts.IO.ColorScheme()
-	url := client.DashboardURL + "/account/billing/details"
-
-	fmt.Fprintf(
-		opts.IO.Out,
-		"\nThe %s plan requires a payment method on file before a paid application can be provisioned.\nThe CLI can't collect card details.\n",
-		cs.Bold(plan.Name),
-	)
-
-	if opts.IO.CanPrompt() && opts.IO.IsStdoutTTY() {
-		browser := opts.Browser
-		if browser == nil {
-			browser = pkgopen.Browser
-		}
-		open := true
-		if err := prompt.Confirm("Open the billing page to add a payment method?", &open); err != nil {
-			return err
-		}
-		if !open {
-			return nil
-		}
-		fmt.Fprintf(opts.IO.Out, "Opening %s\n", cs.Bold(url))
-		return browser(url)
-	}
-
-	fmt.Fprintf(
-		opts.IO.Out,
-		"Add a payment method here, then re-run with --plan %s:\n%s\n",
-		plan.ID,
-		url,
-	)
-	return fmt.Errorf("the %q plan requires a payment method; none is on file", plan.Name)
 }
 
 // callWithReauth runs fn, re-authenticating once and retrying on an expired session.

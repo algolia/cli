@@ -175,7 +175,7 @@ func changePlan(
 		result.fromPlan = currentPlanTelemetryID(plans, app)
 	}
 
-	target, err := resolveTarget(opts, appID, app, plans)
+	target, err := resolveTarget(opts, appID, app, plans, user)
 	if err != nil {
 		return result, err
 	}
@@ -197,15 +197,13 @@ func changePlan(
 		return result, nil
 	}
 
-	// Paid plans require a payment method that the CLI cannot collect. Only
-	// block when we positively know there is none (user fetched, flag false);
-	// otherwise defer to the server.
-	if !target.IsFree() && user != nil && !user.HasPaymentMethod {
+	// Paid plans require a payment method that the CLI cannot collect. Block
+	// when the server hides the plan (paid plans appear only once billing is
+	// on file) or when the user record says no payment method is on file.
+	if !target.IsFree() &&
+		(!apputil.PlanAvailable(plans, target.ID) || (user != nil && !user.HasPaymentMethod)) {
 		result.abortReason = telemetry.AbortReasonBillingRequired
-		return result, fmt.Errorf(
-			"the %q plan requires a payment method, which the CLI can't collect; add one in the Algolia dashboard (Settings → Billing) and try again",
-			target.Name,
-		)
+		return result, apputil.OfferBilling(opts.IO, opts.Browser, client.DashboardURL, *target)
 	}
 
 	if opts.DryRun {
@@ -335,12 +333,20 @@ func resolveTarget(
 	appID string,
 	app *dashboard.Application,
 	plans []dashboard.Plan,
+	user *dashboard.DashboardUser,
 ) (*dashboard.Plan, error) {
 	if opts.Plan != "" {
-		return resolvePlan(plans, opts.Plan)
+		target, err := resolvePlan(plans, opts.Plan)
+		if err == nil {
+			return target, nil
+		}
+		if paid := apputil.KnownPaidPlan(opts.Plan); paid != nil {
+			return paid, nil
+		}
+		return nil, err
 	}
 
-	candidates := filterByDirection(plans, app, opts.Direction)
+	candidates := filterByDirection(withKnownPaidPlans(plans, user), app, opts.Direction)
 
 	if len(candidates) == 0 {
 		reportNoCandidates(opts, appID, app, opts.Direction)
@@ -392,6 +398,19 @@ func filterByDirection(
 		return plans[:idx]
 	}
 	return plans[idx+1:]
+}
+
+func withKnownPaidPlans(plans []dashboard.Plan, user *dashboard.DashboardUser) []dashboard.Plan {
+	if user == nil || user.HasPaymentMethod {
+		return plans
+	}
+	augmented := append([]dashboard.Plan(nil), plans...)
+	for _, p := range apputil.KnownPaidPlans() {
+		if !apputil.PlanAvailable(augmented, p.ID) {
+			augmented = append(augmented, p)
+		}
+	}
+	return augmented
 }
 
 // normalizePlanKey normalizes a plan label/name for comparison; the CLI joins
@@ -514,6 +533,9 @@ func pickPlan(candidates []dashboard.Plan) (*dashboard.Plan, error) {
 	}
 	labels := make([]string, len(candidates))
 	for i, p := range candidates {
+		if p.Price == "" {
+			p.Price = "Pay as you go"
+		}
 		labels[i] = fmt.Sprintf("%s — %s", p.Name, p.Price)
 	}
 	var selected int
