@@ -160,6 +160,14 @@ func (c *ConfigStub) APIKeyUUID(appID string) (string, bool) {
 	return app.APIKeyUUID, true
 }
 
+func (c *ConfigStub) ApplicationAlias(appID string) (string, bool) {
+	app, ok := c.SavedApps[appID]
+	if !ok || app.Alias == "" {
+		return "", false
+	}
+	return app.Alias, true
+}
+
 func (c *ConfigStub) ApplicationIDByAlias(alias string) (string, bool) {
 	for appID, app := range c.SavedApps {
 		if app.Alias == alias {

@@ -28,6 +28,14 @@ func (c *Config) ApplicationIDByAlias(alias string) (string, bool) {
 	return c.loadState().ApplicationByAlias(alias)
 }
 
+func (c *Config) ApplicationAlias(appID string) (string, bool) {
+	app, ok := c.loadState().Applications[appID]
+	if !ok || app.Alias == "" {
+		return "", false
+	}
+	return app.Alias, true
+}
+
 // SaveApplication persists an application's credentials in the new model.
 // The keychain is written first so a failure never leaves state.toml pointing
 // at a key that was not stored. Empty alias/apiKeyUUID preserve the values

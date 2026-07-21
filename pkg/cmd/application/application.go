@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/application/create"
+	"github.com/algolia/cli/pkg/cmd/application/current"
 	"github.com/algolia/cli/pkg/cmd/application/downgrade"
 	"github.com/algolia/cli/pkg/cmd/application/list"
 	"github.com/algolia/cli/pkg/cmd/application/plans"
@@ -23,6 +24,7 @@ func NewApplicationCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(create.NewCreateCmd(f))
 	cmd.AddCommand(list.NewListCmd(f))
+	cmd.AddCommand(current.NewCurrentCmd(f))
 	cmd.AddCommand(selectapp.NewSelectCmd(f))
 	cmd.AddCommand(update.NewUpdateCmd(f))
 	cmd.AddCommand(plans.NewPlansCmd(f))
