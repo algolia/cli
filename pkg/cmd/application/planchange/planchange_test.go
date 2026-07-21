@@ -156,6 +156,7 @@ type planChangeServer struct {
 	patchCalls       int
 	lastPlan         string
 	currentPlanLabel string
+	freeOnly         bool
 }
 
 // newServer spins up a dashboard stub. userJSON is the raw GET /1/user body;
@@ -168,8 +169,12 @@ func newServer(t *testing.T, userJSON string) *planChangeServer {
 	mux.HandleFunc(
 		"/1/plan-templates/self-serve",
 		func(w http.ResponseWriter, _ *http.Request) {
+			templates := samplePlanTemplates()
+			if srv.freeOnly {
+				templates = templates[:1]
+			}
 			require.NoError(t, json.NewEncoder(w).Encode(dashboard.PlanTemplatesResponse{
-				Data: samplePlanTemplates(),
+				Data: templates,
 			}))
 		},
 	)
@@ -296,7 +301,7 @@ func TestRun_BillingBlock(t *testing.T) {
 	srv := newServer(t, `{"has_payment_method": false}`)
 	defer srv.Close()
 
-	opts, _, _ := newOpts(t, srv, false)
+	opts, out, _ := newOpts(t, srv, false)
 	opts.Plan = "grow"
 	opts.AcceptTerms = true
 
@@ -304,6 +309,40 @@ func TestRun_BillingBlock(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payment method")
 	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "https://dashboard.algolia.com/account/billing/details")
+	assert.Contains(t, out.String(), "--plan grow")
+}
+
+func TestRun_PaidNoBillingInteractiveOpensBilling(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	defer srv.Close()
+
+	defer prompt.StubConfirm(true)()
+
+	opts, _, opened := newOpts(t, srv, true)
+	opts.Plan = "grow"
+
+	require.NoError(t, Run(context.Background(), opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Equal(
+		t,
+		"https://dashboard.algolia.com/account/billing/details",
+		*opened,
+	)
+}
+
+func TestRun_PaidNoBillingInteractiveDeclineOpen(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	defer srv.Close()
+
+	defer prompt.StubConfirm(false)()
+
+	opts, _, opened := newOpts(t, srv, true)
+	opts.Plan = "grow"
+
+	require.NoError(t, Run(context.Background(), opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Empty(t, *opened)
 }
 
 func TestRun_ToSDeclineAborts(t *testing.T) {
@@ -525,4 +564,86 @@ func TestRun_UnknownCurrentPlanShowsAllPlans(t *testing.T) {
 	require.NoError(t, Run(context.Background(), opts))
 	assert.Equal(t, 1, srv.patchCalls)
 	assert.Equal(t, "build", srv.lastPlan)
+}
+
+func TestRun_PlanFlagPaidFreeOnlyServerBlocks(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	srv.freeOnly = true
+	srv.currentPlanLabel = "Build"
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, false)
+	opts.Plan = "grow"
+	opts.AcceptTerms = true
+
+	err := Run(context.Background(), opts)
+	require.Error(t, err)
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "https://dashboard.algolia.com/account/billing/details")
+	assert.Contains(t, out.String(), "--plan grow")
+}
+
+func TestRun_PlanFlagPaidFreeOnlyServerInteractiveOpensBilling(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	srv.freeOnly = true
+	srv.currentPlanLabel = "Build"
+	defer srv.Close()
+
+	defer prompt.StubConfirm(true)()
+
+	opts, _, opened := newOpts(t, srv, true)
+	opts.Plan = "grow"
+
+	require.NoError(t, Run(context.Background(), opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Equal(t, "https://dashboard.algolia.com/account/billing/details", *opened)
+}
+
+func TestRun_InteractivePickerFreeOnlyServerOffersPaidThenBilling(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	srv.freeOnly = true
+	srv.currentPlanLabel = "Build"
+	defer srv.Close()
+
+	stubPicker(t, 0)
+	defer prompt.StubConfirm(true)()
+
+	opts, _, opened := newOpts(t, srv, true)
+	opts.Direction = DirectionUpgrade
+
+	require.NoError(t, Run(context.Background(), opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Equal(t, "https://dashboard.algolia.com/account/billing/details", *opened)
+}
+
+func TestRun_NonInteractiveFreeOnlyServerListsPaidPlans(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": false}`)
+	srv.freeOnly = true
+	srv.currentPlanLabel = "Build"
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, false)
+	opts.Direction = DirectionUpgrade
+
+	err := Run(context.Background(), opts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--plan is required")
+	assert.Contains(t, err.Error(), "grow, grow-plus")
+	assert.NotContains(t, out.String(), "nothing to upgrade")
+	assert.Equal(t, 0, srv.patchCalls)
+}
+
+func TestRun_FreeOnlyServerWithBillingReportsHighestPlan(t *testing.T) {
+	srv := newServer(t, `{"has_payment_method": true}`)
+	srv.freeOnly = true
+	srv.currentPlanLabel = "Build"
+	defer srv.Close()
+
+	opts, out, _ := newOpts(t, srv, false)
+	opts.Direction = DirectionUpgrade
+
+	require.NoError(t, Run(context.Background(), opts))
+	assert.Equal(t, 0, srv.patchCalls)
+	assert.Contains(t, out.String(), "already on the highest")
+	assert.Contains(t, out.String(), "nothing to upgrade")
 }
