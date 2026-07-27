@@ -2,6 +2,7 @@ package auth
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,6 +40,25 @@ func TestReauthenticateIfExpired_WithoutATerminalDoesNotStartTheOAuthFlow(t *tes
 
 	assert.Empty(t, stdout.String())
 	assert.Contains(t, stderr.String(), "Session expired")
+}
+
+func TestReauthenticateIfExpired_WithoutATerminalKeepsTheStoredToken(t *testing.T) {
+	keyring.MockInit()
+	require.NoError(t, SaveToken(&dashboard.OAuthTokenResponse{
+		AccessToken: "tok-1",
+		ExpiresIn:   3600,
+		CreatedAt:   time.Now().Unix(),
+	}))
+
+	io, _, _, _ := iostreams.Test()
+	require.False(t, io.CanPrompt())
+
+	_, err := ReauthenticateIfExpired(io, dashboard.NewClient("test"), dashboard.ErrSessionExpired)
+	require.Error(t, err)
+
+	stored := LoadToken()
+	require.NotNil(t, stored)
+	assert.Equal(t, "tok-1", stored.AccessToken)
 }
 
 func TestReauthenticateIfExpired_PassesThroughOtherErrors(t *testing.T) {

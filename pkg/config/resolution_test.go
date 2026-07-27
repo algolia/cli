@@ -385,6 +385,38 @@ func TestShouldUseSessionAPIKey(t *testing.T) {
 		assert.False(t, ShouldUseSessionAPIKey(cfg))
 	})
 
+	t.Run("legacy config.toml profile with only an admin api key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[legacy]\napplication_id = \"LEGACY_APP\"\nadmin_api_key = \"adm\"\ndefault = true\n",
+		)
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("profile flag selecting a config.toml profile with a key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[other]\napplication_id = \"OTHER_APP\"\napi_key = \"other\"\n\n[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy\"\ndefault = true\n",
+		)
+		cfg.CurrentProfile.Name = "other"
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("profile flag selecting a config.toml profile without a key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[other]\napplication_id = \"OTHER_APP\"\n\n[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy\"\ndefault = true\n",
+		)
+		cfg.CurrentProfile.Name = "other"
+
+		assert.True(t, ShouldUseSessionAPIKey(cfg))
+	})
+
 	t.Run("ALGOLIA_API_KEY set", func(t *testing.T) {
 		cfg := newConfig(t, writeState(t, managedState))
 		t.Setenv("ALGOLIA_API_KEY", "env-key")

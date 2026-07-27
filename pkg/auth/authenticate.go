@@ -47,7 +47,6 @@ func ReauthenticateIfExpired(
 	}
 
 	cs := io.ColorScheme()
-	ClearToken()
 	fmt.Fprintf(io.ErrOut, "%s Session expired.\n", cs.WarningIcon())
 
 	if !io.CanPrompt() {
@@ -56,6 +55,8 @@ func ReauthenticateIfExpired(
 			cs.Bold("algolia auth login"),
 		)
 	}
+
+	ClearToken()
 
 	// No flow tracker: this re-authentication belongs to the calling flow,
 	// not to an `auth login` funnel.

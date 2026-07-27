@@ -16,6 +16,7 @@ import (
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
+	"github.com/algolia/cli/pkg/printers"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -28,7 +29,6 @@ type CreateOptions struct {
 
 	SearchClient       func() (*search.APIClient, error)
 	NewDashboardClient func(clientID string) *dashboard.Client
-	LoadToken          func() *auth.StoredToken
 
 	ACL         []string
 	Description string
@@ -48,7 +48,6 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
 		},
-		LoadToken:  auth.LoadToken,
 		PrintFlags: cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -66,10 +65,14 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 			signed-in session, so no admin API key is needed. This path supports
 			--acl, --indices, --referers and --description.
 
-			When the API key in use isn't the one the CLI provisioned for the current
-			application (--api-key, ALGOLIA_API_KEY, or a key stored by a config.toml
-			profile), the key is created with the Search API instead, which also
-			supports --validity.
+			The key is created with the Search API instead, which also supports
+			--validity, whenever the API key in use isn't the one the CLI provisioned
+			for the current application: --api-key, ALGOLIA_API_KEY, a key stored by a
+			config.toml profile, or a key kept in your keychain that the CLI didn't
+			create.
+
+			--admin-api-key and ALGOLIA_ADMIN_API_KEY are ignored while an application
+			is selected.
 		`),
 		Example: heredoc.Doc(`
 			# Create a search-only API key for the current application
@@ -117,7 +120,7 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 	cmd.Flags().DurationVarP(&opts.Validity, "validity", "u", 0, heredoc.Doc(`
 		Duration (in seconds) after which the API key expires. By default (a value of 0), API keys don't expire.
-		Requires an admin API key (--api-key), as expiring keys aren't supported for the signed-in session.`,
+		Requires an API key allowed to create keys (--api-key or ALGOLIA_API_KEY): the signed-in session can't create expiring keys.`,
 	))
 
 	cmd.Flags().StringSliceVarP(&opts.Referers, "referers", "r", nil, heredoc.Docf(`
@@ -175,31 +178,41 @@ func NewCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 
 // runCreateCmd executes the create command
 func runCreateCmd(opts *CreateOptions) error {
-	if !config.ShouldUseSessionAPIKey(opts.config) {
-		return runCreateWithSearchAPI(opts)
+	if len(opts.ACL) == 0 {
+		return fmt.Errorf(
+			"--acl is required, for example %s",
+			opts.IO.ColorScheme().Bold("algolia apikeys create --acl search"),
+		)
 	}
 
-	if opts.LoadToken() == nil {
+	if !config.ShouldUseSessionAPIKey(opts.config) {
 		return runCreateWithSearchAPI(opts)
 	}
 
 	return runCreateWithDashboardAPI(opts)
 }
 
+func structuredPrinter(opts *CreateOptions) (printers.Printer, error) {
+	if !opts.PrintFlags.HasStructuredOutput() {
+		return nil, nil
+	}
+
+	return opts.PrintFlags.ToPrinter()
+}
+
 func runCreateWithDashboardAPI(opts *CreateOptions) error {
 	cs := opts.IO.ColorScheme()
 
-	if len(opts.ACL) == 0 {
-		return fmt.Errorf(
-			"--acl is required, for example %s",
-			cs.Bold("algolia apikeys create --acl search"),
-		)
-	}
 	if opts.Validity != 0 {
 		return fmt.Errorf(
-			"--validity requires an admin API key: pass %s, or drop --validity",
+			"--validity isn't supported with your signed-in session: pass %s, or drop --validity",
 			cs.Bold("--api-key"),
 		)
+	}
+
+	printer, err := structuredPrinter(opts)
+	if err != nil {
+		return err
 	}
 
 	appID, err := opts.config.Profile().GetApplicationID()
@@ -236,17 +249,18 @@ func runCreateWithDashboardAPI(opts *CreateOptions) error {
 		return err
 	}
 
-	if opts.PrintFlags.HasStructuredOutput() {
-		p, err := opts.PrintFlags.ToPrinter()
-		if err != nil {
-			return err
-		}
-		return p.Print(opts.IO, key)
+	if printer != nil {
+		return printer.Print(opts.IO, createdKeyOutput{APIKey: key, Key: key.Value})
 	}
 
 	printCreatedKey(opts.IO, key.Value)
 
 	return nil
+}
+
+type createdKeyOutput struct {
+	dashboard.APIKey
+	Key string `json:"key"`
 }
 
 func printCreatedKey(io *iostreams.IOStreams, value string) {
@@ -289,6 +303,11 @@ func createKeyWithSession(
 }
 
 func runCreateWithSearchAPI(opts *CreateOptions) error {
+	printer, err := structuredPrinter(opts)
+	if err != nil {
+		return err
+	}
+
 	var acls []search.Acl
 	for _, a := range opts.ACL {
 		acls = append(acls, search.Acl(a))
@@ -304,19 +323,15 @@ func runCreateWithSearchAPI(opts *CreateOptions) error {
 
 	client, err := opts.SearchClient()
 	if err != nil {
-		return err
+		return auth.WithRemediation(err)
 	}
 	res, err := client.AddApiKey(client.NewApiAddApiKeyRequest(&key))
 	if err != nil {
 		return searchAPICreateError(opts, err)
 	}
 
-	if opts.PrintFlags.HasStructuredOutput() {
-		p, err := opts.PrintFlags.ToPrinter()
-		if err != nil {
-			return err
-		}
-		return p.Print(opts.IO, res)
+	if printer != nil {
+		return printer.Print(opts.IO, res)
 	}
 
 	printCreatedKey(opts.IO, res.Key)

@@ -66,6 +66,32 @@ func CheckAuth(cfg *config.Config) error {
 	return nil
 }
 
+func Remediation(err error) string {
+	if errors.Is(err, config.ErrAPIKeyMissingFromKeychain) {
+		return ""
+	}
+	if (errors.Is(err, config.ErrApplicationIDNotConfigured) || errors.Is(err, config.ErrAPIKeyNotConfigured)) &&
+		LoadToken() != nil {
+		return "You're signed in, but no application is selected.\nRun `algolia application select`, or pass --application-id."
+	}
+
+	return "Please run `algolia auth login` to get started."
+}
+
+func WithRemediation(err error) error {
+	if !errors.Is(err, config.ErrApplicationIDNotConfigured) &&
+		!errors.Is(err, config.ErrAPIKeyNotConfigured) {
+		return err
+	}
+
+	hint := Remediation(err)
+	if hint == "" {
+		return err
+	}
+
+	return fmt.Errorf("%w\n%s", err, hint)
+}
+
 // CheckACLs check if the current profile has the right ACLs to execute the command
 func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	if cmd.Annotations == nil {
