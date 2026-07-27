@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -13,16 +12,6 @@ import (
 
 	"github.com/algolia/cli/pkg/keychain"
 )
-
-func TestMain(m *testing.M) {
-	for _, entry := range os.Environ() {
-		if name, _, ok := strings.Cut(entry, "="); ok && strings.HasPrefix(name, "ALGOLIA_") {
-			_ = os.Unsetenv(name)
-		}
-	}
-
-	os.Exit(m.Run())
-}
 
 func TestConfig_LoadStateCachesAndToleratesMissing(t *testing.T) {
 	cfg := &Config{StateFile: filepath.Join(t.TempDir(), "state.toml")}
