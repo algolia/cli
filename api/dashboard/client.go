@@ -557,6 +557,74 @@ func (c *Client) CreateAPIKey(
 	return CreatedAPIKey{Value: key.Value, UUID: key.UUID}, nil
 }
 
+func (c *Client) ListAPIKeys(accessToken, appID string) ([]APIKey, error) {
+	allKeys := []APIKey{}
+
+	for page := 1; ; page++ {
+		keysResp, err := c.listAPIKeysPage(accessToken, appID, page)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range keysResp.Data {
+			allKeys = append(allKeys, keysResp.Data[i].toAPIKey())
+		}
+
+		if len(keysResp.Data) == 0 || page >= keysResp.Meta.TotalPages {
+			return allKeys, nil
+		}
+	}
+}
+
+func notFoundError(body io.Reader) error {
+	raw, err := io.ReadAll(body)
+	if err != nil || !json.Valid(bytes.TrimSpace(raw)) {
+		return ErrEndpointNotAvailable
+	}
+
+	return ErrApplicationNotFound
+}
+
+func (c *Client) listAPIKeysPage(
+	accessToken, appID string,
+	page int,
+) (*APIKeysResponse, error) {
+	endpoint := fmt.Sprintf(
+		"%s/1/applications/%s/api-keys?page=%d",
+		c.APIURL,
+		url.PathEscape(appID),
+		page,
+	)
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("list API keys request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrSessionExpired
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, notFoundError(resp.Body)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("list API keys failed with status: %d", resp.StatusCode)
+	}
+
+	var keysResp APIKeysResponse
+	if err := json.NewDecoder(resp.Body).Decode(&keysResp); err != nil {
+		return nil, fmt.Errorf("failed to parse API keys response: %w", err)
+	}
+
+	return &keysResp, nil
+}
+
 func (c *Client) CreateAPIKeyWithParams(
 	accessToken, appID string,
 	params CreateAPIKeyRequest,
@@ -584,7 +652,7 @@ func (c *Client) CreateAPIKeyWithParams(
 		return APIKey{}, ErrSessionExpired
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return APIKey{}, ErrApplicationNotFound
+		return APIKey{}, notFoundError(resp.Body)
 	}
 
 	respBody, err := io.ReadAll(resp.Body)

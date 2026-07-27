@@ -239,6 +239,12 @@ func runCreateWithDashboardAPI(opts *CreateOptions) error {
 
 	key, err := createKeyWithSession(opts, client, appID, params)
 	if err != nil {
+		if errors.Is(err, dashboard.ErrEndpointNotAvailable) {
+			return fmt.Errorf(
+				"creating API keys with your signed-in session needs a newer Algolia API version than the one answering: pass %s with an admin key in the meantime",
+				cs.Bold("--api-key"),
+			)
+		}
 		if errors.Is(err, dashboard.ErrApplicationNotFound) {
 			return fmt.Errorf(
 				"application %s doesn't exist, or your account doesn't have access to it: run %s to pick one of your applications",

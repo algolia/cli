@@ -338,6 +338,178 @@ func TestCreateAPIKey_EmptyValueReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "no key was returned")
 }
 
+func TestListAPIKeys_FollowsPagination(t *testing.T) {
+	var requestedPages []string
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+		page := r.URL.Query().Get("page")
+		requestedPages = append(requestedPages, page)
+		require.LessOrEqual(t, len(requestedPages), 3, "the pagination loop is unbounded")
+
+		resource := APIKeyResource{
+			ID:   "uuid-" + page,
+			Type: "api_key",
+			Attributes: APIKeyAttributes{
+				Value: "key-" + page,
+				ACL:   []string{"search"},
+			},
+		}
+
+		current := 1
+		if page == "2" {
+			current = 2
+		}
+
+		require.NoError(t, json.NewEncoder(w).Encode(APIKeysResponse{
+			Data: []APIKeyResource{resource},
+			Meta: PaginationMeta{CurrentPage: current, TotalPages: 2, TotalCount: 2, PerPage: 1},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	keys, err := client.ListAPIKeys("test-token", "APP1")
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"1", "2"}, requestedPages)
+	require.Len(t, keys, 2)
+	assert.Equal(t, "uuid-1", keys[0].UUID)
+	assert.Equal(t, "key-1", keys[0].Value)
+	assert.Equal(t, "uuid-2", keys[1].UUID)
+	assert.Equal(t, []string{"search"}, keys[1].ACL)
+}
+
+func TestListAPIKeys_StopsWhenTheServerRepeatsThePage(t *testing.T) {
+	var requests int
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		require.LessOrEqual(t, requests, 3, "the pagination loop is unbounded")
+
+		require.NoError(t, json.NewEncoder(w).Encode(APIKeysResponse{
+			Data: []APIKeyResource{{
+				ID:         "uuid-1",
+				Type:       "api_key",
+				Attributes: APIKeyAttributes{Value: "key-1"},
+			}},
+			Meta: PaginationMeta{CurrentPage: 1, TotalPages: 3, TotalCount: 3, PerPage: 1},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	keys, err := client.ListAPIKeys("test-token", "APP1")
+	require.NoError(t, err)
+	assert.Equal(t, 3, requests)
+	assert.Len(t, keys, 3)
+}
+
+func TestListAPIKeys_StopsOnAnEmptyPage(t *testing.T) {
+	var requests int
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		require.LessOrEqual(t, requests, 2, "an empty page must stop the pagination loop")
+
+		data := []APIKeyResource{{
+			ID:         "uuid-1",
+			Type:       "api_key",
+			Attributes: APIKeyAttributes{Value: "key-1"},
+		}}
+		if r.URL.Query().Get("page") != "1" {
+			data = nil
+		}
+
+		require.NoError(t, json.NewEncoder(w).Encode(APIKeysResponse{
+			Data: data,
+			Meta: PaginationMeta{CurrentPage: 1, TotalPages: 10, TotalCount: 1, PerPage: 1},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	keys, err := client.ListAPIKeys("test-token", "APP1")
+	require.NoError(t, err)
+	assert.Equal(t, 2, requests)
+	assert.Len(t, keys, 1)
+}
+
+func TestListAPIKeys_NoKeys(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		require.NoError(t, json.NewEncoder(w).Encode(APIKeysResponse{
+			Data: []APIKeyResource{},
+			Meta: PaginationMeta{CurrentPage: 1, TotalPages: 0, TotalCount: 0, PerPage: 15},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	keys, err := client.ListAPIKeys("test-token", "APP1")
+	require.NoError(t, err)
+	assert.Empty(t, keys)
+
+	marshalled, err := json.Marshal(keys)
+	require.NoError(t, err)
+	assert.Equal(t, "[]", string(marshalled))
+}
+
+func TestListAPIKeys_Errors(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		body    string
+		wantErr error
+	}{
+		{
+			name:    "unauthorized",
+			status:  http.StatusUnauthorized,
+			wantErr: ErrSessionExpired,
+		},
+		{
+			name:    "unknown application",
+			status:  http.StatusNotFound,
+			body:    `{"errors":[{"status":"404","title":"Not Found"}]}`,
+			wantErr: ErrApplicationNotFound,
+		},
+		{
+			name:    "endpoint not routed",
+			status:  http.StatusNotFound,
+			body:    "<!DOCTYPE html><html><body>The page you were looking for doesn't exist.</body></html>",
+			wantErr: ErrEndpointNotAvailable,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc(
+				"/1/applications/APP1/api-keys",
+				func(w http.ResponseWriter, _ *http.Request) {
+					w.WriteHeader(tt.status)
+					_, _ = w.Write([]byte(tt.body))
+				},
+			)
+
+			ts, client := newTestClient(mux)
+			defer ts.Close()
+
+			_, err := client.ListAPIKeys("test-token", "APP1")
+			require.ErrorIs(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestCreateAPIKeyWithParams_SendsAllParamsAndReturnsTheKey(t *testing.T) {
 	var got CreateAPIKeyRequest
 
@@ -418,6 +590,22 @@ func TestCreateAPIKeyWithParams_ApplicationNotFound(t *testing.T) {
 		Description: "Search key",
 	})
 	require.ErrorIs(t, err, ErrApplicationNotFound)
+}
+
+func TestCreateAPIKeyWithParams_EndpointNotRouted(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte("<!DOCTYPE html><html><body>Not found</body></html>"))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.CreateAPIKeyWithParams("test-token", "APP1", CreateAPIKeyRequest{
+		ACL: []string{"search"},
+	})
+	require.ErrorIs(t, err, ErrEndpointNotAvailable)
 }
 
 func TestRotateAPIKey_ReturnsNewValue(t *testing.T) {

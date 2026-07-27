@@ -109,6 +109,8 @@ var ErrSessionExpired = errors.New("session expired")
 
 var ErrApplicationNotFound = errors.New("application not found")
 
+var ErrEndpointNotAvailable = errors.New("API endpoint not available")
+
 // ErrClusterUnavailable is returned when a region has no available cluster.
 type ErrClusterUnavailable struct {
 	Region  string
@@ -151,6 +153,7 @@ type APIKeyAttributes struct {
 	MaxHitsPerQuery        *int     `json:"max_hits_per_query"`
 	MaxQueriesPerIPPerHour *int     `json:"max_queries_per_ip_per_hour"`
 	QueryParameters        *string  `json:"query_parameters"`
+	CreatedAt              string   `json:"created_at"`
 }
 
 type APIKey struct {
@@ -164,11 +167,17 @@ type APIKey struct {
 	MaxHitsPerQuery        *int     `json:"max_hits_per_query,omitempty"`
 	MaxQueriesPerIPPerHour *int     `json:"max_queries_per_ip_per_hour,omitempty"`
 	QueryParameters        *string  `json:"query_parameters,omitempty"`
+	CreatedAt              string   `json:"created_at,omitempty"`
 }
 
 // CreateAPIKeyResponse is the JSON:API response from POST /1/applications/{application_id}/api-keys.
 type CreateAPIKeyResponse struct {
 	Data APIKeyResource `json:"data"`
+}
+
+type APIKeysResponse struct {
+	Data []APIKeyResource `json:"data"`
+	Meta PaginationMeta   `json:"meta"`
 }
 
 // CreatedAPIKey is the result of creating an API key: its secret value and its
@@ -213,6 +222,7 @@ func (r *APIKeyResource) toAPIKey() APIKey {
 		MaxHitsPerQuery:        r.Attributes.MaxHitsPerQuery,
 		MaxQueriesPerIPPerHour: r.Attributes.MaxQueriesPerIPPerHour,
 		QueryParameters:        r.Attributes.QueryParameters,
+		CreatedAt:              r.Attributes.CreatedAt,
 	}
 }
 
