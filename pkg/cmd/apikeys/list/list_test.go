@@ -38,15 +38,6 @@ func freezeNow(t *testing.T) {
 	t.Cleanup(func() { nowFn = oldNowFn })
 }
 
-func stubReauthenticate(t *testing.T, token string, err error) {
-	t.Helper()
-	old := reauthenticate
-	reauthenticate = func(*iostreams.IOStreams, *dashboard.Client, error) (string, error) {
-		return token, err
-	}
-	t.Cleanup(func() { reauthenticate = old })
-}
-
 func withoutSession(t *testing.T) {
 	t.Helper()
 	t.Setenv("ALGOLIA_API_KEY", "")
@@ -153,7 +144,8 @@ func newSessionOpts(
 			c.APIURL = srv.URL
 			return c
 		},
-		PrintFlags: cmdutil.NewPrintFlags(),
+		Reauthenticate: auth.ReauthenticateIfExpired,
+		PrintFlags:     cmdutil.NewPrintFlags(),
 	}
 	return opts, stdout, stderr
 }
@@ -734,7 +726,6 @@ func Test_runListCmd_WithSessionWithoutACreationDate(t *testing.T) {
 func Test_runListCmd_WithSessionRetriesAfterAnExpiredSession(t *testing.T) {
 	withSession(t)
 	freezeNow(t)
-	stubReauthenticate(t, "tok-2", nil)
 
 	requests := 0
 	mux := http.NewServeMux()
@@ -761,9 +752,21 @@ func Test_runListCmd_WithSessionRetriesAfterAnExpiredSession(t *testing.T) {
 	defer srv.Close()
 
 	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	reauthentications := 0
+	opts.Reauthenticate = func(
+		_ *iostreams.IOStreams,
+		_ *dashboard.Client,
+		err error,
+	) (string, error) {
+		require.ErrorIs(t, err, dashboard.ErrSessionExpired)
+		reauthentications++
+
+		return "tok-2", nil
+	}
 
 	require.NoError(t, runListCmd(opts))
 
+	assert.Equal(t, 1, reauthentications)
 	assert.Equal(t, 2, requests)
 	assert.Contains(t, stdout.String(), "search-key")
 }

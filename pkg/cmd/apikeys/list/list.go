@@ -24,8 +24,6 @@ import (
 // nowFn exists to make time-based output deterministic in tests.
 var nowFn = time.Now
 
-var reauthenticate = auth.ReauthenticateIfExpired
-
 var tableHeaders = []string{
 	"KEY",
 	"DESCRIPTION",
@@ -44,6 +42,7 @@ type ListOptions struct {
 
 	SearchClient       func() (*search.APIClient, error)
 	NewDashboardClient func(clientID string) *dashboard.Client
+	Reauthenticate     func(*iostreams.IOStreams, *dashboard.Client, error) (string, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -57,7 +56,8 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
 		},
-		PrintFlags: cmdutil.NewPrintFlags(),
+		Reauthenticate: auth.ReauthenticateIfExpired,
+		PrintFlags:     cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -198,7 +198,7 @@ func listKeysWithSession(
 		return keys, nil
 	}
 
-	accessToken, err = reauthenticate(opts.IO, client, err)
+	accessToken, err = opts.Reauthenticate(opts.IO, client, err)
 	if err != nil {
 		return nil, err
 	}
