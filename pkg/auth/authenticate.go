@@ -21,7 +21,14 @@ func EnsureAuthenticated(
 	}
 
 	cs := io.ColorScheme()
-	fmt.Fprintf(io.Out, "%s %s\n", cs.WarningIcon(), err)
+	fmt.Fprintf(io.ErrOut, "%s %s\n", cs.WarningIcon(), err)
+
+	if !io.CanPrompt() {
+		return "", fmt.Errorf(
+			"no usable session and authenticating requires a terminal: run %s",
+			cs.Bold("algolia auth login"),
+		)
+	}
 
 	// No flow tracker: this re-authentication belongs to the calling flow,
 	// not to an `auth login` funnel.
@@ -41,7 +48,14 @@ func ReauthenticateIfExpired(
 
 	cs := io.ColorScheme()
 	ClearToken()
-	fmt.Fprintf(io.Out, "%s Session expired.\n", cs.WarningIcon())
+	fmt.Fprintf(io.ErrOut, "%s Session expired.\n", cs.WarningIcon())
+
+	if !io.CanPrompt() {
+		return "", fmt.Errorf(
+			"your session expired and authenticating requires a terminal: run %s",
+			cs.Bold("algolia auth login"),
+		)
+	}
 
 	// No flow tracker: this re-authentication belongs to the calling flow,
 	// not to an `auth login` funnel.

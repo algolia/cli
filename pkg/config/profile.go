@@ -120,6 +120,25 @@ func (p *Profile) GetAPIKey() (string, error) {
 	return p.GetAdminAPIKey()
 }
 
+func ShouldUseSessionAPIKey(cfg IConfig) bool {
+	if os.Getenv("ALGOLIA_API_KEY") != "" || cfg.Profile().APIKey != "" {
+		return false
+	}
+
+	appID, err := cfg.Profile().GetApplicationID()
+	if err != nil || appID == "" {
+		return true
+	}
+
+	if _, hasUUID := cfg.APIKeyUUID(appID); hasUUID {
+		return true
+	}
+
+	_, err = cfg.Profile().GetAPIKey()
+
+	return err != nil
+}
+
 func (p *Profile) GetAdminAPIKey() (string, error) {
 	if os.Getenv("ALGOLIA_ADMIN_API_KEY") != "" {
 		return os.Getenv("ALGOLIA_ADMIN_API_KEY"), nil

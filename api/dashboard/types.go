@@ -107,6 +107,8 @@ type RegionsResponse struct {
 // ErrSessionExpired is returned when an API call gets a 401 Unauthorized.
 var ErrSessionExpired = errors.New("session expired")
 
+var ErrApplicationNotFound = errors.New("application not found")
+
 // ErrClusterUnavailable is returned when a region has no available cluster.
 type ErrClusterUnavailable struct {
 	Region  string
@@ -127,6 +129,8 @@ type OAuthErrorResponse struct {
 type CreateAPIKeyRequest struct {
 	ACL         []string `json:"acl"`
 	Description string   `json:"description"`
+	Indexes     []string `json:"indexes,omitempty"`
+	Referers    []string `json:"referers,omitempty"`
 }
 
 // APIKeyResource is a JSON:API resource wrapper for an API key.
@@ -138,7 +142,28 @@ type APIKeyResource struct {
 
 // APIKeyAttributes contains the actual API key fields.
 type APIKeyAttributes struct {
-	Value string `json:"value"`
+	Value                  string   `json:"value"`
+	ApplicationID          string   `json:"application_id"`
+	ACL                    []string `json:"acl"`
+	Description            string   `json:"description"`
+	Indexes                []string `json:"indexes"`
+	Referers               []string `json:"referers"`
+	MaxHitsPerQuery        *int     `json:"max_hits_per_query"`
+	MaxQueriesPerIPPerHour *int     `json:"max_queries_per_ip_per_hour"`
+	QueryParameters        *string  `json:"query_parameters"`
+}
+
+type APIKey struct {
+	UUID                   string   `json:"uuid"`
+	ApplicationID          string   `json:"application_id,omitempty"`
+	Value                  string   `json:"value,omitempty"`
+	Description            string   `json:"description,omitempty"`
+	ACL                    []string `json:"acl,omitempty"`
+	Indexes                []string `json:"indexes,omitempty"`
+	Referers               []string `json:"referers,omitempty"`
+	MaxHitsPerQuery        *int     `json:"max_hits_per_query,omitempty"`
+	MaxQueriesPerIPPerHour *int     `json:"max_queries_per_ip_per_hour,omitempty"`
+	QueryParameters        *string  `json:"query_parameters,omitempty"`
 }
 
 // CreateAPIKeyResponse is the JSON:API response from POST /1/applications/{application_id}/api-keys.
@@ -174,6 +199,21 @@ type DashboardCrawlerError struct {
 	Status string  `json:"status"`
 	Title  string  `json:"title"`
 	Detail *string `json:"detail"`
+}
+
+func (r *APIKeyResource) toAPIKey() APIKey {
+	return APIKey{
+		UUID:                   r.ID,
+		ApplicationID:          r.Attributes.ApplicationID,
+		Value:                  r.Attributes.Value,
+		Description:            r.Attributes.Description,
+		ACL:                    r.Attributes.ACL,
+		Indexes:                r.Attributes.Indexes,
+		Referers:               r.Attributes.Referers,
+		MaxHitsPerQuery:        r.Attributes.MaxHitsPerQuery,
+		MaxQueriesPerIPPerHour: r.Attributes.MaxQueriesPerIPPerHour,
+		QueryParameters:        r.Attributes.QueryParameters,
+	}
 }
 
 // toApplication flattens a JSON:API resource into a simple Application.
