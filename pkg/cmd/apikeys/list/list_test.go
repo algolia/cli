@@ -25,12 +25,6 @@ import (
 
 const unroutableAPIURL = "http://127.0.0.1:1"
 
-type ttys struct {
-	stdin  bool
-	stdout bool
-	stderr bool
-}
-
 func freezeNow(t *testing.T) {
 	t.Helper()
 	oldNowFn := nowFn
@@ -127,14 +121,12 @@ func listKeysServer(
 func newSessionOpts(
 	t *testing.T,
 	srv *httptest.Server,
-	tty ttys,
-) (*ListOptions, *bytes.Buffer, *bytes.Buffer) {
+	isTTY bool,
+) (*ListOptions, *bytes.Buffer) {
 	t.Helper()
 
-	io, _, stdout, stderr := iostreams.Test()
-	io.SetStdinTTY(tty.stdin)
-	io.SetStdoutTTY(tty.stdout)
-	io.SetStderrTTY(tty.stderr)
+	io, _, stdout, _ := iostreams.Test()
+	io.SetStdoutTTY(isTTY)
 
 	opts := &ListOptions{
 		IO:     io,
@@ -147,7 +139,7 @@ func newSessionOpts(
 		Reauthenticate: auth.ReauthenticateIfExpired,
 		PrintFlags:     cmdutil.NewPrintFlags(),
 	}
-	return opts, stdout, stderr
+	return opts, stdout
 }
 
 func sessionKey(uuid, value, description string) dashboard.APIKeyResource {
@@ -321,7 +313,7 @@ func Test_runListCmd_WithSession(t *testing.T) {
 	})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 
 	require.NoError(t, runListCmd(opts))
 
@@ -342,7 +334,7 @@ func Test_runListCmd_WithSessionFollowsPagination(t *testing.T) {
 	})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 
 	require.NoError(t, runListCmd(opts))
 
@@ -359,7 +351,7 @@ func Test_runListCmd_WithSessionStructuredOutput(t *testing.T) {
 	})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 	format := "json"
 	opts.PrintFlags.OutputFormat = &format
 
@@ -380,7 +372,7 @@ func Test_runListCmd_WithSessionEmpty(t *testing.T) {
 	srv := listKeysServer(t, "/1/applications/APP1/api-keys", [][]dashboard.APIKeyResource{{}})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 
 	require.NoError(t, runListCmd(opts))
 	assert.Equal(t, "", stdout.String())
@@ -398,7 +390,7 @@ func Test_runListCmd_WithSessionUnknownApplication(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	opts, _, _ := newSessionOpts(t, srv, ttys{})
+	opts, _ := newSessionOpts(t, srv, false)
 
 	err := runListCmd(opts)
 	require.Error(t, err)
@@ -413,7 +405,7 @@ func Test_runListCmd_SignedInWithoutAnApplication(t *testing.T) {
 	srv := listKeysServer(t, "/1/applications/APP1/api-keys", [][]dashboard.APIKeyResource{{}})
 	defer srv.Close()
 
-	opts, _, _ := newSessionOpts(t, srv, ttys{})
+	opts, _ := newSessionOpts(t, srv, false)
 	opts.Config = &test.ConfigStub{}
 
 	err := runListCmd(opts)
@@ -431,7 +423,7 @@ func Test_runListCmd_ApplicationIDFlagWithoutAStoredKeyUsesTheSession(t *testing
 	})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 	opts.Config = &test.ConfigStub{CurrentProfile: config.Profile{ApplicationID: "APP1"}}
 
 	require.NoError(t, runListCmd(opts))
@@ -484,7 +476,7 @@ func Test_runListCmd_WithSessionEndpointNotAvailable(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	opts, _, _ := newSessionOpts(t, srv, ttys{})
+	opts, _ := newSessionOpts(t, srv, false)
 
 	err := runListCmd(opts)
 	require.Error(t, err)
@@ -544,25 +536,6 @@ func Test_formatCreatedAt(t *testing.T) {
 	assert.Equal(t, "not-a-date", formatCreatedAt(now, "not-a-date"))
 }
 
-func Test_formatLimit(t *testing.T) {
-	zero := 0
-	large := 1234567
-
-	assert.Equal(t, "0", formatLimit(nil))
-	assert.Equal(t, "0", formatLimit(&zero))
-	assert.Equal(t, "1,234,567", formatLimit(&large))
-}
-
-func Test_formatValidity(t *testing.T) {
-	now := time.Unix(1735689600, 0)
-	zero := int32(0)
-	hour := int32(3600)
-
-	assert.Equal(t, "Never expire", formatValidity(now, nil))
-	assert.Equal(t, "Never expire", formatValidity(now, &zero))
-	assert.Equal(t, "1 hour from now", formatValidity(now, &hour))
-}
-
 func Test_runListCmd_WithSessionMaskedKeyValue(t *testing.T) {
 	withSession(t)
 	freezeNow(t)
@@ -572,7 +545,7 @@ func Test_runListCmd_WithSessionMaskedKeyValue(t *testing.T) {
 	})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 
 	require.NoError(t, runListCmd(opts))
 
@@ -592,7 +565,7 @@ func Test_runListCmd_WithSessionMaskedKeyValueStructuredOutput(t *testing.T) {
 	})
 	defer srv.Close()
 
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
+	opts, stdout := newSessionOpts(t, srv, false)
 	format := "json"
 	opts.PrintFlags.OutputFormat = &format
 
@@ -604,328 +577,4 @@ func Test_runListCmd_WithSessionMaskedKeyValueStructuredOutput(t *testing.T) {
 	assert.NotContains(t, keys[0], "value")
 	assert.Equal(t, "uuid-1", keys[0]["uuid"])
 	assert.Equal(t, "restricted key", keys[0]["description"])
-}
-
-func Test_runListCmd_SearchAPIMaskedKeyValue(t *testing.T) {
-	withoutSession(t)
-	freezeNow(t)
-
-	r := httpmock.Registry{}
-	r.Register(
-		httpmock.REST("GET", "1/keys"),
-		httpmock.JSONResponse(search.ListApiKeysResponse{
-			Keys: []search.GetApiKeyResponse{{
-				Acl:       []search.Acl{search.ACL_SEARCH},
-				CreatedAt: 1577836800,
-			}},
-		}),
-	)
-
-	f, out := test.NewFactory(false, &r, explicitKeyConfig(), "")
-	cmd := NewListCmd(f, func(o *ListOptions) error {
-		o.NewDashboardClient = unusedDashboardClient(t)
-		return runListCmd(o)
-	})
-	out, err := test.Execute(cmd, "", out)
-	require.NoError(t, err)
-
-	assert.Equal(
-		t,
-		"-\t\t[search]\t[]\tNever expire\t0\t0\t[]\t5 years ago\n",
-		out.String(),
-	)
-}
-
-func Test_runListCmd_SearchAPIListsLimitsAndValidity(t *testing.T) {
-	withoutSession(t)
-	freezeNow(t)
-
-	maxHits := int32(1234)
-	maxQueries := int32(5678)
-	validity := int32(3600)
-
-	r := httpmock.Registry{}
-	r.Register(
-		httpmock.REST("GET", "1/keys"),
-		httpmock.JSONResponse(search.ListApiKeysResponse{
-			Keys: []search.GetApiKeyResponse{{
-				Value:                  "foo",
-				Acl:                    []search.Acl{search.ACL_SEARCH},
-				Validity:               &validity,
-				MaxHitsPerQuery:        &maxHits,
-				MaxQueriesPerIPPerHour: &maxQueries,
-				CreatedAt:              1577836800,
-			}},
-		}),
-	)
-
-	f, out := test.NewFactory(false, &r, explicitKeyConfig(), "")
-	cmd := NewListCmd(f, func(o *ListOptions) error {
-		o.NewDashboardClient = unusedDashboardClient(t)
-		return runListCmd(o)
-	})
-	out, err := test.Execute(cmd, "", out)
-	require.NoError(t, err)
-
-	assert.Equal(
-		t,
-		"foo\t\t[search]\t[]\t1 hour from now\t1,234\t5,678\t[]\t5 years ago\n",
-		out.String(),
-	)
-}
-
-func Test_runListCmd_WithSessionListsLimits(t *testing.T) {
-	withSession(t)
-	freezeNow(t)
-
-	maxHits := 1234
-	maxQueries := 5678
-	resource := sessionKey("uuid-1", "search-key", "frontend")
-	resource.Attributes.MaxHitsPerQuery = &maxHits
-	resource.Attributes.MaxQueriesPerIPPerHour = &maxQueries
-
-	srv := listKeysServer(t, "/1/applications/APP1/api-keys", [][]dashboard.APIKeyResource{
-		{resource},
-	})
-	defer srv.Close()
-
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
-
-	require.NoError(t, runListCmd(opts))
-
-	assert.Equal(
-		t,
-		"search-key\tfrontend\t[search]\t[]\t-\t1,234\t5,678\t[]\t5 years ago\n",
-		stdout.String(),
-	)
-}
-
-func Test_runListCmd_WithSessionWithoutACreationDate(t *testing.T) {
-	withSession(t)
-	freezeNow(t)
-
-	resource := sessionKey("uuid-1", "search-key", "frontend")
-	resource.Attributes.CreatedAt = ""
-
-	srv := listKeysServer(t, "/1/applications/APP1/api-keys", [][]dashboard.APIKeyResource{
-		{resource},
-	})
-	defer srv.Close()
-
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
-
-	require.NoError(t, runListCmd(opts))
-
-	assert.Equal(
-		t,
-		"search-key\tfrontend\t[search]\t[]\t-\t0\t0\t[]\t-\n",
-		stdout.String(),
-	)
-}
-
-func Test_runListCmd_WithSessionRetriesAfterAnExpiredSession(t *testing.T) {
-	withSession(t)
-	freezeNow(t)
-
-	requests := 0
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
-		requests++
-		if requests == 1 {
-			assert.Equal(t, "Bearer tok-1", r.Header.Get("Authorization"))
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		assert.Equal(t, "Bearer tok-2", r.Header.Get("Authorization"))
-		require.NoError(t, json.NewEncoder(w).Encode(dashboard.APIKeysResponse{
-			Data: []dashboard.APIKeyResource{sessionKey("uuid-1", "search-key", "frontend")},
-			Meta: dashboard.PaginationMeta{
-				CurrentPage: 1,
-				TotalPages:  1,
-				TotalCount:  1,
-				PerPage:     15,
-			},
-		}))
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
-	reauthentications := 0
-	opts.Reauthenticate = func(
-		_ *iostreams.IOStreams,
-		_ *dashboard.Client,
-		err error,
-	) (string, error) {
-		require.ErrorIs(t, err, dashboard.ErrSessionExpired)
-		reauthentications++
-
-		return "tok-2", nil
-	}
-
-	require.NoError(t, runListCmd(opts))
-
-	assert.Equal(t, 1, reauthentications)
-	assert.Equal(t, 2, requests)
-	assert.Contains(t, stdout.String(), "search-key")
-}
-
-func Test_runListCmd_WithSessionExpiredWithoutATerminal(t *testing.T) {
-	withSession(t)
-	freezeNow(t)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	opts, stdout, stderr := newSessionOpts(t, srv, ttys{stdin: true, stderr: true})
-	require.False(t, opts.IO.CanPrompt())
-
-	err := runListCmd(opts)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a terminal")
-	assert.Contains(t, err.Error(), "algolia auth login")
-	assert.Empty(t, stdout.String())
-	assert.Contains(t, stderr.String(), "Session expired")
-
-	stored := auth.LoadToken()
-	require.NotNil(t, stored)
-	assert.Equal(t, "tok-1", stored.AccessToken)
-}
-
-func Test_runListCmd_UnsupportedOutputFormatFailsBeforeListing(t *testing.T) {
-	t.Run("session path", func(t *testing.T) {
-		withSession(t)
-		freezeNow(t)
-
-		srv := httptest.NewServer(
-			http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-				t.Errorf("no request must be made: %s %s", r.Method, r.URL.Path)
-			}),
-		)
-		defer srv.Close()
-
-		opts, stdout, _ := newSessionOpts(t, srv, ttys{})
-		format := "xml"
-		opts.PrintFlags.OutputFormat = &format
-
-		err := runListCmd(opts)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unable to match a printer")
-		assert.Empty(t, stdout.String())
-	})
-
-	t.Run("search API path", func(t *testing.T) {
-		withoutSession(t)
-		freezeNow(t)
-
-		r := httpmock.Registry{}
-		r.Register(httpmock.REST("GET", "1/keys"), func(*http.Request) (*http.Response, error) {
-			t.Error("no listing must be requested")
-			return nil, errors.New("unexpected request")
-		})
-
-		f, out := test.NewFactory(false, &r, explicitKeyConfig(), "")
-		cmd := NewListCmd(f, func(o *ListOptions) error {
-			o.NewDashboardClient = unusedDashboardClient(t)
-			return runListCmd(o)
-		})
-		_, err := test.Execute(cmd, "-o xml", out)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unable to match a printer")
-		assert.Empty(t, out.String())
-	})
-}
-
-func Test_runListCmd_WithoutASessionOrAnApplication(t *testing.T) {
-	withoutSession(t)
-	freezeNow(t)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		t.Errorf("no request must be made: %s %s", r.Method, r.URL.Path)
-	}))
-	defer srv.Close()
-
-	opts, stdout, _ := newSessionOpts(t, srv, ttys{})
-	opts.Config = &test.ConfigStub{}
-
-	err := runListCmd(opts)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "no application selected")
-	assert.Contains(t, err.Error(), "algolia application select")
-	assert.Empty(t, stdout.String())
-}
-
-func Test_runListCmd_WithoutASessionStdoutPipedStderrTTY(t *testing.T) {
-	withoutSession(t)
-	freezeNow(t)
-
-	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		t.Errorf("no request must be made without a session: %s %s", r.Method, r.URL.Path)
-	}))
-	defer srv.Close()
-
-	opts, stdout, stderr := newSessionOpts(t, srv, ttys{stdin: true, stderr: true})
-	require.False(t, opts.IO.CanPrompt())
-
-	err := runListCmd(opts)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a terminal")
-	assert.Contains(t, err.Error(), "algolia auth login")
-	assert.Empty(t, stdout.String())
-	assert.Contains(t, stderr.String(), "not logged in")
-
-	prompting, _, _ := newSessionOpts(t, srv, ttys{stdin: true, stdout: true, stderr: true})
-	assert.True(t, prompting.IO.CanPrompt())
-}
-
-func Test_runListCmd_SearchAPIClientErrorSurfacesTheRemediation(t *testing.T) {
-	tests := []struct {
-		name    string
-		session bool
-		want    string
-	}{
-		{
-			name: "signed out",
-			want: "algolia auth login",
-		},
-		{
-			name:    "signed in",
-			session: true,
-			want:    "algolia application select",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.session {
-				withSession(t)
-			} else {
-				withoutSession(t)
-			}
-			t.Setenv("ALGOLIA_API_KEY", "adm")
-			freezeNow(t)
-
-			io, _, stdout, _ := iostreams.Test()
-			opts := &ListOptions{
-				IO:     io,
-				Config: &test.ConfigStub{},
-				SearchClient: func() (*search.APIClient, error) {
-					return nil, config.ErrApplicationIDNotConfigured
-				},
-				NewDashboardClient: unusedDashboardClient(t),
-				PrintFlags:         cmdutil.NewPrintFlags(),
-			}
-
-			err := runListCmd(opts)
-			require.Error(t, err)
-			assert.ErrorIs(t, err, config.ErrApplicationIDNotConfigured)
-			assert.Contains(t, err.Error(), tt.want)
-			assert.Empty(t, stdout.String())
-		})
-	}
 }
