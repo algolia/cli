@@ -24,6 +24,8 @@ import (
 // nowFn exists to make time-based output deterministic in tests.
 var nowFn = time.Now
 
+var reauthenticate = auth.ReauthenticateIfExpired
+
 var tableHeaders = []string{
 	"KEY",
 	"DESCRIPTION",
@@ -42,7 +44,6 @@ type ListOptions struct {
 
 	SearchClient       func() (*search.APIClient, error)
 	NewDashboardClient func(clientID string) *dashboard.Client
-	LoadToken          func() *auth.StoredToken
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -56,7 +57,6 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
 		},
-		LoadToken:  auth.LoadToken,
 		PrintFlags: cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -75,9 +75,14 @@ func NewListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 			created by the CLI, and doesn't report an expiry. Keys you don't have the
 			rights to create are listed without their value.
 
-			When the API key in use isn't the one the CLI provisioned for the current
-			application (--api-key, ALGOLIA_API_KEY, or a key stored by a config.toml
-			profile), every key of the application is listed with the Search API.
+			Every key of the application is listed with the Search API instead
+			whenever the API key in use isn't the one the CLI provisioned for the
+			current application: --api-key, ALGOLIA_API_KEY, a key stored by a
+			config.toml profile, or a key kept in your keychain that the CLI didn't
+			create.
+
+			--admin-api-key and ALGOLIA_ADMIN_API_KEY are ignored while an application
+			is selected.
 		`),
 		Example: heredoc.Doc(`
 			# List the API keys the CLI created for the current application
@@ -106,15 +111,24 @@ func runListCmd(opts *ListOptions) error {
 		return runListWithSearchAPI(opts)
 	}
 
-	if opts.LoadToken() == nil {
-		return runListWithSearchAPI(opts)
+	return runListWithSessionAPI(opts)
+}
+
+func structuredPrinter(opts *ListOptions) (printers.Printer, error) {
+	if !opts.PrintFlags.HasStructuredOutput() {
+		return nil, nil
 	}
 
-	return runListWithSessionAPI(opts)
+	return opts.PrintFlags.ToPrinter()
 }
 
 func runListWithSessionAPI(opts *ListOptions) error {
 	cs := opts.IO.ColorScheme()
+
+	printer, err := structuredPrinter(opts)
+	if err != nil {
+		return err
+	}
 
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
@@ -144,12 +158,8 @@ func runListWithSessionAPI(opts *ListOptions) error {
 		return err
 	}
 
-	if opts.PrintFlags.HasStructuredOutput() {
-		p, err := opts.PrintFlags.ToPrinter()
-		if err != nil {
-			return err
-		}
-		return p.Print(opts.IO, keys)
+	if printer != nil {
+		return printer.Print(opts.IO, keys)
 	}
 
 	now := nowFn()
@@ -188,7 +198,7 @@ func listKeysWithSession(
 		return keys, nil
 	}
 
-	accessToken, err = auth.ReauthenticateIfExpired(opts.IO, client, err)
+	accessToken, err = reauthenticate(opts.IO, client, err)
 	if err != nil {
 		return nil, err
 	}
@@ -201,9 +211,14 @@ func listKeysWithSession(
 }
 
 func runListWithSearchAPI(opts *ListOptions) error {
-	client, err := opts.SearchClient()
+	printer, err := structuredPrinter(opts)
 	if err != nil {
 		return err
+	}
+
+	client, err := opts.SearchClient()
+	if err != nil {
+		return auth.WithRemediation(err)
 	}
 
 	now := nowFn()
@@ -215,12 +230,8 @@ func runListWithSearchAPI(opts *ListOptions) error {
 		return searchAPIListError(opts, err)
 	}
 
-	if opts.PrintFlags.HasStructuredOutput() {
-		p, err := opts.PrintFlags.ToPrinter()
-		if err != nil {
-			return err
-		}
-		return p.Print(opts.IO, res)
+	if printer != nil {
+		return printer.Print(opts.IO, res)
 	}
 
 	// Sort API Keys by createdAt
@@ -236,7 +247,7 @@ func runListWithSearchAPI(opts *ListOptions) error {
 		}
 
 		rows = append(rows, []string{
-			key.Value,
+			formatKeyValue(key.Value),
 			description,
 			fmt.Sprintf("%v", key.Acl),
 			fmt.Sprintf("%v", key.Indexes),
@@ -298,7 +309,7 @@ func formatLimit(limit *int) string {
 
 func formatCreatedAt(now time.Time, createdAt string) string {
 	if createdAt == "" {
-		return ""
+		return "-"
 	}
 
 	parsed, err := time.Parse(time.RFC3339, createdAt)

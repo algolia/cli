@@ -407,8 +407,34 @@ func TestListAPIKeys_StopsWhenTheServerRepeatsThePage(t *testing.T) {
 
 	keys, err := client.ListAPIKeys("test-token", "APP1")
 	require.NoError(t, err)
-	assert.Equal(t, 3, requests)
-	assert.Len(t, keys, 3)
+	assert.Equal(t, 2, requests)
+	require.Len(t, keys, 1)
+	assert.Equal(t, "uuid-1", keys[0].UUID)
+}
+
+func TestListAPIKeys_ErrorsWhenAPageHasNoPaginationMetadata(t *testing.T) {
+	var requests int
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+			"data": []APIKeyResource{{
+				ID:         "uuid-1",
+				Type:       "api_key",
+				Attributes: APIKeyAttributes{Value: "key-1"},
+			}},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	keys, err := client.ListAPIKeys("test-token", "APP1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "without pagination metadata")
+	assert.Nil(t, keys)
+	assert.Equal(t, 1, requests)
 }
 
 func TestListAPIKeys_StopsOnAnEmptyPage(t *testing.T) {
@@ -486,6 +512,47 @@ func TestListAPIKeys_Errors(t *testing.T) {
 			name:    "endpoint not routed",
 			status:  http.StatusNotFound,
 			body:    "<!DOCTYPE html><html><body>The page you were looking for doesn't exist.</body></html>",
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "empty body",
+			status:  http.StatusNotFound,
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "empty JSON object",
+			status:  http.StatusNotFound,
+			body:    `{}`,
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "JSON null",
+			status:  http.StatusNotFound,
+			body:    `null`,
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "JSON number",
+			status:  http.StatusNotFound,
+			body:    `123`,
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "JSON string",
+			status:  http.StatusNotFound,
+			body:    `"Not Found"`,
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "Rails unrouted path",
+			status:  http.StatusNotFound,
+			body:    `{"status":404,"error":"Not Found"}`,
+			wantErr: ErrEndpointNotAvailable,
+		},
+		{
+			name:    "empty JSON:API errors array",
+			status:  http.StatusNotFound,
+			body:    `{"errors":[]}`,
 			wantErr: ErrEndpointNotAvailable,
 		},
 	}

@@ -566,11 +566,27 @@ func (c *Client) ListAPIKeys(accessToken, appID string) ([]APIKey, error) {
 			return nil, err
 		}
 
+		if len(keysResp.Data) == 0 {
+			return allKeys, nil
+		}
+
+		if keysResp.Meta.TotalPages <= 0 {
+			return nil, fmt.Errorf(
+				"list API keys returned %d keys on page %d without pagination metadata",
+				len(keysResp.Data),
+				page,
+			)
+		}
+
+		if keysResp.Meta.CurrentPage != 0 && keysResp.Meta.CurrentPage != page {
+			return allKeys, nil
+		}
+
 		for i := range keysResp.Data {
 			allKeys = append(allKeys, keysResp.Data[i].toAPIKey())
 		}
 
-		if len(keysResp.Data) == 0 || page >= keysResp.Meta.TotalPages {
+		if page >= keysResp.Meta.TotalPages {
 			return allKeys, nil
 		}
 	}
@@ -578,7 +594,15 @@ func (c *Client) ListAPIKeys(accessToken, appID string) ([]APIKey, error) {
 
 func notFoundError(body io.Reader) error {
 	raw, err := io.ReadAll(body)
-	if err != nil || !json.Valid(bytes.TrimSpace(raw)) {
+	if err != nil {
+		return ErrEndpointNotAvailable
+	}
+
+	var envelope struct {
+		Errors []json.RawMessage `json:"errors"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(raw), &envelope); err != nil ||
+		len(envelope.Errors) == 0 {
 		return ErrEndpointNotAvailable
 	}
 
