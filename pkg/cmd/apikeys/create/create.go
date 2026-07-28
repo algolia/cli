@@ -346,13 +346,6 @@ func searchAPICreateError(opts *CreateOptions, err error) error {
 	}
 
 	cs := opts.IO.ColorScheme()
-	if config.ShouldUseSessionAPIKey(opts.config) {
-		return fmt.Errorf(
-			"%w\nRun %s to create API keys without an admin key",
-			err,
-			cs.Bold("algolia auth login"),
-		)
-	}
 
 	return fmt.Errorf(
 		"%w\nThe API key in use isn't an admin key. Provide an admin key, or drop the key set through %s, %s or your profile to create the key with your signed-in session",
