@@ -518,8 +518,9 @@ func Test_searchAPIListError(t *testing.T) {
 
 		err := searchAPIListError(opts, forbidden)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "algolia auth login")
-		assert.NotContains(t, err.Error(), "--api-key")
+		assert.Contains(t, err.Error(), "isn't an admin key")
+		assert.Contains(t, err.Error(), "ALGOLIA_API_KEY")
+		assert.NotContains(t, err.Error(), "algolia auth login")
 	})
 
 	t.Run("non-403 errors pass through", func(t *testing.T) {
