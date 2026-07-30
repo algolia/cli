@@ -18,7 +18,8 @@ import (
 // recordingTelemetryClient captures the tracked events so tests can assert on
 // them without hitting the network.
 type recordingTelemetryClient struct {
-	events []recordedEvent
+	events     []recordedEvent
+	identifies int
 }
 
 type recordedEvent struct {
@@ -26,7 +27,10 @@ type recordedEvent struct {
 	props map[string]any
 }
 
-func (r *recordingTelemetryClient) Identify(ctx context.Context) error { return nil }
+func (r *recordingTelemetryClient) Identify(ctx context.Context) error {
+	r.identifies++
+	return nil
+}
 
 func (r *recordingTelemetryClient) Track(
 	ctx context.Context,
@@ -106,6 +110,29 @@ func TestTrackCommandCompleted_ReportsFailure(t *testing.T) {
 	}
 	if props["user_cancelled"] != false {
 		t.Errorf("user_cancelled = %v, want false", props["user_cancelled"])
+	}
+}
+
+func TestIdentifyNewlyAuthenticatedUser_SkipsAlreadyIdentifiedRun(t *testing.T) {
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "algolia indices list")
+	telemetry.GetEventMetadata(ctx).SetUser("user-42", "user@test.com", "Test User")
+
+	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+
+	if client.identifies != 0 {
+		t.Errorf("expected no Identify, got %d", client.identifies)
+	}
+}
+
+func TestIdentifyNewlyAuthenticatedUser_SkipsWhenPreRunNeverRan(t *testing.T) {
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "")
+
+	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+
+	if client.identifies != 0 {
+		t.Errorf("expected no Identify, got %d", client.identifies)
 	}
 }
 

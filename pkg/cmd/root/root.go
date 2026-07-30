@@ -199,13 +199,6 @@ func Execute() (code exitCode) {
 		ctx := cmd.Context()
 		telemetryClient := telemetry.GetTelemetryClient(ctx)
 
-		// Identify the user.
-		err = telemetryClient.Identify(ctx)
-		if err != nil && hasDebug {
-			fmt.Fprintf(stderr, "Failed to identify user: %s\n", err)
-			return err
-		}
-
 		// Send telemetry.
 		err = telemetryClient.Track(ctx, telemetry.EventCommandInvoked, nil)
 		if err != nil && hasDebug {
@@ -270,11 +263,10 @@ func Execute() (code exitCode) {
 	return exitOK
 }
 
-// identifyNewlyAuthenticatedUser re-sends an Identify when the user signed in
-// during the command (e.g. `application create` while logged out): the
-// Identify from PersistentPreRunE went out anonymous, so the identity would
-// otherwise only ship on the next invocation. Runs before the deferred
-// Command Completed so that event carries the user too.
+// identifyNewlyAuthenticatedUser sends an Identify when the user signed in
+// during the command (e.g. `application create` while logged out), so the
+// identity does not have to wait for the next invocation. Runs before the
+// deferred Command Completed so that event carries the user too.
 func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
 	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
 		return
