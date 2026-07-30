@@ -162,6 +162,7 @@ func Execute() (code exitCode) {
 
 	// Pre-command auth check and telemetry setup.
 	authError := errors.New("authError")
+	var preRunAccessToken string
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if auth.IsAuthCheckEnabled(cmd) {
 			if err := auth.CheckAuth(&cfg); err != nil {
@@ -194,6 +195,7 @@ func Execute() (code exitCode) {
 
 		if token := auth.LoadToken(); token != nil {
 			telemetryMetadata.SetUser(token.UserID, token.Email, token.Name)
+			preRunAccessToken = token.AccessToken
 		}
 
 		ctx := cmd.Context()
@@ -225,7 +227,7 @@ func Execute() (code exitCode) {
 	// includes the update-notifier wait below.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
 	executedCmd, executeErr, elapsed = cmd, err, time.Since(start)
-	identifyNewlyAuthenticatedUser(ctx, cmd)
+	identifyNewSession(ctx, cmd, preRunAccessToken)
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
@@ -263,12 +265,13 @@ func Execute() (code exitCode) {
 	return exitOK
 }
 
-// identifyNewlyAuthenticatedUser sends an Identify when the stored token points
-// to a different user than the one known at PersistentPreRunE (a login or an
-// account switch during the command), so the identity does not have to wait for
-// the next invocation. Runs before the deferred Command Completed so that event
+// identifyNewSession sends an Identify when the run established or renewed the
+// session: the stored access token differs from the one known at
+// PersistentPreRunE (login, signup, account switch, re-authentication or silent
+// token refresh), so the identity and its traits do not have to wait for the
+// next invocation. Runs before the deferred Command Completed so that event
 // carries the user too.
-func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
+func identifyNewSession(ctx context.Context, cmd *cobra.Command, preRunAccessToken string) {
 	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
 		return
 	}
@@ -279,7 +282,7 @@ func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
 		return
 	}
 	token := auth.LoadToken()
-	if token == nil || token.UserID == "" || token.UserID == metadata.UserID {
+	if token == nil || token.UserID == "" || token.AccessToken == preRunAccessToken {
 		return
 	}
 	metadata.SetUser(token.UserID, token.Email, token.Name)

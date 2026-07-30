@@ -140,7 +140,7 @@ func runOAuthFlowSteps(
 		return err
 	}
 
-	identifyAuthenticatedUser(ctx)
+	applyStoredIdentity(ctx)
 
 	tracker.SetStep(telemetry.StepAppsFetch)
 	opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
@@ -200,22 +200,10 @@ func runOAuthFlowSteps(
 	return apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default)
 }
 
-// identifyAuthenticatedUser emits a telemetry Identify for the user that just
-// authenticated. It is a no-op when no identified token is present.
-func identifyAuthenticatedUser(ctx context.Context) {
-	if !applyStoredIdentity(ctx) {
-		return
-	}
-	client := telemetry.GetTelemetryClient(ctx)
-	if client == nil {
-		return
-	}
-	_ = client.Identify(ctx)
-}
-
 // applyStoredIdentity copies the persisted user identity from the stored token
-// onto the request's telemetry metadata. It reports whether an identity was
-// applied.
+// onto the request's telemetry metadata so the flow's own events carry the user.
+// The Identify itself is sent once at command completion. It reports whether an
+// identity was applied.
 func applyStoredIdentity(ctx context.Context) bool {
 	token := auth.LoadToken()
 	if token == nil || token.UserID == "" {

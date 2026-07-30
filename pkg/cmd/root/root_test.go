@@ -116,13 +116,13 @@ func TestTrackCommandCompleted_ReportsFailure(t *testing.T) {
 	}
 }
 
-func storeMockToken(t *testing.T, userID int) {
+func storeMockToken(t *testing.T, userID int, accessToken string) {
 	t.Helper()
 	keyring.MockInit()
 	t.Cleanup(auth.ClearToken)
 
 	err := auth.SaveToken(&dashboard.OAuthTokenResponse{
-		AccessToken:  "access",
+		AccessToken:  accessToken,
 		RefreshToken: "refresh",
 		ExpiresIn:    3600,
 		User: &dashboard.User{
@@ -136,44 +136,42 @@ func storeMockToken(t *testing.T, userID int) {
 	}
 }
 
-func TestIdentifyNewlyAuthenticatedUser_IdentifiesUserAuthenticatedMidRun(t *testing.T) {
-	storeMockToken(t, 42)
-
-	client := &recordingTelemetryClient{}
-	ctx := newTelemetryContext(client, "algolia indices list")
-
-	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
-
-	if client.identifies != 1 {
-		t.Errorf("expected 1 Identify, got %d", client.identifies)
-	}
-	if got := telemetry.GetEventMetadata(ctx).UserID; got != "42" {
-		t.Errorf("metadata UserID = %q, want %q", got, "42")
-	}
-}
-
-func TestIdentifyNewlyAuthenticatedUser_SkipsAlreadyIdentifiedRun(t *testing.T) {
-	storeMockToken(t, 42)
+func TestIdentifyNewSession_SkipsUnchangedSession(t *testing.T) {
+	storeMockToken(t, 42, "token-1")
 
 	client := &recordingTelemetryClient{}
 	ctx := newTelemetryContext(client, "algolia indices list")
 	telemetry.GetEventMetadata(ctx).SetUser("42", "user@test.com", "Test User")
 
-	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+	identifyNewSession(ctx, &cobra.Command{Use: "list"}, "token-1")
 
 	if client.identifies != 0 {
 		t.Errorf("expected no Identify, got %d", client.identifies)
 	}
 }
 
-func TestIdentifyNewlyAuthenticatedUser_IdentifiesAccountSwitch(t *testing.T) {
-	storeMockToken(t, 43)
+func TestIdentifyNewSession_IdentifiesRenewedSessionForSameUser(t *testing.T) {
+	storeMockToken(t, 42, "token-2")
+
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "algolia indices list")
+	telemetry.GetEventMetadata(ctx).SetUser("42", "user@test.com", "Test User")
+
+	identifyNewSession(ctx, &cobra.Command{Use: "list"}, "token-1")
+
+	if client.identifies != 1 {
+		t.Errorf("expected 1 Identify, got %d", client.identifies)
+	}
+}
+
+func TestIdentifyNewSession_IdentifiesAccountSwitch(t *testing.T) {
+	storeMockToken(t, 43, "token-2")
 
 	client := &recordingTelemetryClient{}
 	ctx := newTelemetryContext(client, "algolia indices list")
 	telemetry.GetEventMetadata(ctx).SetUser("42", "other@test.com", "Other User")
 
-	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+	identifyNewSession(ctx, &cobra.Command{Use: "list"}, "token-1")
 
 	if client.identifies != 1 {
 		t.Errorf("expected 1 Identify, got %d", client.identifies)
@@ -183,13 +181,43 @@ func TestIdentifyNewlyAuthenticatedUser_IdentifiesAccountSwitch(t *testing.T) {
 	}
 }
 
-func TestIdentifyNewlyAuthenticatedUser_SkipsWhenPreRunNeverRan(t *testing.T) {
-	storeMockToken(t, 42)
+func TestIdentifyNewSession_IdentifiesUserAuthenticatedMidRun(t *testing.T) {
+	storeMockToken(t, 42, "token-1")
+
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "algolia indices list")
+
+	identifyNewSession(ctx, &cobra.Command{Use: "list"}, "")
+
+	if client.identifies != 1 {
+		t.Errorf("expected 1 Identify, got %d", client.identifies)
+	}
+	if got := telemetry.GetEventMetadata(ctx).UserID; got != "42" {
+		t.Errorf("metadata UserID = %q, want %q", got, "42")
+	}
+}
+
+func TestIdentifyNewSession_SkipsWhenPreRunNeverRan(t *testing.T) {
+	storeMockToken(t, 42, "token-1")
 
 	client := &recordingTelemetryClient{}
 	ctx := newTelemetryContext(client, "")
 
-	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+	identifyNewSession(ctx, &cobra.Command{Use: "list"}, "")
+
+	if client.identifies != 0 {
+		t.Errorf("expected no Identify, got %d", client.identifies)
+	}
+}
+
+func TestIdentifyNewSession_SkipsWhenNoTokenStored(t *testing.T) {
+	keyring.MockInit()
+	auth.ClearToken()
+
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "algolia indices list")
+
+	identifyNewSession(ctx, &cobra.Command{Use: "list"}, "")
 
 	if client.identifies != 0 {
 		t.Errorf("expected no Identify, got %d", client.identifies)
