@@ -263,10 +263,11 @@ func Execute() (code exitCode) {
 	return exitOK
 }
 
-// identifyNewlyAuthenticatedUser sends an Identify when the user signed in
-// during the command (e.g. `application create` while logged out), so the
-// identity does not have to wait for the next invocation. Runs before the
-// deferred Command Completed so that event carries the user too.
+// identifyNewlyAuthenticatedUser sends an Identify when the stored token points
+// to a different user than the one known at PersistentPreRunE (a login or an
+// account switch during the command), so the identity does not have to wait for
+// the next invocation. Runs before the deferred Command Completed so that event
+// carries the user too.
 func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
 	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
 		return
@@ -274,11 +275,11 @@ func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
 	// Same gating as trackCommandCompleted: an empty command path means
 	// PersistentPreRunE never ran, so no login could have happened either.
 	metadata := telemetry.GetEventMetadata(ctx)
-	if metadata == nil || metadata.CommandPath == "" || metadata.UserID != "" {
+	if metadata == nil || metadata.CommandPath == "" {
 		return
 	}
 	token := auth.LoadToken()
-	if token == nil || token.UserID == "" {
+	if token == nil || token.UserID == "" || token.UserID == metadata.UserID {
 		return
 	}
 	metadata.SetUser(token.UserID, token.Email, token.Name)

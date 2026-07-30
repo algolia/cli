@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/zalando/go-keyring"
 
+	"github.com/algolia/cli/api/dashboard"
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/telemetry"
 )
@@ -113,10 +116,48 @@ func TestTrackCommandCompleted_ReportsFailure(t *testing.T) {
 	}
 }
 
-func TestIdentifyNewlyAuthenticatedUser_SkipsAlreadyIdentifiedRun(t *testing.T) {
+func storeMockToken(t *testing.T, userID int) {
+	t.Helper()
+	keyring.MockInit()
+	t.Cleanup(auth.ClearToken)
+
+	err := auth.SaveToken(&dashboard.OAuthTokenResponse{
+		AccessToken:  "access",
+		RefreshToken: "refresh",
+		ExpiresIn:    3600,
+		User: &dashboard.User{
+			ID:    userID,
+			Email: "user@test.com",
+			Name:  "Test User",
+		},
+	})
+	if err != nil {
+		t.Fatalf("SaveToken() error = %v", err)
+	}
+}
+
+func TestIdentifyNewlyAuthenticatedUser_IdentifiesUserAuthenticatedMidRun(t *testing.T) {
+	storeMockToken(t, 42)
+
 	client := &recordingTelemetryClient{}
 	ctx := newTelemetryContext(client, "algolia indices list")
-	telemetry.GetEventMetadata(ctx).SetUser("user-42", "user@test.com", "Test User")
+
+	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+
+	if client.identifies != 1 {
+		t.Errorf("expected 1 Identify, got %d", client.identifies)
+	}
+	if got := telemetry.GetEventMetadata(ctx).UserID; got != "42" {
+		t.Errorf("metadata UserID = %q, want %q", got, "42")
+	}
+}
+
+func TestIdentifyNewlyAuthenticatedUser_SkipsAlreadyIdentifiedRun(t *testing.T) {
+	storeMockToken(t, 42)
+
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "algolia indices list")
+	telemetry.GetEventMetadata(ctx).SetUser("42", "user@test.com", "Test User")
 
 	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
 
@@ -125,7 +166,26 @@ func TestIdentifyNewlyAuthenticatedUser_SkipsAlreadyIdentifiedRun(t *testing.T) 
 	}
 }
 
+func TestIdentifyNewlyAuthenticatedUser_IdentifiesAccountSwitch(t *testing.T) {
+	storeMockToken(t, 43)
+
+	client := &recordingTelemetryClient{}
+	ctx := newTelemetryContext(client, "algolia indices list")
+	telemetry.GetEventMetadata(ctx).SetUser("42", "other@test.com", "Other User")
+
+	identifyNewlyAuthenticatedUser(ctx, &cobra.Command{Use: "list"})
+
+	if client.identifies != 1 {
+		t.Errorf("expected 1 Identify, got %d", client.identifies)
+	}
+	if got := telemetry.GetEventMetadata(ctx).UserID; got != "43" {
+		t.Errorf("metadata UserID = %q, want %q", got, "43")
+	}
+}
+
 func TestIdentifyNewlyAuthenticatedUser_SkipsWhenPreRunNeverRan(t *testing.T) {
+	storeMockToken(t, 42)
+
 	client := &recordingTelemetryClient{}
 	ctx := newTelemetryContext(client, "")
 
