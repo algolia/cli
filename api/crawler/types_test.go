@@ -16,11 +16,13 @@ func TestRenderJavaScript_UnmarshalJSON(t *testing.T) {
 	}{
 		{name: "bool true", payload: `true`, want: true},
 		{name: "bool false", payload: `false`, want: false},
+		{name: "null", payload: `null`, want: false},
 		{
 			name:    "array of patterns",
 			payload: `["https://example.com/docs/**","https://example.com/api/**"]`,
 			want:    true,
 		},
+		{name: "empty array", payload: `[]`, want: false},
 		{
 			name:    "object with enabled false",
 			payload: `{"enabled":false,"waitTime":{"min":1000,"max":5000}}`,

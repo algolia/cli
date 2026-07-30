@@ -105,8 +105,13 @@ func (r *RenderJavaScript) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		r.Enabled = enabled
+		return nil
 	case '[':
-		r.Enabled = true
+		var patterns []json.RawMessage
+		if err := json.Unmarshal(trimmed, &patterns); err != nil {
+			return err
+		}
+		r.Enabled = len(patterns) > 0
 	case '{':
 		var object struct {
 			Enabled *bool `json:"enabled"`
