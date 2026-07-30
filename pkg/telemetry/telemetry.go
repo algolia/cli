@@ -265,7 +265,12 @@ func (a *AnalyticsTelemetryClient) Track(
 ) error {
 	metadata := GetEventMetadata(ctx)
 
-	props := make(map[string]any, len(properties)+8)
+	var isCI int8
+	if utils.IsCI() {
+		isCI = 1
+	}
+
+	props := make(map[string]any, len(properties)+10)
 	for k, v := range properties {
 		props[k] = v
 	}
@@ -278,6 +283,8 @@ func (a *AnalyticsTelemetryClient) Track(
 	props["cli_context"] = metadata.CLIContext
 	props["version"] = metadata.CLIVersion
 	props["operating_system"] = metadata.OS
+	props["configured_applications"] = metadata.ConfiguredApplicationsNb
+	props["is_ci"] = isCI
 
 	track := analytics.Track{
 		Event:       event,
