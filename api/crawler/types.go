@@ -1,6 +1,9 @@
 package crawler
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
@@ -64,13 +67,13 @@ type Config struct {
 	StartUrls   []string `json:"startUrls,omitempty"`
 	Sitemaps    []string `json:"sitemaps,omitempty"`
 
-	ExclusionPatterns []string `json:"exclusionPatterns,omitempty"`
-	IgnoreQueryParams []string `json:"ignoreQueryParams,omitempty"`
-	RenderJavaScript  bool     `json:"renderJavaScript,omitempty"`
-	RateLimit         int      `json:"rateLimit,omitempty"`
-	ExtraUrls         []string `json:"extraUrls,omitempty"`
-	MaxDepth          int      `json:"maxDepth,omitempty"`
-	MaxURLs           int      `json:"maxUrls,omitempty"`
+	ExclusionPatterns []string          `json:"exclusionPatterns,omitempty"`
+	IgnoreQueryParams []string          `json:"ignoreQueryParams,omitempty"`
+	RenderJavaScript  *RenderJavaScript `json:"renderJavaScript,omitempty"`
+	RateLimit         int               `json:"rateLimit,omitempty"`
+	ExtraUrls         []string          `json:"extraUrls,omitempty"`
+	MaxDepth          int               `json:"maxDepth,omitempty"`
+	MaxURLs           int               `json:"maxUrls,omitempty"`
 
 	IgnoreRobotsTxtRules bool `json:"ignoreRobotsTxtRules,omitempty"`
 	IgnoreNoIndex        bool `json:"ignoreNoIndex,omitempty"`
@@ -81,6 +84,60 @@ type Config struct {
 	InitialIndexSettings map[string]*search.IndexSettings `json:"initialIndexSettings,omitempty"`
 
 	Actions []*Action `json:"actions,omitempty"`
+}
+
+type RenderJavaScript struct {
+	Enabled bool
+
+	raw json.RawMessage
+}
+
+func (r *RenderJavaScript) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil
+	}
+
+	switch trimmed[0] {
+	case 't', 'f':
+		var enabled bool
+		if err := json.Unmarshal(trimmed, &enabled); err != nil {
+			return err
+		}
+		r.Enabled = enabled
+		return nil
+	case '[':
+		var patterns []json.RawMessage
+		if err := json.Unmarshal(trimmed, &patterns); err != nil {
+			return err
+		}
+		r.Enabled = len(patterns) > 0
+	case '{':
+		var object struct {
+			Enabled *bool `json:"enabled"`
+		}
+		if err := json.Unmarshal(trimmed, &object); err != nil {
+			return err
+		}
+		r.Enabled = object.Enabled == nil || *object.Enabled
+	default:
+		return fmt.Errorf(
+			"renderJavaScript must be a boolean, an array of URL patterns or an object, got %s",
+			trimmed,
+		)
+	}
+
+	r.raw = bytes.Clone(trimmed)
+
+	return nil
+}
+
+func (r *RenderJavaScript) MarshalJSON() ([]byte, error) {
+	if len(r.raw) > 0 {
+		return bytes.Clone(r.raw), nil
+	}
+
+	return json.Marshal(r.Enabled)
 }
 
 // Action is a Crawler configuration action.
