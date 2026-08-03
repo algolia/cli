@@ -65,18 +65,32 @@ func selectServer(t *testing.T, createHit *bool) *httptest.Server {
 
 func newSelectOpts(t *testing.T, srv *httptest.Server, cfg *test.ConfigStub) *SelectOptions {
 	t.Helper()
+	// --app-name bypasses the interactive picker.
+	return newSelectOptsWithSelector(t, srv, cfg, func(opts *SelectOptions) {
+		opts.AppName = "My App"
+	})
+}
+
+func newSelectOptsWithSelector(
+	t *testing.T,
+	srv *httptest.Server,
+	cfg *test.ConfigStub,
+	selector func(*SelectOptions),
+) *SelectOptions {
+	t.Helper()
 	seedToken(t)
 	io, _, _, _ := iostreams.Test()
-	return &SelectOptions{
-		IO:      io,
-		Config:  cfg,
-		AppName: "My App", // bypasses the interactive picker
+	opts := &SelectOptions{
+		IO:     io,
+		Config: cfg,
 		NewDashboardClient: func(string) *dashboard.Client {
 			c := dashboard.NewClientWithHTTPClient("test", srv.Client())
 			c.APIURL = srv.URL
 			return c
 		},
 	}
+	selector(opts)
+	return opts
 }
 
 func Test_runSelectCmd_RegeneratesKeyWhenNoUUID(t *testing.T) {
@@ -121,4 +135,51 @@ func Test_runSelectCmd_ReusesKeyWhenUUIDPresent(t *testing.T) {
 
 	assert.False(t, createHit, "expected no new key when a UUID is already stored")
 	assert.Equal(t, "existing-uuid", cfg.SavedApps["APP1"].APIKeyUUID)
+}
+
+func Test_runSelectCmd_SelectsByAppID(t *testing.T) {
+	createHit := false
+	srv := selectServer(t, &createHit)
+	defer srv.Close()
+
+	cfg := &test.ConfigStub{}
+	opts := newSelectOptsWithSelector(t, srv, cfg, func(o *SelectOptions) {
+		o.AppID = "APP1"
+	})
+
+	app, err := runSelectCmd(opts)
+	require.NoError(t, err)
+	require.NotNil(t, app)
+
+	assert.Equal(t, "APP1", app.ID)
+	assert.Equal(t, "My App", app.Name)
+	assert.Equal(t, "new-key", cfg.SavedApps["APP1"].APIKey)
+}
+
+func Test_runSelectCmd_UnknownAppID(t *testing.T) {
+	createHit := false
+	srv := selectServer(t, &createHit)
+	defer srv.Close()
+
+	opts := newSelectOptsWithSelector(t, srv, &test.ConfigStub{}, func(o *SelectOptions) {
+		o.AppID = "NOPE"
+	})
+
+	_, err := runSelectCmd(opts)
+	require.Error(t, err)
+	assert.Equal(t, `application with ID "NOPE" not found`, err.Error())
+	assert.False(t, createHit)
+}
+
+func Test_runSelectCmd_RequiresSelectorWhenNonInteractive(t *testing.T) {
+	createHit := false
+	srv := selectServer(t, &createHit)
+	defer srv.Close()
+
+	// iostreams.Test() is not a TTY, so the picker is unavailable.
+	opts := newSelectOptsWithSelector(t, srv, &test.ConfigStub{}, func(*SelectOptions) {})
+
+	_, err := runSelectCmd(opts)
+	require.Error(t, err)
+	assert.Equal(t, "--app-id or --app-name is required in non-interactive mode", err.Error())
 }

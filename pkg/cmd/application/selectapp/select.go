@@ -21,6 +21,7 @@ type SelectOptions struct {
 	IO     *iostreams.IOStreams
 	Config config.IConfig
 
+	AppID   string
 	AppName string
 
 	NewDashboardClient func(clientID string) *dashboard.Client
@@ -49,6 +50,9 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Select by name (non-interactive)
 			$ algolia application select --app-name "My App"
+
+			# Select by application ID (non-interactive)
+			$ algolia application select --app-id "ABCDEF1234"
 		`),
 		Aliases: []string{"use"},
 		Args:    validators.NoArgs(),
@@ -62,7 +66,10 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().
+		StringVar(&opts.AppID, "app-id", "", "Select application by ID (non-interactive)")
+	cmd.Flags().
 		StringVar(&opts.AppName, "app-name", "", "Select application by name (non-interactive)")
+	cmd.MarkFlagsMutuallyExclusive("app-id", "app-name")
 
 	return cmd
 }
@@ -143,6 +150,15 @@ func pickApplication(
 	opts *SelectOptions,
 	apps []dashboard.Application,
 ) (*dashboard.Application, error) {
+	if opts.AppID != "" {
+		for i := range apps {
+			if apps[i].ID == opts.AppID {
+				return &apps[i], nil
+			}
+		}
+		return nil, fmt.Errorf("application with ID %q not found", opts.AppID)
+	}
+
 	if opts.AppName != "" {
 		for i := range apps {
 			if apps[i].Name == opts.AppName {
@@ -153,7 +169,7 @@ func pickApplication(
 	}
 
 	if !opts.IO.CanPrompt() {
-		return nil, fmt.Errorf("--app-name is required in non-interactive mode")
+		return nil, fmt.Errorf("--app-id or --app-name is required in non-interactive mode")
 	}
 
 	cs := opts.IO.ColorScheme()
