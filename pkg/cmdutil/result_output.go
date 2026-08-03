@@ -2,6 +2,7 @@ package cmdutil
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/algolia/cli/pkg/iostreams"
 )
@@ -19,4 +20,17 @@ func PrintRunSummary(
 	}
 	_, err := fmt.Fprintln(ios.Out, human)
 	return err
+}
+
+// DiscardHumanOutput drops the progress narration a command writes to stdout,
+// so the only thing it emits is the structured document. Diagnostics written
+// straight to stderr (warnings, errors) are untouched. The returned function
+// restores the original writer and must run before the document is printed.
+func DiscardHumanOutput(ios *iostreams.IOStreams) func() {
+	original := ios.Out
+	ios.Out = io.Discard
+
+	return func() {
+		ios.Out = original
+	}
 }

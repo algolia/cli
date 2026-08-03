@@ -2,6 +2,7 @@ package login
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/telemetry"
@@ -176,6 +178,109 @@ func TestTrackOAuthFlowOutcome(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestApplyNonInteractive(t *testing.T) {
+	io, _, _, _ := iostreams.Test()
+	opts := &LoginOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags()}
+
+	// Flag off: nothing changes.
+	applyNonInteractive(opts)
+	assert.False(t, io.GetNeverPrompt())
+	assert.False(t, opts.PrintFlags.HasStructuredOutput())
+
+	opts.NonInteractive = true
+	applyNonInteractive(opts)
+	assert.False(t, io.CanPrompt())
+	assert.Equal(t, "json", *opts.PrintFlags.OutputFormat)
+}
+
+func TestApplyNonInteractive_KeepsExplicitOutput(t *testing.T) {
+	io, _, _, _ := iostreams.Test()
+	opts := &LoginOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
+	*opts.PrintFlags.OutputFormat = "jsonpath={.application.id}"
+
+	applyNonInteractive(opts)
+	assert.Equal(t, "jsonpath={.application.id}", *opts.PrintFlags.OutputFormat)
+}
+
+// applyNonInteractive must tolerate the shared LoginOptions of `auth signup`,
+// which exposes no output flags.
+func TestApplyNonInteractive_NilPrintFlags(t *testing.T) {
+	io, _, _, _ := iostreams.Test()
+	opts := &LoginOptions{IO: io, NonInteractive: true}
+
+	applyNonInteractive(opts)
+	assert.False(t, io.CanPrompt())
+	assert.NoError(t, printLoginResult(opts, &dashboard.Application{ID: "APP1"}))
+}
+
+func TestPrintLoginResult_JSONWithoutAPIKey(t *testing.T) {
+	keyring.MockInit()
+	t.Cleanup(auth.ClearToken)
+	require.NoError(t, auth.SaveToken(&dashboard.OAuthTokenResponse{
+		AccessToken: "access",
+		ExpiresIn:   3600,
+		User:        &dashboard.User{ID: 42, Email: "user@example.com"},
+	}))
+
+	io, _, stdout, _ := iostreams.Test()
+	opts := &LoginOptions{
+		IO: io,
+		Config: &test.ConfigStub{
+			SavedApps: map[string]test.SavedApplication{"APP1": {Alias: "my app"}},
+		},
+		PrintFlags:     cmdutil.NewPrintFlags(),
+		NonInteractive: true,
+	}
+	applyNonInteractive(opts)
+
+	app := &dashboard.Application{
+		ID:        "APP1",
+		Name:      "My App",
+		APIKey:    "secret-key",
+		PlanLabel: "Grow",
+	}
+	require.NoError(t, printLoginResult(opts, app))
+
+	var got loginResult
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got), "stdout: %q", stdout.String())
+	assert.True(t, got.Success)
+	assert.Equal(t, "user@example.com", got.Email)
+	require.NotNil(t, got.Application)
+	assert.Equal(t, apputil.ApplicationOutput{
+		ID:    "APP1",
+		Alias: "my app",
+		Name:  "My App",
+		Plan:  "Grow",
+	}, *got.Application)
+	assert.NotContains(t, stdout.String(), "secret-key")
+}
+
+// Non-interactive login signs in only, so the document reports success without
+// an application.
+func TestPrintLoginResult_NoApplication(t *testing.T) {
+	keyring.MockInit()
+	t.Cleanup(auth.ClearToken)
+	require.NoError(t, auth.SaveToken(&dashboard.OAuthTokenResponse{
+		AccessToken: "access",
+		ExpiresIn:   3600,
+		User:        &dashboard.User{ID: 42, Email: "user@example.com"},
+	}))
+
+	io, _, stdout, stderr := iostreams.Test()
+	opts := &LoginOptions{
+		IO:             io,
+		Config:         &test.ConfigStub{},
+		PrintFlags:     cmdutil.NewPrintFlags(),
+		NonInteractive: true,
+	}
+	applyNonInteractive(opts)
+
+	require.NoError(t, printLoginResult(opts, nil))
+
+	assert.JSONEq(t, `{"success":true,"email":"user@example.com"}`, stdout.String())
+	assert.Empty(t, stderr.String())
 }
 
 func TestSelectApplication_MultipleApps_NonInteractive_NoAppName(t *testing.T) {
