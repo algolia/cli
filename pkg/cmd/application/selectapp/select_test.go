@@ -143,6 +143,18 @@ func Test_applyNonInteractive_DefaultsToJSON(t *testing.T) {
 	assert.Equal(t, "json", *opts.PrintFlags.OutputFormat)
 }
 
+// The spinner writes to stderr even on a TTY, so a non-interactive run has to
+// silence it too.
+func Test_applyNonInteractive_DisablesProgressIndicator(t *testing.T) {
+	io, _, _, _ := iostreams.Test()
+	io.SetProgressIndicatorEnabled(true)
+	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
+
+	applyNonInteractive(opts)
+
+	assert.False(t, io.GetProgressIndicatorEnabled())
+}
+
 func Test_applyNonInteractive_KeepsExplicitOutput(t *testing.T) {
 	io, _, _, _ := iostreams.Test()
 	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}

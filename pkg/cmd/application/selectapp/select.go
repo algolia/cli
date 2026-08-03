@@ -108,6 +108,7 @@ func applyNonInteractive(opts *SelectOptions) {
 	}
 
 	opts.IO.SetNeverPrompt(true)
+	opts.IO.SetProgressIndicatorEnabled(false)
 
 	if opts.PrintFlags != nil && opts.PrintFlags.OutputFormat != nil &&
 		!opts.PrintFlags.HasStructuredOutput() {
