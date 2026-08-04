@@ -24,13 +24,20 @@ type SelectOptions struct {
 	AppID   string
 	AppName string
 
+	// NonInteractive disables every prompt and defaults the output to JSON, so
+	// the command is usable from scripts.
+	NonInteractive bool
+
+	PrintFlags *cmdutil.PrintFlags
+
 	NewDashboardClient func(clientID string) *dashboard.Client
 }
 
 func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &SelectOptions{
-		IO:     f.IOStreams,
-		Config: f.Config,
+		IO:         f.IOStreams,
+		Config:     f.Config,
+		PrintFlags: cmdutil.NewPrintFlags(),
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
 		},
@@ -53,6 +60,9 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Select by application ID (non-interactive)
 			$ algolia application select --app-id "ABCDEF1234"
+
+			# Select from a script: no prompts, JSON on stdout
+			$ algolia application select --non-interactive --app-id "ABCDEF1234"
 		`),
 		Aliases: []string{"use"},
 		Args:    validators.NoArgs(),
@@ -60,8 +70,21 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := runSelectCmd(opts)
-			return err
+			if opts.NonInteractive {
+				cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
+			}
+
+			// Fail before authenticating: with no selector there is nothing to pick.
+			if opts.NonInteractive && opts.AppID == "" && opts.AppName == "" {
+				return fmt.Errorf("--app-id or --app-name is required in non-interactive mode")
+			}
+
+			app, err := runSelectCmd(opts)
+			if err != nil {
+				return err
+			}
+
+			return printSelection(opts, app)
 		},
 	}
 
@@ -70,8 +93,27 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().
 		StringVar(&opts.AppName, "app-name", "", "Select application by name (non-interactive)")
 	cmd.MarkFlagsMutuallyExclusive("app-id", "app-name")
+	cmd.Flags().
+		BoolVar(&opts.NonInteractive, "non-interactive", false, "Never prompt; output JSON unless --output is set (requires --app-id or --app-name)")
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
+}
+
+// printSelection emits the structured document once the flow is done. The
+// human-readable flow output has already been written to stderr by then.
+func printSelection(opts *SelectOptions, app *dashboard.Application) error {
+	if !opts.PrintFlags.HasStructuredOutput() {
+		return nil
+	}
+
+	if app == nil {
+		return fmt.Errorf(
+			"no applications found; create one with \"algolia application create\"",
+		)
+	}
+
+	return opts.PrintFlags.Print(opts.IO, apputil.NewApplicationOutput(opts.Config, app))
 }
 
 // Run executes the interactive application-selection flow and returns the
@@ -91,6 +133,12 @@ func Run(f *cmdutil.Factory) (*dashboard.Application, error) {
 }
 
 func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
+	// Move the progress narration to stderr so stdout carries the JSON document
+	// only.
+	if opts.PrintFlags.HasStructuredOutput() {
+		defer cmdutil.RedirectHumanOutput(opts.IO)()
+	}
+
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 

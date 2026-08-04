@@ -1,6 +1,7 @@
 package selectapp
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/shared/apputil"
+	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/keychain"
 	"github.com/algolia/cli/test"
@@ -91,6 +94,65 @@ func newSelectOptsWithSelector(
 	}
 	selector(opts)
 	return opts
+}
+
+func Test_runSelectCmd_NonInteractiveWritesJSONOnlyToStdout(t *testing.T) {
+	createHit := false
+	srv := selectServer(t, &createHit)
+	defer srv.Close()
+
+	cfg := &test.ConfigStub{}
+	opts := newSelectOpts(t, srv, cfg)
+	opts.NonInteractive = true
+	opts.PrintFlags = cmdutil.NewPrintFlags()
+	// Mirrors what the command does before running.
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
+
+	stdout, stderr := captureOutput(t, opts.IO)
+
+	app, err := runSelectCmd(opts)
+	require.NoError(t, err)
+	require.NoError(t, printSelection(opts, app))
+
+	var got apputil.ApplicationOutput
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got), "stdout: %q", stdout.String())
+	assert.Equal(t, apputil.ApplicationOutput{
+		ID:    "APP1",
+		Alias: "my app",
+		Name:  "My App",
+	}, got)
+	assert.NotContains(t, stdout.String(), "API key")
+	assert.NotContains(t, stdout.String(), "new-key")
+
+	assert.Contains(t, stderr.String(), "API key generated for application APP1")
+	assert.NotContains(t, stderr.String(), "new-key")
+}
+
+func TestNewSelectCmd_NonInteractiveRequiresSelector(t *testing.T) {
+	f, inOut := test.NewFactory(true, nil, &test.ConfigStub{}, "")
+
+	_, err := test.Execute(NewSelectCmd(f), "--non-interactive", inOut)
+	assert.ErrorContains(t, err, "--app-id or --app-name is required in non-interactive mode")
+	assert.Empty(t, inOut.OutBuf.String())
+}
+
+func Test_printSelection_NoApplication(t *testing.T) {
+	io, _, _, _ := iostreams.Test()
+	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
+
+	assert.ErrorContains(t, printSelection(opts, nil), "no applications found")
+}
+
+// captureOutput swaps the test streams for buffers we can assert on separately.
+func captureOutput(t *testing.T, io *iostreams.IOStreams) (*bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	io.Out = stdout
+	io.ErrOut = stderr
+
+	return stdout, stderr
 }
 
 func Test_runSelectCmd_RegeneratesKeyWhenNoUUID(t *testing.T) {

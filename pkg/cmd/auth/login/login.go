@@ -34,14 +34,33 @@ type LoginOptions struct {
 	// waits for the redirect.
 	NoBrowser bool
 
+	// NonInteractive disables every prompt and defaults the output to JSON, so
+	// the command is usable from scripts. It signs in only: unless --app-name
+	// names one, choosing an application is left to `algolia application select`.
+	// The browser step is unaffected - the authorize URL still has to be opened
+	// for the flow to complete.
+	NonInteractive bool
+
+	// PrintFlags is nil for callers that don't expose output flags (e.g. signup).
+	PrintFlags *cmdutil.PrintFlags
+
 	NewDashboardClient func(clientID string) *dashboard.Client
+}
+
+// loginResult is the machine-readable outcome of the flow. Application is nil
+// when the run signed in without configuring one.
+type loginResult struct {
+	Success     bool                       `json:"success"`
+	Email       string                     `json:"email,omitempty"`
+	Application *apputil.ApplicationOutput `json:"application,omitempty"`
 }
 
 // NewLoginCmd returns a new instance of the login command.
 func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &LoginOptions{
-		IO:     f.IOStreams,
-		Config: f.Config,
+		IO:         f.IOStreams,
+		Config:     f.Config,
+		PrintFlags: cmdutil.NewPrintFlags(),
 		NewDashboardClient: func(clientID string) *dashboard.Client {
 			return dashboard.NewClient(clientID)
 		},
@@ -61,6 +80,11 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 			Use --no-browser if the browser cannot be opened automatically
 			(e.g. SSH sessions, containers). The URL will be printed for you
 			to open manually; the CLI still waits for the redirect.
+
+			Use --non-interactive to sign in without any prompt and print the
+			result as JSON. It signs in only: no application is configured unless
+			--app-name names one, so pick one afterwards with
+			"algolia application select".
 		`),
 		Example: heredoc.Doc(`
 			# Sign in interactively (opens browser)
@@ -71,9 +95,15 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Print the URL instead of opening the browser
 			$ algolia auth login --no-browser
+
+			# Sign in from a script: no prompts, JSON on stdout, no application
+			$ algolia auth login --non-interactive
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.NonInteractive {
+				cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
+			}
 			return runLoginCmd(cmd.Context(), opts)
 		},
 	}
@@ -84,6 +114,9 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the application name)")
 	cmd.Flags().BoolVar(&opts.Default, "default", true, "Set the application as the current one")
 	cmd.Flags().BoolVar(&opts.NoBrowser, "no-browser", false, "Print the authorize URL instead of opening the browser")
+	cmd.Flags().
+		BoolVar(&opts.NonInteractive, "non-interactive", false, "Sign in without prompting and print JSON; configures no application unless --app-name is set")
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -102,9 +135,32 @@ func RunOAuthFlow(ctx context.Context, opts *LoginOptions, signup bool) error {
 	tracker := telemetry.NewFlowTracker()
 	telemetry.TrackEvent(ctx, telemetry.AuthStarted(flow, opts.NoBrowser))
 
-	err := runOAuthFlowSteps(ctx, opts, signup, tracker)
+	app, err := runOAuthFlowSteps(ctx, opts, signup, tracker)
 	trackOAuthFlowOutcome(ctx, flow, tracker, err)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return printLoginResult(opts, app)
+}
+
+// printLoginResult emits the structured document once the flow is done, and
+// nothing at all in the default human-readable mode.
+func printLoginResult(opts *LoginOptions, app *dashboard.Application) error {
+	if !opts.PrintFlags.HasStructuredOutput() {
+		return nil
+	}
+
+	result := loginResult{Success: true}
+	if token := auth.LoadToken(); token != nil {
+		result.Email = token.Email
+	}
+	if app != nil {
+		application := apputil.NewApplicationOutput(opts.Config, app)
+		result.Application = &application
+	}
+
+	return opts.PrintFlags.Print(opts.IO, result)
 }
 
 // trackOAuthFlowOutcome reports how the auth flow ended: completed, aborted by
@@ -130,24 +186,40 @@ func runOAuthFlowSteps(
 	opts *LoginOptions,
 	signup bool,
 	tracker *telemetry.FlowTracker,
-) error {
+) (*dashboard.Application, error) {
+	// Move the progress narration to stderr so stdout carries the JSON document
+	// only. It stays visible, which matters most for the authorize URL: printed
+	// or not, the flow can't complete until that URL is opened, so a caller that
+	// can't open a browser needs to see it.
+	if opts.PrintFlags.HasStructuredOutput() {
+		defer cmdutil.RedirectHumanOutput(opts.IO)()
+	}
+
 	cs := opts.IO.ColorScheme()
 	client := opts.NewDashboardClient(auth.OAuthClientID())
 
 	openBrowser := !opts.NoBrowser
 	accessToken, err := auth.RunOAuth(opts.IO, client, signup, openBrowser, tracker)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	applyStoredIdentity(ctx)
+
+	// Non-interactive login authenticates only: with no name to go on there is
+	// nothing to pick, and creating an application (or a key) behind a script's
+	// back would be a side effect it never asked for. `algolia application
+	// select` configures one afterwards.
+	if opts.NonInteractive && opts.AppName == "" {
+		return nil, nil
+	}
 
 	tracker.SetStep(telemetry.StepAppsFetch)
 	opts.IO.StartProgressIndicatorWithLabel("Fetching applications")
 	apps, err := client.ListApplications(accessToken)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var appDetails *dashboard.Application
@@ -161,7 +233,7 @@ func runOAuthFlowSteps(
 		if appName == "" && opts.IO.CanPrompt() {
 			appName, err = apputil.PromptName()
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
@@ -169,14 +241,14 @@ func runOAuthFlowSteps(
 		// stays on the app_create step.
 		appDetails, _, err = apputil.CreateAndFetchApplication(opts.IO, client, accessToken, opts.Region, appName, nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		tracker.SetStep(telemetry.StepAppSelect)
 		interactive := opts.IO.CanPrompt()
 		app, err := selectApplication(opts, apps, interactive)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		appDetails = app
@@ -186,7 +258,7 @@ func runOAuthFlowSteps(
 		_, hasUUID := opts.Config.APIKeyUUID(appDetails.ID)
 		if !hasUUID || !apputil.ReuseExistingAPIKey(opts.Config, appDetails) {
 			if err := apputil.EnsureAPIKey(opts.IO, client, accessToken, appDetails); err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -197,7 +269,11 @@ func runOAuthFlowSteps(
 	}
 
 	tracker.SetStep(telemetry.StepProfileConfigure)
-	return apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default)
+	if err := apputil.ConfigureProfile(opts.IO, opts.Config, appDetails, profileName, opts.Default); err != nil {
+		return nil, err
+	}
+
+	return appDetails, nil
 }
 
 // applyStoredIdentity copies the persisted user identity from the stored token
@@ -234,11 +310,13 @@ func selectApplication(opts *LoginOptions, apps []dashboard.Application, interac
 	}
 
 	if !interactive {
-		fmt.Fprintf(opts.IO.Out, "Multiple applications found:\n")
+		// stderr: this listing explains the error below, so it must not be
+		// dropped or mixed into structured output.
+		fmt.Fprintf(opts.IO.ErrOut, "Multiple applications found:\n")
 		for i, app := range apps {
-			fmt.Fprintf(opts.IO.Out, "  %d. %s (%s)\n", i+1, app.Name, app.ID)
+			fmt.Fprintf(opts.IO.ErrOut, "  %d. %s (%s)\n", i+1, app.Name, app.ID)
 		}
-		fmt.Fprintf(opts.IO.Out, "Use --app-name to select one.\n")
+		fmt.Fprintf(opts.IO.ErrOut, "Use --app-name to select one.\n")
 		return nil, fmt.Errorf("multiple applications found - use --app-name to select one")
 	}
 
