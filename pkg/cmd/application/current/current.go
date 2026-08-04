@@ -8,6 +8,7 @@ import (
 
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/shared/apputil"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -21,13 +22,6 @@ type CurrentOptions struct {
 	PrintFlags *cmdutil.PrintFlags
 
 	NewDashboardClient func(clientID string) *dashboard.Client
-}
-
-type currentApplication struct {
-	ID    string `json:"id"`
-	Alias string `json:"alias"`
-	Name  string `json:"name"`
-	Plan  string `json:"plan"`
 }
 
 func NewCurrentCmd(f *cmdutil.Factory) *cobra.Command {
@@ -82,16 +76,12 @@ func runCurrentCmd(opts *CurrentOptions) error {
 		)
 	}
 
-	current := currentApplication{ID: appID}
-	if alias, ok := opts.Config.ApplicationAlias(appID); ok {
-		current.Alias = alias
-	}
-
+	// The ID and alias are shown even when the name and plan can't be fetched.
 	app, signedOut := fetchApplication(opts, appID)
-	if app != nil {
-		current.Name = app.Name
-		current.Plan = app.PlanLabel
+	if app == nil {
+		app = &dashboard.Application{ID: appID}
 	}
+	current := apputil.NewApplicationOutput(opts.Config, app)
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()

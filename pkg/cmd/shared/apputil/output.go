@@ -6,9 +6,8 @@ import (
 )
 
 // ApplicationOutput is the machine-readable view of an application, shared by
-// the commands that select one. Field names match
-// `algolia application current --output json`. API key material is
-// deliberately left out: it must never reach stdout.
+// every command that emits one (`application current`, `application select`,
+// `auth login`)
 type ApplicationOutput struct {
 	ID    string `json:"id"`
 	Alias string `json:"alias"`

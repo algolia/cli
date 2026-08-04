@@ -180,38 +180,12 @@ func TestTrackOAuthFlowOutcome(t *testing.T) {
 	}
 }
 
-func TestApplyNonInteractive(t *testing.T) {
-	io, _, _, _ := iostreams.Test()
-	opts := &LoginOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags()}
-
-	// Flag off: nothing changes.
-	applyNonInteractive(opts)
-	assert.False(t, io.GetNeverPrompt())
-	assert.False(t, opts.PrintFlags.HasStructuredOutput())
-
-	opts.NonInteractive = true
-	applyNonInteractive(opts)
-	assert.False(t, io.CanPrompt())
-	assert.Equal(t, "json", *opts.PrintFlags.OutputFormat)
-}
-
-func TestApplyNonInteractive_KeepsExplicitOutput(t *testing.T) {
-	io, _, _, _ := iostreams.Test()
-	opts := &LoginOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
-	*opts.PrintFlags.OutputFormat = "jsonpath={.application.id}"
-
-	applyNonInteractive(opts)
-	assert.Equal(t, "jsonpath={.application.id}", *opts.PrintFlags.OutputFormat)
-}
-
-// applyNonInteractive must tolerate the shared LoginOptions of `auth signup`,
-// which exposes no output flags.
-func TestApplyNonInteractive_NilPrintFlags(t *testing.T) {
+// `auth signup` shares LoginOptions but exposes no output flags.
+func TestPrintLoginResult_NilPrintFlags(t *testing.T) {
 	io, _, _, _ := iostreams.Test()
 	opts := &LoginOptions{IO: io, NonInteractive: true}
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
 
-	applyNonInteractive(opts)
-	assert.False(t, io.CanPrompt())
 	assert.NoError(t, printLoginResult(opts, &dashboard.Application{ID: "APP1"}))
 }
 
@@ -233,7 +207,7 @@ func TestPrintLoginResult_JSONWithoutAPIKey(t *testing.T) {
 		PrintFlags:     cmdutil.NewPrintFlags(),
 		NonInteractive: true,
 	}
-	applyNonInteractive(opts)
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
 
 	app := &dashboard.Application{
 		ID:        "APP1",
@@ -275,7 +249,7 @@ func TestPrintLoginResult_NoApplication(t *testing.T) {
 		PrintFlags:     cmdutil.NewPrintFlags(),
 		NonInteractive: true,
 	}
-	applyNonInteractive(opts)
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
 
 	require.NoError(t, printLoginResult(opts, nil))
 

@@ -101,7 +101,9 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 		`),
 		Args: validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			applyNonInteractive(opts)
+			if opts.NonInteractive {
+				cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
+			}
 			return runLoginCmd(cmd.Context(), opts)
 		},
 	}
@@ -117,22 +119,6 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
-}
-
-// applyNonInteractive turns off every prompt and defaults the output to JSON,
-// leaving an explicit --output untouched.
-func applyNonInteractive(opts *LoginOptions) {
-	if !opts.NonInteractive {
-		return
-	}
-
-	opts.IO.SetNeverPrompt(true)
-	opts.IO.SetProgressIndicatorEnabled(false)
-
-	if opts.PrintFlags != nil && opts.PrintFlags.OutputFormat != nil &&
-		!opts.PrintFlags.HasStructuredOutput() {
-		*opts.PrintFlags.OutputFormat = "json"
-	}
 }
 
 func runLoginCmd(ctx context.Context, opts *LoginOptions) error {
@@ -201,11 +187,12 @@ func runOAuthFlowSteps(
 	signup bool,
 	tracker *telemetry.FlowTracker,
 ) (*dashboard.Application, error) {
-	// Drop progress narration so the command emits the JSON document only. This
-	// includes the authorize URL, so --non-interactive relies on the browser
-	// opening: pair it with --no-browser only if the URL isn't needed.
+	// Move the progress narration to stderr so stdout carries the JSON document
+	// only. It stays visible, which matters most for the authorize URL: printed
+	// or not, the flow can't complete until that URL is opened, so a caller that
+	// can't open a browser needs to see it.
 	if opts.PrintFlags.HasStructuredOutput() {
-		defer cmdutil.DiscardHumanOutput(opts.IO)()
+		defer cmdutil.RedirectHumanOutput(opts.IO)()
 	}
 
 	cs := opts.IO.ColorScheme()

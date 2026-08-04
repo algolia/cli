@@ -106,7 +106,7 @@ func Test_runSelectCmd_NonInteractiveWritesJSONOnlyToStdout(t *testing.T) {
 	opts.NonInteractive = true
 	opts.PrintFlags = cmdutil.NewPrintFlags()
 	// Mirrors what the command does before running.
-	applyNonInteractive(opts)
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
 
 	stdout, stderr := captureOutput(t, opts.IO)
 
@@ -114,8 +114,6 @@ func Test_runSelectCmd_NonInteractiveWritesJSONOnlyToStdout(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, printSelection(opts, app))
 
-	// The JSON document is the whole output: progress narration is dropped, not
-	// moved to stderr, and key material never appears.
 	var got apputil.ApplicationOutput
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got), "stdout: %q", stdout.String())
 	assert.Equal(t, apputil.ApplicationOutput{
@@ -125,43 +123,9 @@ func Test_runSelectCmd_NonInteractiveWritesJSONOnlyToStdout(t *testing.T) {
 	}, got)
 	assert.NotContains(t, stdout.String(), "API key")
 	assert.NotContains(t, stdout.String(), "new-key")
-	assert.Empty(t, stderr.String())
-}
 
-func Test_applyNonInteractive_DefaultsToJSON(t *testing.T) {
-	io, _, _, _ := iostreams.Test()
-	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags()}
-
-	// Flag off: nothing changes.
-	applyNonInteractive(opts)
-	assert.False(t, opts.PrintFlags.HasStructuredOutput())
-	assert.False(t, io.GetNeverPrompt())
-
-	opts.NonInteractive = true
-	applyNonInteractive(opts)
-	assert.True(t, io.GetNeverPrompt())
-	assert.Equal(t, "json", *opts.PrintFlags.OutputFormat)
-}
-
-// The spinner writes to stderr even on a TTY, so a non-interactive run has to
-// silence it too.
-func Test_applyNonInteractive_DisablesProgressIndicator(t *testing.T) {
-	io, _, _, _ := iostreams.Test()
-	io.SetProgressIndicatorEnabled(true)
-	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
-
-	applyNonInteractive(opts)
-
-	assert.False(t, io.GetProgressIndicatorEnabled())
-}
-
-func Test_applyNonInteractive_KeepsExplicitOutput(t *testing.T) {
-	io, _, _, _ := iostreams.Test()
-	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
-	*opts.PrintFlags.OutputFormat = "jsonpath={.id}"
-
-	applyNonInteractive(opts)
-	assert.Equal(t, "jsonpath={.id}", *opts.PrintFlags.OutputFormat)
+	assert.Contains(t, stderr.String(), "API key generated for application APP1")
+	assert.NotContains(t, stderr.String(), "new-key")
 }
 
 func TestNewSelectCmd_NonInteractiveRequiresSelector(t *testing.T) {
@@ -175,7 +139,7 @@ func TestNewSelectCmd_NonInteractiveRequiresSelector(t *testing.T) {
 func Test_printSelection_NoApplication(t *testing.T) {
 	io, _, _, _ := iostreams.Test()
 	opts := &SelectOptions{IO: io, PrintFlags: cmdutil.NewPrintFlags(), NonInteractive: true}
-	applyNonInteractive(opts)
+	cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
 
 	assert.ErrorContains(t, printSelection(opts, nil), "no applications found")
 }

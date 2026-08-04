@@ -70,11 +70,11 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 			"skipAuthCheck": "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			applyNonInteractive(opts)
+			if opts.NonInteractive {
+				cmdutil.ApplyNonInteractive(opts.IO, opts.PrintFlags)
+			}
 
 			// Fail before authenticating: with no selector there is nothing to pick.
-			// A plain error, not cmdutil.FlagErrorf: a flag error makes the root
-			// print the usage text to stdout, which would break the JSON contract.
 			if opts.NonInteractive && opts.AppID == "" && opts.AppName == "" {
 				return fmt.Errorf("--app-id or --app-name is required in non-interactive mode")
 			}
@@ -98,22 +98,6 @@ func NewSelectCmd(f *cmdutil.Factory) *cobra.Command {
 	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
-}
-
-// applyNonInteractive turns off every prompt and defaults the output to JSON,
-// leaving an explicit --output untouched.
-func applyNonInteractive(opts *SelectOptions) {
-	if !opts.NonInteractive {
-		return
-	}
-
-	opts.IO.SetNeverPrompt(true)
-	opts.IO.SetProgressIndicatorEnabled(false)
-
-	if opts.PrintFlags != nil && opts.PrintFlags.OutputFormat != nil &&
-		!opts.PrintFlags.HasStructuredOutput() {
-		*opts.PrintFlags.OutputFormat = "json"
-	}
 }
 
 // printSelection emits the structured document once the flow is done. The
@@ -149,9 +133,10 @@ func Run(f *cmdutil.Factory) (*dashboard.Application, error) {
 }
 
 func runSelectCmd(opts *SelectOptions) (*dashboard.Application, error) {
-	// Drop progress narration so the command emits the JSON document only.
+	// Move the progress narration to stderr so stdout carries the JSON document
+	// only.
 	if opts.PrintFlags.HasStructuredOutput() {
-		defer cmdutil.DiscardHumanOutput(opts.IO)()
+		defer cmdutil.RedirectHumanOutput(opts.IO)()
 	}
 
 	cs := opts.IO.ColorScheme()
