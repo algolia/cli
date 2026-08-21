@@ -57,7 +57,7 @@ func NewSetCmd(f *cmdutil.Factory) *cobra.Command {
 				return err
 			}
 
-			// Serialize / Deseralize the settings
+			// Serialize / Deserialize the settings
 			tmp, err := json.Marshal(settings)
 			if err != nil {
 				return err

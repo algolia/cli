@@ -108,7 +108,7 @@ func NewSaveCmd(f *cmdutil.Factory, runF func(*SaveOptions) error) *cobra.Comman
 			shared.Placeholder:    "Used to place not-yet-defined tokens (that can take any value from a list of defined words).",
 		}))
 	cmd.Flags().
-		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Whether to add the synoynm to replicas")
+		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Whether to add the synonym to replicas")
 	// Regular synonym
 	cmd.Flags().StringSliceVarP(&flags.Synonyms, "synonyms", "s", nil, "Synonyms to save")
 	// One way synonym
