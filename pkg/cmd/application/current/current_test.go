@@ -112,6 +112,7 @@ func Test_runCurrentCmd(t *testing.T) {
 	assert.Contains(t, got, "My App")
 	assert.Contains(t, got, "Grow Plus")
 	assert.Contains(t, got, "search, settings_read")
+	assert.Contains(t, got, "active")
 }
 
 func Test_runCurrentCmd_notConfigured(t *testing.T) {
@@ -168,5 +169,6 @@ func Test_runCurrentCmd_outputJSON(t *testing.T) {
 	assert.Contains(t, got, `"alias":"my-alias"`)
 	assert.Contains(t, got, `"name":"My App"`)
 	assert.Contains(t, got, `"plan":"Grow Plus"`)
+	assert.Contains(t, got, `"status":"active"`)
 	assert.Contains(t, got, `"acl":["search","settings_read"]`)
 }
