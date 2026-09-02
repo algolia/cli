@@ -102,6 +102,9 @@ func runCurrentCmd(opts *CurrentOptions) error {
 	if current.Plan != "" {
 		fmt.Fprintf(opts.IO.Out, "  Plan:  %s\n", current.Plan)
 	}
+	if current.Status != "" {
+		fmt.Fprintf(opts.IO.Out, "  Status: %s\n", current.Status)
+	}
 	if len(current.ACL) > 0 {
 		fmt.Fprintf(opts.IO.Out, "  ACL:   %s\n", strings.Join(current.ACL, ", "))
 	}
