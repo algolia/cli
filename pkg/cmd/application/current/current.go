@@ -2,6 +2,7 @@ package current
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
@@ -100,6 +101,9 @@ func runCurrentCmd(opts *CurrentOptions) error {
 	}
 	if current.Plan != "" {
 		fmt.Fprintf(opts.IO.Out, "  Plan:  %s\n", current.Plan)
+	}
+	if len(current.ACL) > 0 {
+		fmt.Fprintf(opts.IO.Out, "  ACL:   %s\n", strings.Join(current.ACL, ", "))
 	}
 	if current.Name == "" && current.Plan == "" {
 		if signedOut {

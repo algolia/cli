@@ -9,10 +9,11 @@ import (
 // every command that emits one (`application current`, `application select`,
 // `auth login`)
 type ApplicationOutput struct {
-	ID    string `json:"id"`
-	Alias string `json:"alias"`
-	Name  string `json:"name"`
-	Plan  string `json:"plan"`
+	ID    string   `json:"id"`
+	Alias string   `json:"alias"`
+	Name  string   `json:"name"`
+	Plan  string   `json:"plan"`
+	ACL   []string `json:"acl,omitempty"`
 }
 
 // NewApplicationOutput builds the output view, reading the alias from the
@@ -22,6 +23,7 @@ func NewApplicationOutput(cfg config.IConfig, app *dashboard.Application) Applic
 		ID:   app.ID,
 		Name: app.Name,
 		Plan: app.PlanLabel,
+		ACL:  app.ACL,
 	}
 	if alias, ok := cfg.ApplicationAlias(app.ID); ok {
 		out.Alias = alias

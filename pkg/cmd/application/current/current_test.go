@@ -46,6 +46,7 @@ func newServer(t *testing.T, status int) *httptest.Server {
 					ApplicationID: "APP1",
 					Name:          "My App",
 					Plan:          dashboard.ApplicationPlan{Label: "Grow Plus"},
+					Permissions:   []string{"search", "settings_read"},
 				},
 			},
 		}))
@@ -110,6 +111,7 @@ func Test_runCurrentCmd(t *testing.T) {
 	assert.Contains(t, got, "my-alias")
 	assert.Contains(t, got, "My App")
 	assert.Contains(t, got, "Grow Plus")
+	assert.Contains(t, got, "search, settings_read")
 }
 
 func Test_runCurrentCmd_notConfigured(t *testing.T) {
@@ -166,4 +168,5 @@ func Test_runCurrentCmd_outputJSON(t *testing.T) {
 	assert.Contains(t, got, `"alias":"my-alias"`)
 	assert.Contains(t, got, `"name":"My App"`)
 	assert.Contains(t, got, `"plan":"Grow Plus"`)
+	assert.Contains(t, got, `"acl":["search","settings_read"]`)
 }
