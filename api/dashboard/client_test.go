@@ -221,6 +221,43 @@ func TestListApplications_Unauthorized(t *testing.T) {
 	assert.Contains(t, err.Error(), "session expired")
 }
 
+func TestListApplications_ParsesBlockedStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
+			Data: []ApplicationResource{
+				{
+					ID:   "APP1",
+					Type: "application",
+					Attributes: ApplicationAttributes{
+						ApplicationID: "APP1",
+						Name:          "Active App",
+						IsBlocked:     false,
+					},
+				},
+				{
+					ID:   "APP2",
+					Type: "application",
+					Attributes: ApplicationAttributes{
+						ApplicationID: "APP2",
+						Name:          "Blocked App",
+						IsBlocked:     true,
+					},
+				},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	apps, err := client.ListApplications("test-token")
+	require.NoError(t, err)
+	require.Len(t, apps, 2)
+	assert.Equal(t, ApplicationStatusActive, apps[0].Status)
+	assert.Equal(t, ApplicationStatusBlocked, apps[1].Status)
+}
+
 func TestGetApplication_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
@@ -261,6 +298,29 @@ func TestGetApplication_ParsesPlanLabel(t *testing.T) {
 	app, err := client.GetApplication("test-token", "APP1")
 	require.NoError(t, err)
 	assert.Equal(t, "Grow Plus", app.PlanLabel)
+}
+
+func TestGetApplication_ParsesACL(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewEncoder(w).Encode(SingleApplicationResponse{
+			Data: ApplicationResource{
+				ID: "APP1", Type: "application",
+				Attributes: ApplicationAttributes{
+					ApplicationID: "APP1",
+					Name:          "My App",
+					Permissions:   []string{"search", "analytics"},
+				},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	app, err := client.GetApplication("test-token", "APP1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"search", "analytics"}, app.ACL)
 }
 
 func TestCreateApplication_Success(t *testing.T) {
