@@ -154,7 +154,7 @@ func runBrowseCmd(opts *BrowseOptions) error {
 
 			for _, entry := range entries {
 				if opts.IncludeDefaultStopwords {
-					// Print all entries (inlcuding the default Algolia stop words)
+					// Print all entries (including the default Algolia stop words)
 					if err = p.Print(opts.IO, entry); err != nil {
 						return err
 					}

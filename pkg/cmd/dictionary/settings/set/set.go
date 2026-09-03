@@ -46,7 +46,7 @@ func NewSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 			You can turn the standard stop words dictionary on or off.
 		`),
 		Example: heredoc.Doc(`
-			# Tuen off standard entries for English and French
+			# Turn off standard entries for English and French
 			$ algolia dictionary settings set --disable-standard-entries en,fr
 
 			# Enable standard entries for English and French
