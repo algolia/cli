@@ -34,6 +34,8 @@ type ApplicationAttributes struct {
 	ApplicationID string          `json:"application_id"`
 	APIKey        string          `json:"api_key"`
 	Plan          ApplicationPlan `json:"plan"`
+	IsBlocked     bool            `json:"is_blocked"`
+	Permissions   []string        `json:"permissions"`
 }
 
 // ApplicationPlan is the plan applied to an application (attributes.plan).
@@ -47,12 +49,21 @@ type ApplicationPlan struct {
 
 // Application is a flattened view of an Algolia application for CLI consumption.
 type Application struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	APIKey     string `json:"api_key,omitempty"`
-	APIKeyUUID string `json:"api_key_uuid,omitempty"`
-	PlanLabel  string `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	APIKey     string   `json:"api_key,omitempty"`
+	APIKeyUUID string   `json:"api_key_uuid,omitempty"`
+	PlanLabel  string   `json:"plan_label,omitempty"` // current plan label, e.g. "Grow Plus"
+	Status     string   `json:"status,omitempty"`     // ApplicationStatusActive or ApplicationStatusBlocked, from attributes.is_blocked
+	ACL        []string `json:"acl,omitempty"`        // authenticated user's permissions on this application
 }
+
+// ApplicationStatusActive and ApplicationStatusBlocked are the values toApplication
+// assigns to Application.Status, derived from ApplicationAttributes.IsBlocked.
+const (
+	ApplicationStatusActive  = "active"
+	ApplicationStatusBlocked = "blocked"
+)
 
 // PaginationMeta contains page-based pagination metadata.
 type PaginationMeta struct {
@@ -218,11 +229,17 @@ func (r *APIKeyResource) toAPIKey() APIKey {
 
 // toApplication flattens a JSON:API resource into a simple Application.
 func (r *ApplicationResource) toApplication() Application {
+	status := ApplicationStatusActive
+	if r.Attributes.IsBlocked {
+		status = ApplicationStatusBlocked
+	}
 	return Application{
 		ID:        r.Attributes.ApplicationID,
 		Name:      r.Attributes.Name,
 		APIKey:    r.Attributes.APIKey,
 		PlanLabel: r.Attributes.Plan.Label,
+		Status:    status,
+		ACL:       r.Attributes.Permissions,
 	}
 }
 

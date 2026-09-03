@@ -117,9 +117,10 @@ func Test_runSelectCmd_NonInteractiveWritesJSONOnlyToStdout(t *testing.T) {
 	var got apputil.ApplicationOutput
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got), "stdout: %q", stdout.String())
 	assert.Equal(t, apputil.ApplicationOutput{
-		ID:    "APP1",
-		Alias: "my app",
-		Name:  "My App",
+		ID:     "APP1",
+		Alias:  "my app",
+		Name:   "My App",
+		Status: "active",
 	}, got)
 	assert.NotContains(t, stdout.String(), "API key")
 	assert.NotContains(t, stdout.String(), "new-key")
