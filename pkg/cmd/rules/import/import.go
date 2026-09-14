@@ -206,10 +206,12 @@ func runImportCmd(opts *ImportOptions) error {
 			opts.IO.StopProgressIndicator()
 			return err
 		}
-		res, err := client.SaveRules(
-			client.NewApiSaveRulesRequest(opts.Index, rules).
-				WithForwardToReplicas(opts.ForwardToReplicas),
-		)
+		request := client.NewApiSaveRulesRequest(opts.Index, rules).
+			WithForwardToReplicas(opts.ForwardToReplicas)
+		if clearExistingRules {
+			request = request.WithClearExistingRules(true)
+		}
+		res, err := client.SaveRules(request)
 		if err != nil {
 			opts.IO.StopProgressIndicator()
 			return err
