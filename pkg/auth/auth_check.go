@@ -125,7 +125,8 @@ func CheckACLs(cmd *cobra.Command, f *cmdutil.Factory) error {
 	}
 	apiKey, err := client.GetApiKey(client.NewApiGetApiKeyRequest(key))
 	if err != nil {
-		return err
+		// Self-read requires its own ACL; don't fail on that, let the real call decide.
+		return nil
 	}
 
 	var hasAcls []string
