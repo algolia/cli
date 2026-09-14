@@ -179,6 +179,30 @@ func Test_runExportCmd(t *testing.T) {
 			setup:   func(r *httpmock.Registry) {},
 		},
 		{
+			name:    "from small batch clear existing",
+			cli:     "foo -c -y -F -",
+			stdin:   `{"objectID":"test"}`,
+			wantOut: "✓ Successfully imported 1 rules to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) &&
+						req.URL.Query().Get("clearExistingRules") == "true"
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
+			},
+		},
+		{
+			name:    "from small batch without clear existing",
+			cli:     "foo -F -",
+			stdin:   `{"objectID":"test"}`,
+			wantOut: "✓ Successfully imported 1 rules to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/rules/batch")(req) &&
+						req.URL.Query().Get("clearExistingRules") == ""
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
+			},
+		},
+		{
 			name:    "from large batch clear existing",
 			cli:     "foo -c -y -F -",
 			stdin:   largeBatchBuilder.String(),

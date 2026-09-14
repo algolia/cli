@@ -194,6 +194,30 @@ func Test_runExportCmd(t *testing.T) {
 			setup:   func(r *httpmock.Registry) {},
 		},
 		{
+			name:    "from small batch with clear existing",
+			cli:     "foo -r -F -",
+			stdin:   `{"objectID":"test","type":"synonym","synonyms":["test"]}`,
+			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
+						req.URL.Query().Get("replaceExistingSynonyms") == "true"
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
+			},
+		},
+		{
+			name:    "from small batch without clear existing",
+			cli:     "foo -F -",
+			stdin:   `{"objectID":"test","type":"synonym","synonyms":["test"]}`,
+			wantOut: "✓ Successfully imported 1 synonyms to foo\n",
+			setup: func(r *httpmock.Registry) {
+				r.Register(httpmock.Matcher(func(req *http.Request) bool {
+					return httpmock.REST("POST", "1/indexes/foo/synonyms/batch")(req) &&
+						req.URL.Query().Get("replaceExistingSynonyms") == ""
+				}), httpmock.JSONResponse(search.UpdatedAtResponse{}))
+			},
+		},
+		{
 			name:    "from large batch with clear existing",
 			cli:     "foo -r -F -",
 			stdin:   largeBatchBuilder.String(),
