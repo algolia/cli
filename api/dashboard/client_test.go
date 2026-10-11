@@ -221,6 +221,43 @@ func TestListApplications_Unauthorized(t *testing.T) {
 	assert.Contains(t, err.Error(), "session expired")
 }
 
+func TestListApplications_ParsesBlockedStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewEncoder(w).Encode(ApplicationsResponse{
+			Data: []ApplicationResource{
+				{
+					ID:   "APP1",
+					Type: "application",
+					Attributes: ApplicationAttributes{
+						ApplicationID: "APP1",
+						Name:          "Active App",
+						IsBlocked:     false,
+					},
+				},
+				{
+					ID:   "APP2",
+					Type: "application",
+					Attributes: ApplicationAttributes{
+						ApplicationID: "APP2",
+						Name:          "Blocked App",
+						IsBlocked:     true,
+					},
+				},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	apps, err := client.ListApplications("test-token")
+	require.NoError(t, err)
+	require.Len(t, apps, 2)
+	assert.Equal(t, ApplicationStatusActive, apps[0].Status)
+	assert.Equal(t, ApplicationStatusBlocked, apps[1].Status)
+}
+
 func TestGetApplication_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
@@ -263,6 +300,29 @@ func TestGetApplication_ParsesPlanLabel(t *testing.T) {
 	assert.Equal(t, "Grow Plus", app.PlanLabel)
 }
 
+func TestGetApplication_ParsesACL(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/application/APP1", func(w http.ResponseWriter, r *http.Request) {
+		require.NoError(t, json.NewEncoder(w).Encode(SingleApplicationResponse{
+			Data: ApplicationResource{
+				ID: "APP1", Type: "application",
+				Attributes: ApplicationAttributes{
+					ApplicationID: "APP1",
+					Name:          "My App",
+					Permissions:   []string{"search", "analytics"},
+				},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	app, err := client.GetApplication("test-token", "APP1")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"search", "analytics"}, app.ACL)
+}
+
 func TestCreateApplication_Success(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/1/applications", func(w http.ResponseWriter, r *http.Request) {
@@ -291,6 +351,194 @@ func TestCreateApplication_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "NEW_APP", app.ID)
 	assert.Equal(t, "My App", app.Name)
+}
+
+func TestCreateAPIKey_ReturnsValueAndUUID(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+		w.WriteHeader(http.StatusCreated)
+		require.NoError(t, json.NewEncoder(w).Encode(CreateAPIKeyResponse{
+			Data: APIKeyResource{
+				ID:         "key-uuid-123",
+				Type:       "api_key",
+				Attributes: APIKeyAttributes{Value: "secret-key"},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	created, err := client.CreateAPIKey("test-token", "APP1", WriteACL, "Algolia CLI")
+	require.NoError(t, err)
+	assert.Equal(t, "secret-key", created.Value)
+	assert.Equal(t, "key-uuid-123", created.UUID)
+}
+
+func TestCreateAPIKey_EmptyValueReturnsError(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		require.NoError(t, json.NewEncoder(w).Encode(CreateAPIKeyResponse{
+			Data: APIKeyResource{
+				ID:         "key-uuid-123",
+				Attributes: APIKeyAttributes{Value: ""},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.CreateAPIKey("test-token", "APP1", WriteACL, "Algolia CLI")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no key was returned")
+}
+
+func TestCreateAPIKeyWithParams_SendsAllParamsAndReturnsTheKey(t *testing.T) {
+	var got CreateAPIKeyRequest
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&got))
+
+		w.WriteHeader(http.StatusCreated)
+		require.NoError(t, json.NewEncoder(w).Encode(CreateAPIKeyResponse{
+			Data: APIKeyResource{
+				ID:   "key-uuid-123",
+				Type: "api_key",
+				Attributes: APIKeyAttributes{
+					Value:         "secret-key",
+					ApplicationID: "APP1",
+					ACL:           []string{"search"},
+					Description:   "Search key",
+					Indexes:       []string{"MOVIES"},
+					Referers:      []string{"https://example.com"},
+				},
+			},
+		}))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	key, err := client.CreateAPIKeyWithParams("test-token", "APP1", CreateAPIKeyRequest{
+		ACL:         []string{"search"},
+		Description: "Search key",
+		Indexes:     []string{"MOVIES"},
+		Referers:    []string{"https://example.com"},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"search"}, got.ACL)
+	assert.Equal(t, "Search key", got.Description)
+	assert.Equal(t, []string{"MOVIES"}, got.Indexes)
+	assert.Equal(t, []string{"https://example.com"}, got.Referers)
+
+	assert.Equal(t, "key-uuid-123", key.UUID)
+	assert.Equal(t, "secret-key", key.Value)
+	assert.Equal(t, "APP1", key.ApplicationID)
+	assert.Equal(t, []string{"search"}, key.ACL)
+	assert.Equal(t, []string{"MOVIES"}, key.Indexes)
+}
+
+func TestCreateAPIKeyWithParams_Unauthorized(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.CreateAPIKeyWithParams("test-token", "APP1", CreateAPIKeyRequest{
+		ACL:         []string{"search"},
+		Description: "Search key",
+	})
+	require.ErrorIs(t, err, ErrSessionExpired)
+}
+
+func TestCreateAPIKeyWithParams_ApplicationNotFound(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/1/applications/APP1/api-keys", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errors":[{"status":"404","title":"Not Found"}]}`))
+	})
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.CreateAPIKeyWithParams("test-token", "APP1", CreateAPIKeyRequest{
+		ACL:         []string{"search"},
+		Description: "Search key",
+	})
+	require.ErrorIs(t, err, ErrApplicationNotFound)
+}
+
+func TestRotateAPIKey_ReturnsNewValue(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/api-keys/key-uuid-123/rotate",
+		func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+
+			require.NoError(t, json.NewEncoder(w).Encode(CreateAPIKeyResponse{
+				Data: APIKeyResource{
+					ID:         "key-uuid-123",
+					Type:       "api_key",
+					Attributes: APIKeyAttributes{Value: "rotated-key"},
+				},
+			}))
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	created, err := client.RotateAPIKey("test-token", "APP1", "key-uuid-123")
+	require.NoError(t, err)
+	assert.Equal(t, "rotated-key", created.Value)
+	assert.Equal(t, "key-uuid-123", created.UUID)
+}
+
+func TestRotateAPIKey_Unauthorized(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/api-keys/key-uuid-123/rotate",
+		func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.RotateAPIKey("test-token", "APP1", "key-uuid-123")
+	assert.ErrorIs(t, err, ErrSessionExpired)
+}
+
+func TestRotateAPIKey_ErrorStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(
+		"/1/applications/APP1/api-keys/key-uuid-123/rotate",
+		func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("not found"))
+		},
+	)
+
+	ts, client := newTestClient(mux)
+	defer ts.Close()
+
+	_, err := client.RotateAPIKey("test-token", "APP1", "key-uuid-123")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "404")
 }
 
 func TestUpdateApplication_Success(t *testing.T) {

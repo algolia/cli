@@ -27,39 +27,55 @@ func seedToken(t *testing.T) {
 	}))
 }
 
-func newServer(t *testing.T) *httptest.Server {
+func buildTemplate() dashboard.PlanTemplateResource {
+	return dashboard.PlanTemplateResource{
+		ID:   "build",
+		Type: "plan_template",
+		Attributes: dashboard.PlanTemplateAttributes{
+			Name:          "Build",
+			Description:   "Free forever Search & Discovery API.",
+			Type:          "free",
+			Configuration: dashboard.PlanTemplateConfiguration{Plan: "build"},
+		},
+	}
+}
+
+func growTemplate() dashboard.PlanTemplateResource {
+	return dashboard.PlanTemplateResource{
+		ID:   "grow",
+		Type: "plan_template",
+		Attributes: dashboard.PlanTemplateAttributes{
+			Name:          "Grow",
+			Description:   "Best-in-class Search & Discovery API.",
+			Type:          "freeform",
+			Freeform:      "$0.50 / 1,000 Requests",
+			Configuration: dashboard.PlanTemplateConfiguration{Plan: "grow"},
+		},
+	}
+}
+
+func newServer(t *testing.T, freeOnly bool, userJSON string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc(
 		"/1/plan-templates/self-serve",
 		func(w http.ResponseWriter, _ *http.Request) {
+			data := []dashboard.PlanTemplateResource{buildTemplate()}
+			if !freeOnly {
+				data = append(data, growTemplate())
+			}
 			require.NoError(t, json.NewEncoder(w).Encode(dashboard.PlanTemplatesResponse{
-				Data: []dashboard.PlanTemplateResource{
-					{
-						ID:   "build",
-						Type: "plan_template",
-						Attributes: dashboard.PlanTemplateAttributes{
-							Name:          "Build",
-							Description:   "Free forever Search & Discovery API.",
-							Type:          "free",
-							Configuration: dashboard.PlanTemplateConfiguration{Plan: "build"},
-						},
-					},
-					{
-						ID:   "grow",
-						Type: "plan_template",
-						Attributes: dashboard.PlanTemplateAttributes{
-							Name:          "Grow",
-							Description:   "Best-in-class Search & Discovery API.",
-							Type:          "freeform",
-							Freeform:      "$0.50 / 1,000 Requests",
-							Configuration: dashboard.PlanTemplateConfiguration{Plan: "grow"},
-						},
-					},
-				},
+				Data: data,
 			}))
 		},
 	)
+	mux.HandleFunc("/1/user", func(w http.ResponseWriter, _ *http.Request) {
+		if userJSON == "" {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		require.NoError(t, json.NewEncoder(w).Encode(json.RawMessage(userJSON)))
+	})
 	return httptest.NewServer(mux)
 }
 
@@ -91,7 +107,7 @@ func newOpts(
 }
 
 func Test_runPlansCmd(t *testing.T) {
-	srv := newServer(t)
+	srv := newServer(t, false, `{"has_payment_method": true}`)
 	defer srv.Close()
 
 	opts, out := newOpts(t, srv, true, "")
@@ -102,10 +118,11 @@ func Test_runPlansCmd(t *testing.T) {
 	assert.Contains(t, got, "Free")
 	assert.Contains(t, got, "Grow")
 	assert.Contains(t, got, "$0.50 / 1,000 Requests")
+	assert.NotContains(t, got, "unavailable")
 }
 
 func Test_runPlansCmd_outputJSON(t *testing.T) {
-	srv := newServer(t)
+	srv := newServer(t, false, `{"has_payment_method": true}`)
 	defer srv.Close()
 
 	opts, out := newOpts(t, srv, false, "json")
@@ -115,4 +132,49 @@ func Test_runPlansCmd_outputJSON(t *testing.T) {
 	assert.Contains(t, got, `"name":"Build"`)
 	assert.Contains(t, got, `"price":"Free"`)
 	assert.Contains(t, got, `"name":"Grow"`)
+	assert.Contains(t, got, `"available":true`)
+	assert.NotContains(t, got, "unavailable_reason")
+}
+
+func Test_runPlansCmd_noPaymentMethod(t *testing.T) {
+	srv := newServer(t, true, `{"has_payment_method": false}`)
+	defer srv.Close()
+
+	opts, out := newOpts(t, srv, true, "")
+	require.NoError(t, runPlansCmd(opts))
+
+	got := out.String()
+	assert.Contains(t, got, "Build")
+	assert.Contains(t, got, "Grow")
+	assert.Contains(t, got, "Grow Plus")
+	assert.Contains(t, got, "unavailable: no payment method on file — add billing to unlock")
+}
+
+func Test_runPlansCmd_noPaymentMethod_outputJSON(t *testing.T) {
+	srv := newServer(t, true, `{"has_payment_method": false}`)
+	defer srv.Close()
+
+	opts, out := newOpts(t, srv, false, "json")
+	require.NoError(t, runPlansCmd(opts))
+
+	got := out.String()
+	assert.Contains(t, got, `"name":"Build"`)
+	assert.Contains(t, got, `"available":true`)
+	assert.Contains(t, got, `"id":"grow"`)
+	assert.Contains(t, got, `"id":"grow-plus"`)
+	assert.Contains(t, got, `"available":false`)
+	assert.Contains(t, got, `"unavailable_reason":"no payment method on file"`)
+}
+
+func Test_runPlansCmd_userFetchFailed(t *testing.T) {
+	srv := newServer(t, true, "")
+	defer srv.Close()
+
+	opts, out := newOpts(t, srv, true, "")
+	require.NoError(t, runPlansCmd(opts))
+
+	got := out.String()
+	assert.Contains(t, got, "Build")
+	assert.NotContains(t, got, "Grow")
+	assert.NotContains(t, got, "unavailable")
 }

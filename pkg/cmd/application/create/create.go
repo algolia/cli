@@ -56,7 +56,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "create",
 		Short: "Create a new Algolia application",
 		Long: heredoc.Doc(`
-			Create a new Algolia application and optionally configure it as a CLI profile.
+			Create a new Algolia application and optionally set it as the current application.
 			Requires an active session (run "algolia auth login" first).`),
 		Example: heredoc.Doc(`
 			# Create an application interactively (prompts for name, plan, and terms)
@@ -68,7 +68,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			# Create on a paid plan (requires a payment method on file)
 			$ algolia application create --name "My App" --region CA --plan grow --accept-terms
 
-			# Create and set the new profile as the default
+			# Create and set the new application as the current one
 			$ algolia application create --name "My App" --region CA --accept-terms --default
 
 			# Preview what would be created without actually creating it
@@ -87,10 +87,10 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().StringVar(&opts.Name, "name", "My First Application", "Name for the application")
 	cmd.Flags().StringVar(&opts.Region, "region", "", "Region code (e.g. EU, UK, USC, USE, USW)")
 	cmd.Flags().
-		StringVar(&opts.ProfileName, "profile-name", "", "Name for the CLI profile (defaults to app name)")
+		StringVar(&opts.ProfileName, "profile-name", "", "Alias for the application (defaults to the app name)")
 	cmd.Flags().
 		StringVar(&opts.Plan, "plan", "", "Self-serve plan to create the application on (free, grow, grow-plus)")
-	cmd.Flags().BoolVar(&opts.Default, "default", false, "Set the new profile as the default")
+	cmd.Flags().BoolVar(&opts.Default, "default", false, "Set the new application as the current one")
 	cmd.Flags().
 		BoolVar(&opts.DryRun, "dry-run", false, "Preview the create request without sending it")
 	cmd.Flags().
@@ -237,7 +237,7 @@ func createApplication(
 			(user != nil && !user.HasPaymentMethod)
 		if billingMissing {
 			result.abortReason = telemetry.AbortReasonBillingRequired
-			return result, offerBilling(opts, client, *target)
+			return result, apputil.OfferBilling(opts.IO, opts.Browser, client.DashboardURL, *target)
 		}
 	}
 
@@ -287,15 +287,13 @@ func createApplication(
 				"  Add a payment method if needed, then retry with: algolia application upgrade --plan %s\n",
 				target.ID,
 			)
-			if !opts.structuredOutput() {
-				_ = apputil.ConfigureProfile(
-					opts.IO,
-					opts.Config,
-					appDetails,
-					opts.ProfileName,
-					opts.Default,
-				)
-			}
+			_ = apputil.ConfigureProfile(
+				opts.IO,
+				opts.Config,
+				appDetails,
+				opts.ProfileName,
+				opts.Default,
+			)
 			return result, fmt.Errorf(
 				"failed to apply the %q plan to application %s: %w",
 				target.Name,
@@ -312,6 +310,17 @@ func createApplication(
 		)
 	}
 
+	tracker.SetStep(telemetry.StepProfileConfigure)
+	if err := apputil.ConfigureProfile(
+		opts.IO,
+		opts.Config,
+		appDetails,
+		opts.ProfileName,
+		opts.Default,
+	); err != nil {
+		return result, err
+	}
+
 	if opts.structuredOutput() {
 		p, err := opts.PrintFlags.ToPrinter()
 		if err != nil {
@@ -319,15 +328,7 @@ func createApplication(
 		}
 		return result, p.Print(opts.IO, appDetails)
 	}
-
-	tracker.SetStep(telemetry.StepProfileConfigure)
-	return result, apputil.ConfigureProfile(
-		opts.IO,
-		opts.Config,
-		appDetails,
-		opts.ProfileName,
-		opts.Default,
-	)
+	return result, nil
 }
 
 func (opts *CreateOptions) structuredOutput() bool {
@@ -427,42 +428,6 @@ func confirmToS(opts *CreateOptions, plan dashboard.Plan) (bool, error) {
 		return false, err
 	}
 	return accepted, nil
-}
-
-// offerBilling tells the user a paid plan needs billing and offers the billing page.
-func offerBilling(opts *CreateOptions, client *dashboard.Client, plan dashboard.Plan) error {
-	cs := opts.IO.ColorScheme()
-	url := client.DashboardURL + "/account/billing/details"
-
-	fmt.Fprintf(
-		opts.IO.Out,
-		"\nThe %s plan requires a payment method on file before a paid application can be provisioned.\nThe CLI can't collect card details.\n",
-		cs.Bold(plan.Name),
-	)
-
-	if opts.IO.CanPrompt() && opts.IO.IsStdoutTTY() {
-		browser := opts.Browser
-		if browser == nil {
-			browser = pkgopen.Browser
-		}
-		open := true
-		if err := prompt.Confirm("Open the billing page to add a payment method?", &open); err != nil {
-			return err
-		}
-		if !open {
-			return nil
-		}
-		fmt.Fprintf(opts.IO.Out, "Opening %s\n", cs.Bold(url))
-		return browser(url)
-	}
-
-	fmt.Fprintf(
-		opts.IO.Out,
-		"Add a payment method here, then re-run with --plan %s:\n%s\n",
-		plan.ID,
-		url,
-	)
-	return fmt.Errorf("the %q plan requires a payment method; none is on file", plan.Name)
 }
 
 // callWithReauth runs fn, re-authenticating once and retrying on an expired session.

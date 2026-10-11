@@ -28,6 +28,8 @@ type DeleteOptions struct {
 	Wait              bool
 
 	DoConfirm bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewDeleteCmd creates and returns a delete command for index synonyms
@@ -38,6 +40,7 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -85,6 +88,8 @@ func NewDeleteCmd(f *cmdutil.Factory, runF func(*DeleteOptions) error) *cobra.Co
 	cmd.Flags().BoolVarP(&confirm, "confirm", "y", false, "Skip confirmation prompt")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "Wait for the operation to complete")
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -124,7 +129,7 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		}
 	}
 
-	var taskIDs []int64
+	responses := make([]search.DeletedAtResponse, 0, len(opts.SynonymIDs))
 
 	for _, synonymID := range opts.SynonymIDs {
 		res, err := client.DeleteSynonym(
@@ -134,18 +139,23 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		if err != nil {
 			return fmt.Errorf("failed to delete synonym %s: %w", synonymID, err)
 		}
-		if opts.Wait {
-			taskIDs = append(taskIDs, res.TaskID)
-		}
+		responses = append(responses, *res)
 	}
 
-	if len(taskIDs) > 0 {
-		for _, taskID := range taskIDs {
-			_, err := client.WaitForTask(opts.Index, taskID)
-			if err != nil {
+	if opts.Wait {
+		for _, res := range responses {
+			if _, err := client.WaitForTask(opts.Index, res.TaskID); err != nil {
 				return err
 			}
 		}
+	}
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, responses)
 	}
 
 	cs := opts.IO.ColorScheme()

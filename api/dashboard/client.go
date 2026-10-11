@@ -544,34 +544,56 @@ func (c *Client) CreateAPIKey(
 	accessToken, appID string,
 	acl []string,
 	description string,
-) (string, error) {
-	payload := CreateAPIKeyRequest{ACL: acl, Description: description}
-	body, err := json.Marshal(payload)
+) (CreatedAPIKey, error) {
+	key, err := c.CreateAPIKeyWithParams(
+		accessToken,
+		appID,
+		CreateAPIKeyRequest{ACL: acl, Description: description},
+	)
 	if err != nil {
-		return "", err
+		return CreatedAPIKey{}, err
+	}
+
+	return CreatedAPIKey{Value: key.Value, UUID: key.UUID}, nil
+}
+
+func (c *Client) CreateAPIKeyWithParams(
+	accessToken, appID string,
+	params CreateAPIKeyRequest,
+) (APIKey, error) {
+	body, err := json.Marshal(params)
+	if err != nil {
+		return APIKey{}, err
 	}
 
 	endpoint := fmt.Sprintf("%s/1/applications/%s/api-keys", c.APIURL, url.PathEscape(appID))
 	req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return "", err
+		return APIKey{}, err
 	}
 	c.setAPIHeaders(req, accessToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("create API key request failed: %w", err)
+		return APIKey{}, fmt.Errorf("create API key request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized {
+		return APIKey{}, ErrSessionExpired
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return APIKey{}, ErrApplicationNotFound
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read API key response: %w", err)
+		return APIKey{}, fmt.Errorf("failed to read API key response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf(
+		return APIKey{}, fmt.Errorf(
 			"create API key failed with status %d: %s",
 			resp.StatusCode,
 			string(respBody),
@@ -580,7 +602,65 @@ func (c *Client) CreateAPIKey(
 
 	var keyResp CreateAPIKeyResponse
 	if err := json.Unmarshal(respBody, &keyResp); err != nil {
-		return "", fmt.Errorf(
+		return APIKey{}, fmt.Errorf(
+			"failed to parse API key response: %w (body: %s)",
+			err,
+			string(respBody),
+		)
+	}
+
+	if keyResp.Data.Attributes.Value == "" {
+		return APIKey{}, fmt.Errorf(
+			"API key creation succeeded but no key was returned in the response: %s",
+			string(respBody),
+		)
+	}
+
+	return keyResp.Data.toAPIKey(), nil
+}
+
+// RotateAPIKey regenerates the secret value of the API key identified by keyUUID
+// for the given application, via the Public API. The key keeps its UUID; only
+// its value changes. Returns the new value and the (unchanged) UUID.
+func (c *Client) RotateAPIKey(accessToken, appID, keyUUID string) (CreatedAPIKey, error) {
+	endpoint := fmt.Sprintf(
+		"%s/1/applications/%s/api-keys/%s/rotate",
+		c.APIURL,
+		url.PathEscape(appID),
+		url.PathEscape(keyUUID),
+	)
+	req, err := http.NewRequest(http.MethodPost, endpoint, nil)
+	if err != nil {
+		return CreatedAPIKey{}, err
+	}
+	c.setAPIHeaders(req, accessToken)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return CreatedAPIKey{}, fmt.Errorf("rotate API key request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return CreatedAPIKey{}, ErrSessionExpired
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return CreatedAPIKey{}, fmt.Errorf("failed to read API key response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return CreatedAPIKey{}, fmt.Errorf(
+			"rotate API key failed with status %d: %s",
+			resp.StatusCode,
+			string(respBody),
+		)
+	}
+
+	var keyResp CreateAPIKeyResponse
+	if err := json.Unmarshal(respBody, &keyResp); err != nil {
+		return CreatedAPIKey{}, fmt.Errorf(
 			"failed to parse API key response: %w (body: %s)",
 			err,
 			string(respBody),
@@ -589,13 +669,13 @@ func (c *Client) CreateAPIKey(
 
 	key := keyResp.Data.Attributes.Value
 	if key == "" {
-		return "", fmt.Errorf(
-			"API key creation succeeded but no key was returned in the response: %s",
+		return CreatedAPIKey{}, fmt.Errorf(
+			"API key rotation succeeded but no key was returned in the response: %s",
 			string(respBody),
 		)
 	}
 
-	return key, nil
+	return CreatedAPIKey{Value: key, UUID: keyResp.Data.ID}, nil
 }
 
 // GetCrawlerUser gets the crawler API user data for the current authenticated user

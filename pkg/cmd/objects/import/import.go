@@ -26,6 +26,8 @@ type ImportOptions struct {
 	BatchSize     int
 	AutoObjectIDs bool
 	Wait          bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewImportCmd creates and returns an import command for records
@@ -34,6 +36,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var file string
@@ -79,6 +82,9 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.Flags().
 		BoolVarP(&opts.AutoObjectIDs, "auto-generate-object-id-if-not-exist", "a", false, "Auto-generate object IDs if they don't exist")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
+
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -144,6 +150,14 @@ func runImportCmd(opts *ImportOptions) error {
 
 	if err := opts.Scanner.Err(); err != nil {
 		return err
+	}
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, responses)
 	}
 
 	cs := opts.IO.ColorScheme()

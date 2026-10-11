@@ -39,7 +39,7 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "update",
 		Short: "Rename the current Algolia application",
 		Long: heredoc.Doc(`
-			Rename the application associated with the current CLI profile.
+			Rename the current application.
 			Requires an active application to be selected (run "algolia application select" first).
 		`),
 		Example: heredoc.Doc(`
@@ -69,7 +69,7 @@ func runUpdateCmd(opts *UpdateOptions) error {
 	appID, err := opts.Config.Profile().GetApplicationID()
 	if err != nil {
 		return fmt.Errorf(
-			"no current application configured; configure a profile with \"algolia profile add\" or \"algolia application select\" first: %w",
+			"no current application configured; run \"algolia auth login\" or \"algolia application select\" first: %w",
 			err,
 		)
 	}

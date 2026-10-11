@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 
@@ -215,6 +216,66 @@ func TestTrack_MergesCustomProperties(t *testing.T) {
 	assert.Equal(t, "app-id", track.Properties["app_id"])
 }
 
+func TestTrack_IncludesCLIContext(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	metadata.CLIContext = "agent:claude-code"
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, "agent:claude-code", track.Properties["cli_context"])
+}
+
+func TestTrack_IncludesVersionAndOperatingSystem(t *testing.T) {
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, metadata.CLIVersion, track.Properties["version"])
+	assert.Equal(t, metadata.OS, track.Properties["operating_system"])
+}
+
+func TestTrack_IncludesConfiguredApplicationsAndIsCI(t *testing.T) {
+	t.Setenv("CI", "1")
+
+	fake := &fakeAnalyticsClient{}
+	client := &AnalyticsTelemetryClient{client: fake}
+
+	metadata := NewEventMetadata()
+	metadata.SetConfiguredApplicationsNb(3)
+	ctx := WithEventMetadata(context.Background(), metadata)
+
+	require.NoError(t, client.Track(ctx, "Command Invoked", nil))
+	require.Len(t, fake.messages, 1)
+
+	track, ok := fake.messages[0].(analytics.Track)
+	require.True(t, ok)
+	assert.Equal(t, 3, track.Properties["configured_applications"])
+	assert.Equal(t, int8(1), track.Properties["is_ci"])
+}
+
+func TestNewEventMetadata_DetectsCLIContext(t *testing.T) {
+	metadata := NewEventMetadata()
+	assert.NotEmpty(t, metadata.CLIContext)
+	valid := metadata.CLIContext == ContextHuman ||
+		metadata.CLIContext == ContextAgentUnknown ||
+		strings.HasPrefix(metadata.CLIContext, "agent:")
+	assert.True(t, valid)
+}
+
 func TestTrack_SequenceIsMonotonic(t *testing.T) {
 	fake := &fakeAnalyticsClient{}
 	client := &AnalyticsTelemetryClient{client: fake}
@@ -265,15 +326,22 @@ func TestTrack_SequenceIsUniqueUnderConcurrency(t *testing.T) {
 }
 
 func TestTrack_CustomPropertiesCannotOverrideBase(t *testing.T) {
+	t.Setenv("CI", "1")
+
 	fake := &fakeAnalyticsClient{}
 	client := &AnalyticsTelemetryClient{client: fake}
 
 	metadata := NewEventMetadata()
+	metadata.SetConfiguredApplicationsNb(3)
 	ctx := WithEventMetadata(context.Background(), metadata)
 
 	require.NoError(t, client.Track(ctx, "Command Invoked", map[string]any{
-		"invocation_id": "spoofed",
-		"sequence":      int64(999),
+		"invocation_id":           "spoofed",
+		"sequence":                int64(999),
+		"version":                 "spoofed",
+		"operating_system":        "spoofed",
+		"configured_applications": 999,
+		"is_ci":                   int8(0),
 	}))
 	require.Len(t, fake.messages, 1)
 
@@ -281,4 +349,8 @@ func TestTrack_CustomPropertiesCannotOverrideBase(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, metadata.InvocationID, track.Properties["invocation_id"])
 	assert.Equal(t, int64(1), track.Properties["sequence"])
+	assert.Equal(t, metadata.CLIVersion, track.Properties["version"])
+	assert.Equal(t, metadata.OS, track.Properties["operating_system"])
+	assert.Equal(t, 3, track.Properties["configured_applications"])
+	assert.Equal(t, int8(1), track.Properties["is_ci"])
 }

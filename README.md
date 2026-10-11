@@ -80,6 +80,35 @@ To build the Algolia CLI from source, you'll need:
 
 To also produce **`algolia-beta`** (beside `algolia`), run **`task build-beta`**. **Point `.env` at production endpoints before you build** if you need prod hosts baked in. The binary prints only **`[BETA] WARNING: This version should not be used in production.`** on **stderr** when you use **`agents`** (optional yellow/bold on a TTY).
 
+## Get started
+
+### Sign in
+
+Sign in through the browser (this also lets you sign up if you don't have an account yet):
+
+```sh
+algolia auth login
+```
+
+If your account has no application, the CLI prompts you to create one.
+On a machine without a browser (SSH, container), use `algolia auth login --no-browser`.
+Check your status anytime with `algolia auth status`.
+
+### Choose an application
+
+```sh
+algolia application list                                 # list your applications
+algolia application select                               # set the current one
+algolia application create --name "My App" --region EU   # regions: EU, UK, USC, USE, USW
+```
+
+### Index and search your first records
+
+```sh
+algolia objects import MOVIES -F movies.ndjson           # import records into the MOVIES index
+algolia search MOVIES --query "toy story"                # search them
+```
+
 ## Support
 
 If you found an issue with the Algolia CLI,

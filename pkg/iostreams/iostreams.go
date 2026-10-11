@@ -229,6 +229,14 @@ func (s *IOStreams) SetNeverPrompt(v bool) {
 	s.neverPrompt = v
 }
 
+func (s *IOStreams) GetProgressIndicatorEnabled() bool {
+	return s.progressIndicatorEnabled
+}
+
+func (s *IOStreams) SetProgressIndicatorEnabled(v bool) {
+	s.progressIndicatorEnabled = v
+}
+
 func (s *IOStreams) StartProgressIndicator() {
 	s.StartProgressIndicatorWithLabel("")
 }

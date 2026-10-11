@@ -25,7 +25,7 @@ func NewUpgradeCmd(f *cmdutil.Factory) *cobra.Command {
 		Use:   "upgrade",
 		Short: "Upgrade the current application to a higher-tier plan",
 		Long: heredoc.Doc(`
-			Change the application associated with the current CLI profile to a
+			Change the current application to a
 			higher-tier self-serve plan.
 
 			Paid plans require a payment method on your account; the CLI can't

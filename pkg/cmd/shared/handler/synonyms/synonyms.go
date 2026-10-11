@@ -66,7 +66,7 @@ func AskSynonym(flags *shared.SynonymFlags, cmd *cobra.Command) error {
 		wordProvided:         cmd.Flags().Changed("word"),
 		placeholderProvided:  cmd.Flags().Changed("placeholder"),
 		correctionsProvided:  cmd.Flags().Changed("corrections"),
-		replacementsProvided: cmd.Flags().Changed("repalcements"),
+		replacementsProvided: cmd.Flags().Changed("replacements"),
 	}
 
 	err := AskSynonymIDQuestion(flags, flagsProvided)
@@ -199,7 +199,7 @@ func AskAltCorrectionSynonymQuestions(
 		}
 	}
 
-	if !flagsProvided.replacementsProvided {
+	if !flagsProvided.correctionsProvided {
 		return ask.AskCommaSeparatedInputQuestion(
 			"corrections (comma separated):",
 			&flags.SynonymCorrections,

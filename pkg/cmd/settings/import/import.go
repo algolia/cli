@@ -24,6 +24,8 @@ type ImportOptions struct {
 	Settings          search.IndexSettings
 	ForwardToReplicas bool
 	Wait              bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewImportCmd creates and returns an import command for settings
@@ -32,6 +34,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var settingsFile string
@@ -68,6 +71,8 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		BoolVarP(&opts.ForwardToReplicas, "forward-to-replicas", "f", false, "Forward the settings to the replicas")
 	cmd.Flags().BoolVarP(&opts.Wait, "wait", "w", false, "wait for the operation to complete")
 
+	opts.PrintFlags.AddFlags(cmd)
+
 	return cmd
 }
 
@@ -97,6 +102,14 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
+	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

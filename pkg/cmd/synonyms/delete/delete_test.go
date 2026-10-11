@@ -1,6 +1,7 @@
 package delete
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -198,4 +199,35 @@ func Test_runDeleteCmd(t *testing.T) {
 			assert.Equal(t, tt.wantOut, out.String())
 		})
 	}
+}
+
+// Test_runDeleteCmd_outputJSON checks that the --output json path emits every
+// delete response, in order — i.e. the multi-id collection loop, not the printer.
+func Test_runDeleteCmd_outputJSON(t *testing.T) {
+	r := httpmock.Registry{}
+	ids := []string{"1", "2"}
+	for i, id := range ids {
+		r.Register(
+			httpmock.REST("GET", fmt.Sprintf("1/indexes/foo/synonyms/%s", id)),
+			httpmock.JSONResponse(search.SynonymHit{
+				ObjectID: id,
+				Type:     search.SYNONYM_TYPE_ONEWAYSYNONYM,
+			}),
+		)
+		r.Register(
+			httpmock.REST("DELETE", fmt.Sprintf("1/indexes/foo/synonyms/%s", id)),
+			httpmock.JSONResponse(search.DeletedAtResponse{TaskID: int64((i + 1) * 100)}),
+		)
+	}
+
+	f, out := test.NewFactory(false, &r, nil, "")
+	cmd := NewDeleteCmd(f, nil)
+	out, err := test.Execute(cmd, "foo --synonym-ids 1,2 --confirm --output json", out)
+	require.NoError(t, err)
+
+	var got []search.DeletedAtResponse
+	require.NoError(t, json.Unmarshal([]byte(out.String()), &got))
+	assert.Len(t, got, 2)
+	assert.Equal(t, int64(100), got[0].TaskID)
+	assert.Equal(t, int64(200), got[1].TaskID)
 }

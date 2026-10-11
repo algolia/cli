@@ -12,6 +12,7 @@ import (
 	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
@@ -29,6 +30,10 @@ type Factory struct {
 	// CRUD surface. Routes to https://<appID>.algolia.net/agent-studio/1/...
 	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 
+	// Prompter is the interactive input source used by commands that support
+	// an --interactive mode. Defaulted to a real SurveyPrompter in factory.New;
+	// tests set it to an interactive.ScriptedPrompter.
+	Prompter       interactive.Prompter
 	ExecutableName string
 }
 

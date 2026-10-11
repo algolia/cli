@@ -13,8 +13,11 @@ import (
 
 	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
+	"github.com/algolia/cli/api/dashboard"
+	"github.com/algolia/cli/pkg/auth"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/pkg/iostreams"
 )
 
@@ -24,6 +27,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 		ExecutableName: "gh",
 	}
 	f.IOStreams = ioStreams(f)
+	f.Prompter = interactive.NewSurveyPrompter(f.IOStreams)
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 	f.CompositionClient = compositionClient(f, appVersion)
@@ -156,15 +160,38 @@ func agentStudioAPIClient(f *cmdutil.Factory, appVersion string) func() (*agentS
 	}
 }
 
+// fetchCrawlerUserID retrieves the crawler user ID from the dashboard API
+// using the stored OAuth token. The new model never stores it locally, so it
+// is fetched when needed. Overridable in tests.
+var fetchCrawlerUserID = func() (string, error) {
+	client := dashboard.NewClient(auth.OAuthClientID())
+	token, err := auth.GetValidToken(client)
+	if err != nil {
+		return "", err
+	}
+	user, err := client.GetCrawlerUser(token)
+	if err != nil {
+		return "", err
+	}
+	return user.ID, nil
+}
+
 func crawlerClient(f *cmdutil.Factory) func() (*crawler.Client, error) {
 	return func() (*crawler.Client, error) {
-		userID, err := f.Config.Profile().GetCrawlerUserID()
-		if err != nil {
-			return nil, err
-		}
 		APIKey, err := f.Config.Profile().GetCrawlerAPIKey()
 		if err != nil {
 			return nil, err
+		}
+
+		userID, err := f.Config.Profile().GetCrawlerUserID()
+		if err != nil {
+			userID, err = fetchCrawlerUserID()
+			if err != nil {
+				return nil, fmt.Errorf(
+					"the crawler user ID is not configured and could not be fetched (run `algolia auth login`): %w",
+					err,
+				)
+			}
 		}
 
 		return crawler.NewClient(userID, APIKey), nil

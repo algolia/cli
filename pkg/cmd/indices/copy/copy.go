@@ -29,6 +29,8 @@ type CopyOptions struct {
 	Wait bool
 
 	DoConfirm bool
+
+	PrintFlags *cmdutil.PrintFlags
 }
 
 // NewCopyCmd creates and returns a copy command for indices
@@ -37,6 +39,7 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 		IO:           f.IOStreams,
 		Config:       f.Config,
 		SearchClient: f.SearchClient,
+		PrintFlags:   cmdutil.NewPrintFlags(),
 	}
 
 	var confirm bool
@@ -100,6 +103,8 @@ func NewCopyCmd(f *cmdutil.Factory, runF func(*CopyOptions) error) *cobra.Comman
 			"synonyms": "synonyms",
 			"rules":    "rules",
 		}, "copy"))
+
+	opts.PrintFlags.AddFlags(cmd)
 
 	return cmd
 }
@@ -173,6 +178,14 @@ func runCopyCmd(opts *CopyOptions) error {
 	}
 
 	opts.IO.StopProgressIndicator()
+
+	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
+		p, err := opts.PrintFlags.ToPrinter()
+		if err != nil {
+			return err
+		}
+		return p.Print(opts.IO, res)
+	}
 
 	cs := opts.IO.ColorScheme()
 	if opts.IO.IsStdoutTTY() {

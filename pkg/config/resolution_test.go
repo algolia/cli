@@ -1,0 +1,469 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/zalando/go-keyring"
+
+	"github.com/algolia/cli/pkg/keychain"
+)
+
+func TestMain(m *testing.M) {
+	for _, entry := range os.Environ() {
+		if name, _, ok := strings.Cut(entry, "="); ok && strings.HasPrefix(name, "ALGOLIA_") {
+			_ = os.Unsetenv(name)
+		}
+	}
+
+	os.Exit(m.Run())
+}
+
+func TestConfig_LoadStateCachesAndToleratesMissing(t *testing.T) {
+	cfg := &Config{StateFile: filepath.Join(t.TempDir(), "state.toml")}
+
+	st := cfg.loadState()
+	require.NotNil(t, st)
+	assert.Empty(t, st.CurrentApplicationID)
+
+	// Second call returns the same cached pointer (loaded once).
+	assert.Same(t, st, cfg.loadState())
+}
+
+func TestConfig_LoadStateReadsFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(
+		path,
+		[]byte(
+			"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\n",
+		),
+		0o600,
+	))
+
+	cfg := &Config{StateFile: path}
+	st := cfg.loadState()
+	assert.Equal(t, "APP1", st.CurrentApplicationID)
+	assert.Equal(t, "prod", st.Applications["APP1"].Alias)
+}
+
+func TestConfig_ActiveApplicationID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(
+		path,
+		[]byte(
+			"current_application_id = \"CURRENT\"\n\n[applications.ALIASED]\nalias = \"prod\"\n",
+		),
+		0o600,
+	))
+
+	t.Run("env wins", func(t *testing.T) {
+		t.Setenv("ALGOLIA_APPLICATION_ID", "ENV_APP")
+		cfg := &Config{StateFile: path}
+		assert.Equal(t, "ENV_APP", cfg.activeApplicationID())
+	})
+
+	t.Run("profile alias resolves", func(t *testing.T) {
+		cfg := &Config{StateFile: path}
+		cfg.CurrentProfile.Name = "prod"
+		assert.Equal(t, "ALIASED", cfg.activeApplicationID())
+	})
+
+	t.Run("falls back to current_application_id", func(t *testing.T) {
+		cfg := &Config{StateFile: path}
+		assert.Equal(t, "CURRENT", cfg.activeApplicationID())
+	})
+
+	t.Run("unknown profile alias defers to config.toml, not current", func(t *testing.T) {
+		cfg := &Config{StateFile: path}
+		cfg.CurrentProfile.Name = "nope"
+		assert.Empty(t, cfg.activeApplicationID()) // "" → legacy profile-by-name, not CURRENT
+	})
+}
+
+func TestConfig_AppSecretsForCaches(t *testing.T) {
+	keyring.MockInit()
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "key-1"}))
+
+	cfg := &Config{}
+	got := cfg.appSecretsFor("APP1")
+	require.NotNil(t, got)
+	assert.Equal(t, "key-1", got.APIKey)
+
+	// Missing app → nil, and a keychain error must not panic.
+	assert.Nil(t, cfg.appSecretsFor("MISSING"))
+
+	// The nil result is cached: a later keychain write isn't picked up mid-command.
+	require.NoError(t, keychain.SaveAppSecrets("MISSING", keychain.AppSecrets{APIKey: "late"}))
+	assert.Nil(t, cfg.appSecretsFor("MISSING"))
+}
+
+func TestProfile_GetApplicationID_NewModel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	appID, err := cfg.Profile().GetApplicationID()
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", appID)
+}
+
+func TestProfile_GetAPIKey_FromKeychain(t *testing.T) {
+	keyring.MockInit()
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "secret-key"}))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "secret-key", key)
+}
+
+func TestProfile_GetCrawlerAPIKey_FromKeychain(t *testing.T) {
+	keyring.MockInit()
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+	require.NoError(t, keychain.SaveAppSecrets("APP1",
+		keychain.AppSecrets{APIKey: "k", CrawlerAPIKey: "crawler-key"}))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	key, err := cfg.Profile().GetCrawlerAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "crawler-key", key)
+}
+
+func TestProfile_EnvWinsOverKeychain(t *testing.T) {
+	keyring.MockInit()
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte("current_application_id = \"APP1\"\n"), 0o600))
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "keychain-key"}))
+	t.Setenv("ALGOLIA_API_KEY", "env-key")
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "env-key", key) // env beats the keychain
+}
+
+func TestProfile_FallsBackToConfigToml(t *testing.T) {
+	// No state.toml entry and no keychain → resolve from the legacy config.toml.
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte(
+			"[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy-key\"\ndefault = true\n",
+		),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: filepath.Join(t.TempDir(), "absent.toml")}
+	cfg.CurrentProfile.config = cfg
+
+	appID, err := cfg.Profile().GetApplicationID()
+	require.NoError(t, err)
+	assert.Equal(t, "LEGACY_APP", appID)
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-key", key)
+}
+
+func TestProfile_DefaultedNameDoesNotMaskCurrentApplication(t *testing.T) {
+	// CheckAuth calls LoadDefault() before any getter runs. The defaulted
+	// legacy profile name must NOT be mistaken for an explicit --profile flag,
+	// otherwise the legacy default application silently wins over state.toml's
+	// current_application_id.
+	keyring.MockInit()
+	statePath := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(
+		t,
+		os.WriteFile(statePath, []byte("current_application_id = \"APP1\"\n"), 0o600),
+	)
+	require.NoError(t, keychain.SaveAppSecrets("APP1", keychain.AppSecrets{APIKey: "app1-key"}))
+
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte("[legacy]\napplication_id = \"LEGACY\"\napi_key = \"legacy-key\"\ndefault = true\n"),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: statePath}
+	cfg.CurrentProfile.config = cfg
+
+	cfg.CurrentProfile.LoadDefault() // what CheckAuth does when no --profile is given
+	require.Equal(t, "legacy", cfg.CurrentProfile.Name)
+
+	appID, err := cfg.Profile().GetApplicationID()
+	require.NoError(t, err)
+	assert.Equal(t, "APP1", appID)
+
+	key, err := cfg.Profile().GetAPIKey()
+	require.NoError(t, err)
+	assert.Equal(t, "app1-key", key)
+}
+
+func TestProfile_GetAPIKey_ActiveAppWithoutKeyErrors(t *testing.T) {
+	keyring.MockInit()
+	statePath := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(
+		t,
+		os.WriteFile(statePath, []byte("current_application_id = \"APP1\"\n"), 0o600),
+	)
+
+	// A legacy default profile whose key must NOT leak for the resolved APP1.
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte("[legacy]\napplication_id = \"LEGACY\"\napi_key = \"legacy-key\"\ndefault = true\n"),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: statePath}
+	cfg.CurrentProfile.config = cfg
+
+	// APP1 resolved from state but no keychain key → error, never "legacy-key".
+	_, err := cfg.Profile().GetAPIKey()
+	require.Error(t, err)
+	// The message names the application and points to a fix, rather than the
+	// generic "not configured yet".
+	assert.Contains(t, err.Error(), "APP1")
+	assert.Contains(t, err.Error(), "application select")
+}
+
+func TestProfile_GetSearchHosts_FromState(t *testing.T) {
+	t.Setenv("ALGOLIA_SEARCH_HOSTS", "")
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\nsearch_hosts = [\"h1\", \"h2\"]\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	assert.Equal(t, []string{"h1", "h2"}, cfg.Profile().GetSearchHosts())
+}
+
+func TestProfile_GetSearchHosts_StateEmptyFallsBackToConfigToml(t *testing.T) {
+	t.Setenv("ALGOLIA_SEARCH_HOSTS", "")
+	statePath := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(
+		t,
+		os.WriteFile(statePath, []byte("current_application_id = \"APP1\"\n"), 0o600),
+	)
+
+	configFile := filepath.Join(t.TempDir(), "config.toml")
+	require.NoError(t, os.WriteFile(
+		configFile,
+		[]byte(
+			"[legacy]\napplication_id = \"APP1\"\nsearch_hosts = [\"legacy-host\"]\ndefault = true\n",
+		),
+		0o600,
+	))
+	viper.Reset()
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(configFile)
+	require.NoError(t, viper.ReadInConfig())
+	t.Cleanup(viper.Reset)
+
+	cfg := &Config{StateFile: statePath}
+	cfg.CurrentProfile.config = cfg
+
+	// No hosts in state.toml for APP1: the legacy lookup still answers while
+	// config.toml exists.
+	assert.Equal(t, []string{"legacy-host"}, cfg.Profile().GetSearchHosts())
+}
+
+func TestProfile_GetCrawlerUserID_FromState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\ncrawler_user_id = \"crawler-user\"\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	cfg.CurrentProfile.config = cfg
+
+	userID, err := cfg.Profile().GetCrawlerUserID()
+	require.NoError(t, err)
+	assert.Equal(t, "crawler-user", userID)
+}
+
+func TestShouldUseSessionAPIKey(t *testing.T) {
+	newConfig := func(t *testing.T, state string) *Config {
+		t.Helper()
+		t.Setenv("ALGOLIA_API_KEY", "")
+		t.Setenv("ALGOLIA_ADMIN_API_KEY", "")
+		t.Setenv("ALGOLIA_APPLICATION_ID", "")
+		keyring.MockInit()
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		cfg := &Config{StateFile: state}
+		cfg.CurrentProfile.config = cfg
+
+		return cfg
+	}
+
+	writeState := func(t *testing.T, content string) string {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "state.toml")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+
+		return path
+	}
+
+	loadConfigToml := func(t *testing.T, content string) {
+		t.Helper()
+		path := filepath.Join(t.TempDir(), "config.toml")
+		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+		viper.SetConfigType("toml")
+		viper.SetConfigFile(path)
+		require.NoError(t, viper.ReadInConfig())
+	}
+
+	managedState := "current_application_id = \"MANAGED\"\n\n[applications.MANAGED]\nalias = \"prod\"\napi_key_uuid = \"uuid-1\"\n"
+	reusedState := "current_application_id = \"REUSED\"\n\n[applications.REUSED]\nalias = \"legacy\"\n"
+
+	t.Run("active application with a stored UUID", func(t *testing.T) {
+		cfg := newConfig(t, writeState(t, managedState))
+		require.NoError(
+			t,
+			keychain.SaveAppSecrets("MANAGED", keychain.AppSecrets{APIKey: "cli-key"}),
+		)
+
+		assert.True(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("application id flag with an empty state file", func(t *testing.T) {
+		cfg := newConfig(t, writeState(t, ""))
+		cfg.CurrentProfile.ApplicationID = "FLAG_APP"
+
+		assert.True(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("nothing configured", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+
+		assert.True(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("legacy config.toml profile with an api key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy-key\"\ndefault = true\n",
+		)
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("legacy config.toml profile with only an admin api key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[legacy]\napplication_id = \"LEGACY_APP\"\nadmin_api_key = \"adm\"\ndefault = true\n",
+		)
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("profile flag selecting a config.toml profile with a key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[other]\napplication_id = \"OTHER_APP\"\napi_key = \"other\"\n\n[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy\"\ndefault = true\n",
+		)
+		cfg.CurrentProfile.Name = "other"
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("profile flag selecting a config.toml profile without a key", func(t *testing.T) {
+		cfg := newConfig(t, filepath.Join(t.TempDir(), "absent.toml"))
+		loadConfigToml(
+			t,
+			"[other]\napplication_id = \"OTHER_APP\"\n\n[legacy]\napplication_id = \"LEGACY_APP\"\napi_key = \"legacy\"\ndefault = true\n",
+		)
+		cfg.CurrentProfile.Name = "other"
+
+		assert.True(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("ALGOLIA_API_KEY set", func(t *testing.T) {
+		cfg := newConfig(t, writeState(t, managedState))
+		t.Setenv("ALGOLIA_API_KEY", "env-key")
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("api key flag set", func(t *testing.T) {
+		cfg := newConfig(t, writeState(t, managedState))
+		cfg.CurrentProfile.APIKey = "flag-key"
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("reused keychain key without a UUID", func(t *testing.T) {
+		cfg := newConfig(t, writeState(t, reusedState))
+		require.NoError(
+			t,
+			keychain.SaveAppSecrets("REUSED", keychain.AppSecrets{APIKey: "old-key"}),
+		)
+
+		assert.False(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("stored UUID but no key in the keychain", func(t *testing.T) {
+		cfg := newConfig(t, writeState(t, managedState))
+
+		assert.True(t, ShouldUseSessionAPIKey(cfg))
+	})
+
+	t.Run("uninitialized config", func(t *testing.T) {
+		t.Setenv("ALGOLIA_API_KEY", "")
+		t.Setenv("ALGOLIA_APPLICATION_ID", "")
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		assert.True(t, ShouldUseSessionAPIKey(&Config{}))
+	})
+}
+
+func TestConfig_ApplicationInState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.toml")
+	require.NoError(t, os.WriteFile(path, []byte(
+		"current_application_id = \"APP1\"\n\n[applications.APP1]\nalias = \"prod\"\n",
+	), 0o600))
+
+	cfg := &Config{StateFile: path}
+	assert.True(t, cfg.ApplicationInState("APP1"))
+	assert.False(t, cfg.ApplicationInState("APP2"))
+}

@@ -25,6 +25,13 @@ patch="${BASH_REMATCH[3]}"
 suffix="${BASH_REMATCH[4]:-}"
 VERSION="$((major + 4)).$minor.$patch$suffix"
 
+if [[ -z "${NPM_TAG:-}" && "$suffix" == -* ]]; then
+  prerelease="${suffix#-}"
+  NPM_TAG="${prerelease%%.*}"
+else
+  NPM_TAG="${NPM_TAG:-latest}"
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NPM_DIR="$REPO_ROOT/npm"
 DIST_DIR="$REPO_ROOT/dist"
@@ -97,7 +104,7 @@ for entry in "${PLATFORMS[@]}"; do
   fi
 
   npm --prefix "$NPM_DIR/cli-$plat" version --no-git-tag-version "$VERSION"
-  npm publish "$NPM_DIR/cli-$plat" --access public $PROVENANCE $DRY_RUN
+  npm publish "$NPM_DIR/cli-$plat" --access public --tag "$NPM_TAG" $PROVENANCE $DRY_RUN
 done
 
 # Update coordinator package versions to match and publish
@@ -111,4 +118,4 @@ done
 npm --prefix "$NPM_DIR/algolia" version --no-git-tag-version "$VERSION"
 
 echo "Publishing @algolia/$PACKAGE_NAME@$VERSION"
-npm publish "$NPM_DIR/algolia" --access public $PROVENANCE $DRY_RUN
+npm publish "$NPM_DIR/algolia" --access public --tag "$NPM_TAG" $PROVENANCE $DRY_RUN

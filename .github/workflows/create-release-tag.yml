@@ -1,0 +1,89 @@
+name: Create release tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Release type to create
+        required: true
+        type: choice
+        options:
+          - fix
+          - minor
+          - major
+          - prerelease
+          - freeform
+      prerelease_base:
+        description: Base bump for prereleases
+        required: false
+        default: minor
+        type: choice
+        options:
+          - fix
+          - minor
+          - major
+      prerelease_channel:
+        description: Prerelease channel
+        required: false
+        default: beta
+        type: choice
+        options:
+          - alpha
+          - beta
+          - rc
+          - canary
+          - next
+          - custom
+      custom_prerelease_channel:
+        description: Custom prerelease channel, used when prerelease_channel is custom
+        required: false
+        type: string
+      freeform_version:
+        description: Exact semver version/tag, used when release_type is freeform
+        required: false
+        type: string
+      major_confirmation:
+        description: Exact computed tag required for major releases, for example v2.0.0
+        required: false
+        type: string
+      dry_run:
+        description: Compute and summarize without pushing a tag
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: create-release-tag
+  cancel-in-progress: false
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+
+      - name: Fetch tags
+        run: git fetch --force --tags origin
+
+      - name: Configure git author
+        run: |
+          git config user.name "algolia-ci"
+          git config user.email "noreply@algolia.com"
+
+      - name: Create release tag
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          PRERELEASE_BASE: ${{ inputs.prerelease_base }}
+          PRERELEASE_CHANNEL: ${{ inputs.prerelease_channel }}
+          CUSTOM_PRERELEASE_CHANNEL: ${{ inputs.custom_prerelease_channel }}
+          FREEFORM_VERSION: ${{ inputs.freeform_version }}
+          MAJOR_CONFIRMATION: ${{ inputs.major_confirmation }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: ./scripts/create-release-tag.sh

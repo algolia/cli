@@ -18,7 +18,7 @@ func NewIndicesCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "indices",
 		Aliases: []string{"index"},
-		Short:   "Manage your Algolia indices",
+		Short:   "List, copy, move, clear, and delete indices",
 	}
 
 	cmd.AddCommand(list.NewListCmd(f))

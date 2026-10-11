@@ -66,6 +66,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Example: heredoc.Doc(`
+			$ algolia auth login
 			$ algolia search MOVIES --query "toy story"
 			$ algolia objects browse MOVIES
 			$ algolia apikeys create --acl search
@@ -85,11 +86,16 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().Name, "profile", "p", "", "The profile to use")
+	// Deprecated but kept visible in help (MarkDeprecated would also hide it).
+	cmd.PersistentFlags().
+		Lookup("profile").
+		Deprecated = "use --application-id or 'algolia application select' instead"
 	_ = cmd.RegisterFlagCompletionFunc("profile", cmdutil.ConfiguredProfilesCompletionFunc(f))
 
 	cmd.PersistentFlags().
-		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID")
-	cmd.PersistentFlags().StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key")
+		StringVarP(&f.Config.Profile().ApplicationID, "application-id", "", "", "The application ID (defaults to the current application, set with 'algolia application select')")
+	cmd.PersistentFlags().
+		StringVarP(&f.Config.Profile().APIKey, "api-key", "", "", "The API key (defaults to the key stored for the current application)")
 	cmd.PersistentFlags().
 		StringVarP(&f.Config.Profile().AdminAPIKey, "admin-api-key", "", "", "The admin API key")
 	_ = cmd.PersistentFlags().MarkDeprecated("admin-api-key", "use --api-key instead")
@@ -135,10 +141,18 @@ func Execute() (code exitCode) {
 	cmdFactory := factory.New(version.Version, &cfg)
 	stderr := cmdFactory.IOStreams.ErrOut
 
+	// One-time config.toml → state.toml + keychain migration (GROUT-363). Must
+	// run before credential resolution, which caches state.toml per command.
+	if cfg.ShouldMigrate() {
+		if err := cfg.Migrate(); err != nil && hasDebug {
+			fmt.Fprintf(stderr, "config migration failed (will retry on next run): %s\n", err)
+		}
+	}
+
 	// Set up the update notifier.
 	updateMessageChan := make(chan *update.ReleaseInfo)
 	go func() {
-		rel, err := checkForUpdate(cfg, version.Version)
+		rel, err := checkForUpdate(&cfg, version.Version)
 		if err != nil && hasDebug {
 			fmt.Fprintf(stderr, "Error checking for update: %s\n", err)
 		}
@@ -150,14 +164,14 @@ func Execute() (code exitCode) {
 
 	// Pre-command auth check and telemetry setup.
 	authError := errors.New("authError")
+	var preRunAccessToken string
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		if auth.IsAuthCheckEnabled(cmd) {
-			if err := auth.CheckAuth(cfg); err != nil {
+			if err := auth.CheckAuth(&cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
-				fmt.Fprintln(
-					stderr,
-					"Please run `algolia profile add` to configure your first profile.",
-				)
+				if hint := auth.Remediation(err); hint != "" {
+					fmt.Fprintln(stderr, hint)
+				}
 				return authError
 			}
 
@@ -183,17 +197,11 @@ func Execute() (code exitCode) {
 
 		if token := auth.LoadToken(); token != nil {
 			telemetryMetadata.SetUser(token.UserID, token.Email, token.Name)
+			preRunAccessToken = token.AccessToken
 		}
 
 		ctx := cmd.Context()
 		telemetryClient := telemetry.GetTelemetryClient(ctx)
-
-		// Identify the user.
-		err = telemetryClient.Identify(ctx)
-		if err != nil && hasDebug {
-			fmt.Fprintf(stderr, "Failed to identify user: %s\n", err)
-			return err
-		}
 
 		// Send telemetry.
 		err = telemetryClient.Track(ctx, telemetry.EventCommandInvoked, nil)
@@ -221,7 +229,7 @@ func Execute() (code exitCode) {
 	// includes the update-notifier wait below.
 	cmd, err := rootCmd.ExecuteContextC(ctx)
 	executedCmd, executeErr, elapsed = cmd, err, time.Since(start)
-	identifyNewlyAuthenticatedUser(ctx, cmd)
+	identifyNewSession(ctx, cmd, preRunAccessToken)
 	// Handle eventual errors.
 	if err != nil {
 		if err == cmdutil.ErrSilent {
@@ -259,23 +267,24 @@ func Execute() (code exitCode) {
 	return exitOK
 }
 
-// identifyNewlyAuthenticatedUser re-sends an Identify when the user signed in
-// during the command (e.g. `application create` while logged out): the
-// Identify from PersistentPreRunE went out anonymous, so the identity would
-// otherwise only ship on the next invocation. Runs before the deferred
-// Command Completed so that event carries the user too.
-func identifyNewlyAuthenticatedUser(ctx context.Context, cmd *cobra.Command) {
+// identifyNewSession sends an Identify when the run established or renewed the
+// session: the stored access token differs from the one known at
+// PersistentPreRunE (login, signup, account switch, re-authentication or silent
+// token refresh), so the identity and its traits do not have to wait for the
+// next invocation. Runs before the deferred Command Completed so that event
+// carries the user too.
+func identifyNewSession(ctx context.Context, cmd *cobra.Command, preRunAccessToken string) {
 	if cmd == nil || !cmdutil.ShouldTrackUsage(cmd) {
 		return
 	}
 	// Same gating as trackCommandCompleted: an empty command path means
 	// PersistentPreRunE never ran, so no login could have happened either.
 	metadata := telemetry.GetEventMetadata(ctx)
-	if metadata == nil || metadata.CommandPath == "" || metadata.UserID != "" {
+	if metadata == nil || metadata.CommandPath == "" {
 		return
 	}
 	token := auth.LoadToken()
-	if token == nil || token.UserID == "" {
+	if token == nil || token.UserID == "" || token.AccessToken == preRunAccessToken {
 		return
 	}
 	metadata.SetUser(token.UserID, token.Email, token.Name)
@@ -398,7 +407,7 @@ func shouldCheckForUpdate() bool {
 	return !utils.IsCI() && utils.IsTerminal(os.Stdout) && utils.IsTerminal(os.Stderr)
 }
 
-func checkForUpdate(cfg config.Config, currentVersion string) (*update.ReleaseInfo, error) {
+func checkForUpdate(cfg *config.Config, currentVersion string) (*update.ReleaseInfo, error) {
 	if !shouldCheckForUpdate() {
 		return nil, nil
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/auth/login"
 	"github.com/algolia/cli/pkg/cmd/auth/logout"
 	"github.com/algolia/cli/pkg/cmd/auth/signup"
+	"github.com/algolia/cli/pkg/cmd/auth/status"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -16,7 +17,7 @@ import (
 func NewAuthCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
-		Short: "Authenticate with your Algolia account",
+		Short: "Sign up, log in and out, and check authentication status",
 	}
 
 	auth.DisableAuthCheck(cmd)
@@ -25,6 +26,7 @@ func NewAuthCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(logout.NewLogoutCmd(f))
 	cmd.AddCommand(get.NewGetCmd(f))
 	cmd.AddCommand(signup.NewSignupCmd(f))
+	cmd.AddCommand(status.NewStatusCmd(f))
 	cmd.AddCommand(crawler.NewCrawlerCmd(f))
 
 	return cmd

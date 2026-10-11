@@ -3,14 +3,63 @@ package auth
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/cli/api/dashboard"
+	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/httpmock"
 	"github.com/algolia/cli/test"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/zalando/go-keyring"
 )
+
+func TestRemediation(t *testing.T) {
+	t.Run("signed out", func(t *testing.T) {
+		keyring.MockInit()
+
+		assert.Contains(
+			t,
+			Remediation(config.ErrApplicationIDNotConfigured),
+			"algolia auth login",
+		)
+	})
+
+	t.Run("signed in", func(t *testing.T) {
+		keyring.MockInit()
+		require.NoError(t, SaveToken(&dashboard.OAuthTokenResponse{
+			AccessToken: "tok-1",
+			ExpiresIn:   3600,
+			CreatedAt:   time.Now().Unix(),
+		}))
+
+		assert.Contains(
+			t,
+			Remediation(config.ErrAPIKeyNotConfigured),
+			"algolia application select",
+		)
+	})
+
+	t.Run("api key missing from the keychain", func(t *testing.T) {
+		keyring.MockInit()
+
+		assert.Empty(t, Remediation(config.ErrAPIKeyMissingFromKeychain))
+	})
+}
+
+func TestWithRemediation(t *testing.T) {
+	keyring.MockInit()
+
+	wrapped := WithRemediation(config.ErrAPIKeyNotConfigured)
+	require.ErrorIs(t, wrapped, config.ErrAPIKeyNotConfigured)
+	assert.Contains(t, wrapped.Error(), "algolia auth login")
+
+	other := assert.AnError
+	assert.Same(t, other, WithRemediation(other))
+}
 
 func Test_CheckACLs(t *testing.T) {
 	// Remove these environment variables before the tests

@@ -37,6 +37,8 @@ var knownPaidPlanNames = map[string]string{
 	"grow-plus": "Grow Plus",
 }
 
+var knownPaidPlanOrder = []string{"grow", "grow-plus"}
+
 // KnownPaidPlan recognizes a documented paid --plan value even when the
 // self-serve endpoint omits it (paid plans appear only once billing is on file).
 func KnownPaidPlan(value string) *dashboard.Plan {
@@ -49,6 +51,16 @@ func KnownPaidPlan(value string) *dashboard.Plan {
 		Name: name,
 		Type: "freeform",
 	}
+}
+
+func KnownPaidPlans() []dashboard.Plan {
+	plans := make([]dashboard.Plan, 0, len(knownPaidPlanOrder))
+	for _, id := range knownPaidPlanOrder {
+		if p := KnownPaidPlan(id); p != nil {
+			plans = append(plans, *p)
+		}
+	}
+	return plans
 }
 
 // PlanAvailable reports whether a plan with the given id is in the list.

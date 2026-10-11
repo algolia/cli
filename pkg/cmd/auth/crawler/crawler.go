@@ -33,7 +33,7 @@ func NewCrawlerCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "crawler",
-		Short: "Load crawler auth details for the current profile",
+		Short: "Configure the crawler API key for the current application",
 		Args:  validators.NoArgs(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runCrawlerCmd(opts)
@@ -45,6 +45,14 @@ func NewCrawlerCmd(f *cmdutil.Factory) *cobra.Command {
 
 func runCrawlerCmd(opts *CrawlerOptions) error {
 	cs := opts.IO.ColorScheme()
+
+	appID := opts.config.ActiveApplicationID()
+	if appID == "" {
+		return fmt.Errorf(
+			"no application configured: run `algolia auth login` or `algolia application select` first",
+		)
+	}
+
 	dashboardClient := opts.NewDashboardClient(opts.OAuthClientID())
 
 	accessToken, err := opts.GetValidToken(dashboardClient)
@@ -59,24 +67,13 @@ func runCrawlerCmd(opts *CrawlerOptions) error {
 		return err
 	}
 
-	currentProfileName := opts.config.Profile().Name
-	if currentProfileName == "" {
-		defaultProfile := opts.config.Default()
-		if defaultProfile != nil {
-			currentProfileName = defaultProfile.Name
-			opts.config.Profile().Name = currentProfileName
-		}
-	}
-	if currentProfileName == "" {
-		return fmt.Errorf("no profile selected and no default profile configured")
-	}
-
-	if err = opts.config.SetCrawlerAuth(currentProfileName, crawlerUserData.ID, crawlerUserData.APIKey); err != nil {
+	if err := opts.config.SetCrawlerAPIKey(appID, crawlerUserData.APIKey); err != nil {
 		return err
 	}
 
 	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(opts.IO.Out, "%s Crawler API auth credentials configured for profile: %s\n", cs.SuccessIcon(), currentProfileName)
+		fmt.Fprintf(opts.IO.Out, "%s Crawler API key configured for application: %s\n",
+			cs.SuccessIcon(), appID)
 	}
 
 	return nil

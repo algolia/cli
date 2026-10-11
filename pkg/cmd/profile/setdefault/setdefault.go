@@ -30,7 +30,7 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 		Use:               "setdefault <profile>",
 		Args:              validators.ExactArgs(1),
 		ValidArgsFunction: cmdutil.ConfiguredProfilesCompletionFunc(f),
-		Short:             "Set the default profile",
+		Short:             "[Deprecated] Set the default profile",
 		Example: heredoc.Doc(`
 			# Set the default profile to "my-app"
 			$ algolia profile setdefault my-app
@@ -55,6 +55,12 @@ func NewSetDefaultCmd(f *cmdutil.Factory, runF func(*SetDefaultOptions) error) *
 
 // runSetDefaultCmd executes the setdefault command
 func runSetDefaultCmd(opts *SetDefaultOptions) error {
+	fmt.Fprintf(opts.IO.ErrOut,
+		"warning: `algolia profile setdefault` is deprecated, use `algolia application select` instead\n")
+	if opts.config.StateFileExists() {
+		fmt.Fprintf(opts.IO.ErrOut,
+			"warning: the CLI now stores credentials in state.toml and the OS keychain; changes to config.toml profiles will be ignored in a future version\n")
+	}
 	var defaultName string
 	for _, profile := range opts.config.ConfiguredProfiles() {
 		if profile.Default {
@@ -76,11 +82,11 @@ func runSetDefaultCmd(opts *SetDefaultOptions) error {
 
 	if opts.IO.IsStdoutTTY() {
 		if defaultName != "" {
-			if _, err = fmt.Fprintf(opts.IO.Out, "%s Default profile successfuly changed from '%s' to '%s'.\n", cs.SuccessIcon(), defaultName, opts.Profile); err != nil {
+			if _, err = fmt.Fprintf(opts.IO.Out, "%s Default profile successfully changed from '%s' to '%s'.\n", cs.SuccessIcon(), defaultName, opts.Profile); err != nil {
 				return err
 			}
 		} else {
-			if _, err = fmt.Fprintf(opts.IO.Out, "%s Default profile successfuly set to '%s'.\n", cs.SuccessIcon(), opts.Profile); err != nil {
+			if _, err = fmt.Fprintf(opts.IO.Out, "%s Default profile successfully set to '%s'.\n", cs.SuccessIcon(), opts.Profile); err != nil {
 				return err
 			}
 		}

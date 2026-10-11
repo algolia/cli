@@ -78,7 +78,7 @@ func TestUpsertComposition_MissingFile(t *testing.T) {
 	cmd := upsert.NewUpsertCmd(f)
 	_, err := test.Execute(cmd, "my-comp", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file")
+	assert.Contains(t, err.Error(), "exactly one of `--file` or `--interactive`")
 }
 
 func TestUpsertComposition_InvalidJSON(t *testing.T) {
@@ -98,4 +98,22 @@ func TestUpsertComposition_MissingArg(t *testing.T) {
 	_, err := test.Execute(cmd, "--file -", out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires a <composition-id> argument")
+}
+
+func TestUpsertComposition_InteractiveAndFileConflict(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(true, r, nil, "")
+	cmd := upsert.NewUpsertCmd(f)
+	_, err := test.Execute(cmd, "my-comp --interactive --file body.json", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exactly one of `--file` or `--interactive`")
+}
+
+func TestUpsertComposition_InteractiveNoTTY(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(false, r, nil, "") // not a TTY
+	cmd := upsert.NewUpsertCmd(f)
+	_, err := test.Execute(cmd, "my-comp --interactive", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "requires a terminal")
 }
