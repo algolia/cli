@@ -55,6 +55,17 @@ func Test_runCreateCmd_RejectsInvalidBodyJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "--body is not valid JSON")
 }
 
+func Test_runCreateCmd_RejectsNullBody(t *testing.T) {
+	ts := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(ts.Close)
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+	cmd := NewCreateCmd(f, nil)
+	_, err := test.Execute(cmd, `--body null`, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "JSON object, got null")
+}
+
 func Test_runCreateCmd_FromBody(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/agent-studio/1/agents", func(w http.ResponseWriter, r *http.Request) {

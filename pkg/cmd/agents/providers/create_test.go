@@ -50,6 +50,18 @@ func Test_runCreateCmd_RejectsInvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
 
+func Test_runCreateCmd_RejectsNullBody(t *testing.T) {
+	specPath := sharedtest.WriteTempJSON(t, "spec.json", `null`)
+	ts := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(ts.Close)
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+	cmd := NewProvidersCmd(f)
+	_, err := test.Execute(cmd, "create -F "+specPath, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "JSON object, got null")
+}
+
 func Test_runCreateCmd_RequiresFileFlag(t *testing.T) {
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewProvidersCmd(f)

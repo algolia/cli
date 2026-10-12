@@ -115,6 +115,9 @@ func runCreateCmd(opts *CreateOptions) error {
 	if err := json.Unmarshal(body, &bodyMap); err != nil {
 		return cmdutil.FlagErrorf("agent body must be a JSON object: %v", err)
 	}
+	if bodyMap == nil {
+		return cmdutil.FlagErrorf("agent body must be a JSON object, got null")
+	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Creating agent")
 	agent, err := client.CustomPost(

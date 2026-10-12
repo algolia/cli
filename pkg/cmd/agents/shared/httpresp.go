@@ -14,7 +14,13 @@ import (
 //
 // A non-2xx status is converted into an *agentStudio.APIError so callers get
 // the same typed error the SDK's high-level methods return.
+//
+// The SDK leaves the response body open for the caller; it has already been
+// read into body, so it is closed here to allow connection reuse.
 func RawResponse(res *http.Response, body []byte, err error) ([]byte, error) {
+	if res != nil && res.Body != nil {
+		_ = res.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
