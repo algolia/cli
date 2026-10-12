@@ -111,21 +111,24 @@ Both layers mirror the OpenAPI spec's tag boundaries — one source file (and on
 ```
 api/agentstudio/
   client.go          infra: Config, NewClient, setHeaders, checkResponse, extractDetail, sentinelFor
-  agents.go          Agents tag (CRUD + lifecycle + InvalidateAgentCache)
-  completions.go     Completions tag
-  providers.go       Providers tag (CRUD + model discovery)
-  configuration.go   Configurations tag
-  conversations.go   Conversations tag
-  domains.go         Allowed-domains tag
-  keys.go            Secret-keys tag
-  feedback.go        Feedback tag
-  userdata.go        User-data tag
+  agents.go          Agents tag: local-client verbs that are not on the SDK (UpdateAgent, DuplicateAgent, ...)
+  completions.go     Completions tag (SSE, kept on the local client)
+  providers.go       Providers tag: model discovery and PATCH
   internal.go        hidden/internal endpoints
   sse.go             v4/v5 stream parser
+  sdk_requester.go   transport for the official SDK: path mapping, no redirects, sanitized errors
   host.go            base URL resolution
   errors.go          APIError + sentinels
   types.go           shared response types
 ```
+
+The CRUD surface (agents, providers, conversations, allowed domains, secret keys,
+feedback, user data, configuration) is served by the official SDK
+(`github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio`), built by
+`agentStudioAPIClient` in `pkg/cmd/factory/default.go`. The local client above
+only covers what the SDK does not (streaming completions, PATCH bodies that
+must be forwarded verbatim, internal endpoints).
+
 
 For the cmd layer, top-level verbs each own a subpackage. Sub-groups (`cache/`, `providers/`, `config/`, `conversations/`, `domains/`, `keys/`, `feedback/`, `userdata/`, `internal/`) keep all their verbs in one package, one file per verb. Don't promote sub-group verbs into per-verb subpackages — they share internal helpers.
 
@@ -133,14 +136,16 @@ For the cmd layer, top-level verbs each own a subpackage. Sub-groups (`cache/`, 
 
 - Standard Algolia headers: `X-Algolia-Application-Id`, `X-Algolia-API-Key`. No bearer tokens.
 - `X-Algolia-User-ID` is **not** an authorization signal — it's a cleartext label for telemetry/rate-limiting. The signed equivalent is `X-Algolia-Secure-User-Token` (JWT), wired only into `/completions`.
-- Base URL precedence: profile `agent_studio_url` → env `ALGOLIA_AGENT_STUDIO_URL` → ldflag `agentstudio.DefaultBaseURL` → cluster-proxy fallback `https://{appID}.algolia.net/agent-studio`.
+- Base URL precedence: env `ALGOLIA_AGENT_STUDIO_URL` → profile `agent_studio_url` → ldflag `agentstudio.DefaultBaseURL` → cluster-proxy fallback `https://{appID}.algolia.net/agent-studio`. The local client and the SDK-backed commands resolve the host the same way (`SDKRequester` maps the SDK's fixed `/agent-studio/1/...` paths onto the resolved base URL), so one session never talks to two backends.
+- Neither client follows redirects, so API keys and request bodies are never forwarded to another host.
+- Error bodies from SDK calls are reduced to the structured `detail[].msg` / `message` (plus a hint for 401/403) and never echo request values such as a submitted provider `apiKey`.
 - Overrides (`ALGOLIA_AGENT_STUDIO_URL` / profile `agent_studio_url`) must be **HTTPS** URLs with a scheme and host. Plain **HTTP** is rejected unless **`ALGOLIA_AGENT_STUDIO_ALLOW_INSECURE_HTTP=1`** is set (local development only).
 - Cluster-proxy fallback requires an **application id** that is **4–32 alphanumeric** characters (so it is safe to embed as a single DNS label). Invalid characters produce a CLI error before any request.
 - Admin API key is required for `keys create|update|delete`. Backend rejects with 403 `"Admin API key required."` otherwise.
 
-## Pass-through bodies (`json.RawMessage`)
+## Pass-through bodies (verbatim JSON)
 
-`CreateAgent`, `UpdateAgent`, `CreateProvider`, `UpdateProvider`, `Completions`, and the internal memory verbs accept `json.RawMessage`. The backend schemas are large discriminated unions that evolve frequently (provider `input` is a 6-way union, `messages` is a role union, agent `config`/`tools` are free-form). Mirroring them in Go would lie about parity and force a release on every backend bump. The CLI is a pass-through; backend validates; our 422 surfacing makes errors actionable.
+`agents create`, `agents update`, `providers create`, `providers update`, `Completions` and the internal memory verbs forward the user's JSON untouched (the SDK's generic `CustomPost` for create, the local client's `json.RawMessage` for the rest). The backend schemas are large discriminated unions that evolve frequently (provider `input` is a 6-way union, `messages` is a role union, agent `config`/`tools` are free-form), and PATCH replaces `tools` server-side, so decoding into typed Go models would drop `null`s, unknown fields and unmodeled tool settings. The CLI is a pass-through; the backend validates; error bodies are reduced to an actionable message. Read paths that return provider `input` (`providers get|list`) use the raw response for the same reason and mask secrets afterwards.
 
 ## Streaming (`sse.go`)
 

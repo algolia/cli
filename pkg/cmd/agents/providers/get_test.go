@@ -40,3 +40,23 @@ func Test_runGetCmd_RequiresProviderID(t *testing.T) {
 	_, err := test.Execute(cmd, "get", out)
 	require.Error(t, err)
 }
+
+// azure_openai / openai_compatible inputs carry fields the typed SDK oneOf
+// drops; they must survive, with only the secret masked.
+func Test_runGetCmd_KeepsProviderSpecificInputFields(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/agent-studio/1/providers/p1", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"p1","name":"az","providerName":"azure_openai","input":{"apiKey":"sk-SECRET","azureEndpoint":"https://x.openai.azure.com","azureDeployment":"dep","apiVersion":"2024-01-01"},"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`))
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+	result, err := test.Execute(NewProvidersCmd(f), "get p1", out)
+	require.NoError(t, err)
+	got := result.String()
+	assert.Contains(t, got, `"azureEndpoint":"https://x.openai.azure.com"`)
+	assert.Contains(t, got, `"azureDeployment":"dep"`)
+	assert.NotContains(t, got, "sk-SECRET")
+}

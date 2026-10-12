@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/MakeNowJust/heredoc"
@@ -23,8 +24,8 @@ type ListOptions struct {
 	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 	PrintFlags           *cmdutil.PrintFlags
 
-	Page    int
-	PerPage int
+	Page    int32
+	PerPage int32
 	Show    bool
 }
 
@@ -63,8 +64,8 @@ func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().IntVar(&opts.Page, "page", 0, "Page number (1-indexed; 0 = backend default)")
-	cmd.Flags().IntVar(&opts.PerPage, "per-page", 0, "Items per page (0 = backend default, currently 10)")
+	cmd.Flags().Int32Var(&opts.Page, "page", 0, "Page number (1-indexed; 0 = backend default)")
+	cmd.Flags().Int32Var(&opts.PerPage, "per-page", 0, "Items per page (0 = backend default, currently 10)")
 	cmd.Flags().
 		BoolVar(&opts.Show, "show-secret", false, "Render secret fields (apiKey, ...) verbatim instead of masking")
 	opts.PrintFlags.AddFlags(cmd)
@@ -80,27 +81,32 @@ func runListCmd(opts *ListOptions) error {
 
 	req := client.NewApiListProvidersRequest()
 	if opts.Page > 0 {
-		req = req.WithPage(shared.Int32(opts.Page))
+		req = req.WithPage(opts.Page)
 	}
 	if opts.PerPage > 0 {
-		req = req.WithLimit(shared.Int32(opts.PerPage))
+		req = req.WithLimit(opts.PerPage)
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching providers")
-	res, err := client.ListProviders(req, agentStudio.WithContext(ctx))
+	// Raw response: the typed model would drop provider-specific `input`
+	// fields (see providers get).
+	raw, err := shared.RawResponse(client.ListProvidersWithHTTPInfo(req, agentStudio.WithContext(ctx)))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
 	}
 
 	if opts.PrintFlags.HasStructuredOutput() {
-		// Mask the nested input.apiKey secrets in the JSON we hand to the
-		// printer unless --show-secret is set.
-		var out any = res
-		if !opts.Show {
-			out = shared.MaskSecretsInValue(res)
+		out, err := shared.DecodeMaybeMasked(raw, opts.Show)
+		if err != nil {
+			return err
 		}
 		return opts.PrintFlags.Print(opts.IO, out)
+	}
+
+	var res agentStudio.PaginatedProviderAuthenticationsResponse
+	if err := json.Unmarshal(raw, &res); err != nil {
+		return fmt.Errorf("decode providers response: %w", err)
 	}
 
 	now := nowFn()

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 
 	"github.com/MakeNowJust/heredoc"
-	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -18,8 +18,8 @@ type UpdateOptions struct {
 	IO  *iostreams.IOStreams
 	Ctx context.Context
 
-	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
-	PrintFlags           *cmdutil.PrintFlags
+	AgentStudioClient func() (*agentstudio.Client, error)
+	PrintFlags        *cmdutil.PrintFlags
 
 	AgentID       string
 	File          string
@@ -28,9 +28,9 @@ type UpdateOptions struct {
 
 func NewUpdateCmd(f *cmdutil.Factory, runF func(*UpdateOptions) error) *cobra.Command {
 	opts := &UpdateOptions{
-		IO:                   f.IOStreams,
-		AgentStudioAPIClient: f.AgentStudioAPIClient,
-		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
+		IO:                f.IOStreams,
+		AgentStudioClient: f.AgentStudioClient,
+		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -83,25 +83,26 @@ func runUpdateCmd(opts *UpdateOptions) error {
 		ctx = context.Background()
 	}
 
-	client, err := opts.AgentStudioAPIClient()
+	client, err := opts.AgentStudioClient()
 	if err != nil {
 		return err
 	}
 
-	// The update endpoint is a PATCH and the SDK exposes no pass-through PATCH,
-	// so decode into the typed partial model. Every AgentConfigUpdate field is
-	// optional, so the documented fields survive the round-trip; unrecognized
-	// fields are dropped.
-	patch := agentStudio.NewEmptyAgentConfigUpdate()
-	if err := json.Unmarshal(body, patch); err != nil {
+	// The update endpoint is a PATCH and the SDK exposes no pass-through PATCH.
+	// Decoding into the typed AgentConfigUpdate model would drop nulls (needed
+	// to clear a field), unknown fields and unmodeled tool settings, and PATCH
+	// replaces `tools` server-side, so the body is forwarded verbatim through
+	// the local client instead.
+	var patch map[string]json.RawMessage
+	if err := json.Unmarshal(body, &patch); err != nil {
 		return cmdutil.FlagErrorf("patch body must be a JSON object: %v", err)
+	}
+	if patch == nil {
+		return cmdutil.FlagErrorf("patch body must be a JSON object, got null")
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Updating agent")
-	agent, err := client.UpdateAgent(
-		client.NewApiUpdateAgentRequest(opts.AgentID, patch),
-		agentStudio.WithContext(ctx),
-	)
+	agent, err := client.UpdateAgent(ctx, opts.AgentID, body)
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err

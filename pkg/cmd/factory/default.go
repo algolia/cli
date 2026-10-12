@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
@@ -116,12 +117,21 @@ func agentStudioClient(f *cmdutil.Factory, appVersion string) func() (*agentstud
 	}
 }
 
+// Timeouts for SDK-backed Agent Studio calls. The SDK defaults (25s read, 2s
+// connect) are too tight for conversation exports and for slow connections.
+const (
+	sdkRequestTimeout = 2 * time.Minute
+	sdkConnectTimeout = 10 * time.Second
+)
+
 // agentStudioAPIClient builds the official Agent Studio SDK client used for
-// the standard CRUD surface. Unlike the local client it does not consult
-// resolveAgentStudioBaseURL: it pins a single read-write host so every request
-// goes to https://<appID>.algolia.net/agent-studio/1/... (the SDK prepends the
-// /agent-studio/1 path itself). The X-Algolia-User-ID header preserves the same
-// cli / cli-<profile> attribution the local client sends.
+// the standard CRUD surface. It targets the same backend as the local client:
+// the base URL is resolved with resolveAgentStudioBaseURL (profile / env
+// override, then the build-time default, then the cluster proxy
+// https://<appID>.algolia.net/agent-studio). The SDK hard-codes the
+// /agent-studio/1 path, so agentstudio.SDKRequester maps it onto the resolved
+// base path. The X-Algolia-User-ID header preserves the same cli /
+// cli-<profile> attribution the local client sends.
 func agentStudioAPIClient(f *cmdutil.Factory, appVersion string) func() (*agentStudio.APIClient, error) {
 	return func() (*agentStudio.APIClient, error) {
 		profile := f.Config.Profile()
@@ -134,16 +144,32 @@ func agentStudioAPIClient(f *cmdutil.Factory, appVersion string) func() (*agentS
 			return nil, err
 		}
 
+		baseURL, err := resolveAgentStudioBaseURL(
+			profile.GetAgentStudioURL(),
+			agentstudio.DefaultBaseURL,
+			appID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		scheme, host, err := agentstudio.SplitBaseURL(baseURL)
+		if err != nil {
+			return nil, err
+		}
+
 		client, err := agentStudio.NewClientWithConfig(agentStudio.AgentStudioConfiguration{
 			Configuration: transport.Configuration{
 				AppID:         appID,
 				ApiKey:        apiKey,
 				DefaultHeader: make(map[string]string),
 				UserAgent:     fmt.Sprintf("algolia-cli/%s agentstudio", appVersion),
-				Requester:     transport.NewDefaultRequester(nil),
+				Requester:     agentstudio.NewSDKRequester(baseURL),
 				Hosts: []transport.StatefulHost{
-					transport.NewStatefulHost("https", appID+".algolia.net", call.IsReadWrite),
+					transport.NewStatefulHost(scheme, host, call.IsReadWrite),
 				},
+				ReadTimeout:    sdkRequestTimeout,
+				WriteTimeout:   sdkRequestTimeout,
+				ConnectTimeout: sdkConnectTimeout,
 			},
 		})
 		if err != nil {

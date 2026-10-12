@@ -111,13 +111,18 @@ func runTryCmd(opts *TryOptions) error {
 	ctx, stop := signal.NotifyContext(shared.OrBackground(opts.Ctx), os.Interrupt)
 	defer stop()
 
+	secureUserToken, err := opts.ResolveSecureUserToken()
+	if err != nil {
+		return err
+	}
+
 	resp, err := client.Completions(ctx, "test", body, agentstudio.CompletionOptions{
 		Stream:          !opts.NoStream,
 		Compatibility:   mode,
 		NoCache:         opts.NoCache,
 		NoMemory:        opts.NoMemory,
 		NoAnalytics:     opts.NoAnalytics,
-		SecureUserToken: opts.SecureUserToken,
+		SecureUserToken: secureUserToken,
 	})
 	if err != nil {
 		return err

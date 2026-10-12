@@ -19,6 +19,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/agents/providers"
 	"github.com/algolia/cli/pkg/cmd/agents/publish"
 	"github.com/algolia/cli/pkg/cmd/agents/run"
+	"github.com/algolia/cli/pkg/cmd/agents/shared"
 	toolscmd "github.com/algolia/cli/pkg/cmd/agents/tools"
 	trycmd "github.com/algolia/cli/pkg/cmd/agents/try"
 	"github.com/algolia/cli/pkg/cmd/agents/unpublish"
@@ -52,6 +53,22 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia agents get 11111111-1111-1111-1111-111111111111
 		`),
 	}
+
+	shared.SetTargetLabel(func() string {
+		profile := f.Config.Profile()
+		appID, err := profile.GetApplicationID()
+		if err != nil || appID == "" {
+			return ""
+		}
+		label := "application " + appID
+		if profile.Name != "" {
+			label += ", profile " + profile.Name
+		}
+		if u := profile.GetAgentStudioURL(); u != "" {
+			label += ", host " + u
+		}
+		return label
+	})
 
 	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(get.NewGetCmd(f, nil))

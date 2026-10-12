@@ -71,18 +71,21 @@ func runGetCmd(opts *GetOptions) error {
 	ctx := shared.OrBackground(opts.Ctx)
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching provider")
-	p, err := client.GetProvider(
+	// Use the raw response: the typed model decodes `input` through a oneOf
+	// that keeps only the first matching variant, dropping provider-specific
+	// fields (azureEndpoint, defaultModel, ...).
+	raw, err := shared.RawResponse(client.GetProviderWithHTTPInfo(
 		client.NewApiGetProviderRequest(opts.ProviderID),
 		agentStudio.WithContext(ctx),
-	)
+	))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
 	}
 
-	var out any = p
-	if !opts.Show {
-		out = shared.MaskSecretsInValue(p)
+	out, err := shared.DecodeMaybeMasked(raw, opts.Show)
+	if err != nil {
+		return err
 	}
 	return opts.PrintFlags.Print(opts.IO, out)
 }

@@ -138,3 +138,10 @@ func Test_runListCmd_PropagatesAPIError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "feature is not enabled")
 }
+
+func Test_listCmd_RejectsPageOverflow(t *testing.T) {
+	f, out := test.NewFactory(false, nil, nil, "")
+	_, err := test.Execute(NewListCmd(f, nil), "--page 3000000000", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--page")
+}

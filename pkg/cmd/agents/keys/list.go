@@ -20,7 +20,7 @@ type ListOptions struct {
 	Ctx                  context.Context
 	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
 	PrintFlags           *cmdutil.PrintFlags
-	Page, Limit          int
+	Page, Limit          int32
 	ShowSecret           bool
 }
 
@@ -43,8 +43,8 @@ func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 			return runListCmd(opts)
 		},
 	}
-	cmd.Flags().IntVar(&opts.Page, "page", 0, "Page number (default 1)")
-	cmd.Flags().IntVar(&opts.Limit, "limit", 0, "Page size")
+	cmd.Flags().Int32Var(&opts.Page, "page", 0, "Page number (default 1)")
+	cmd.Flags().Int32Var(&opts.Limit, "limit", 0, "Page size")
 	cmd.Flags().BoolVar(&opts.ShowSecret, "show-secret", false, "Reveal raw key values (default redacted as ***)")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
@@ -57,10 +57,10 @@ func runListCmd(opts *ListOptions) error {
 	}
 	req := client.NewApiListSecretKeysRequest()
 	if opts.Page > 0 {
-		req = req.WithPage(shared.Int32(opts.Page))
+		req = req.WithPage(opts.Page)
 	}
 	if opts.Limit > 0 {
-		req = req.WithLimit(shared.Int32(opts.Limit))
+		req = req.WithLimit(opts.Limit)
 	}
 	opts.IO.StartProgressIndicatorWithLabel("Fetching secret keys")
 	res, err := client.ListSecretKeys(req, agentStudio.WithContext(shared.OrBackground(opts.Ctx)))

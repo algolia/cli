@@ -109,6 +109,9 @@ func runDeleteCmd(opts *DeleteOptions) error {
 		return err
 	}
 
+	if opts.PrintFlags.HasStructuredOutput() {
+		return opts.PrintFlags.Print(opts.IO, map[string]any{"id": opts.AgentID, "deleted": true})
+	}
 	if opts.IO.IsStdoutTTY() {
 		fmt.Fprintf(opts.IO.Out, "%s Deleted agent %s\n", cs.SuccessIcon(), opts.AgentID)
 	}

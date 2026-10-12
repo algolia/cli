@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -36,24 +35,23 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// defaultHTTPClient returns a client suitable for both short JSON calls
-// and long-lived SSE streams: ResponseHeaderTimeout caps stalls before
-// the first byte; Client.Timeout stays zero so an open stream is not
-// cut off after a fixed wall clock.
+// responseHeaderTimeout caps stalls before the first byte. It is generous
+// because a buffered (--no-stream) completion sends no headers until the whole
+// answer is ready. Client.Timeout stays zero so an open SSE stream is never cut
+// off after a fixed wall clock.
+const responseHeaderTimeout = 5 * time.Minute
+
+// defaultHTTPClient returns a client suitable for both short JSON calls and
+// long-lived SSE streams. It never follows redirects: the API does not
+// redirect, and following one would forward the API key header (and, for
+// 307/308, the request body) to another host.
 func defaultHTTPClient() *http.Client {
+	t := newHTTPTransport()
+	t.ResponseHeaderTimeout = responseHeaderTimeout
 	return &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			ResponseHeaderTimeout: 60 * time.Second,
+		Transport: t,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
 		},
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
+
+	"github.com/algolia/cli/api/agentstudio"
 )
 
 // RawResponse adapts the (response, body, error) tuple returned by an SDK
@@ -26,28 +28,21 @@ func RawResponse(res *http.Response, body []byte, err error) ([]byte, error) {
 	}
 	if res != nil && res.StatusCode >= 300 {
 		return nil, &agentStudio.APIError{
-			Message: extractAPIMessage(body),
+			Message: extractAPIMessage(res.StatusCode, body),
 			Status:  res.StatusCode,
 		}
 	}
 	return body, nil
 }
 
-// extractAPIMessage pulls a human-readable message from an error body,
-// preferring the Algolia {"message":...} shape, then a string {"detail":...},
-// and falling back to the raw body.
-func extractAPIMessage(body []byte) string {
-	if len(body) == 0 {
-		return ""
+// extractAPIMessage builds a human-readable message from an error body using
+// the same rules as the SDK transport (structured detail[].msg, string detail,
+// Algolia message, plus the auth / permission hints). Echoed request values
+// such as detail[].input are never included.
+func extractAPIMessage(status int, body []byte) string {
+	var m struct {
+		Message string `json:"message"`
 	}
-	var m map[string]any
-	if json.Unmarshal(body, &m) == nil {
-		if s, ok := m["message"].(string); ok && s != "" {
-			return s
-		}
-		if s, ok := m["detail"].(string); ok && s != "" {
-			return s
-		}
-	}
-	return string(body)
+	_ = json.Unmarshal(agentstudio.SanitizeErrorBody(status, body), &m)
+	return m.Message
 }

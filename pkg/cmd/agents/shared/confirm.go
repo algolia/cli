@@ -31,10 +31,25 @@ func ResolveConfirm(ios *iostreams.IOStreams, confirm bool) (bool, error) {
 	return true, nil
 }
 
-// Confirm prompts with msg. Returns (true, nil) on yes, (false, nil)
+// targetLabel describes the application a destructive command will act on. It
+// is set once by the agents command group (see SetTargetLabel) so every
+// confirmation prompt names the target, which can come from --application-id,
+// the environment, --profile or the current application.
+var targetLabel func() string
+
+// SetTargetLabel registers the function Confirm uses to name the target
+// application in its prompt.
+func SetTargetLabel(f func() string) { targetLabel = f }
+
+// Confirm prompts with msg, followed by the target application when known. Returns (true, nil) on yes, (false, nil)
 // on no, or (false, err) on prompt failure. Callers use the bool to
 // short-circuit silently — matches existing agents-CLI behaviour.
 func Confirm(msg string) (bool, error) {
+	if targetLabel != nil {
+		if t := targetLabel(); t != "" {
+			msg = fmt.Sprintf("%s [%s]", msg, t)
+		}
+	}
 	var ok bool
 	if err := prompt.Confirm(msg, &ok); err != nil {
 		return false, fmt.Errorf("failed to prompt: %w", err)

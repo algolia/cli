@@ -25,12 +25,12 @@ type ListOptions struct {
 	PrintFlags           *cmdutil.PrintFlags
 
 	AgentID         string
-	Page            int
-	PerPage         int
+	Page            int32
+	PerPage         int32
 	StartDate       string
 	EndDate         string
 	IncludeFeedback bool
-	FeedbackVote    int
+	FeedbackVote    int32
 	feedbackVoteSet bool
 }
 
@@ -86,13 +86,13 @@ func newListCmd(f *cmdutil.Factory, runF func(*ListOptions) error) *cobra.Comman
 		},
 	}
 
-	cmd.Flags().IntVar(&opts.Page, "page", 0, "Page number (1-indexed; 0 = backend default)")
-	cmd.Flags().IntVar(&opts.PerPage, "per-page", 0, "Items per page (0 = backend default, currently 20)")
+	cmd.Flags().Int32Var(&opts.Page, "page", 0, "Page number (1-indexed; 0 = backend default)")
+	cmd.Flags().Int32Var(&opts.PerPage, "per-page", 0, "Items per page (0 = backend default, currently 20)")
 	cmd.Flags().StringVar(&opts.StartDate, "start-date", "", "Filter conversations >= date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&opts.EndDate, "end-date", "", "Filter conversations <= date (YYYY-MM-DD)")
 	cmd.Flags().
 		BoolVar(&opts.IncludeFeedback, "include-feedback", false, "Include the feedback array on each conversation")
-	cmd.Flags().IntVar(&opts.FeedbackVote, "feedback-vote", 0, "Filter by feedback vote: 0 (down) or 1 (up)")
+	cmd.Flags().Int32Var(&opts.FeedbackVote, "feedback-vote", 0, "Filter by feedback vote: 0 (down) or 1 (up)")
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
@@ -106,10 +106,10 @@ func runListCmd(opts *ListOptions) error {
 
 	req := client.NewApiListAgentConversationsRequest(opts.AgentID)
 	if opts.Page > 0 {
-		req = req.WithPage(shared.Int32(opts.Page))
+		req = req.WithPage(opts.Page)
 	}
 	if opts.PerPage > 0 {
-		req = req.WithLimit(shared.Int32(opts.PerPage))
+		req = req.WithLimit(opts.PerPage)
 	}
 	if opts.StartDate != "" {
 		req = req.WithStartDate(opts.StartDate)
@@ -121,7 +121,7 @@ func runListCmd(opts *ListOptions) error {
 		req = req.WithIncludeFeedback(true)
 	}
 	if opts.feedbackVoteSet {
-		req = req.WithFeedbackVote(shared.Int32(opts.FeedbackVote))
+		req = req.WithFeedbackVote(opts.FeedbackVote)
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching conversations")

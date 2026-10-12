@@ -1,6 +1,9 @@
 package shared
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // MaskInput redacts known secret fields ("apiKey") in a flat JSON
 // object and returns the re-marshaled bytes. Non-object input,
@@ -82,3 +85,17 @@ var secretFieldNames = []string{"apiKey"}
 
 // MaskSentinel is the literal substituted for secret values.
 const MaskSentinel = "***"
+
+// DecodeMaybeMasked decodes a raw JSON response into a generic value for
+// PrintFlags, masking secret fields unless show is true.
+func DecodeMaybeMasked(raw []byte, show bool) (any, error) {
+	var decoded any
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	if show {
+		return decoded, nil
+	}
+	maskSecretsRecursive(decoded)
+	return decoded, nil
+}

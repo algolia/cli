@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/MakeNowJust/heredoc"
 	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
@@ -121,9 +122,8 @@ func newSetCmd(f *cmdutil.Factory, runF func(*SetOptions) error) *cobra.Command 
 			                       0, 30, 60, or 90; anything else 422s
 			                       with the structured detail.
 
-			  -F file              Send a JSON patch body. Only fields the
-			                       client knows about (currently
-			                       maxRetentionDays) are forwarded.
+			  -F file              Send a JSON patch body. Only maxRetentionDays
+			                       is supported; any other field is rejected.
 
 			Exactly one of the two must be provided.
 		`),
@@ -178,10 +178,24 @@ func runSetCmd(opts *SetOptions) error {
 	}
 
 	// PATCH /configuration has no SDK pass-through, so decode into the typed
-	// patch. Only known fields (currently maxRetentionDays) are forwarded.
+	// patch. Only known fields (currently maxRetentionDays) are forwarded, so
+	// reject anything else up front instead of sending an empty PATCH {} and
+	// reporting success.
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil {
+		return cmdutil.FlagErrorf("patch body must be a JSON object: %v", err)
+	}
+	for k := range fields {
+		if k != "maxRetentionDays" {
+			return cmdutil.FlagErrorf("unknown field %q in patch body (supported: maxRetentionDays)", k)
+		}
+	}
 	patch := agentStudio.NewEmptyApplicationConfigPatch()
 	if err := json.Unmarshal(body, patch); err != nil {
-		return cmdutil.FlagErrorf("patch body must be a JSON object: %v", err)
+		return cmdutil.FlagErrorf("invalid patch body: %v", err)
+	}
+	if !patch.MaxRetentionDays.IsSet() || patch.MaxRetentionDays.Get() == nil {
+		return cmdutil.FlagErrorf("patch body must set maxRetentionDays to a number")
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Updating configuration")
@@ -203,6 +217,9 @@ func buildBody(opts *SetOptions) ([]byte, string, error) {
 			return nil, "", err
 		}
 		return body, opts.File, nil
+	}
+	if opts.RetentionDays < 0 || opts.RetentionDays > math.MaxInt32 {
+		return nil, "", cmdutil.FlagErrorf("--retention-days must be between 0 and %d", math.MaxInt32)
 	}
 	body, err := json.Marshal(map[string]any{"maxRetentionDays": opts.RetentionDays})
 	if err != nil {

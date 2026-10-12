@@ -46,3 +46,11 @@ func TestRawResponse_NilResponse(t *testing.T) {
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"a":1}`, string(got))
 }
+
+func TestRawResponse_ErrorNeverEchoesInput(t *testing.T) {
+	body := []byte(`{"detail":[{"msg":"Field required","input":{"apiKey":"sk-SECRET"}}]}`)
+	_, err := RawResponse(&http.Response{StatusCode: http.StatusUnprocessableEntity, Body: io.NopCloser(strings.NewReader(""))}, body, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Field required")
+	assert.NotContains(t, err.Error(), "sk-SECRET")
+}

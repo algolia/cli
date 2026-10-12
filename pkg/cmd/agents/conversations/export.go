@@ -22,7 +22,6 @@ type ExportOptions struct {
 	Ctx context.Context
 
 	AgentStudioAPIClient func() (*agentStudio.APIClient, error)
-	PrintFlags           *cmdutil.PrintFlags
 
 	AgentID    string
 	StartDate  string
@@ -34,7 +33,6 @@ func newExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 	opts := &ExportOptions{
 		IO:                   f.IOStreams,
 		AgentStudioAPIClient: f.AgentStudioAPIClient,
-		PrintFlags:           cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
@@ -73,7 +71,6 @@ func newExportCmd(f *cmdutil.Factory, runF func(*ExportOptions) error) *cobra.Co
 	cmd.Flags().StringVar(&opts.EndDate, "end-date", "", "Export conversations <= date (YYYY-MM-DD)")
 	cmd.Flags().
 		StringVarP(&opts.OutputFile, "output-file", "O", "", "Write the export to this path instead of stdout")
-	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
 

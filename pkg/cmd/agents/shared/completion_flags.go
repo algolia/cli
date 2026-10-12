@@ -1,6 +1,16 @@
 package shared
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
+
+// EnvSecureUserToken is read when neither --secure-user-token nor
+// --secure-user-token-file is given, keeping the signed token out of argv.
+const EnvSecureUserToken = "ALGOLIA_AGENT_STUDIO_SECURE_USER_TOKEN"
 
 // CompletionInputs is the shared flag surface for `agents try` /
 // `agents run`. Embed in your command Options struct and call
@@ -9,15 +19,16 @@ import "github.com/spf13/cobra"
 // Owners of the surrounding command still register their own
 // `--config` (`try`) or positional agent-id (`run`) as usual.
 type CompletionInputs struct {
-	InputFile       string
-	Message         string
-	NoStream        bool
-	Compatibility   string
-	NoCache         bool
-	NoMemory        bool
-	NoAnalytics     bool
-	SecureUserToken string
-	NDJSON          bool
+	InputFile           string
+	Message             string
+	NoStream            bool
+	Compatibility       string
+	NoCache             bool
+	NoMemory            bool
+	NoAnalytics         bool
+	SecureUserToken     string
+	SecureUserTokenFile string
+	NDJSON              bool
 }
 
 // RegisterCompletionFlags adds the standard completion-runtime flags
@@ -40,6 +51,31 @@ func RegisterCompletionFlags(cmd *cobra.Command, in *CompletionInputs) {
 	cmd.Flags().
 		StringVar(&in.SecureUserToken, "secure-user-token", "", "Signed JWT scoping the conversation/memory/analytics partition to an end-user (X-Algolia-Secure-User-Token)")
 	cmd.Flags().
+		StringVar(&in.SecureUserTokenFile, "secure-user-token-file", "", "Read the secure user token from this file instead of passing it on the command line (also: "+EnvSecureUserToken+")")
+	cmd.MarkFlagsMutuallyExclusive("secure-user-token", "secure-user-token-file")
+	cmd.Flags().
 		BoolVar(&in.NDJSON, "ndjson", false, "Force NDJSON output even on a TTY (default on non-TTY; use this when you want machine-parseable events but also want to see them on screen)")
 	cmd.MarkFlagsMutuallyExclusive("input", "message")
+}
+
+// ResolveSecureUserToken returns the secure user token from, in order,
+// --secure-user-token, --secure-user-token-file or the
+// ALGOLIA_AGENT_STUDIO_SECURE_USER_TOKEN environment variable. Prefer the file
+// or the environment variable: argv is visible in `ps` and shell history.
+func (in *CompletionInputs) ResolveSecureUserToken() (string, error) {
+	if in.SecureUserToken != "" {
+		return in.SecureUserToken, nil
+	}
+	if in.SecureUserTokenFile != "" {
+		b, err := os.ReadFile(in.SecureUserTokenFile)
+		if err != nil {
+			return "", fmt.Errorf("read --secure-user-token-file: %w", err)
+		}
+		tok := strings.TrimSpace(string(b))
+		if tok == "" {
+			return "", fmt.Errorf("--secure-user-token-file %s is empty", in.SecureUserTokenFile)
+		}
+		return tok, nil
+	}
+	return strings.TrimSpace(os.Getenv(EnvSecureUserToken)), nil
 }

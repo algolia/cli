@@ -28,7 +28,7 @@ func newStatusCmd(f *cmdutil.Factory, runF func(*StatusOptions) error) *cobra.Co
 	}
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Liveness probe + build version + migration revision (no auth)",
+		Short: "Liveness probe + build version + migration revision",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			opts.Ctx = cmd.Context()

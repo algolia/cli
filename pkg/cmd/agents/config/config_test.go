@@ -66,15 +66,13 @@ func Test_runSetCmd_File_RoundTripsBody(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/agent-studio/1/configuration", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		// Only fields the typed ApplicationConfigPatch knows about are
-		// forwarded; unrecognized fields (futureField) are dropped.
 		assert.JSONEq(t, `{"maxRetentionDays":90}`, string(body))
 		_, _ = w.Write([]byte(`{"maxRetentionDays":90}`))
 	})
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
-	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"maxRetentionDays":90,"futureField":"x"}`)
+	patchPath := sharedtest.WriteTempJSON(t, "patch.json", `{"maxRetentionDays":90}`)
 	f, out := test.NewFactory(false, nil, nil, "")
 	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 
@@ -123,4 +121,33 @@ func Test_runSetCmd_PropagatesValidationError(t *testing.T) {
 	_, err := test.Execute(cmd, "set --retention-days 45", out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "must be one of")
+}
+
+func Test_runSetCmd_RejectsUselessPatch(t *testing.T) {
+	cases := map[string]string{
+		"typo":         `{"maxRetentionDay":30}`,
+		"unknown":      `{"maxRetentionDays":30,"future":1}`,
+		"null":         `{"maxRetentionDays":null}`,
+		"empty object": `{}`,
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			ts := httptest.NewServer(http.NotFoundHandler())
+			t.Cleanup(ts.Close)
+			f, out := test.NewFactory(false, nil, nil, body)
+			f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+			_, err := test.Execute(NewConfigCmd(f), "set -F -", out)
+			require.Error(t, err)
+		})
+	}
+}
+
+func Test_runSetCmd_RetentionDaysOutOfRange(t *testing.T) {
+	ts := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(ts.Close)
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+	_, err := test.Execute(NewConfigCmd(f), "set --retention-days 5000000000", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--retention-days must be between")
 }

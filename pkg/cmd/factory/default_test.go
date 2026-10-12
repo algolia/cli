@@ -1,7 +1,10 @@
 package factory
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -125,4 +128,37 @@ func Test_crawlerClient_ErrorsWhenUserIDUnavailable(t *testing.T) {
 	_, err := f.CrawlerClient()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "auth login")
+}
+
+// With an Agent Studio URL override, the SDK-backed client and the local client
+// must target the same backend and path layout.
+func Test_agentStudioClients_ShareOverrideHost(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	var paths []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(ts.Close)
+
+	t.Setenv("ALGOLIA_AGENT_STUDIO_URL", ts.URL)
+	t.Setenv("ALGOLIA_AGENT_STUDIO_ALLOW_INSECURE_HTTP", "1")
+	t.Setenv("ALGOLIA_APPLICATION_ID", "TESTAPP1")
+	t.Setenv("ALGOLIA_API_KEY", "key")
+
+	f := New("1.0.0", &config.Config{})
+
+	sdk, err := f.AgentStudioAPIClient()
+	require.NoError(t, err)
+	_, _ = sdk.GetAgent(sdk.NewApiGetAgentRequest("abc"))
+
+	local, err := f.AgentStudioClient()
+	require.NoError(t, err)
+	_, _ = local.GetAgent(context.Background(), "abc")
+
+	require.Len(t, paths, 2)
+	assert.Equal(t, paths[0], paths[1], "both clients must hit the same path on the same host")
+	assert.Equal(t, "/1/agents/abc", paths[0])
 }
