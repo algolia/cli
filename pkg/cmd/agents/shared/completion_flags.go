@@ -10,7 +10,7 @@ import (
 
 // EnvSecureUserToken is read when neither --secure-user-token nor
 // --secure-user-token-file is given, keeping the signed token out of argv.
-const EnvSecureUserToken = "ALGOLIA_AGENT_STUDIO_SECURE_USER_TOKEN"
+const EnvSecureUserToken = "ALGOLIA_AGENT_STUDIO_SECURE_USER_TOKEN" //nolint:gosec // env var name, not a credential
 
 // CompletionInputs is the shared flag surface for `agents try` /
 // `agents run`. Embed in your command Options struct and call

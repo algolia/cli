@@ -87,7 +87,7 @@ func TestSDKRequester_SanitizesErrorBodies(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tc.status)
-				_, _ = w.Write([]byte(tc.body))
+				_, _ = io.WriteString(w, tc.body)
 			}))
 			t.Cleanup(ts.Close)
 			resp, body := doSDKRequest(t, NewSDKRequester(""), ts, "/agent-studio/1/providers")
