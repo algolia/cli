@@ -64,13 +64,14 @@ func Test_runGetCmd_OutputFileIsVerbatim(t *testing.T) {
 	ts := httptest.NewServer(mux)
 	t.Cleanup(ts.Close)
 
+	const outFile = "out.json"
 	dir := t.TempDir()
-	dst := filepath.Join(dir, "out.json")
+	dst := filepath.Join(dir, outFile)
 	f, out := test.NewFactory(false, nil, nil, "")
 	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
 	_, err := test.Execute(NewUserDataCmd(f), "get tok1 -o "+dst, out)
 	require.NoError(t, err)
-	body, err := os.ReadFile(dst)
+	body, err := fs.ReadFile(os.DirFS(dir), outFile)
 	require.NoError(t, err)
 	assert.Equal(t, payload, string(body))
 }
