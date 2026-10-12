@@ -166,6 +166,10 @@ func Execute() (code exitCode) {
 	authError := errors.New("authError")
 	var preRunAccessToken string
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if isAgentsCommand(cmd) {
+			agents.PrintBetaWarning(cmdFactory)
+		}
+
 		if auth.IsAuthCheckEnabled(cmd) {
 			if err := auth.CheckAuth(&cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
@@ -435,4 +439,15 @@ func isUnderHomebrew(cli string) bool {
 		filepath.Separator,
 	)
 	return strings.HasPrefix(cli, brewBinPrefix)
+}
+
+// isAgentsCommand reports whether cmd is the `agents` group or one of its
+// descendants.
+func isAgentsCommand(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		if c.Name() == "agents" && c.HasParent() && !c.Parent().HasParent() {
+			return true
+		}
+	}
+	return false
 }

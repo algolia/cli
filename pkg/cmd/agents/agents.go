@@ -35,8 +35,13 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 		Short: "Manage Algolia Agent Studio agents",
 		Long: heredoc.Doc(`
 			Manage agents on Algolia Agent Studio. Credentials come from
-			the active profile. Host resolution: --agent-studio-url /
-			ALGOLIA_AGENT_STUDIO_URL → profile region → ldflag default →
+			the active application.
+
+			Commands backed by the Agent Studio SDK always send requests to
+			https://<appID>.algolia.net/agent-studio. Only the commands that
+			still use the local client (for example run, try and duplicate)
+			honor host overrides, resolved as:
+			ALGOLIA_AGENT_STUDIO_URL → profile setting → build-time default →
 			cluster-proxy fallback.
 		`),
 		Example: heredoc.Doc(`
@@ -47,8 +52,6 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia agents get 11111111-1111-1111-1111-111111111111
 		`),
 	}
-
-	cmd.PersistentPreRunE = betaAgentsPreRunE(f)
 
 	cmd.AddCommand(list.NewListCmd(f, nil))
 	cmd.AddCommand(get.NewGetCmd(f, nil))
@@ -71,12 +74,17 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(userdata.NewUserDataCmd(f))
 	cmd.AddCommand(internalcmd.NewInternalCmd(f))
 
-	h := cmd.HelpFunc()
+	// Delegate to the help function inherited from the root command, which is
+	// only known once this command is attached. Fall back to the default help
+	// when the command is used standalone (tests).
+	fallbackHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
-		_ = betaAgentsPreRunE(f)(nil, nil)
-		if h != nil {
-			h(c, args)
+		PrintBetaWarning(f)
+		if parent := cmd.Parent(); parent != nil {
+			parent.HelpFunc()(c, args)
+			return
 		}
+		fallbackHelp(c, args)
 	})
 
 	return cmd

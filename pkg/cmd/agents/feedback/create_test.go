@@ -55,6 +55,34 @@ func Test_runCreateCmd_NotesTooLong(t *testing.T) {
 	assert.Contains(t, err.Error(), "1000-character")
 }
 
+// Limits are in characters, not bytes: 20 three-byte runes (60 bytes) is a
+// valid tag, 51 runes is not.
+func Test_runCreateCmd_TagLimitCountsRunes(t *testing.T) {
+	const argv = "create --agent-id a --message-id m --vote 1 --tags "
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/agent-studio/1/feedback", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(
+			[]byte(
+				`{"id":"fb1","agentId":"a","messageId":"m","vote":1,"tags":[],"notes":null,"model":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}`,
+			),
+		)
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+	_, err := test.Execute(NewFeedbackCmd(f), argv+strings.Repeat("日", 20), out)
+	require.NoError(t, err)
+
+	f, out = test.NewFactory(false, nil, nil, "")
+	_, err = test.Execute(NewFeedbackCmd(f), argv+strings.Repeat("日", 51), out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "50-character")
+}
+
 func Test_runCreateCmd_Live(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/agent-studio/1/feedback", func(w http.ResponseWriter, r *http.Request) {

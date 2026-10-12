@@ -78,24 +78,25 @@ func runGetCmd(opts *GetOptions) error {
 	}
 	_ = json.Unmarshal(raw, &counts)
 
+	if opts.OutputFile != "" {
+		// Files get the backend payload verbatim; only stdout is pretty-printed.
+		if err := os.WriteFile(opts.OutputFile, raw, 0o600); err != nil {
+			return fmt.Errorf("write %s: %w", opts.OutputFile, err)
+		}
+		if opts.IO.IsStdoutTTY() {
+			fmt.Fprintf(opts.IO.Out,
+				"Wrote %d byte(s) (%d conversation(s), %d memory record(s)) to %s.\n",
+				len(raw), len(counts.Conversations), len(counts.Memories), opts.OutputFile)
+		}
+		return nil
+	}
+
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, raw, "", "  "); err != nil {
 		pretty.Reset()
 		pretty.Write(raw)
 	}
 	out := pretty.Bytes()
-
-	if opts.OutputFile != "" {
-		if err := os.WriteFile(opts.OutputFile, out, 0o600); err != nil {
-			return fmt.Errorf("write %s: %w", opts.OutputFile, err)
-		}
-		if opts.IO.IsStdoutTTY() {
-			fmt.Fprintf(opts.IO.Out,
-				"Wrote %d byte(s) (%d conversation(s), %d memory record(s)) to %s.\n",
-				len(out), len(counts.Conversations), len(counts.Memories), opts.OutputFile)
-		}
-		return nil
-	}
 	_, err = opts.IO.Out.Write(append(out, '\n'))
 	return err
 }

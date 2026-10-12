@@ -55,6 +55,26 @@ func Test_runGetCmd_OutputFile(t *testing.T) {
 	assert.Contains(t, string(body), `"conversations"`)
 }
 
+func Test_runGetCmd_OutputFileIsVerbatim(t *testing.T) {
+	const payload = `{"conversations":[],"memories":[]}`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/agent-studio/1/user-data/tok1", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(payload))
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "out.json")
+	f, out := test.NewFactory(false, nil, nil, "")
+	f.AgentStudioAPIClient = sharedtest.NewAPIClient(t, ts)
+	_, err := test.Execute(NewUserDataCmd(f), "get tok1 -o "+dst, out)
+	require.NoError(t, err)
+	body, err := os.ReadFile(dst)
+	require.NoError(t, err)
+	assert.Equal(t, payload, string(body))
+}
+
 func Test_runGetCmd_RequiresToken(t *testing.T) {
 	f, out := test.NewFactory(false, nil, nil, "")
 	cmd := NewUserDataCmd(f)

@@ -2,6 +2,7 @@ package feedback
 
 import (
 	"context"
+	"unicode/utf8"
 
 	"github.com/MakeNowJust/heredoc"
 	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
@@ -60,11 +61,11 @@ func newCreateCmd(f *cmdutil.Factory, runF func(*CreateOptions) error) *cobra.Co
 				return cmdutil.FlagErrorf("--tags may have at most 10 entries (got %d)", len(opts.Tags))
 			}
 			for _, t := range opts.Tags {
-				if len(t) > 50 {
+				if utf8.RuneCountInString(t) > 50 {
 					return cmdutil.FlagErrorf("tag %q exceeds 50-character limit", t)
 				}
 			}
-			if len(opts.Notes) > 1000 {
+			if utf8.RuneCountInString(opts.Notes) > 1000 {
 				return cmdutil.FlagErrorf("--notes exceeds 1000-character limit")
 			}
 			if runF != nil {
