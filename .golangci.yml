@@ -1,8 +1,3 @@
-run:
-  # The default 1m timeout is too short for a cold-cache CI run now that the
-  # agents command tree is part of the module.
-  timeout: 5m
-
 linters:
   enable:
     - gosec
