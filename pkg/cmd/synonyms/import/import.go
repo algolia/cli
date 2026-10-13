@@ -182,10 +182,12 @@ func runImportCmd(opts *ImportOptions) error {
 			opts.IO.StopProgressIndicator()
 			return err
 		}
-		res, err := client.SaveSynonyms(
-			client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
-				WithForwardToReplicas(opts.ForwardToReplicas),
-		)
+		request := client.NewApiSaveSynonymsRequest(opts.Index, synonyms).
+			WithForwardToReplicas(opts.ForwardToReplicas)
+		if clearExistingSynonyms {
+			request = request.WithReplaceExistingSynonyms(true)
+		}
+		res, err := client.SaveSynonyms(request)
 		if err != nil {
 			opts.IO.StopProgressIndicator()
 			return err
