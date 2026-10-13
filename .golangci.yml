@@ -4,7 +4,10 @@ linters:
     - gofumpt
     - stylecheck
 
+# tmp/ holds Taskfile outputs and ad-hoc QA probes; exclude from lint noise.
 issues:
+  exclude-dirs:
+    - tmp
   exclude-rules:
     # The dashboard client surfaces user-facing CLI errors that are intentionally
     # written as capitalized, human-readable sentences (e.g. "Couldn't get the

@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
+	"github.com/algolia/cli/api/agentstudio"
 	"github.com/algolia/cli/api/crawler"
 	"github.com/algolia/cli/api/dashboard"
 	"github.com/algolia/cli/pkg/auth"
@@ -29,6 +32,8 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 	f.CompositionClient = compositionClient(f, appVersion)
+	f.AgentStudioClient = agentStudioClient(f, appVersion)
+	f.AgentStudioAPIClient = agentStudioAPIClient(f, appVersion)
 
 	return f
 }
@@ -73,6 +78,111 @@ func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClie
 		}
 
 		return search.NewClientWithConfig(clientConf)
+	}
+}
+
+func agentStudioClient(f *cmdutil.Factory, appVersion string) func() (*agentstudio.Client, error) {
+	return func() (*agentstudio.Client, error) {
+		profile := f.Config.Profile()
+		appID, err := profile.GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := profile.GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		baseURL, err := resolveAgentStudioBaseURL(
+			profile.GetAgentStudioURL(),
+			agentstudio.DefaultBaseURL,
+			appID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		userID := "cli"
+		if profile.Name != "" {
+			userID = "cli-" + profile.Name
+		}
+
+		return agentstudio.NewClient(agentstudio.Config{
+			BaseURL:       baseURL,
+			ApplicationID: appID,
+			APIKey:        apiKey,
+			UserID:        userID,
+			UserAgent:     fmt.Sprintf("algolia-cli/%s agentstudio", appVersion),
+		})
+	}
+}
+
+// Timeouts for SDK-backed Agent Studio calls. The SDK defaults (25s read, 2s
+// connect) are too tight for conversation exports and for slow connections.
+const (
+	sdkRequestTimeout = 2 * time.Minute
+	sdkConnectTimeout = 10 * time.Second
+)
+
+// agentStudioAPIClient builds the official Agent Studio SDK client used for
+// the standard CRUD surface. It targets the same backend as the local client:
+// the base URL is resolved with resolveAgentStudioBaseURL (profile / env
+// override, then the build-time default, then the cluster proxy
+// https://<appID>.algolia.net/agent-studio). The SDK hard-codes the
+// /agent-studio/1 path, so agentstudio.SDKRequester maps it onto the resolved
+// base path. The X-Algolia-User-ID header preserves the same cli /
+// cli-<profile> attribution the local client sends.
+func agentStudioAPIClient(f *cmdutil.Factory, appVersion string) func() (*agentStudio.APIClient, error) {
+	return func() (*agentStudio.APIClient, error) {
+		profile := f.Config.Profile()
+		appID, err := profile.GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := profile.GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		baseURL, err := resolveAgentStudioBaseURL(
+			profile.GetAgentStudioURL(),
+			agentstudio.DefaultBaseURL,
+			appID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		scheme, host, err := agentstudio.SplitBaseURL(baseURL)
+		if err != nil {
+			return nil, err
+		}
+
+		client, err := agentStudio.NewClientWithConfig(agentStudio.AgentStudioConfiguration{
+			Configuration: transport.Configuration{
+				AppID:         appID,
+				ApiKey:        apiKey,
+				DefaultHeader: make(map[string]string),
+				UserAgent:     fmt.Sprintf("algolia-cli/%s agentstudio", appVersion),
+				Requester:     agentstudio.NewSDKRequester(baseURL),
+				Hosts: []transport.StatefulHost{
+					transport.NewStatefulHost(scheme, host, call.IsReadWrite),
+				},
+				ReadTimeout:    sdkRequestTimeout,
+				WriteTimeout:   sdkRequestTimeout,
+				ConnectTimeout: sdkConnectTimeout,
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		userID := "cli"
+		if profile.Name != "" {
+			userID = "cli-" + profile.Name
+		}
+		client.AddDefaultHeader("X-Algolia-User-ID", userID)
+
+		return client, nil
 	}
 }
 
@@ -141,6 +251,26 @@ func compositionClient(f *cmdutil.Factory, appVersion string) func() (*compositi
 
 		return composition.NewClientWithConfig(clientConf)
 	}
+}
+
+// resolveAgentStudioBaseURL picks the Agent Studio base URL from, in order:
+//   - profileOverride (env var ALGOLIA_AGENT_STUDIO_URL or the profile's
+//     agent_studio_url field — both surfaced via Profile.GetAgentStudioURL),
+//   - buildDefault (the package-level agentstudio.DefaultBaseURL set via
+//     ldflags by `task build` from $ALGOLIA_AGENT_STUDIO_URL),
+//   - the cluster-proxy fallback https://<appID>.algolia.net/agent-studio.
+//
+// Extracted from agentStudioClient so the priority chain is exercised in
+// isolation by tests without needing a config mock.
+func resolveAgentStudioBaseURL(profileOverride, buildDefault, appID string) (string, error) {
+	override := profileOverride
+	if override == "" {
+		override = buildDefault
+	}
+	return agentstudio.ResolveHost(agentstudio.HostOptions{
+		Override:      override,
+		ApplicationID: appID,
+	})
 }
 
 // getUserAgentInfo returns the standard user agent info plus Algolia CLI

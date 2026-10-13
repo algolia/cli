@@ -10,7 +10,7 @@ vars:
   docs_output_dir: tmp
 tasks:
   build:
-    desc: Build the binary
+    desc: Build the algolia binary
     deps: [generate]
     cmd: >-
       go build -ldflags
@@ -20,10 +20,22 @@ tasks:
       -X github.com/algolia/cli/api/dashboard.DefaultAPIURL=$ALGOLIA_API_URL
       -X github.com/algolia/cli/pkg/config.DefaultSearchHosts=$ALGOLIA_SEARCH_HOSTS
       -X github.com/algolia/cli/pkg/auth.DefaultOAuthClientID=$ALGOLIA_OAUTH_CLIENT_ID
-      -X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$ALGOLIA_OAUTH_SCOPE'"
-      -o algolia cmd/algolia/main.go
+      -X 'github.com/algolia/cli/api/dashboard.DefaultOAuthScope=$ALGOLIA_OAUTH_SCOPE'
+      -X github.com/algolia/cli/api/agentstudio.DefaultBaseURL=$ALGOLIA_AGENT_STUDIO_URL
+      -X github.com/algolia/cli/pkg/version.Distribution={{ .DIST }}"
+      -o {{ .OUTPUT }} cmd/algolia/main.go
     vars:
+      OUTPUT: '{{ .OUTPUT | default "algolia" }}'
       VERSION: '{{ .VERSION | default "main" }}'
+      DIST: '{{ .DIST | default "" }}'
+  build-beta:
+    desc: Build algolia-beta (same .env ldflags as build; use beside a prod algolia install)
+    cmds:
+      - task: build
+        vars:
+          OUTPUT: algolia-beta
+          VERSION: '{{ .VERSION | default "main+beta" }}'
+          DIST: beta
   test:
     desc: Run unit tests
     run: always

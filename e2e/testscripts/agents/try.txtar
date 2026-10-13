@@ -1,0 +1,29 @@
+# Flag-validation contract for `agents try`. None of these commands
+# hit the network — they all fail in BuildMessages /
+# NormalizeCompatibility / cobra mutually-exclusive checks before
+# client construction.
+#
+# Ungated: runs whenever the standard e2e env is present.
+
+# `agents try` requires --config
+! exec algolia agents try -m hi
+stderr 'required flag\(s\) "config"'
+
+# `agents try` requires one of --input or --message
+! exec algolia agents try -c cfg.json
+stderr 'one of --input or --message is required'
+
+# `agents try` rejects --input and --message together (cobra
+# mutually-exclusive guard, fires before our handler)
+! exec algolia agents try -c cfg.json -i msg.json -m hi
+stderr '\[input message\]'
+
+# `agents try` rejects an invalid --compatibility value
+! exec algolia agents try -c cfg.json -m hi --compatibility v9
+stderr 'invalid --compatibility'
+
+-- cfg.json --
+{"model":"gpt-4o-mini","instructions":"e2e"}
+
+-- msg.json --
+[{"role":"user","content":"hi"}]

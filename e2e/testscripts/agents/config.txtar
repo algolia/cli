@@ -1,0 +1,20 @@
+# `agents config` — flag-validation (no network for passing runs here).
+#
+# Ungated.
+
+exec algolia agents config
+stdout 'Agent Studio configuration'
+
+# `set` without flags is rejected (one of --retention-days or --file required).
+! exec algolia agents config set
+stderr 'one of --retention-days or --file is required'
+
+# `set` with both flags is mutually exclusive (cobra-enforced).
+! exec algolia agents config set --retention-days 30 -F patch.json
+stderr '\[file retention-days\]'
+
+-- patch.json --
+{
+  "maxRetentionDays": 90,
+  "futureField": "x"
+}

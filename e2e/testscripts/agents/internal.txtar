@@ -1,0 +1,20 @@
+# `agents internal` (hidden) — flag-validation.
+
+exec algolia agents internal --help
+stdout 'Wraps x-hidden'
+stdout 'memorize'
+
+exec algolia agents --help
+! stdout 'internal:'
+
+! exec algolia agents internal memorize
+stderr 'requires exactly 1 argument'
+
+! exec algolia agents internal memorize agent-1
+stderr '--body or --file'
+
+! exec algolia agents internal memorize agent-1 --body {} -F somefile
+stderr 'mutually exclusive'
+
+! exec algolia agents internal memorize agent-1 --body not-json
+stderr 'not valid JSON'

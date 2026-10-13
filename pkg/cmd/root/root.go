@@ -22,6 +22,7 @@ import (
 
 	"github.com/algolia/cli/internal/update"
 	"github.com/algolia/cli/pkg/auth"
+	"github.com/algolia/cli/pkg/cmd/agents"
 	"github.com/algolia/cli/pkg/cmd/apikeys"
 	"github.com/algolia/cli/pkg/cmd/application"
 	authcmd "github.com/algolia/cli/pkg/cmd/auth"
@@ -124,6 +125,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(events.NewEventsCmd(f))
 	cmd.AddCommand(crawler.NewCrawlersCmd(f))
 	cmd.AddCommand(compositions.NewCompositionsCmd(f))
+	cmd.AddCommand(agents.NewAgentsCmd(f))
 
 	return cmd
 }
@@ -164,6 +166,10 @@ func Execute() (code exitCode) {
 	authError := errors.New("authError")
 	var preRunAccessToken string
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if isAgentsCommand(cmd) {
+			agents.PrintBetaWarning(cmdFactory)
+		}
+
 		if auth.IsAuthCheckEnabled(cmd) {
 			if err := auth.CheckAuth(&cfg); err != nil {
 				fmt.Fprintf(stderr, "Authentication error: %s\n", err)
@@ -433,4 +439,15 @@ func isUnderHomebrew(cli string) bool {
 		filepath.Separator,
 	)
 	return strings.HasPrefix(cli, brewBinPrefix)
+}
+
+// isAgentsCommand reports whether cmd is the `agents` group or one of its
+// descendants.
+func isAgentsCommand(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		if c.Name() == "agents" && c.HasParent() && !c.Parent().HasParent() {
+			return true
+		}
+	}
+	return false
 }

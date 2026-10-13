@@ -10,5 +10,9 @@ import (
 // always show main.
 var Version = "main"
 
+// Distribution labels the packaged binary variant (non-release builds).
+// Injected via -X for local "algolia-beta" builds; empty for Goreleaser and task build.
+var Distribution string
+
 // Template for the version string.
 var Template = fmt.Sprintf("algolia version %s\n", Version)
