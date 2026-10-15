@@ -17,8 +17,8 @@ type ListOptions struct {
 	AgentStudioClient func() (*agentStudio.APIClient, error)
 	PrintFlags        *cmdutil.PrintFlags
 
-	Page       int
-	Limit      int
+	Page       int32
+	Limit      int32
 	ProviderID string
 }
 
@@ -52,8 +52,8 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVar(&opts.Page, "page", 0, "Page number")
-	cmd.Flags().IntVar(&opts.Limit, "limit", 0, "Items per page")
+	cmd.Flags().Int32Var(&opts.Page, "page", 0, "Page number")
+	cmd.Flags().Int32Var(&opts.Limit, "limit", 0, "Items per page")
 	cmd.Flags().StringVar(&opts.ProviderID, "provider-id", "", "Filter by provider ID")
 
 	opts.PrintFlags.AddFlags(cmd)
@@ -73,10 +73,10 @@ func runListCmd(opts *ListOptions) error {
 
 	req := client.NewApiListAgentsRequest()
 	if opts.Page > 0 {
-		req = req.WithPage(int32(opts.Page))
+		req = req.WithPage(opts.Page)
 	}
 	if opts.Limit > 0 {
-		req = req.WithLimit(int32(opts.Limit))
+		req = req.WithLimit(opts.Limit)
 	}
 	if opts.ProviderID != "" {
 		req = req.WithProviderId(opts.ProviderID)
