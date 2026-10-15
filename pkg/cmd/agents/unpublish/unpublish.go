@@ -34,13 +34,13 @@ func NewUnpublishCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unpublish <agent-id>",
 		Short: "Unpublish an Agent Studio agent",
-		Args:  validators.ExactArgsWithMsg(1, "agents unpublish requires a <agent-id> argument."),
+		Args:  validators.ExactArgsWithMsg(1, "agentstudio agents unpublish requires a <agent-id> argument."),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
 			# Unpublish the agent with ID "agt_1"
-			$ algolia agents unpublish agt_1
+			$ algolia agentstudio agents unpublish agt_1
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

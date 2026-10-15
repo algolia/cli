@@ -47,5 +47,5 @@ func TestUnpublishAgent_MissingArg(t *testing.T) {
 	cmd := unpublish.NewUnpublishCmd(f)
 	_, err := test.Execute(cmd, "", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <agent-id> argument")
+	assert.Contains(t, err.Error(), "agentstudio agents unpublish requires a <agent-id> argument")
 }

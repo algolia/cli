@@ -22,7 +22,7 @@ type UpdateOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	AgentID      string
-	File         string
+	JSON         string
 	Name         string
 	Instructions string
 }
@@ -39,36 +39,33 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <agent-id>",
 		Short: "Update an Agent Studio agent",
-		Args:  validators.ExactArgsWithMsg(1, "agents update requires a <agent-id> argument."),
+		Args:  validators.ExactArgsWithMsg(1, "agentstudio agents update requires a <agent-id> argument."),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
 			# Update the agent name
-			$ algolia agents update agt_1 --name "renamed-bot"
+			$ algolia agentstudio agents update agt_1 --name "renamed-bot"
 
-			# Update from a JSON file
-			$ algolia agents update agt_1 --file patch.json
-
-			# Update from stdin
-			$ cat patch.json | algolia agents update agt_1 --file -
+			# Update from a JSON object
+			$ algolia agentstudio agents update agt_1 --json '{"name":"renamed-bot","instructions":"Be brief."}'
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]
 
-			if opts.File != "" {
+			if opts.JSON != "" {
 				if opts.Name != "" || opts.Instructions != "" {
-					return cmdutil.FlagErrorf("--file cannot be combined with --name or --instructions")
+					return cmdutil.FlagErrorf("--json cannot be combined with --name or --instructions")
 				}
 			} else if opts.Name == "" && opts.Instructions == "" {
-				return cmdutil.FlagErrorf("`--file` or at least one of `--name` or `--instructions` is required")
+				return cmdutil.FlagErrorf("`--json` or at least one of `--name` or `--instructions` is required")
 			}
 
 			return runUpdateCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON patch file path (use - for stdin)")
+	cmd.Flags().StringVar(&opts.JSON, "json", "", "Agent JSON patch object")
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Agent name")
 	cmd.Flags().StringVar(&opts.Instructions, "instructions", "", "Agent prompt")
 
@@ -77,7 +74,7 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 }
 
 func buildPatch(opts *UpdateOptions) (*agentStudio.AgentConfigUpdate, error) {
-	if opts.File == "" {
+	if opts.JSON == "" {
 		body := agentStudio.NewEmptyAgentConfigUpdate()
 		if opts.Name != "" {
 			body.SetName(opts.Name)
@@ -88,13 +85,8 @@ func buildPatch(opts *UpdateOptions) (*agentStudio.AgentConfigUpdate, error) {
 		return body, nil
 	}
 
-	raw, err := cmdutil.ReadFile(opts.File, opts.IO.In)
-	if err != nil {
-		return nil, fmt.Errorf("reading file: %w", err)
-	}
-
 	var body agentStudio.AgentConfigUpdate
-	if err := json.Unmarshal(raw, &body); err != nil {
+	if err := json.Unmarshal([]byte(opts.JSON), &body); err != nil {
 		return nil, fmt.Errorf("parsing agent JSON: %w", err)
 	}
 

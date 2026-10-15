@@ -45,7 +45,7 @@ func TestCreateAgent_FromFlags(t *testing.T) {
 	r.Verify(t)
 }
 
-func TestCreateAgent_FromFile(t *testing.T) {
+func TestCreateAgent_FromJSON(t *testing.T) {
 	r := &httpmock.Registry{}
 	var gotBody []byte
 	r.Register(httpmock.REST("POST", "agent-studio/1/agents"), func(req *http.Request) (*http.Response, error) {
@@ -55,8 +55,11 @@ func TestCreateAgent_FromFile(t *testing.T) {
 
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
-	out.InBuf.WriteString(`{"name":"cli-test-agent","instructions":"You are a helpful assistant.","model":"gpt-4o"}`)
-	_, err := test.Execute(cmd, "--file -", out)
+	_, err := test.Execute(
+		cmd,
+		`--json '{"name":"cli-test-agent","instructions":"You are a helpful assistant.","model":"gpt-4o"}'`,
+		out,
+	)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, createdAgentBody, strings.TrimSpace(out.String()))
@@ -74,34 +77,32 @@ func TestCreateAgent_MissingInput(t *testing.T) {
 	cmd := create.NewCreateCmd(f)
 	_, err := test.Execute(cmd, "", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "`--file` or both `--name` and `--instructions` are required")
+	assert.Contains(t, err.Error(), "`--json` or both `--name` and `--instructions` are required")
 }
 
-func TestCreateAgent_FileAndFlagsConflict(t *testing.T) {
+func TestCreateAgent_JSONAndFlagsConflict(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
-	_, err := test.Execute(cmd, "--file agent.json --name x --instructions y", out)
+	_, err := test.Execute(cmd, `--json '{"name":"x","instructions":"y"}' --name x --instructions y`, out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--file cannot be combined")
+	assert.Contains(t, err.Error(), "--json cannot be combined")
 }
 
 func TestCreateAgent_InvalidJSON(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
-	out.InBuf.WriteString("not-json")
-	_, err := test.Execute(cmd, "--file -", out)
+	_, err := test.Execute(cmd, "--json not-json", out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing agent JSON")
 }
 
-func TestCreateAgent_FileMissingRequiredFields(t *testing.T) {
+func TestCreateAgent_JSONMissingRequiredFields(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
-	out.InBuf.WriteString(`{"name":"only-name"}`)
-	_, err := test.Execute(cmd, "--file -", out)
+	_, err := test.Execute(cmd, `--json '{"name":"only-name"}'`, out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "requires `name` and `instructions`")
 }

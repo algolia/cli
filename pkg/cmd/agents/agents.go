@@ -18,7 +18,7 @@ func NewAgentsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agents",
 		Short: "Manage Agent Studio agents",
-		Long:  "List, create, update, delete, publish, and unpublish Algolia Agent Studio agents.",
+		Long:  "List, create, update, delete, publish, and unpublish Agent Studio agents.",
 	}
 
 	cmd.AddCommand(list.NewListCmd(f))

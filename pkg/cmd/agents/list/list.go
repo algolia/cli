@@ -39,13 +39,13 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		Example: heredoc.Doc(`
 			# List agents
-			$ algolia agents list
+			$ algolia agentstudio agents list
 
 			# List the second page of 20 agents
-			$ algolia agents list --page 2 --limit 20
+			$ algolia agentstudio agents list --page 2 --limit 20
 
 			# Filter by provider
-			$ algolia agents list --provider-id prv_123
+			$ algolia agentstudio agents list --provider-id prv_123
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runListCmd(opts)

@@ -34,16 +34,16 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <agent-id>",
 		Short: "Delete an Agent Studio agent",
-		Args:  validators.ExactArgsWithMsg(1, "agents delete requires a <agent-id> argument."),
+		Args:  validators.ExactArgsWithMsg(1, "agentstudio agents delete requires a <agent-id> argument."),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
 			# Delete an agent (with confirmation prompt)
-			$ algolia agents delete agt_1
+			$ algolia agentstudio agents delete agt_1
 
 			# Delete without confirmation
-			$ algolia agents delete agt_1 --confirm
+			$ algolia agentstudio agents delete agt_1 --confirm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

@@ -34,13 +34,13 @@ func NewPublishCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish <agent-id>",
 		Short: "Publish an Agent Studio agent",
-		Args:  validators.ExactArgsWithMsg(1, "agents publish requires a <agent-id> argument."),
+		Args:  validators.ExactArgsWithMsg(1, "agentstudio agents publish requires a <agent-id> argument."),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
 			# Publish the agent with ID "agt_1"
-			$ algolia agents publish agt_1
+			$ algolia agentstudio agents publish agt_1
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

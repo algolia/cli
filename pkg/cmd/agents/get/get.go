@@ -32,13 +32,13 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get <agent-id>",
 		Short: "Get an Agent Studio agent by ID",
-		Args:  validators.ExactArgsWithMsg(1, "agents get requires a <agent-id> argument."),
+		Args:  validators.ExactArgsWithMsg(1, "agentstudio agents get requires a <agent-id> argument."),
 		Annotations: map[string]string{
 			"acls": "settings",
 		},
 		Example: heredoc.Doc(`
 			# Get the agent with ID "agt_1"
-			$ algolia agents get agt_1
+			$ algolia agentstudio agents get agt_1
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

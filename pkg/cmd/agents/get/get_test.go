@@ -47,5 +47,5 @@ func TestGetAgent_MissingArg(t *testing.T) {
 	cmd := get.NewGetCmd(f)
 	_, err := test.Execute(cmd, "", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <agent-id> argument")
+	assert.Contains(t, err.Error(), "agentstudio agents get requires a <agent-id> argument")
 }

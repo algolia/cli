@@ -20,7 +20,7 @@ type CreateOptions struct {
 	AgentStudioClient func() (*agentStudio.APIClient, error)
 	PrintFlags        *cmdutil.PrintFlags
 
-	File         string
+	JSON         string
 	Name         string
 	Instructions string
 }
@@ -42,28 +42,25 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		Example: heredoc.Doc(`
 			# Create from flags
-			$ algolia agents create --name "support-bot" --instructions "You are a helpful assistant."
+			$ algolia agentstudio agents create --name "support-bot" --instructions "You are a helpful assistant."
 
-			# Create from a JSON file
-			$ algolia agents create --file agent.json
-
-			# Create from stdin
-			$ cat agent.json | algolia agents create --file -
+			# Create from a JSON object
+			$ algolia agentstudio agents create --json '{"name":"support-bot","instructions":"You are a helpful assistant."}'
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.File != "" {
+			if opts.JSON != "" {
 				if opts.Name != "" || opts.Instructions != "" {
-					return cmdutil.FlagErrorf("--file cannot be combined with --name or --instructions")
+					return cmdutil.FlagErrorf("--json cannot be combined with --name or --instructions")
 				}
 			} else if opts.Name == "" || opts.Instructions == "" {
-				return cmdutil.FlagErrorf("`--file` or both `--name` and `--instructions` are required")
+				return cmdutil.FlagErrorf("`--json` or both `--name` and `--instructions` are required")
 			}
 
 			return runCreateCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
+	cmd.Flags().StringVar(&opts.JSON, "json", "", "Agent JSON object")
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Agent name")
 	cmd.Flags().StringVar(&opts.Instructions, "instructions", "", "Agent prompt")
 
@@ -72,19 +69,14 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 }
 
 func buildAgent(opts *CreateOptions) (*agentStudio.AgentConfigCreate, error) {
-	if opts.File == "" {
+	if opts.JSON == "" {
 		return agentStudio.NewEmptyAgentConfigCreate().
 			SetName(opts.Name).
 			SetInstructions(opts.Instructions), nil
 	}
 
-	raw, err := cmdutil.ReadFile(opts.File, opts.IO.In)
-	if err != nil {
-		return nil, fmt.Errorf("reading file: %w", err)
-	}
-
 	var body agentStudio.AgentConfigCreate
-	if err := json.Unmarshal(raw, &body); err != nil {
+	if err := json.Unmarshal([]byte(opts.JSON), &body); err != nil {
 		return nil, fmt.Errorf("parsing agent JSON: %w", err)
 	}
 	if body.Name == "" || body.Instructions == "" {

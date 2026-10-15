@@ -42,5 +42,5 @@ func TestDeleteAgent_MissingArg(t *testing.T) {
 	cmd := delete.NewDeleteCmd(f)
 	_, err := test.Execute(cmd, "--confirm", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <agent-id> argument")
+	assert.Contains(t, err.Error(), "agentstudio agents delete requires a <agent-id> argument")
 }

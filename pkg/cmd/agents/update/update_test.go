@@ -45,7 +45,7 @@ func TestUpdateAgent_FromFlags(t *testing.T) {
 	r.Verify(t)
 }
 
-func TestUpdateAgent_FromFile(t *testing.T) {
+func TestUpdateAgent_FromJSON(t *testing.T) {
 	r := &httpmock.Registry{}
 	var gotBody []byte
 	r.Register(httpmock.REST("PATCH", "agent-studio/1/agents/agt_1"), func(req *http.Request) (*http.Response, error) {
@@ -55,8 +55,7 @@ func TestUpdateAgent_FromFile(t *testing.T) {
 
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := update.NewUpdateCmd(f)
-	out.InBuf.WriteString(`{"name":"renamed-bot","instructions":"Be brief."}`)
-	_, err := test.Execute(cmd, "agt_1 --file -", out)
+	_, err := test.Execute(cmd, `agt_1 --json '{"name":"renamed-bot","instructions":"Be brief."}'`, out)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, updatedAgentBody, strings.TrimSpace(out.String()))
@@ -70,7 +69,7 @@ func TestUpdateAgent_MissingArg(t *testing.T) {
 	cmd := update.NewUpdateCmd(f)
 	_, err := test.Execute(cmd, "--name x", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <agent-id> argument")
+	assert.Contains(t, err.Error(), "agentstudio agents update requires a <agent-id> argument")
 }
 
 func TestUpdateAgent_MissingInput(t *testing.T) {
@@ -79,24 +78,23 @@ func TestUpdateAgent_MissingInput(t *testing.T) {
 	cmd := update.NewUpdateCmd(f)
 	_, err := test.Execute(cmd, "agt_1", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "`--file` or at least one of `--name` or `--instructions` is required")
+	assert.Contains(t, err.Error(), "`--json` or at least one of `--name` or `--instructions` is required")
 }
 
-func TestUpdateAgent_FileAndFlagsConflict(t *testing.T) {
+func TestUpdateAgent_JSONAndFlagsConflict(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := update.NewUpdateCmd(f)
-	_, err := test.Execute(cmd, "agt_1 --file patch.json --name x", out)
+	_, err := test.Execute(cmd, `agt_1 --json '{"name":"x"}' --name x`, out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--file cannot be combined")
+	assert.Contains(t, err.Error(), "--json cannot be combined")
 }
 
 func TestUpdateAgent_InvalidJSON(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := update.NewUpdateCmd(f)
-	out.InBuf.WriteString("not-json")
-	_, err := test.Execute(cmd, "agt_1 --file -", out)
+	_, err := test.Execute(cmd, "agt_1 --json not-json", out)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "parsing agent JSON")
 }
