@@ -39,8 +39,8 @@ func NewUnpublishCmd(f *cmdutil.Factory) *cobra.Command {
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
-			# Unpublish the agent with ID "agt_1"
-			$ algolia agentstudio agents unpublish agt_1
+			# Unpublish the agent
+			$ algolia agentstudio agents unpublish 11111111-1111-4111-8111-111111111111
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

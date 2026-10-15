@@ -45,7 +45,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia agentstudio agents list --page 2 --limit 20
 
 			# Filter by provider
-			$ algolia agentstudio agents list --provider-id prv_123
+			$ algolia agentstudio agents list --provider-id 22222222-2222-4222-8222-222222222222
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runListCmd(opts)

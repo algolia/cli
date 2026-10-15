@@ -41,11 +41,14 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
-			# Create from flags
+			# Create a draft from flags (not publishable until it has a provider and model)
 			$ algolia agentstudio agents create --name "support-bot" --instructions "You are a helpful assistant."
 
 			# Create from a JSON object
 			$ algolia agentstudio agents create --json '{"name":"support-bot","instructions":"You are a helpful assistant."}'
+
+			# Create with a provider and model so the agent can be published
+			$ algolia agentstudio agents create --json '{"name":"support-bot","instructions":"You are a helpful assistant.","providerId":"22222222-2222-4222-8222-222222222222","model":"gpt-4o"}'
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if opts.JSON != "" {
@@ -60,7 +63,7 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.JSON, "json", "", "Agent JSON object")
+	cmd.Flags().StringVar(&opts.JSON, "json", "", "Agent JSON object (include providerId and model to publish later)")
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Agent name")
 	cmd.Flags().StringVar(&opts.Instructions, "instructions", "", "Agent prompt")
 

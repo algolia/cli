@@ -40,10 +40,10 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		Example: heredoc.Doc(`
 			# Delete an agent (with confirmation prompt)
-			$ algolia agentstudio agents delete agt_1
+			$ algolia agentstudio agents delete 11111111-1111-4111-8111-111111111111
 
 			# Delete without confirmation
-			$ algolia agentstudio agents delete agt_1 --confirm
+			$ algolia agentstudio agents delete 11111111-1111-4111-8111-111111111111 --confirm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

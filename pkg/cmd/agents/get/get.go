@@ -37,8 +37,8 @@ func NewGetCmd(f *cmdutil.Factory) *cobra.Command {
 			"acls": "settings",
 		},
 		Example: heredoc.Doc(`
-			# Get the agent with ID "agt_1"
-			$ algolia agentstudio agents get agt_1
+			# Get an agent by ID
+			$ algolia agentstudio agents get 11111111-1111-4111-8111-111111111111
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

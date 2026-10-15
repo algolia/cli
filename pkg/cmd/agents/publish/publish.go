@@ -34,13 +34,14 @@ func NewPublishCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish <agent-id>",
 		Short: "Publish an Agent Studio agent",
+		Long:  "Publishes a draft agent. The API returns 409 unless the agent has a provider and a model.",
 		Args:  validators.ExactArgsWithMsg(1, "agentstudio agents publish requires a <agent-id> argument."),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
-			# Publish the agent with ID "agt_1"
-			$ algolia agentstudio agents publish agt_1
+			# Publish a draft that already has a provider and model
+			$ algolia agentstudio agents publish 11111111-1111-4111-8111-111111111111
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]

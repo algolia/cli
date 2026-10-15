@@ -45,10 +45,10 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 		Example: heredoc.Doc(`
 			# Update the agent name
-			$ algolia agentstudio agents update agt_1 --name "renamed-bot"
+			$ algolia agentstudio agents update 11111111-1111-4111-8111-111111111111 --name "renamed-bot"
 
 			# Update from a JSON object
-			$ algolia agentstudio agents update agt_1 --json '{"name":"renamed-bot","instructions":"Be brief."}'
+			$ algolia agentstudio agents update 11111111-1111-4111-8111-111111111111 --json '{"name":"renamed-bot","instructions":"Be brief."}'
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.AgentID = args[0]
