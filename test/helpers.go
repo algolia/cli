@@ -8,6 +8,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
@@ -95,6 +96,16 @@ func NewFactory(
 				},
 			}
 			return composition.NewClientWithConfig(cfg)
+		}
+		f.AgentStudioClient = func() (*agentStudio.APIClient, error) {
+			cfg := agentStudio.AgentStudioConfiguration{
+				Configuration: transport.Configuration{
+					AppID:     "default",
+					ApiKey:    "default",
+					Requester: r,
+				},
+			}
+			return agentStudio.NewClientWithConfig(cfg)
 		}
 	}
 
