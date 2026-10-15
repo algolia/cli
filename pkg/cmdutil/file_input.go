@@ -2,6 +2,8 @@ package cmdutil
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"os"
 )
@@ -16,6 +18,24 @@ func ReadFile(filename string, stdin io.ReadCloser) ([]byte, error) {
 	}
 
 	return os.ReadFile(filename)
+}
+
+// JSONPayload returns inline --json or the contents of --file (use "-" for stdin).
+// The two sources are mutually exclusive. Both empty returns "", nil.
+func JSONPayload(jsonStr, filename string, stdin io.ReadCloser) (string, error) {
+	if jsonStr != "" && filename != "" {
+		return "", FlagErrorf("--json cannot be combined with --file")
+	}
+	if filename == "" {
+		return jsonStr, nil
+	}
+
+	b, err := ReadFile(filename, stdin)
+	if err != nil {
+		return "", fmt.Errorf("reading file: %w", err)
+	}
+
+	return string(bytes.TrimSpace(b)), nil
 }
 
 func ScanFile(filename string, stdin io.ReadCloser) (*bufio.Scanner, error) {

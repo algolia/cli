@@ -3,6 +3,8 @@ package create_test
 import (
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,28 +32,42 @@ const createdAgentBody = `{
 func TestCreateAgent_FromFlags(t *testing.T) {
 	r := &httpmock.Registry{}
 	var gotBody []byte
-	r.Register(httpmock.REST("POST", "agent-studio/1/agents"), func(req *http.Request) (*http.Response, error) {
-		gotBody, _ = io.ReadAll(req.Body)
-		return httpmock.StringResponse(createdAgentBody)(req)
-	})
+	r.Register(
+		httpmock.REST("POST", "agent-studio/1/agents"),
+		func(req *http.Request) (*http.Response, error) {
+			gotBody, _ = io.ReadAll(req.Body)
+			return httpmock.StringResponse(createdAgentBody)(req)
+		},
+	)
 
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
-	_, err := test.Execute(cmd, `--name cli-test-agent --instructions "You are a helpful assistant."`, out)
+	_, err := test.Execute(
+		cmd,
+		`--name cli-test-agent --instructions "You are a helpful assistant."`,
+		out,
+	)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, createdAgentBody, strings.TrimSpace(out.String()))
-	assert.JSONEq(t, `{"name":"cli-test-agent","instructions":"You are a helpful assistant."}`, string(gotBody))
+	assert.JSONEq(
+		t,
+		`{"name":"cli-test-agent","instructions":"You are a helpful assistant."}`,
+		string(gotBody),
+	)
 	r.Verify(t)
 }
 
 func TestCreateAgent_FromJSON(t *testing.T) {
 	r := &httpmock.Registry{}
 	var gotBody []byte
-	r.Register(httpmock.REST("POST", "agent-studio/1/agents"), func(req *http.Request) (*http.Response, error) {
-		gotBody, _ = io.ReadAll(req.Body)
-		return httpmock.StringResponse(createdAgentBody)(req)
-	})
+	r.Register(
+		httpmock.REST("POST", "agent-studio/1/agents"),
+		func(req *http.Request) (*http.Response, error) {
+			gotBody, _ = io.ReadAll(req.Body)
+			return httpmock.StringResponse(createdAgentBody)(req)
+		},
+	)
 
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
@@ -71,22 +87,106 @@ func TestCreateAgent_FromJSON(t *testing.T) {
 	r.Verify(t)
 }
 
+func TestCreateAgent_FromFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.json")
+	require.NoError(
+		t,
+		os.WriteFile(
+			path,
+			[]byte(
+				`{"name":"cli-test-agent","instructions":"You are a helpful assistant.","model":"gpt-4o"}`,
+			),
+			0o600,
+		),
+	)
+
+	r := &httpmock.Registry{}
+	var gotBody []byte
+	r.Register(
+		httpmock.REST("POST", "agent-studio/1/agents"),
+		func(req *http.Request) (*http.Response, error) {
+			gotBody, _ = io.ReadAll(req.Body)
+			return httpmock.StringResponse(createdAgentBody)(req)
+		},
+	)
+
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := create.NewCreateCmd(f)
+	_, err := test.Execute(cmd, "--file "+path, out)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, createdAgentBody, strings.TrimSpace(out.String()))
+	assert.JSONEq(
+		t,
+		`{"name":"cli-test-agent","instructions":"You are a helpful assistant.","model":"gpt-4o"}`,
+		string(gotBody),
+	)
+	r.Verify(t)
+}
+
+func TestCreateAgent_FromStdin(t *testing.T) {
+	r := &httpmock.Registry{}
+	var gotBody []byte
+	r.Register(
+		httpmock.REST("POST", "agent-studio/1/agents"),
+		func(req *http.Request) (*http.Response, error) {
+			gotBody, _ = io.ReadAll(req.Body)
+			return httpmock.StringResponse(createdAgentBody)(req)
+		},
+	)
+
+	f, out := test.NewFactory(
+		false,
+		r,
+		nil,
+		`{"name":"cli-test-agent","instructions":"You are a helpful assistant."}`,
+	)
+	cmd := create.NewCreateCmd(f)
+	_, err := test.Execute(cmd, "--file -", out)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, createdAgentBody, strings.TrimSpace(out.String()))
+	assert.JSONEq(
+		t,
+		`{"name":"cli-test-agent","instructions":"You are a helpful assistant."}`,
+		string(gotBody),
+	)
+	r.Verify(t)
+}
+
 func TestCreateAgent_MissingInput(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
 	_, err := test.Execute(cmd, "", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "`--json` or both `--name` and `--instructions` are required")
+	assert.Contains(
+		t,
+		err.Error(),
+		"`--json`, `--file`, or both `--name` and `--instructions` are required",
+	)
 }
 
 func TestCreateAgent_JSONAndFlagsConflict(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := create.NewCreateCmd(f)
-	_, err := test.Execute(cmd, `--json '{"name":"x","instructions":"y"}' --name x --instructions y`, out)
+	_, err := test.Execute(
+		cmd,
+		`--json '{"name":"x","instructions":"y"}' --name x --instructions y`,
+		out,
+	)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--json cannot be combined")
+	assert.Contains(t, err.Error(), "cannot be combined with --name or --instructions")
+}
+
+func TestCreateAgent_JSONAndFileConflict(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := create.NewCreateCmd(f)
+	_, err := test.Execute(cmd, `--json '{"name":"x","instructions":"y"}' --file agent.json`, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--json cannot be combined with --file")
 }
 
 func TestCreateAgent_InvalidJSON(t *testing.T) {
