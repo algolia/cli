@@ -21,6 +21,7 @@ type CreateOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 
 	JSON         string
+	File         string
 	Name         string
 	Instructions string
 }
@@ -47,23 +48,36 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 			# Create from a JSON object
 			$ algolia agentstudio agents create --json '{"name":"support-bot","instructions":"You are a helpful assistant."}'
 
+			# Create from a JSON file
+			$ algolia agentstudio agents create --file agent.json
+
+			# Create from stdin
+			$ cat agent.json | algolia agentstudio agents create --file -
+
 			# Create with a provider and model so the agent can be published
 			$ algolia agentstudio agents create --json '{"name":"support-bot","instructions":"You are a helpful assistant.","providerId":"22222222-2222-4222-8222-222222222222","model":"gpt-4o"}'
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.JSON != "" {
-				if opts.Name != "" || opts.Instructions != "" {
-					return cmdutil.FlagErrorf("--json cannot be combined with --name or --instructions")
-				}
-			} else if opts.Name == "" || opts.Instructions == "" {
-				return cmdutil.FlagErrorf("`--json` or both `--name` and `--instructions` are required")
+			hasPayload := opts.JSON != "" || opts.File != ""
+			hasFlags := opts.Name != "" || opts.Instructions != ""
+			if hasPayload && hasFlags {
+				return cmdutil.FlagErrorf(
+					"--json and --file cannot be combined with --name or --instructions",
+				)
+			}
+			if !hasPayload && (opts.Name == "" || opts.Instructions == "") {
+				return cmdutil.FlagErrorf(
+					"`--json`, `--file`, or both `--name` and `--instructions` are required",
+				)
 			}
 
 			return runCreateCmd(opts)
 		},
 	}
 
-	cmd.Flags().StringVar(&opts.JSON, "json", "", "Agent JSON object (include providerId and model to publish later)")
+	cmd.Flags().
+		StringVar(&opts.JSON, "json", "", "Agent JSON object (include providerId and model to publish later)")
+	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Agent name")
 	cmd.Flags().StringVar(&opts.Instructions, "instructions", "", "Agent prompt")
 
@@ -72,14 +86,18 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 }
 
 func buildAgent(opts *CreateOptions) (*agentStudio.AgentConfigCreate, error) {
-	if opts.JSON == "" {
+	raw, err := cmdutil.JSONPayload(opts.JSON, opts.File, opts.IO.In)
+	if err != nil {
+		return nil, err
+	}
+	if raw == "" {
 		return agentStudio.NewEmptyAgentConfigCreate().
 			SetName(opts.Name).
 			SetInstructions(opts.Instructions), nil
 	}
 
 	var body agentStudio.AgentConfigCreate
-	if err := json.Unmarshal([]byte(opts.JSON), &body); err != nil {
+	if err := json.Unmarshal([]byte(raw), &body); err != nil {
 		return nil, fmt.Errorf("parsing agent JSON: %w", err)
 	}
 	if body.Name == "" || body.Instructions == "" {
