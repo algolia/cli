@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
@@ -29,6 +30,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	f.SearchClient = searchClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 	f.CompositionClient = compositionClient(f, appVersion)
+	f.AgentStudioClient = agentStudioClient(f, appVersion)
 
 	return f
 }
@@ -140,6 +142,35 @@ func compositionClient(f *cmdutil.Factory, appVersion string) func() (*compositi
 		}
 
 		return composition.NewClientWithConfig(clientConf)
+	}
+}
+
+func agentStudioClient(f *cmdutil.Factory, appVersion string) func() (*agentStudio.APIClient, error) {
+	return func() (*agentStudio.APIClient, error) {
+		appID, err := f.Config.Profile().GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := f.Config.Profile().GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		userAgent, err := getUserAgentInfo(appID, apiKey, appVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		clientConf := agentStudio.AgentStudioConfiguration{
+			Configuration: transport.Configuration{
+				AppID:                           appID,
+				ApiKey:                          apiKey,
+				UserAgent:                       userAgent,
+				ExposeIntermediateNetworkErrors: true,
+			},
+		}
+
+		return agentStudio.NewClientWithConfig(clientConf)
 	}
 }
 

@@ -1,0 +1,51 @@
+package unpublish_test
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/algolia/cli/pkg/cmd/agents/unpublish"
+	"github.com/algolia/cli/pkg/httpmock"
+	"github.com/algolia/cli/test"
+)
+
+const unpublishedAgentBody = `{
+  "id": "agt_1",
+  "name": "test-agent",
+  "description": "d",
+  "status": "draft",
+  "providerId": "p1",
+  "instructions": "You are helpful.",
+  "config": {},
+  "createdAt": "2026-01-01T00:00:00Z",
+  "updatedAt": "2026-01-01T00:00:00Z",
+  "lastUsedAt": null
+}`
+
+func TestUnpublishAgent(t *testing.T) {
+	r := &httpmock.Registry{}
+	r.Register(
+		httpmock.REST("POST", "agent-studio/1/agents/agt_1/unpublish"),
+		httpmock.StringResponse(unpublishedAgentBody),
+	)
+
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := unpublish.NewUnpublishCmd(f)
+	_, err := test.Execute(cmd, "agt_1", out)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, unpublishedAgentBody, strings.TrimSpace(out.String()))
+	r.Verify(t)
+}
+
+func TestUnpublishAgent_MissingArg(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := unpublish.NewUnpublishCmd(f)
+	_, err := test.Execute(cmd, "", out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "agentstudio agents unpublish requires a <agent-id> argument")
+}

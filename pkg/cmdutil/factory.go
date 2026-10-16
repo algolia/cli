@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	agentStudio "github.com/algolia/algoliasearch-client-go/v4/algolia/agent-studio"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 
@@ -20,6 +21,7 @@ type Factory struct {
 	SearchClient      func() (*search.APIClient, error)
 	CrawlerClient     func() (*crawler.Client, error)
 	CompositionClient func() (*composition.APIClient, error)
+	AgentStudioClient func() (*agentStudio.APIClient, error)
 
 	// Prompter is the interactive input source used by commands that support
 	// an --interactive mode. Defaulted to a real SurveyPrompter in factory.New;
