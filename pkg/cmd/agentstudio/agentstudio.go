@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmd/agents"
+	"github.com/algolia/cli/pkg/cmd/conversations"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -16,5 +17,6 @@ func NewAgentStudioCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(agents.NewAgentsCmd(f))
+	cmd.AddCommand(conversations.NewConversationsCmd(f))
 	return cmd
 }
