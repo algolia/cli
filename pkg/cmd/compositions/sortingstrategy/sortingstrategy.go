@@ -6,6 +6,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	algoliaComposition "github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	compinternal "github.com/algolia/cli/pkg/cmd/compositions/internal"
@@ -13,7 +14,6 @@ import (
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/validators"
 )
 
 // Options holds dependencies and flags for the sorting-strategy command.
@@ -21,6 +21,7 @@ type Options struct {
 	Config            config.IConfig
 	IO                *iostreams.IOStreams
 	CompositionClient func() (*algoliaComposition.APIClient, error)
+	SearchClient      func() (*search.APIClient, error)
 	Prompter          interactive.Prompter
 	CompositionID     string
 	File              string
@@ -34,6 +35,7 @@ func NewSortingStrategyCmd(f *cmdutil.Factory) *cobra.Command {
 		IO:                f.IOStreams,
 		Config:            f.Config,
 		CompositionClient: f.CompositionClient,
+		SearchClient:      f.SearchClient,
 		Prompter:          f.Prompter,
 		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
@@ -46,7 +48,8 @@ func NewSortingStrategyCmd(f *cmdutil.Factory) *cobra.Command {
 			indices (or replicas) that implement them. These labels are what the
 			` + "`sortBy`" + ` field on composition rules and search params selects at runtime.
 		`),
-		Args: validators.ExactArgsWithMsg(1, "compositions sorting-strategy requires a <composition-id> argument."),
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: cmdutil.CompositionIDs(opts.CompositionClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -61,7 +64,11 @@ func NewSortingStrategyCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia compositions sorting-strategy my-comp --interactive
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.CompositionID = args[0]
+			id, err := compinternal.ResolveCompositionID(args, opts.IO.CanPrompt(), opts.Prompter, opts.CompositionClient)
+			if err != nil {
+				return err
+			}
+			opts.CompositionID = id
 
 			if opts.Interactive == (opts.File != "") {
 				return cmdutil.FlagErrorf("exactly one of `--file` or `--interactive` is required")
@@ -90,7 +97,11 @@ func buildStrategy(opts *Options) (map[string]string, error) {
 		var doc struct {
 			SortingStrategy map[string]string `json:"sortingStrategy"`
 		}
-		if err := (&interactive.Builder{Prompter: opts.Prompter}).Build(&doc); err != nil {
+		builder := &interactive.Builder{
+			Prompter: opts.Prompter,
+			Suggest:  compinternal.CompositionSuggester(compinternal.SuggestDeps{Search: opts.SearchClient, Composition: opts.CompositionClient, CompositionID: opts.CompositionID}),
+		}
+		if err := builder.Build(&doc); err != nil {
 			return nil, fmt.Errorf("building sorting strategy: %w", err)
 		}
 		return doc.SortingStrategy, nil

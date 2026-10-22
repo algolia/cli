@@ -6,6 +6,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	algoliaComposition "github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	compinternal "github.com/algolia/cli/pkg/cmd/compositions/internal"
@@ -21,6 +22,7 @@ type UpsertOptions struct {
 	Config            config.IConfig
 	IO                *iostreams.IOStreams
 	CompositionClient func() (*algoliaComposition.APIClient, error)
+	SearchClient      func() (*search.APIClient, error)
 	Prompter          interactive.Prompter
 	CompositionID     string
 	File              string
@@ -28,51 +30,94 @@ type UpsertOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 }
 
-// NewUpsertCmd returns the `compositions upsert` command.
-func NewUpsertCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &UpsertOptions{
+func newOptions(f *cmdutil.Factory) *UpsertOptions {
+	return &UpsertOptions{
 		IO:                f.IOStreams,
 		Config:            f.Config,
 		CompositionClient: f.CompositionClient,
+		SearchClient:      f.SearchClient,
 		Prompter:          f.Prompter,
 		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
+}
+
+func addBodyFlags(cmd *cobra.Command, opts *UpsertOptions) {
+	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
+	cmd.Flags().BoolVarP(&opts.Interactive, "interactive", "i", false, "Build the composition interactively")
+	opts.PrintFlags.AddFlags(cmd)
+}
+
+// validateAndRun checks the file/interactive flags then writes the composition.
+func validateAndRun(opts *UpsertOptions) error {
+	if opts.Interactive == (opts.File != "") {
+		return cmdutil.FlagErrorf("exactly one of `--file` or `--interactive` is required")
+	}
+	if opts.Interactive && !opts.IO.CanPrompt() {
+		return cmdutil.FlagErrorf("`--interactive` requires a terminal; use `--file` instead")
+	}
+	return runUpsertCmd(opts)
+}
+
+// NewInsertCmd returns the `compositions insert` command: create a composition
+// under a new id. The id is typed, with no selector over existing ones.
+func NewInsertCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := newOptions(f)
 
 	cmd := &cobra.Command{
-		Use:   "upsert <composition-id>",
-		Short: "Create or update a composition",
-		Args:  validators.ExactArgsWithMsg(1, "compositions upsert requires a <composition-id> argument."),
+		Use:   "insert <composition-id>",
+		Short: "Create a composition",
+		Args:  validators.ExactArgsWithMsg(1, "compositions insert requires a <composition-id> argument."),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
-			# Upsert a composition from a JSON file
-			$ algolia compositions upsert my-comp --file body.json
+			# Create a composition from a JSON file
+			$ algolia compositions insert my-comp --file body.json
 
-			# Upsert from stdin
-			$ cat body.json | algolia compositions upsert my-comp --file -
-
-			# Build a composition interactively
-			$ algolia compositions upsert my-comp --interactive
+			# Build a new composition interactively
+			$ algolia compositions insert my-comp --interactive
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.CompositionID = args[0]
-
-			if opts.Interactive == (opts.File != "") {
-				return cmdutil.FlagErrorf("exactly one of `--file` or `--interactive` is required")
-			}
-			if opts.Interactive && !opts.IO.CanPrompt() {
-				return cmdutil.FlagErrorf("`--interactive` requires a terminal; use `--file` instead")
-			}
-
-			return runUpsertCmd(opts)
+			return validateAndRun(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
-	cmd.Flags().BoolVarP(&opts.Interactive, "interactive", "i", false, "Build the composition interactively")
+	addBodyFlags(cmd, opts)
+	return cmd
+}
 
-	opts.PrintFlags.AddFlags(cmd)
+// NewUpdateCmd returns the `compositions update` command: edit an existing
+// composition, selectable from a list when the id is omitted on a terminal.
+func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := newOptions(f)
+
+	cmd := &cobra.Command{
+		Use:               "update [composition-id]",
+		Short:             "Update an existing composition",
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: cmdutil.CompositionIDs(opts.CompositionClient),
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Example: heredoc.Doc(`
+			# Update a composition from a JSON file
+			$ algolia compositions update my-comp --file body.json
+
+			# Pick a composition to update, then build it interactively
+			$ algolia compositions update --interactive
+		`),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := compinternal.ResolveCompositionID(args, opts.IO.CanPrompt(), opts.Prompter, opts.CompositionClient)
+			if err != nil {
+				return err
+			}
+			opts.CompositionID = id
+			return validateAndRun(opts)
+		},
+	}
+
+	addBodyFlags(cmd, opts)
 	return cmd
 }
 
@@ -83,7 +128,10 @@ func buildComposition(opts *UpsertOptions) (algoliaComposition.Composition, erro
 
 	if opts.Interactive {
 		comp.ObjectID = opts.CompositionID
-		builder := &interactive.Builder{Prompter: opts.Prompter}
+		builder := &interactive.Builder{
+			Prompter: opts.Prompter,
+			Suggest:  compinternal.CompositionSuggester(compinternal.SuggestDeps{Search: opts.SearchClient, Composition: opts.CompositionClient, CompositionID: opts.CompositionID}),
+		}
 		if err := builder.Build(&comp); err != nil {
 			return comp, fmt.Errorf("building composition: %w", err)
 		}

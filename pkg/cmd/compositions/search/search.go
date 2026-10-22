@@ -5,8 +5,10 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	algoliaComposition "github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
+	compinternal "github.com/algolia/cli/pkg/cmd/compositions/internal"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/interactive"
@@ -18,6 +20,7 @@ type SearchOptions struct {
 	Config            config.IConfig
 	IO                *iostreams.IOStreams
 	CompositionClient func() (*algoliaComposition.APIClient, error)
+	SearchClient      func() (*search.APIClient, error)
 	Prompter          interactive.Prompter
 	CompositionID     string
 	Query             string
@@ -34,6 +37,7 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 		IO:                f.IOStreams,
 		Config:            f.Config,
 		CompositionClient: f.CompositionClient,
+		SearchClient:      f.SearchClient,
 		Prompter:          f.Prompter,
 		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
@@ -42,9 +46,10 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	var page int32
 
 	cmd := &cobra.Command{
-		Use:   "search <composition-id> [query]",
-		Short: "Search a composition",
-		Args:  cobra.RangeArgs(1, 2),
+		Use:               "search <composition-id> [query]",
+		Short:             "Search a composition",
+		Args:              cobra.RangeArgs(0, 2),
+		ValidArgsFunction: cmdutil.CompositionIDs(opts.CompositionClient),
 		Annotations: map[string]string{
 			"acls": "search",
 		},
@@ -62,14 +67,15 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia compositions search my-comp --interactive
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.CompositionID = args[0]
+			id, err := compinternal.ResolveCompositionID(args, opts.IO.CanPrompt(), opts.Prompter, opts.CompositionClient)
+			if err != nil {
+				return err
+			}
+			opts.CompositionID = id
 
 			if opts.Interactive {
-				if !opts.IO.CanPrompt() {
-					return cmdutil.FlagErrorf("`--interactive` requires a terminal")
-				}
-				if len(args) > 1 || cmd.Flags().Changed("hits-per-page") || cmd.Flags().Changed("page") || cmd.Flags().Changed("filters") {
-					return cmdutil.FlagErrorf("`--interactive` builds the whole request; omit the query argument and the --hits-per-page/--page/--filters flags")
+				if err := validateInteractive(cmd, args, opts.IO.CanPrompt()); err != nil {
+					return err
 				}
 				return runSearchCmd(opts)
 			}
@@ -97,12 +103,27 @@ func NewSearchCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
+// validateInteractive rejects `--interactive` without a terminal or combined with request flags, since the prompts build the whole request.
+func validateInteractive(cmd *cobra.Command, args []string, canPrompt bool) error {
+	if !canPrompt {
+		return cmdutil.FlagErrorf("`--interactive` requires a terminal")
+	}
+	if len(args) > 1 || cmd.Flags().Changed("hits-per-page") || cmd.Flags().Changed("page") || cmd.Flags().Changed("filters") {
+		return cmdutil.FlagErrorf("`--interactive` builds the whole request; omit the query argument and the --hits-per-page/--page/--filters flags")
+	}
+	return nil
+}
+
 // buildRequestBody assembles the search request body, interactively when
 // requested or from the query argument and flags otherwise.
 func buildRequestBody(opts *SearchOptions) (*algoliaComposition.RequestBody, error) {
 	if opts.Interactive {
 		var body algoliaComposition.RequestBody
-		if err := (&interactive.Builder{Prompter: opts.Prompter}).Build(&body); err != nil {
+		builder := &interactive.Builder{
+			Prompter: opts.Prompter,
+			Suggest:  compinternal.CompositionSuggester(compinternal.SuggestDeps{Search: opts.SearchClient, Composition: opts.CompositionClient, CompositionID: opts.CompositionID}),
+		}
+		if err := builder.Build(&body); err != nil {
 			return nil, fmt.Errorf("building search request: %w", err)
 		}
 		return &body, nil

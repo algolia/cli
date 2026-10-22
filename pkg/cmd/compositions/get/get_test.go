@@ -52,5 +52,5 @@ func TestGetComposition_MissingArg(t *testing.T) {
 	cmd := get.NewGetCmd(f)
 	_, err := test.Execute(cmd, "", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <composition-id> argument")
+	assert.Contains(t, err.Error(), "a <composition-id> argument is required")
 }
