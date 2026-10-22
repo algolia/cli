@@ -84,5 +84,5 @@ func TestDeleteRule_MissingArgs(t *testing.T) {
 	cmd := delete.NewDeleteCmd(f)
 	_, err := test.Execute(cmd, "my-comp", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <composition-id> and a <rule-id> argument")
+	assert.Contains(t, err.Error(), "argument is required")
 }

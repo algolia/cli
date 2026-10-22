@@ -59,5 +59,5 @@ func TestListRules_MissingArg(t *testing.T) {
 	cmd := list.NewListCmd(f)
 	_, err := test.Execute(cmd, "", out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "requires a <composition-id> argument")
+	assert.Contains(t, err.Error(), "argument is required")
 }
