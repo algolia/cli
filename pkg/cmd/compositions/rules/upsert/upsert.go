@@ -6,6 +6,7 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	algoliaComposition "github.com/algolia/algoliasearch-client-go/v4/algolia/composition"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/spf13/cobra"
 
 	compinternal "github.com/algolia/cli/pkg/cmd/compositions/internal"
@@ -21,6 +22,7 @@ type UpsertOptions struct {
 	Config            config.IConfig
 	IO                *iostreams.IOStreams
 	CompositionClient func() (*algoliaComposition.APIClient, error)
+	SearchClient      func() (*search.APIClient, error)
 	Prompter          interactive.Prompter
 	CompositionID     string
 	ObjectID          string
@@ -29,52 +31,97 @@ type UpsertOptions struct {
 	PrintFlags        *cmdutil.PrintFlags
 }
 
-// NewUpsertCmd returns the `compositions rules upsert` command.
-func NewUpsertCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &UpsertOptions{
+func newOptions(f *cmdutil.Factory) *UpsertOptions {
+	return &UpsertOptions{
 		IO:                f.IOStreams,
 		Config:            f.Config,
 		CompositionClient: f.CompositionClient,
+		SearchClient:      f.SearchClient,
 		Prompter:          f.Prompter,
 		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
+}
+
+func addBodyFlags(cmd *cobra.Command, opts *UpsertOptions) {
+	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
+	cmd.Flags().BoolVarP(&opts.Interactive, "interactive", "i", false, "Build the rule interactively")
+	opts.PrintFlags.AddFlags(cmd)
+}
+
+// validateAndRun checks the file/interactive flags then writes the rule.
+func validateAndRun(opts *UpsertOptions) error {
+	if opts.Interactive == (opts.File != "") {
+		return cmdutil.FlagErrorf("exactly one of `--file` or `--interactive` is required")
+	}
+	if opts.Interactive && !opts.IO.CanPrompt() {
+		return cmdutil.FlagErrorf("`--interactive` requires a terminal; use `--file` instead")
+	}
+	return runUpsertCmd(opts)
+}
+
+// NewInsertCmd returns the `compositions rules insert` command: create a rule
+// under a new id. Ids are typed, with no selector.
+func NewInsertCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := newOptions(f)
 
 	cmd := &cobra.Command{
-		Use:   "upsert <composition-id> <rule-id>",
-		Short: "Create or update a composition rule",
-		Args:  validators.ExactArgsWithMsg(2, "compositions rules upsert requires a <composition-id> and a <rule-id> argument."),
+		Use:               "insert <composition-id> <rule-id>",
+		Short:             "Create a composition rule",
+		Args:              validators.ExactArgsWithMsg(2, "compositions rules insert requires a <composition-id> and a <rule-id> argument."),
+		ValidArgsFunction: cmdutil.CompositionIDs(opts.CompositionClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
 		Example: heredoc.Doc(`
-			# Upsert a rule from a JSON file
-			$ algolia compositions rules upsert my-comp rule-1 --file rule.json
+			# Create a rule from a JSON file
+			$ algolia compositions rules insert my-comp rule-1 --file rule.json
 
-			# Upsert from stdin
-			$ cat rule.json | algolia compositions rules upsert my-comp rule-1 --file -
-
-			# Build a rule interactively
-			$ algolia compositions rules upsert my-comp rule-1 --interactive
+			# Build a new rule interactively
+			$ algolia compositions rules insert my-comp rule-1 --interactive
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.CompositionID = args[0]
 			opts.ObjectID = args[1]
-
-			if opts.Interactive == (opts.File != "") {
-				return cmdutil.FlagErrorf("exactly one of `--file` or `--interactive` is required")
-			}
-			if opts.Interactive && !opts.IO.CanPrompt() {
-				return cmdutil.FlagErrorf("`--interactive` requires a terminal; use `--file` instead")
-			}
-
-			return runUpsertCmd(opts)
+			return validateAndRun(opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
-	cmd.Flags().BoolVarP(&opts.Interactive, "interactive", "i", false, "Build the rule interactively")
+	addBodyFlags(cmd, opts)
+	return cmd
+}
 
-	opts.PrintFlags.AddFlags(cmd)
+// NewUpdateCmd returns the `compositions rules update` command: edit an existing
+// rule, selecting the composition and rule from lists when omitted on a terminal.
+func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := newOptions(f)
+
+	cmd := &cobra.Command{
+		Use:               "update [composition-id] [rule-id]",
+		Short:             "Update an existing composition rule",
+		Args:              cobra.MaximumNArgs(2),
+		ValidArgsFunction: cmdutil.CompositionAndRuleIDs(opts.CompositionClient),
+		Annotations: map[string]string{
+			"acls": "editSettings",
+		},
+		Example: heredoc.Doc(`
+			# Update a rule from a JSON file
+			$ algolia compositions rules update my-comp rule-1 --file rule.json
+
+			# Pick a composition and rule to update, then build it interactively
+			$ algolia compositions rules update --interactive
+		`),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			compositionID, ruleID, err := compinternal.ResolveCompositionAndRuleID(args, opts.IO.CanPrompt(), opts.Prompter, opts.CompositionClient)
+			if err != nil {
+				return err
+			}
+			opts.CompositionID = compositionID
+			opts.ObjectID = ruleID
+			return validateAndRun(opts)
+		},
+	}
+
+	addBodyFlags(cmd, opts)
 	return cmd
 }
 
@@ -85,7 +132,11 @@ func buildRule(opts *UpsertOptions) (algoliaComposition.CompositionRule, error) 
 
 	if opts.Interactive {
 		rule.ObjectID = opts.ObjectID
-		if err := (&interactive.Builder{Prompter: opts.Prompter}).Build(&rule); err != nil {
+		builder := &interactive.Builder{
+			Prompter: opts.Prompter,
+			Suggest:  compinternal.CompositionSuggester(compinternal.SuggestDeps{Search: opts.SearchClient, Composition: opts.CompositionClient, CompositionID: opts.CompositionID}),
+		}
+		if err := builder.Build(&rule); err != nil {
 			return rule, fmt.Errorf("building rule: %w", err)
 		}
 		return rule, nil

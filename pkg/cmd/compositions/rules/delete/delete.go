@@ -10,9 +10,9 @@ import (
 	compinternal "github.com/algolia/cli/pkg/cmd/compositions/internal"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
+	"github.com/algolia/cli/pkg/interactive"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/prompt"
-	"github.com/algolia/cli/pkg/validators"
 )
 
 // DeleteOptions holds dependencies and flags for the rules delete command.
@@ -20,6 +20,7 @@ type DeleteOptions struct {
 	Config            config.IConfig
 	IO                *iostreams.IOStreams
 	CompositionClient func() (*algoliaComposition.APIClient, error)
+	Prompter          interactive.Prompter
 	CompositionID     string
 	ObjectID          string
 	DoConfirm         bool
@@ -32,13 +33,15 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 		IO:                f.IOStreams,
 		Config:            f.Config,
 		CompositionClient: f.CompositionClient,
+		Prompter:          f.Prompter,
 		PrintFlags:        cmdutil.NewPrintFlags().WithDefaultOutput("json"),
 	}
 
 	cmd := &cobra.Command{
-		Use:   "delete <composition-id> <rule-id>",
-		Short: "Delete a composition rule",
-		Args:  validators.ExactArgsWithMsg(2, "compositions rules delete requires a <composition-id> and a <rule-id> argument."),
+		Use:               "delete [composition-id] [rule-id]",
+		Short:             "Delete a composition rule",
+		Args:              cobra.MaximumNArgs(2),
+		ValidArgsFunction: cmdutil.CompositionAndRuleIDs(opts.CompositionClient),
 		Annotations: map[string]string{
 			"acls": "editSettings",
 		},
@@ -50,8 +53,12 @@ func NewDeleteCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia compositions rules delete my-comp rule-1 --confirm
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.CompositionID = args[0]
-			opts.ObjectID = args[1]
+			compositionID, ruleID, err := compinternal.ResolveCompositionAndRuleID(args, opts.IO.CanPrompt(), opts.Prompter, opts.CompositionClient)
+			if err != nil {
+				return err
+			}
+			opts.CompositionID = compositionID
+			opts.ObjectID = ruleID
 
 			if !opts.DoConfirm {
 				if !opts.IO.CanPrompt() {

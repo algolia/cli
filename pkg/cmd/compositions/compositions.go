@@ -23,7 +23,8 @@ func NewCompositionsCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.AddCommand(list.NewListCmd(f))
 	cmd.AddCommand(get.NewGetCmd(f))
-	cmd.AddCommand(upsert.NewUpsertCmd(f))
+	cmd.AddCommand(upsert.NewInsertCmd(f))
+	cmd.AddCommand(upsert.NewUpdateCmd(f))
 	cmd.AddCommand(sortingstrategy.NewSortingStrategyCmd(f))
 	cmd.AddCommand(delete.NewDeleteCmd(f))
 	cmd.AddCommand(compsearch.NewSearchCmd(f))

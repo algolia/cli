@@ -36,11 +36,11 @@ const wantBody = `{
 	}
 }`
 
-// Drives `compositions upsert --interactive` through the real command tree with
+// Drives `compositions insert --interactive` through the real command tree with
 // a label-keyed ScriptedPrompter on the Factory. Answers are keyed by a unique
 // substring of the prompt label, so adding or reordering SDK fields does not
 // break the INPUT side: unmatched prompts fall back to safe defaults (skip).
-func TestCompositions_UpsertInteractive(t *testing.T) {
+func TestCompositions_InsertInteractive(t *testing.T) {
 	r := &httpmock.Registry{}
 	var captured []byte
 	r.Register(httpmock.REST("PUT", "1/compositions/my-comp"), func(req *http.Request) (*http.Response, error) {
@@ -77,7 +77,7 @@ func TestCompositions_UpsertInteractive(t *testing.T) {
 	}
 
 	cmd := compositions.NewCompositionsCmd(f)
-	_, err := test.Execute(cmd, "upsert my-comp --interactive", out)
+	_, err := test.Execute(cmd, "insert my-comp --interactive", out)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, wantBody, string(captured))
