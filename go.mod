@@ -77,3 +77,5 @@ require (
 	golang.org/x/tools v0.31.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
+
+replace github.com/algolia/algoliasearch-client-go/v4 => /Users/ben.kalmus/work/api-clients-automation/clients/algoliasearch-client-go

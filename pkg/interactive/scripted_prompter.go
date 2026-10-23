@@ -22,7 +22,7 @@ type ScriptedPrompter struct {
 
 var _ Prompter = (*ScriptedPrompter)(nil)
 
-func (p *ScriptedPrompter) Input(label string, validate func(string) error) (string, error) {
+func (p *ScriptedPrompter) Input(label string, validate func(string) error, _ ...PromptOption) (string, error) {
 	v, _ := lookup(p.Inputs, label)
 	// Run the validator on the scripted answer so invalid scripted data surfaces
 	// deterministically (no infinite re-prompt loop). In production survey would
@@ -35,14 +35,14 @@ func (p *ScriptedPrompter) Input(label string, validate func(string) error) (str
 	return v, nil
 }
 
-func (p *ScriptedPrompter) Confirm(label string) (bool, error) {
+func (p *ScriptedPrompter) Confirm(label string, _ ...PromptOption) (bool, error) {
 	if v, ok := lookup(p.Confirms, label); ok {
 		return v, nil
 	}
 	return false, nil
 }
 
-func (p *ScriptedPrompter) Select(label string, options []string) (string, error) {
+func (p *ScriptedPrompter) Select(label string, options []string, _ ...PromptOption) (string, error) {
 	if v, ok := lookup(p.Selects, label); ok {
 		return v, nil
 	}
@@ -52,7 +52,7 @@ func (p *ScriptedPrompter) Select(label string, options []string) (string, error
 	return "", nil
 }
 
-func (p *ScriptedPrompter) MultiSelect(label string, options []string) ([]int, error) {
+func (p *ScriptedPrompter) MultiSelect(label string, options []string, _ ...PromptOption) ([]int, error) {
 	if v, ok := lookup(p.MultiSelects, label); ok {
 		return v, nil
 	}
