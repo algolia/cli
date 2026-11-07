@@ -15,7 +15,10 @@ func GetSynonyms(client *search.APIClient, srcIndex string) ([]search.SynonymHit
 		srcIndex,
 		*search.NewEmptySearchSynonymsParams(),
 		search.WithAggregator(func(res any, _ error) {
-			response, _ := res.(search.SearchSynonymsResponse)
+			response, ok := res.(*search.SearchSynonymsResponse)
+			if !ok || response == nil {
+				return
+			}
 			synonyms = append(synonyms, response.Hits...)
 		}),
 	)
@@ -32,7 +35,10 @@ func GetRules(client *search.APIClient, srcIndex string) ([]search.Rule, error) 
 		srcIndex,
 		*search.NewEmptySearchRulesParams(),
 		search.WithAggregator(func(res any, _ error) {
-			response, _ := res.(search.SearchRulesResponse)
+			response, ok := res.(*search.SearchRulesResponse)
+			if !ok || response == nil {
+				return
+			}
 			rules = append(rules, response.Hits...)
 		}),
 	)
