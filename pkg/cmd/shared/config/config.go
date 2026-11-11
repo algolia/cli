@@ -15,8 +15,10 @@ func GetSynonyms(client *search.APIClient, srcIndex string) ([]search.SynonymHit
 		srcIndex,
 		*search.NewEmptySearchSynonymsParams(),
 		search.WithAggregator(func(res any, _ error) {
-			response, _ := res.(search.SearchSynonymsResponse)
-			synonyms = append(synonyms, response.Hits...)
+			// The client passes a pointer to the aggregator, which is nil on request failure.
+			if response, ok := res.(*search.SearchSynonymsResponse); ok && response != nil {
+				synonyms = append(synonyms, response.Hits...)
+			}
 		}),
 	)
 	if err != nil {
@@ -32,8 +34,10 @@ func GetRules(client *search.APIClient, srcIndex string) ([]search.Rule, error) 
 		srcIndex,
 		*search.NewEmptySearchRulesParams(),
 		search.WithAggregator(func(res any, _ error) {
-			response, _ := res.(search.SearchRulesResponse)
-			rules = append(rules, response.Hits...)
+			// The client passes a pointer to the aggregator, which is nil on request failure.
+			if response, ok := res.(*search.SearchRulesResponse); ok && response != nil {
+				rules = append(rules, response.Hits...)
+			}
 		}),
 	)
 	if err != nil {
