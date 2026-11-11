@@ -23,6 +23,7 @@ type UpdateOptions struct {
 
 	ProviderID string
 	JSON       string
+	File       string
 	Name       string
 }
 
@@ -52,16 +53,19 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Rotate the API key
 			$ algolia agentstudio providers update 22222222-2222-4222-8222-222222222222 --json '{"input":{"apiKey":"<api-key>"}}'
+
+			# Patch from a JSON file
+			$ algolia agentstudio providers update 22222222-2222-4222-8222-222222222222 --file patch.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ProviderID = args[0]
 
-			if opts.JSON != "" {
-				if opts.Name != "" {
-					return cmdutil.FlagErrorf("--json cannot be combined with --name")
-				}
-			} else if opts.Name == "" {
-				return cmdutil.FlagErrorf("`--json` or `--name` is required")
+			hasPayload := opts.JSON != "" || opts.File != ""
+			if hasPayload && opts.Name != "" {
+				return cmdutil.FlagErrorf("--json and --file cannot be combined with --name")
+			}
+			if !hasPayload && opts.Name == "" {
+				return cmdutil.FlagErrorf("`--json`, `--file`, or `--name` is required")
 			}
 
 			return runUpdateCmd(opts)
@@ -69,6 +73,7 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.JSON, "json", "", "Provider JSON patch object (name and/or input)")
+	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
 	cmd.Flags().StringVar(&opts.Name, "name", "", "Provider display name")
 
 	opts.PrintFlags.AddFlags(cmd)
@@ -76,12 +81,16 @@ func NewUpdateCmd(f *cmdutil.Factory) *cobra.Command {
 }
 
 func buildPatch(opts *UpdateOptions) (*agentStudio.ProviderAuthenticationPatch, error) {
-	if opts.JSON == "" {
+	raw, err := cmdutil.JSONPayload(opts.JSON, opts.File, opts.IO.In)
+	if err != nil {
+		return nil, err
+	}
+	if raw == "" {
 		return agentStudio.NewEmptyProviderAuthenticationPatch().SetName(opts.Name), nil
 	}
 
 	var body agentStudio.ProviderAuthenticationPatch
-	if err := json.Unmarshal([]byte(opts.JSON), &body); err != nil {
+	if err := json.Unmarshal([]byte(raw), &body); err != nil {
 		return nil, fmt.Errorf("parsing provider JSON: %w", err)
 	}
 	if !body.HasName() && !body.HasInput() {

@@ -3,6 +3,8 @@ package update_test
 import (
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -76,13 +78,34 @@ func TestUpdateProvider_MissingArg(t *testing.T) {
 	)
 }
 
+func TestUpdateProvider_FromFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "patch.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"input":{"apiKey":"sk-test"}}`), 0o600))
+
+	r := &httpmock.Registry{}
+	var gotBody []byte
+	r.Register(httpmock.REST("PATCH", updatePath), func(req *http.Request) (*http.Response, error) {
+		gotBody, _ = io.ReadAll(req.Body)
+		return httpmock.StringResponse(updatedProviderBody)(req)
+	})
+
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := update.NewUpdateCmd(f)
+	_, err := test.Execute(cmd, providerID+" --file "+path, out)
+	require.NoError(t, err)
+
+	assert.JSONEq(t, updatedProviderBody, strings.TrimSpace(out.String()))
+	assert.Contains(t, string(gotBody), `"apiKey":"sk-test"`)
+	r.Verify(t)
+}
+
 func TestUpdateProvider_MissingInput(t *testing.T) {
 	r := &httpmock.Registry{}
 	f, out := test.NewFactory(false, r, nil, "")
 	cmd := update.NewUpdateCmd(f)
 	_, err := test.Execute(cmd, providerID, out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "`--json` or `--name` is required")
+	assert.Contains(t, err.Error(), "`--json`, `--file`, or `--name` is required")
 }
 
 func TestUpdateProvider_JSONAndFlagsConflict(t *testing.T) {
@@ -91,7 +114,16 @@ func TestUpdateProvider_JSONAndFlagsConflict(t *testing.T) {
 	cmd := update.NewUpdateCmd(f)
 	_, err := test.Execute(cmd, providerID+` --json '{"name":"x"}' --name x`, out)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--json cannot be combined")
+	assert.Contains(t, err.Error(), "cannot be combined with --name")
+}
+
+func TestUpdateProvider_JSONAndFileConflict(t *testing.T) {
+	r := &httpmock.Registry{}
+	f, out := test.NewFactory(false, r, nil, "")
+	cmd := update.NewUpdateCmd(f)
+	_, err := test.Execute(cmd, providerID+` --json '{"name":"x"}' --file patch.json`, out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--json cannot be combined with --file")
 }
 
 func TestUpdateProvider_EmptyJSON(t *testing.T) {

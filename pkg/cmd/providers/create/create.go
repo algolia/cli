@@ -20,6 +20,7 @@ type CreateOptions struct {
 	AgentStudioClient func() (*agentStudio.APIClient, error)
 	PrintFlags        *cmdutil.PrintFlags
 	JSON              string
+	File              string
 }
 
 // NewCreateCmd returns the `providers create` command.
@@ -44,10 +45,13 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 
 			# Create an OpenAI provider
 			$ algolia agentstudio providers create --json '{"name":"openai-prod","providerName":"openai","input":{"apiKey":"<api-key>"}}'
+
+			# Create from a JSON file
+			$ algolia agentstudio providers create --file provider.json
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if opts.JSON == "" {
-				return cmdutil.FlagErrorf("`--json` is required")
+			if opts.JSON == "" && opts.File == "" {
+				return cmdutil.FlagErrorf("`--json` or `--file` is required")
 			}
 			return runCreateCmd(opts)
 		},
@@ -55,14 +59,20 @@ func NewCreateCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd.Flags().
 		StringVar(&opts.JSON, "json", "", "Provider JSON object (name, providerName, input)")
+	cmd.Flags().StringVarP(&opts.File, "file", "f", "", "JSON file path (use - for stdin)")
 
 	opts.PrintFlags.AddFlags(cmd)
 	return cmd
 }
 
 func buildProvider(opts *CreateOptions) (*agentStudio.ProviderAuthenticationCreate, error) {
+	raw, err := cmdutil.JSONPayload(opts.JSON, opts.File, opts.IO.In)
+	if err != nil {
+		return nil, err
+	}
+
 	var body agentStudio.ProviderAuthenticationCreate
-	if err := json.Unmarshal([]byte(opts.JSON), &body); err != nil {
+	if err := json.Unmarshal([]byte(raw), &body); err != nil {
 		return nil, fmt.Errorf("parsing provider JSON: %w", err)
 	}
 	if body.Name == "" || !body.ProviderName.IsValid() {
