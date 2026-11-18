@@ -71,6 +71,7 @@ func Test_CheckACLs(t *testing.T) {
 		cmd            *cobra.Command
 		adminKey       bool
 		ACLs           []search.Acl
+		selfReadFails  bool
 		wantErr        bool
 		wantErrMessage string
 	}{
@@ -132,6 +133,29 @@ See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restriction
 			ACLs:     []search.Acl{search.ACL_SEARCH},
 			wantErr:  false,
 		},
+		{
+			name: "self-read fails, need non-admin ACLs",
+			cmd: &cobra.Command{
+				Annotations: map[string]string{
+					"acls": "settings",
+				},
+			},
+			adminKey:      false,
+			selfReadFails: true,
+			wantErr:       false,
+		},
+		{
+			name: "self-read fails, need admin key",
+			cmd: &cobra.Command{
+				Annotations: map[string]string{
+					"acls": "admin",
+				},
+			},
+			adminKey:       false,
+			selfReadFails:  true,
+			wantErr:        true,
+			wantErrMessage: "this command requires an admin API key. Use the `--api-key` flag with a valid admin API key",
+		},
 	}
 
 	for _, tt := range tests {
@@ -149,7 +173,12 @@ See https://www.algolia.com/doc/guides/security/api-keys/#rights-and-restriction
 				)
 			}
 
-			if tt.ACLs != nil && !tt.adminKey {
+			if tt.selfReadFails && !tt.adminKey {
+				r.Register(
+					httpmock.REST("GET", "1/keys/test"),
+					httpmock.ErrorResponse(),
+				)
+			} else if tt.ACLs != nil && !tt.adminKey {
 				r.Register(
 					httpmock.REST("GET", "1/keys/test"),
 					httpmock.JSONResponse(search.ApiKey{Acl: tt.ACLs}),
