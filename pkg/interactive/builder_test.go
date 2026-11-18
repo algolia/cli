@@ -141,6 +141,31 @@ func TestBuild_EnumRejectsInvalid(t *testing.T) {
 	assert.Contains(t, err.Error(), "not a valid shade")
 }
 
+// tone mimics a real SDK enum: IsValid plus a generated Values() list.
+type tone string
+
+func (t tone) IsValid() bool  { return t == "warm" || t == "cool" }
+func (t tone) Values() []tone { return []tone{"warm", "cool"} }
+
+type toneHolder struct {
+	Tone tone  `json:"tone"`
+	Opt  *tone `json:"opt,omitempty"`
+}
+
+func TestBuild_EnumSelect(t *testing.T) {
+	// Setup
+	b := &Builder{Prompter: &ScriptedPrompter{Selects: map[string]string{"tone": "cool", "toneHolder.opt": enumSkip}}}
+	var v toneHolder
+
+	// Action
+	err := b.Build(&v)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, tone("cool"), v.Tone)
+	assert.Nil(t, v.Opt)
+}
+
 type address struct {
 	City string `json:"city"`
 }
@@ -258,10 +283,17 @@ func TestBuild_ParamBag(t *testing.T) {
 
 type errPrompter struct{ err error }
 
-func (e errPrompter) Input(string, func(string) error) (string, error) { return "", e.err }
-func (e errPrompter) Confirm(string) (bool, error)                     { return false, e.err }
-func (e errPrompter) Select(string, []string) (string, error)          { return "", e.err }
-func (e errPrompter) MultiSelect(string, []string) ([]int, error)      { return nil, e.err }
+func (e errPrompter) Input(string, func(string) error, ...PromptOption) (string, error) {
+	return "", e.err
+}
+func (e errPrompter) Confirm(string, ...PromptOption) (bool, error) { return false, e.err }
+func (e errPrompter) Select(string, []string, ...PromptOption) (string, error) {
+	return "", e.err
+}
+
+func (e errPrompter) MultiSelect(string, []string, ...PromptOption) ([]int, error) {
+	return nil, e.err
+}
 
 func TestBuild_PrompterErrorPropagates(t *testing.T) {
 	sentinel := errors.New("prompt failed")

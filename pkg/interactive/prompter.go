@@ -4,7 +4,9 @@
 package interactive
 
 import (
+	"fmt"
 	"os"
+	"slices"
 
 	"github.com/AlecAivazis/survey/v2"
 
@@ -12,22 +14,53 @@ import (
 	"github.com/algolia/cli/pkg/prompt"
 )
 
+// PromptConfig holds the optional help, default and completion of a prompt, and each prompt kind ignores the fields it cannot use.
+type PromptConfig struct {
+	Help    string
+	Default string
+	Suggest func(toComplete string) []string
+}
+
+// PromptOption sets one field of a PromptConfig.
+type PromptOption func(*PromptConfig)
+
+// WithHelp sets the description printed above the prompt.
+func WithHelp(help string) PromptOption {
+	return func(c *PromptConfig) { c.Help = help }
+}
+
+// WithDefault sets the value used when the user submits an empty line.
+func WithDefault(def string) PromptOption {
+	return func(c *PromptConfig) { c.Default = def }
+}
+
+// WithSuggest sets the tab-completion callback, and nil disables completion.
+func WithSuggest(suggest func(toComplete string) []string) PromptOption {
+	return func(c *PromptConfig) { c.Suggest = suggest }
+}
+
+// ApplyPromptOptions folds opts into a PromptConfig, in order, so a later option overrides an earlier one.
+func ApplyPromptOptions(opts []PromptOption) PromptConfig {
+	var c PromptConfig
+	for _, opt := range opts {
+		opt(&c)
+	}
+	return c
+}
+
 // Prompter is the input surface used by the reflective Builder. Production code
 // uses SurveyPrompter; tests use a scripted fake.
 type Prompter interface {
-	// Input reads a free-text line. validate, when non-nil, is run on the entry;
-	// the implementation re-prompts until it passes (SurveyPrompter) or surfaces
-	// its error (ScriptedPrompter). Pass nil for no validation. An empty entry
-	// means "skip" for optional fields and zero for required scalars.
-	Input(label string, validate func(string) error) (string, error)
+	// Input re-prompts (SurveyPrompter) or returns the error (ScriptedPrompter) when validate fails, and an empty entry means skip.
+	Input(label string, validate func(string) error, opts ...PromptOption) (string, error)
 	// Confirm asks a yes/no question.
-	Confirm(label string) (bool, error)
+	Confirm(label string, opts ...PromptOption) (bool, error)
 	// Select asks the user to pick exactly one option and returns the chosen
 	// label.
-	Select(label string, options []string) (string, error)
+	Select(label string, options []string, opts ...PromptOption) (string, error)
 	// MultiSelect asks the user to pick zero or more options and returns the
 	// chosen 0-based indexes.
-	MultiSelect(label string, options []string) ([]int, error)
+	MultiSelect(label string, options []string, opts ...PromptOption) ([]int, error)
 }
 
 // SurveyPrompter implements Prompter using survey/v2 via the repo's pkg/prompt
@@ -51,7 +84,7 @@ func (s *SurveyPrompter) surveyOpts() []survey.AskOpt {
 	}
 }
 
-func (s *SurveyPrompter) Input(label string, validate func(string) error) (string, error) {
+func (s *SurveyPrompter) Input(label string, validate func(string) error, promptOpts ...PromptOption) (string, error) {
 	var out string
 	opts := s.surveyOpts()
 	if validate != nil {
@@ -65,26 +98,48 @@ func (s *SurveyPrompter) Input(label string, validate func(string) error) (strin
 			return validate(str)
 		}))
 	}
-	err := prompt.SurveyAskOne(&survey.Input{Message: label}, &out, opts...)
+	cfg := s.printHelp(promptOpts)
+	err := prompt.SurveyAskOne(&survey.Input{Message: label, Default: cfg.Default, Suggest: cfg.Suggest}, &out, opts...)
 	return out, err
 }
 
-func (s *SurveyPrompter) Confirm(label string) (bool, error) {
+func (s *SurveyPrompter) Confirm(label string, promptOpts ...PromptOption) (bool, error) {
 	var out bool
+	s.printHelp(promptOpts)
 	err := prompt.SurveyAskOne(&survey.Confirm{Message: label}, &out, s.surveyOpts()...)
 	return out, err
 }
 
-func (s *SurveyPrompter) Select(label string, options []string) (string, error) {
+func (s *SurveyPrompter) Select(label string, options []string, promptOpts ...PromptOption) (string, error) {
 	var out string
-	err := prompt.SurveyAskOne(&survey.Select{Message: label, Options: options}, &out, s.surveyOpts()...)
+	cfg := s.printHelp(promptOpts)
+	err := prompt.SurveyAskOne(&survey.Select{Message: label, Options: options, Default: selectDefault(options, cfg.Default)}, &out, s.surveyOpts()...)
 	return out, err
 }
 
-func (s *SurveyPrompter) MultiSelect(label string, options []string) ([]int, error) {
+func (s *SurveyPrompter) MultiSelect(label string, options []string, promptOpts ...PromptOption) ([]int, error) {
 	var out []int
+	s.printHelp(promptOpts)
 	err := prompt.SurveyAskOne(&survey.MultiSelect{Message: label, Options: options}, &out, s.surveyOpts()...)
 	return out, err
+}
+
+// printHelp prints the description above the prompt because survey's own Help only adds a "[? for help]" hint.
+func (s *SurveyPrompter) printHelp(promptOpts []PromptOption) PromptConfig {
+	cfg := ApplyPromptOptions(promptOpts)
+	if cfg.Help != "" {
+		cs := s.io.ColorScheme()
+		fmt.Fprintln(s.io.Out, cs.Gray(cfg.Help))
+	}
+	return cfg
+}
+
+// selectDefault returns the preselected option, or nil when def is not one of the options because survey rejects an unknown default.
+func selectDefault(options []string, def string) any {
+	if !slices.Contains(options, def) {
+		return nil
+	}
+	return def
 }
 
 // fileReader/fileWriter adapt iostreams to survey's terminal file interfaces.
