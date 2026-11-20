@@ -70,7 +70,7 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia search MOVIES --query "toy story"
 			$ algolia objects browse MOVIES
 			$ algolia apikeys create --acl search
-			$ algolia rules import MOVIES -f rules.json
+			$ algolia rules import MOVIES -F rules.json
 		`),
 	}
 
