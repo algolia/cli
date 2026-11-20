@@ -33,7 +33,7 @@ npm install -g @algolia/cli
 The Algolia CLI is available on [Homebrew](https://brew.sh/) and as a downloadable binary from the [releases page](https://github.com/algolia/cli/releases).
 
 ```sh
-brew install algolia/algolia-cli/algolia
+brew install algolia
 ```
 
 ### Linux

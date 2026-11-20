@@ -73,6 +73,34 @@ func TestGenMdxTreeWritesNestedCommandPages(t *testing.T) {
 	require.Contains(t, listContent, `<ParamField body="-F, --format">`)
 }
 
+func TestGenMdxTreeSkipsHiddenFlagsAndLabelsDeprecatedOnes(t *testing.T) {
+	root := &cobra.Command{Use: "algolia", Short: "Algolia CLI"}
+	list := &cobra.Command{
+		Use:   "list",
+		Short: "List things",
+		RunE: func(*cobra.Command, []string) error {
+			return nil
+		},
+	}
+	list.Flags().StringP("profile", "p", "", "The profile to use")
+	list.Flags().Lookup("profile").Deprecated = "use --application-id instead"
+	list.Flags().String("admin-api-key", "", "The admin API key")
+	require.NoError(t, list.Flags().MarkDeprecated("admin-api-key", "use --api-key instead"))
+	list.Flags().String("secret", "", "Internal flag")
+	require.NoError(t, list.Flags().MarkHidden("secret"))
+
+	root.AddCommand(list)
+
+	dir := t.TempDir()
+	require.NoError(t, GenMdxTree(root, dir))
+
+	listContent := readTestFile(t, filepath.Join(dir, "list.mdx"))
+	require.Contains(t, listContent, `<ParamField body="-p, --profile">`)
+	require.Contains(t, listContent, "**Deprecated:** use --application-id instead.")
+	require.NotContains(t, listContent, "--admin-api-key")
+	require.NotContains(t, listContent, "--secret")
+}
+
 func TestGenMdxTreeSupportsCodeOnlyExamples(t *testing.T) {
 	root := &cobra.Command{
 		Use:   "algolia",
