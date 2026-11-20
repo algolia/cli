@@ -30,6 +30,9 @@ type Flag struct {
 	Shorthand   string `json:"shorthand,omitempty"`
 	Description string `json:"description"`
 	Default     string `json:"default"`
+	// Deprecated holds the deprecation message when the flag is deprecated
+	// but still visible, such as --profile.
+	Deprecated string `json:"deprecated,omitempty"`
 }
 
 func newFlag(flag *pflag.Flag) Flag {
@@ -38,12 +41,19 @@ func newFlag(flag *pflag.Flag) Flag {
 		Shorthand:   flag.Shorthand,
 		Description: strings.TrimSpace(flag.Usage),
 		Default:     flag.DefValue,
+		Deprecated:  strings.TrimSpace(flag.Deprecated),
 	}
 }
 
+// newFlags lists the flags of a flag set, skipping hidden ones so the docs and
+// `describe` match what --help shows. MarkDeprecated hides a flag, so a flag
+// deprecated that way is skipped too.
 func newFlags(flagSet *pflag.FlagSet) []Flag {
 	flags := make([]Flag, 0)
 	flagSet.VisitAll(func(flag *pflag.Flag) {
+		if flag.Hidden {
+			return
+		}
 		flags = append(flags, newFlag(flag))
 	})
 	return flags
