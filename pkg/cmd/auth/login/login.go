@@ -77,9 +77,11 @@ func NewLoginCmd(f *cmdutil.Factory) *cobra.Command {
 			A local HTTP server is started to receive the OAuth redirect
 			automatically - no code copy-paste required.
 
-			Use --no-browser if the browser cannot be opened automatically
-			(e.g. SSH sessions, containers). The URL will be printed for you
-			to open manually; the CLI still waits for the redirect.
+			Use --no-browser to print the authorize URL instead of opening the
+			browser, for example when an agent runs the CLI. Open the URL on
+			the same machine: the CLI waits for a redirect to localhost. On a
+			machine without a browser, such as a CI server, set
+			ALGOLIA_APPLICATION_ID and ALGOLIA_API_KEY instead.
 
 			Use --non-interactive to sign in without any prompt and print the
 			result as JSON. It signs in only: no application is configured unless
