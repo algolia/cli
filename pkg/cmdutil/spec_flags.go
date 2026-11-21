@@ -10,6 +10,7 @@ import (
 var BrowseParamsObject = []string{
 	"advancedSyntax",
 	"advancedSyntaxFeatures",
+	"allowReRankingOnPersonalization",
 	"allowTyposOnNumericTokens",
 	"alternativesAsExact",
 	"analytics",
@@ -18,6 +19,7 @@ var BrowseParamsObject = []string{
 	"aroundLatLngViaIP",
 	"aroundPrecision",
 	"aroundRadius",
+	"attributeCriteriaComputedBy",
 	"attributeCriteriaComputedByMinProximity",
 	"attributesToHighlight",
 	"attributesToRetrieve",
@@ -101,6 +103,7 @@ var IndexSettings = []string{
 	"allowCompressionOfIntegerArray",
 	"allowTyposOnNumericTokens",
 	"alternativesAsExact",
+	"attributeCriteriaComputedBy",
 	"attributeCriteriaComputedByMinProximity",
 	"attributeForDistinct",
 	"attributesForFaceting",
@@ -162,6 +165,7 @@ var IndexSettings = []string{
 var SearchParamsObject = []string{
 	"advancedSyntax",
 	"advancedSyntaxFeatures",
+	"allowReRankingOnPersonalization",
 	"allowTyposOnNumericTokens",
 	"alternativesAsExact",
 	"analytics",
@@ -170,6 +174,7 @@ var SearchParamsObject = []string{
 	"aroundLatLngViaIP",
 	"aroundPrecision",
 	"aroundRadius",
+	"attributeCriteriaComputedBy",
 	"attributeCriteriaComputedByMinProximity",
 	"attributesToHighlight",
 	"attributesToRetrieve",
@@ -242,6 +247,9 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax`))
 	cmd.Flags().StringSlice("advancedSyntaxFeatures", []string{"exactPhrase", "excludeWords"}, heredoc.Doc(`Advanced search syntax features you want to support.
 See: https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntaxFeatures`))
 	cmd.Flags().SetAnnotation("advancedSyntaxFeatures", "Categories", []string{"Query strategy"})
+	cmd.Flags().Bool("allowReRankingOnPersonalization", false, heredoc.Doc(`Whether Dynamic Re-Ranking runs concurrently with Personalization.
+See: https://www.algolia.com/doc/api-reference/api-parameters/allowReRankingOnPersonalization`))
+	cmd.Flags().SetAnnotation("allowReRankingOnPersonalization", "Categories", []string{"Personalization"})
 	cmd.Flags().Bool("allowTyposOnNumericTokens", true, heredoc.Doc(`Whether to allow typos on numbers in the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumericTokens`))
 	cmd.Flags().SetAnnotation("allowTyposOnNumericTokens", "Categories", []string{"Typos"})
@@ -253,7 +261,6 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/analytics`))
 	cmd.Flags().SetAnnotation("analytics", "Categories", []string{"Analytics"})
 	cmd.Flags().StringSlice("analyticsTags", []string{}, heredoc.Doc(`Tags to apply to the query for segmenting analytics data.
 See: https://www.algolia.com/doc/api-reference/api-parameters/analyticsTags`))
-	cmd.Flags().SetAnnotation("analyticsTags", "Categories", []string{"Analytics"})
 	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle, expressed as a comma-separated string of latitude and longitude.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLng`))
 	cmd.Flags().SetAnnotation("aroundLatLng", "Categories", []string{"Geo-Search"})
@@ -268,6 +275,9 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/aroundPrecision`))
 	cmd.Flags().Var(aroundRadius, "aroundRadius", heredoc.Doc(`Maximum radius for a search around a central location.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundRadius`))
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
+	cmd.Flags().String("attributeCriteriaComputedBy", "best", heredoc.Doc(`Strategy for computing the Attribute ranking criterion. One of: minProximity, best, sum.
+See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedBy`))
+	cmd.Flags().SetAnnotation("attributeCriteriaComputedBy", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
 See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
@@ -510,6 +520,9 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumeri
 	cmd.Flags().StringSlice("alternativesAsExact", []string{"ignorePlurals", "singleWordSynonym"}, heredoc.Doc(`Determine which plurals and synonyms should be considered an exact matches.
 See: https://www.algolia.com/doc/api-reference/api-parameters/alternativesAsExact`))
 	cmd.Flags().SetAnnotation("alternativesAsExact", "Categories", []string{"Query strategy"})
+	cmd.Flags().String("attributeCriteriaComputedBy", "best", heredoc.Doc(`Strategy for computing the Attribute ranking criterion. One of: minProximity, best, sum.
+See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedBy`))
+	cmd.Flags().SetAnnotation("attributeCriteriaComputedBy", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
 See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
@@ -691,6 +704,9 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntax`))
 	cmd.Flags().StringSlice("advancedSyntaxFeatures", []string{"exactPhrase", "excludeWords"}, heredoc.Doc(`Advanced search syntax features you want to support.
 See: https://www.algolia.com/doc/api-reference/api-parameters/advancedSyntaxFeatures`))
 	cmd.Flags().SetAnnotation("advancedSyntaxFeatures", "Categories", []string{"Query strategy"})
+	cmd.Flags().Bool("allowReRankingOnPersonalization", false, heredoc.Doc(`Whether Dynamic Re-Ranking runs concurrently with Personalization.
+See: https://www.algolia.com/doc/api-reference/api-parameters/allowReRankingOnPersonalization`))
+	cmd.Flags().SetAnnotation("allowReRankingOnPersonalization", "Categories", []string{"Personalization"})
 	cmd.Flags().Bool("allowTyposOnNumericTokens", true, heredoc.Doc(`Whether to allow typos on numbers in the search query.
 See: https://www.algolia.com/doc/api-reference/api-parameters/allowTyposOnNumericTokens`))
 	cmd.Flags().SetAnnotation("allowTyposOnNumericTokens", "Categories", []string{"Typos"})
@@ -702,7 +718,6 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/analytics`))
 	cmd.Flags().SetAnnotation("analytics", "Categories", []string{"Analytics"})
 	cmd.Flags().StringSlice("analyticsTags", []string{}, heredoc.Doc(`Tags to apply to the query for segmenting analytics data.
 See: https://www.algolia.com/doc/api-reference/api-parameters/analyticsTags`))
-	cmd.Flags().SetAnnotation("analyticsTags", "Categories", []string{"Analytics"})
 	cmd.Flags().String("aroundLatLng", "", heredoc.Doc(`Coordinates for the center of a circle, expressed as a comma-separated string of latitude and longitude.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundLatLng`))
 	cmd.Flags().SetAnnotation("aroundLatLng", "Categories", []string{"Geo-Search"})
@@ -717,6 +732,9 @@ See: https://www.algolia.com/doc/api-reference/api-parameters/aroundPrecision`))
 	cmd.Flags().Var(aroundRadius, "aroundRadius", heredoc.Doc(`Maximum radius for a search around a central location.
 See: https://www.algolia.com/doc/api-reference/api-parameters/aroundRadius`))
 	cmd.Flags().SetAnnotation("aroundRadius", "Categories", []string{"Geo-Search"})
+	cmd.Flags().String("attributeCriteriaComputedBy", "best", heredoc.Doc(`Strategy for computing the Attribute ranking criterion. One of: minProximity, best, sum.
+See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedBy`))
+	cmd.Flags().SetAnnotation("attributeCriteriaComputedBy", "Categories", []string{"Advanced"})
 	cmd.Flags().Bool("attributeCriteriaComputedByMinProximity", false, heredoc.Doc(`Whether the best matching attribute should be determined by minimum proximity.
 See: https://www.algolia.com/doc/api-reference/api-parameters/attributeCriteriaComputedByMinProximity`))
 	cmd.Flags().SetAnnotation("attributeCriteriaComputedByMinProximity", "Categories", []string{"Advanced"})
